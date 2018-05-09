@@ -64,6 +64,8 @@ As a consequence, ``pandoc-zotxt.lua`` is about as fast as ``pandoc-zotxt``.
 | for long and/or complex documents. | for short and/or simple documents.    |
 | (But you won't notice.)            | (But you won't notice.)               |
 +------------------------------------+---------------------------------------+
+| Doesn't use temporary files.       | Does use a temporary file.            |
++------------------------------------+---------------------------------------+
 
 
 Test suite
