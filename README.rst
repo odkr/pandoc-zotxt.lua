@@ -12,7 +12,6 @@ as so-called easy citekeys. See the documentation of *zotxt* for details.
 See the `manual page <man/pandoc-zotxt.lua.rst>`_ for more details.
 
 
-
 Installing ``pandoc-zotxt.lua``
 ===============================
 
@@ -51,11 +50,10 @@ If you are using a Unix-ish operating system, you can do all of the above by::
 
 I started to write ``pandoc-zotxt.lua`` because I had hoped that I could write
 a faster replacement for ``pandoc-zotxt``. Unfortunately, Pandoc_ does *not*
-support LuaSocket_ (a library for, among other things, retrieving data via a 
-network) and only provides a blocking method to fetch data from networks 
-itself. So, there is no way to retrieve data for multiple citation items
-concurrently. As a consequence, ``pandoc-zotxt.lua`` is about as fast as
-``pandoc-zotxt``.
+support LuaSocket_ (a library for retrieving data via a network) and only 
+provides a blocking method to fetch data from a network itself. So, there is
+no way to retrieve data for multiple citation items concurrently. 
+As a consequence, ``pandoc-zotxt.lua`` is about as fast as ``pandoc-zotxt``.
 
 +------------------------------------+---------------------------------------+
 | ``pandoc-zotxt.lua``               | ``pandoc-zotxt``                      |
