@@ -54,15 +54,24 @@ support LuaSocket_ (a library for retrieving data via a network) and only
 provides a blocking method to fetch data from a network itself. So, there is
 no way to retrieve data for multiple citation items concurrently. 
 As a consequence, ``pandoc-zotxt.lua`` is typically about as fast as
-``pandoc-zotxt``. It is faster for long, complex documents though.
+``pandoc-zotxt``. However, if your document is *very* complex (e.g., a
+highly stylised reveal.js_ presentation prepared in Markdown) 
+``pandoc-zotxt.lua`` will be a bit faster; if you are using BetterBixTex_,
+it will be a lot faster.
+
+Moreover, ``pandoc-zotxt.lua`` supports using Zotero_ item IDs as
+citation keys.
 
 +------------------------------------+---------------------------------------+
 | ``pandoc-zotxt.lua``               | ``pandoc-zotxt``                      |
 +====================================+=======================================+
 | Requires only Pandoc_ 2.0          | Requires Pandoc_ 1.12 and Python_ 2.7 |
 +------------------------------------+---------------------------------------+
-| Faster for complex documents.      | Apparently, a tiny bit faster         |
-|                                    | for short and/or simple documents.    |
+| Faster for complex documents       | Apparently, a tiny bit faster         |
+| or if you're using BetterBixTex_.  | for short and/or simple documents.    |
++------------------------------------+---------------------------------------+
+| Supports using Zotero_ item IDs    | Doesn't support Zotero_ item IDs.     |
+| as citation keys.                  |                                       |
 +------------------------------------+---------------------------------------+
 | Doesn't use temporary files.       | Does use a temporary file.            |
 +------------------------------------+---------------------------------------+
@@ -85,6 +94,14 @@ the source from the file ``bbt.rdf``.
 To run the the BetterBixTex test, say::
 
     make test-bbt
+
+There is also a test for using Zotero item IDs as citation keys.
+But since item IDs are particular to the datebase used, you
+need to adapt this test yourself. Have a look at ``key.md``,
+``key-is.html`` and ``key-should.html`` in ``test``. Once you've
+adapted those to your database, you can run the test by::
+
+    make test-key
 
 
 Documentation
@@ -141,5 +158,6 @@ See also
 .. _Zotero: https://www.zotero.org/
 .. _Pandoc: https://www.pandoc.org/
 .. _BetterBibTex: https://retorque.re/zotero-better-bibtex/
+.. _reveal.js: https://github.com/hakimel/reveal.js/
 .. _Python: https://www.python.org/
 .. _LuaSocket: https://github.com/diegonehab/luasocket

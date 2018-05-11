@@ -32,8 +32,8 @@ local ZOTXT_LOOKUP_URL = 'http://localhost:23119/zotxt/items'
 
 
 -- Keytypes.
--- See the source of ``pandoc-zotxt`` for details for details.
-local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey'}
+-- See <https://github.com/egh/zotxt> for details.
+local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 
 -- Boilerplate
