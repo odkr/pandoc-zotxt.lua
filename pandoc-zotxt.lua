@@ -27,11 +27,11 @@
 -- =========
 
 -- The URL to lookup citation data.
--- See <https://github.com/egh/zotxt> for details.
-local ZOTXT_LOOKUP_URL = 'http://localhost:23119/zotxt/items'
+-- See ``get_source_json`` and <https://github.com/egh/zotxt> for details.
+local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
 -- Keytypes.
--- See <https://github.com/egh/zotxt> for details.
+-- See ``get_source_json`` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 
@@ -70,24 +70,65 @@ end
 -- Functions
 -- =========
 
---- Gets bibliographic data from Zotero.
+do
+    local keytypes = ZOTXT_KEYTYPES
+    local fetch = pandoc.mediabag.fetch
+
+    ---  Gets bibliographic data from Zotero.
+    --
+    -- Tries to get bibliographic data by citation key, trying different
+    -- types of citation keys, starting with the last keytype using which
+    -- a lookup was successful.
+    --
+    -- The constant ``ZOTXT_QUERY_URL`` defines where to get data from.
+    -- The constant ``ZOTXT_KEYTYPES`` defines what keytypes to try.
+    -- See <https://github.com/egh/zotxt> for details.
+    --
+    -- @return The cited sources
+    --         as a list of CSL-compliant multi-dimensional tables.
+    -- @return If the cited source was found, bibliographic data for
+    --         that source as CSL JSON string.
+    -- @return Otherwise, nil and the error message of the lookup
+    --         attempt for the first keytype.
+    function get_source_json (citekey)
+        local _, reply
+        for i = 1, #keytypes do
+            local query = ZOTXT_QUERY_URL .. keytypes[i] .. '=' .. citekey
+            _, reply = fetch(query, '.')
+            if reply:sub(1, 1) == '[' then
+                if i > 1 then
+                    local keytype = table.remove(keytypes, i)
+                    table.insert(keytypes, 1, keytype)
+                end
+                return reply
+            end
+        end
+        return nil, reply
+    end
+end
+
+
+--- Retrieves bibliographic data for sources from Zotero.
 -- 
--- The constant ``ZOTXT_LOOKUP_URL`` determines where to get data from.
--- See <https://github.com/egh/zotxt> for details.
+-- @param citekeys A list of citation keys.
 --
--- @param citekey A citation key.
--- @param keytype The type of citekey, either 'easykey' or 'betterbixtexkey';
---                defaults to 'easykey'.
+-- @return The cited sources,
+--         as a list of CSL compliant multi-dimensional tables.
 --
--- @return If the cited source was found, bibliographic data for
---         that source as CSL JSON string.
--- @return Otherwise, nil and and error message.
-function get_source_data (citekey, keytype)
-    keytype = keytype or 'easykey'
-    local _, reply = pandoc.mediabag.fetch(ZOTXT_LOOKUP_URL .. 
-        '?' .. keytype .. '=' .. citekey, '.')
-    if reply:sub(1, 1) ~= '[' then return nil, reply end
-    return reply
+-- Prints error messages to STDERR if a source cannot be found.
+function get_sources (citekeys)
+    local sources = {}
+    for _, citekey in ipairs(citekeys) do
+        local data, err = get_source_json(citekey)
+        if data == nil then
+            io.stderr:write('pandoc-zotxt.lua: ' .. err .. '\n')
+        else
+            local source = stringify_values(json.decode(data)[1])
+            source.id = citekey
+            table.insert(sources, source)
+        end
+    end
+    return sources
 end
 
 
@@ -117,60 +158,24 @@ end
 do
     local citekeys = {}
 
-    --- Collects all citekeys used in a document.
-    --
-    -- Saves them into the variable ``citekeys``,
-    -- which is shared with ``add_references``.
-    --
-    -- @param citations A pandoc.Cite element.
-    function collect_sources (citations)
-        for _, citation in ipairs(citations.c[1]) do
-            if citekeys[citation.id] == nil then
-                citekeys[citation.id] = true
-            end
-        end
-    end
+    do
+        local seen = {}
 
-
-    --- Retrieves cited sources from Zotero.
-    -- 
-    -- Reads citekeys of cited sources from the variable ```citekeys``,
-    -- which is shared with ``collect_sources``.
-    --
-    -- The constant ``ZOTXT_KEYTYPES`` defines what kinds of citation keys
-    -- ``retrieve_sources`` tries to look up.
-    -- See <https://github.com/egh/zotxt> for details.
-    --
-    -- @return The cited sources
-    --         as a list of CSL-compliant multi-dimensional tables.
-    function retrieve_sources ()
-        local sources = {}
-        local keytypes = ZOTXT_KEYTYPES
-        for citekey, _ in pairs(citekeys) do
-            local msg = citekey .. ': not found\n'
-            local data
-            for i = 1, #keytypes do
-                if i == 1 then
-                    data, msg = get_source_data(citekey, keytypes[i])
-                    if data ~= nil then break end
-                else
-                    data = get_source_data(citekey, keytypes[i])
-                    if data ~= nil then
-                        local kt = table.remove(keytypes, i)
-                        table.insert(keytypes, 1, kt)
-                        break
-                    end
+        --- Collects all citekeys used in a document.
+        --
+        -- Saves them into the variable ``citekeys``,
+        -- which is shared with ``add_references``.
+        --
+        -- @param citations A pandoc.Cite element.
+        function collect_sources (citations)
+            for _, citation in ipairs(citations.citations) do
+                id = citation.id
+                if seen[id] == nil then
+                    seen[id] = true
+                    table.insert(citekeys, id)
                 end
             end
-            if data == nil then
-                io.stderr:write('pandoc-zotxt.lua: ' .. msg .. '\n')
-            else
-                source = stringify_values(json.decode(data)[1])
-                source.id = citekey
-                table.insert(sources, source)
-            end
         end
-	return sources
     end
 
 
@@ -184,10 +189,8 @@ do
     -- @return If sources were found, an updated metadata block, 
     --         as Pandoc.Meta, with the field ```references`` added.
     -- @return Otherwise, nil.
-    --
-    -- Prints error messages to STDERR if a source cannot be found.
     function add_references (meta)
-        sources = retrieve_sources()
+        sources = get_sources(citekeys)
         if #sources > 0 then
             meta['references'] = sources 
             return meta

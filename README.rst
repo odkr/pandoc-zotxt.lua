@@ -56,8 +56,8 @@ no way to retrieve data for multiple citation items concurrently.
 As a consequence, ``pandoc-zotxt.lua`` is typically about as fast as
 ``pandoc-zotxt``. However, if your document is *very* complex (e.g., a
 highly stylised reveal.js_ presentation prepared in Markdown) 
-``pandoc-zotxt.lua`` will be a bit faster; if you are using BetterBixTex_,
-it will be a lot faster.
+``pandoc-zotxt.lua`` will be a bit faster; if you are using BetterBibTex_,
+it will be about twice as fast.
 
 Moreover, ``pandoc-zotxt.lua`` supports using Zotero_ item IDs as
 citation keys.
@@ -68,7 +68,7 @@ citation keys.
 | Requires only Pandoc_ 2.0          | Requires Pandoc_ 1.12 and Python_ 2.7 |
 +------------------------------------+---------------------------------------+
 | Faster for complex documents       | Apparently, a tiny bit faster         |
-| or if you're using BetterBixTex_.  | for short and/or simple documents.    |
+| or if you're using BetterBibTex_.  | for short and/or simple documents.    |
 +------------------------------------+---------------------------------------+
 | Supports using Zotero_ item IDs    | Doesn't support Zotero_ item IDs.     |
 | as citation keys.                  |                                       |
@@ -88,10 +88,10 @@ To run the test suite, just say::
 
     make test
 
-If you want to test BetterBibTex_ support, you also need BetterBixTex and
+If you want to test BetterBibTex_ support, you also need BetterBibTex and
 the source from the file ``bbt.rdf``.
 
-To run the the BetterBixTex test, say::
+To run the the BetterBibTex test, say::
 
     make test-bbt
 
