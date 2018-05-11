@@ -30,7 +30,6 @@
 -- See <https://github.com/egh/zotxt> for details.
 local ZOTXT_LOOKUP_URL = 'http://localhost:23119/zotxt/items'
 
-
 -- Keytypes.
 -- See <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
@@ -73,7 +72,7 @@ end
 
 --- Gets bibliographic data from Zotero.
 -- 
--- Uses the constant ZOTXT_LOOKUP_URL (see above).
+-- The constant ``ZOTXT_LOOKUP_URL`` determines where to get data from.
 -- See <https://github.com/egh/zotxt> for details.
 --
 -- @param citekey A citation key.
@@ -133,19 +132,18 @@ do
     end
 
 
-    --- Adds all cited sources to the metadata block of a document.
-    --
+    --- Retrieves cited sources from Zotero.
+    -- 
     -- Reads citekeys of cited sources from the variable ```citekeys``,
     -- which is shared with ``collect_sources``.
     --
-    -- @param meta The metadata block of a document, as Pandoc.Meta.
+    -- The constant ``ZOTXT_KEYTYPES`` defines what kinds of citation keys
+    -- ``retrieve_sources`` tries to look up.
+    -- See <https://github.com/egh/zotxt> for details.
     --
-    -- @return If sources were found, an updated metadata block, 
-    --         as Pandoc.Meta, with the field ```references`` added.
-    -- @return Otherwise, nil.
-    --
-    -- Prints error messages to STDERR if a source cannot be found.
-    function add_references (meta)
+    -- @return The cited sources
+    --         as a list of CSL-compliant multi-dimensional tables.
+    function retrieve_sources ()
         local sources = {}
         local keytypes = ZOTXT_KEYTYPES
         for citekey, _ in pairs(citekeys) do
@@ -172,7 +170,25 @@ do
                 table.insert(sources, source)
             end
         end
-	if #sources > 0 then
+	return sources
+    end
+
+
+    --- Adds all cited sources to the metadata block of a document.
+    --
+    -- Reads citekeys of cited sources from the variable ```citekeys``,
+    -- which is shared with ``collect_sources``.
+    --
+    -- @param meta The metadata block of a document, as Pandoc.Meta.
+    --
+    -- @return If sources were found, an updated metadata block, 
+    --         as Pandoc.Meta, with the field ```references`` added.
+    -- @return Otherwise, nil.
+    --
+    -- Prints error messages to STDERR if a source cannot be found.
+    function add_references (meta)
+        sources = retrieve_sources()
+        if #sources > 0 then
             meta['references'] = sources 
             return meta
         end
