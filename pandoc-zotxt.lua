@@ -1,7 +1,7 @@
 #!/usr/local/bin/lua
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
--- @release 0.1
+-- @release 0.2
 -- @author Odin Kroeger
 -- @copyright 2018 Odin Kroeger
 --
