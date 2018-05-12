@@ -62,19 +62,19 @@ BetterBibTex_, it will be about twice as fast.
 Moreover, ``pandoc-zotxt.lua`` supports using Zotero_ item IDs as
 citation keys.
 
-+---------------------------------+---------------------------------------+
-| ``pandoc-zotxt.lua``            | ``pandoc-zotxt``                      |
-+=================================+=======================================+
-| Requires only Pandoc_ 2.0       | Requires Pandoc_ 1.12 and Python_ 2.7 |
-+---------------------------------+---------------------------------------+
-| Faster if you're using          | Slower if you're using BetterBibTex.  |
-| BetterBibTex_.                  |                                       |
-+---------------------------------+---------------------------------------+
-| Supports using Zotero_ item IDs | Doesn't support Zotero_ item IDs.     |
-| as citation keys.               |                                       |
-+---------------------------------+---------------------------------------+
-| Doesn't use temporary files.    | Does use a temporary file.            |
-+---------------------------------+---------------------------------------+
++---------------------------------+----------------------------------------+
+| ``pandoc-zotxt.lua``            | ``pandoc-zotxt``                       |
++=================================+========================================+
+| Requires only Pandoc_ 2.0.      | Requires Pandoc_ 1.12 and Python_ 2.7. |
++---------------------------------+----------------------------------------+
+| Faster if you're using          | Slower if you're using BetterBibTex.   |
+| BetterBibTex_.                  |                                        |
++---------------------------------+----------------------------------------+
+| Supports using Zotero_ item IDs | Doesn't support Zotero_ item IDs.      |
+| as citation keys.               |                                        |
++---------------------------------+----------------------------------------+
+| Doesn't use temporary files.    | Does use a temporary file.             |
++---------------------------------+----------------------------------------+
 
 
 Test suite
