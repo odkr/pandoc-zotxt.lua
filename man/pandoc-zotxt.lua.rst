@@ -22,64 +22,38 @@ DESCRIPTION
 ===========
 
 ``pandoc-zotxt.lua`` looks up sources of citations in Zotero and adds
-their bibliographic data either to a document's bibliography or its
-``references`` metadata field, where ``pandoc-citeproc`` can pick it up.
+them either to a document's ``references`` metadata field or to its
+bibliography, where ``pandoc-citeproc`` can pick them up.
 
-You should insert citations either as so-called "easy citekeys" (provided
-by zotxt) or as "BetterBibTex Citation Keys" (provided by BetterBibTex). (See
-the documentation of zotxt and BetterBibTex respectively for details.) Then
-simply run ``pandoc-zotxt.lua`` before ``pandoc-citeproc``. That's all all
-there is to it. 
+You cite your sources using so-called "easy citekeys" (provided by zotxt) or
+"BetterBibTex Citation Keys" (provided by BetterBibTex) and then tell 
+``pandoc`` to run ``pandoc-zotxt.lua`` before ``pandoc-citeproc``.
+That's all all there is to it. (See the documentation of zotxt and 
+BetterBibTex respectively for details.)
 
-You can also use ``pandoc-zotxt.lua`` to manage a bibliography.
-(It must be a CSL JSON file.) It will then add any source you cite.
+You can also use ``pandoc-zotxt.lua`` to manage a bibliography file.
+Simply set the ``zotero-bibliography`` metadata field to a filename.
+``pandoc-zotxt.lua`` will then add the sources you cite to that file,
+rather than to the ``references`` metadata field. It will also add
+that file to the document's ``bibliography`` metadata field, so
+that ``pandoc-citeproc`` picks it up.
 
-All you have to do is:
-
-1. Set the ``zotxt-bibliography`` metadata field to a filename. 
-
-2. Add that file to the ``bibliography`` metadata field.
-
-``pandoc-zotxt.lua`` never updates or deletes entries. If you need to update
-or delete an entry, simply delete the bibliography file and let 
-``pandoc-zotxt.lua`` regenerate it.
+Note, ``pandoc-zotxt.lua`` only *adds* sources to bibliography files.
+It doesn't update or delete them. To update your bibliography file,
+delete and let ``pandoc-zotxt.lua`` regenerate it.
 
 
-LICENSE
-=======
+AUTHOR
+======
 
-Copyright 2018, 2019 Odin Kroeger
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-REQUIREMENTS
-============
-
-``pandoc-zotxt.lua`` requires zotxt for Zotero.
-
+Odin Kroeger
 
 
 FURTHER INFORMATION
 ===================
 
 * <https://www.pandoc.org/>
+* <https://github.com/jgm/pandoc-citeproc>
 * <https://www.zotero.org/>
 * <https://github.com/egh/zotxt>
 * <https://retorque.re/zotero-better-bibtex/>
