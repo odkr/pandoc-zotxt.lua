@@ -28,8 +28,9 @@
             </dcterms:URI>
         </dc:identifier>
         <dc:rights>© 2013 John Wiley &amp; Sons Ltd</dc:rights>
-        <bib:pages>1-16</bib:pages>
-        <dc:date>2013</dc:date>
+        <bib:pages>1137-1152</bib:pages>
+        <dc:date>2015</dc:date>
+        <dc:description>{:original-date: 2013}</dc:description>
         <dcterms:dateSubmitted>2015-11-14 18:07:41</dcterms:dateSubmitted>
         <z:libraryCatalog>Wiley Online Library</z:libraryCatalog>
         <z:language>en</z:language>
@@ -69,13 +70,13 @@
                 </rdf:li>
             </rdf:Seq>
         </bib:authors>
-        <link:link rdf:resource="#item_4995"/>
+        <link:link rdf:resource="#item_7933"/>
         <dc:identifier>ISBN 978-0-19-989262-4</dc:identifier>
         <dc:date>2012</dc:date>
         <dc:title>Resisting Reality: Social Construction and Social Critique</dc:title>
         <z:shortTitle>Resisting Reality</z:shortTitle>
     </bib:Book>
-    <z:Attachment rdf:about="#item_4995">
+    <z:Attachment rdf:about="#item_7933">
         <z:itemType>attachment</z:itemType>
         <dc:title>Haslanger 2012.pdf</dc:title>
         <link:type>application/pdf</link:type>
@@ -126,14 +127,14 @@
                 </rdf:li>
             </rdf:Seq>
         </bib:authors>
-        <link:link rdf:resource="#item_6894"/>
+        <link:link rdf:resource="#item_7190"/>
         <dc:identifier>
             <dcterms:URI>
                 <rdf:value>http://onlinelibrary.wiley.com.uaccess.univie.ac.at/doi/10.1111/hypa.12234/abstract</rdf:value>
             </dcterms:URI>
         </dc:identifier>
         <dc:rights>© by Hypatia, Inc.</dc:rights>
-        <bib:pages>n/a-n/a</bib:pages>
+        <bib:pages>245-258</bib:pages>
         <dc:date>February 1, 2016</dc:date>
         <dcterms:dateSubmitted>2016-02-18 13:43:39</dcterms:dateSubmitted>
         <z:libraryCatalog>Wiley Online Library</z:libraryCatalog>
@@ -148,7 +149,7 @@
         <dcterms:alternative>Hypatia</dcterms:alternative>
         <dc:identifier>DOI 10.1111/hypa.12234</dc:identifier>
     </bib:Journal>
-    <z:Attachment rdf:about="#item_6894">
+    <z:Attachment rdf:about="#item_7190">
         <z:itemType>attachment</z:itemType>
         <dc:title>Díaz-León 2016.pdf</dc:title>
         <link:type>application/pdf</link:type>
@@ -206,5 +207,33 @@
         <dc:title>Snapshot</dc:title>
         <z:linkMode>1</z:linkMode>
         <link:type>text/html</link:type>
+    </z:Attachment>
+    <bib:Article rdf:about="#item_7165">
+        <z:itemType>journalArticle</z:itemType>
+        <dcterms:isPartOf>
+            <bib:Journal>
+                <prism:number>1</prism:number>
+                <dc:title>University of Chicago Legal Forum</dc:title>
+            </bib:Journal>
+        </dcterms:isPartOf>
+        <bib:authors>
+            <rdf:Seq>
+                <rdf:li>
+                    <foaf:Person>
+                        <foaf:surname>Crenshaw</foaf:surname>
+                        <foaf:givenname>Kimberlé</foaf:givenname>
+                    </foaf:Person>
+                </rdf:li>
+            </rdf:Seq>
+        </bib:authors>
+        <link:link rdf:resource="#item_7166"/>
+        <bib:pages>139-167</bib:pages>
+        <dc:date>1989</dc:date>
+        <dc:title>Demarginalizing the intersection of race and sex: a black feminist critique of antidiscrimination doctrine, feminist theory and antiracist politics</dc:title>
+    </bib:Article>
+    <z:Attachment rdf:about="#item_7166">
+        <z:itemType>attachment</z:itemType>
+        <dc:title>Crenshaw 1989.pdf</dc:title>
+        <link:type>application/pdf</link:type>
     </z:Attachment>
 </rdf:RDF>

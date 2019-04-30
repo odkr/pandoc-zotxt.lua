@@ -1,4 +1,4 @@
-test: test-doc test-bbt test-key 
+test: test-doc test-bbt
 
 test-doc:
 	rm -f test/doc-is.txt
