@@ -34,32 +34,26 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 
--- Boilerplate
--- ===========
+-- Shorthands
+-- ==========
 
-local pairs = pairs
-local ipairs = ipairs
-local tostring = tostring
-local type = type
-
-local package = package
-local string = string
-local math = math
 local floor = math.floor
 local concat = table.concat
 local insert = table.insert
 local remove = table.remove
 
+
+-- Boilerplate
+-- ===========
+
 do
-    local s_dir = PANDOC_SCRIPT_FILE:match('(.-)[\\/][^\\/]-$') or '.'
+    local script_dir = PANDOC_SCRIPT_FILE:match('(.-)[\\/][^\\/]-$') or '.'
     local path_sep = package.config:sub(1, 1)
     local lua_vers = {}
     for _, v in ipairs({_VERSION:sub(5, 7), '5.3'}) do lua_vers[v] = true end
     for k, _ in pairs(lua_vers) do
         package.path = package.path .. ';' ..
-            table.concat({s_dir, 'share', 'lua', k, '?.lua'}, path_sep)
-        package.cpath = package.cpath .. ';' .. 
-            table.concat({s_dir, 'lib', 'lua', k, '?.so'}, path_sep)
+            concat({script_dir, 'share', 'lua', k, '?.lua'}, path_sep)
     end
 end
 
@@ -70,11 +64,7 @@ local json = require 'lunajson'
 -- =========
 
 do
-    local keytypes = ZOTXT_KEYTYPES
-    local fetch = pandoc.mediabag.fetch
-    local concat = concat
-    local insert = insert
-    local remove = remove
+    local KEYTYPES = ZOTXT_KEYTYPES
 
     ---  Gets bibliographic data from Zotero.
     --
@@ -93,13 +83,13 @@ do
     --  message of the lookup attempt for the first keytype.
     function get_source_json (key)
         local _, reply
-        for i = 1, #keytypes do
-            local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
-            _, reply = fetch(query_url, '.')
+        for i = 1, #KEYTYPES do
+            local query_url = concat({ZOTXT_QUERY_URL, KEYTYPES[i], '=', key})
+            _, reply = pandoc.mediabag.fetch(query_url, '.')
             if reply:sub(1, 1) == '[' then
                 if i > 1 then
-                    local keytype = remove(keytypes, i)
-                    insert(keytypes, 1, keytype)
+                    local keytype = remove(KEYTYPES, i)
+                    insert(KEYTYPES, 1, keytype)
                 end
                 return reply
             end
@@ -134,36 +124,43 @@ end
 
 --- Retrieves bibliographic data for sources from Zotero.
 -- 
--- @tparam {string,...} keys A list of keys.
+-- @tparam string citekey A citation key.
+--
+-- @treturn table The cited source, in CSL data format.
+--
+-- Prints an error message to STDERR if a source cannot be found.
+function get_source (citekey)
+    local data, err = get_source_json(citekey)
+    if data == nil then
+        io.stderr:write('pandoc-zotxt.lua: ', err, '\n')
+    else
+        local source = stringify(json.decode(data)[1])
+        source.id = citekey
+        return source
+    end
+end
+
+
+
+--- Retrieves bibliographic data for sources from Zotero.
+-- 
+-- @tparam {string,...} citekeys A list of citation keys.
 --
 -- @treturn {table,...} The cited sources, in CSL data format.
 --
--- Prints error messages to STDERR if a source cannot be found.
+-- Prints error messages to STDERR if sources cannot be found.
 function get_sources (citekeys)
-    local decode = json.decode
-    local insert = insert
-    local get_source_json = get_source_json
-    local stringify = stringify
     local sources = {}
     for _, citekey in ipairs(citekeys) do
-        local data, err = get_source_json(citekey)
-        if data == nil then
-            io.stderr:write('pandoc-zotxt.lua: ' .. err .. '\n')
-        else
-            local source = stringify(decode(data)[1])
-            source.id = citekey
-            insert(sources, source)
-        end
+        local source = get_source(citekey)
+        if source then insert(sources, source) end
     end
     return sources
 end
 
-
 do
-    local insert = insert
-    local ipairs = ipairs
-    local citekeys = {}
-    local seen = {}
+    local CITEKEYS = {}
+    local SEEN = {}
 
     --- Collects all citekeys used in a document.
     --
@@ -175,9 +172,9 @@ do
         local c = citations.citations
         for i = 1, #c do
             id = c[i].id
-            if seen[id] == nil then
-                seen[id] = true
-                insert(citekeys, id)
+            if SEEN[id] == nil then
+                SEEN[id] = true
+                insert(CITEKEYS, id)
             end
         end
     end
@@ -194,7 +191,7 @@ do
     --         as pandoc.Meta, with the field ```references`` added.
     -- @return Otherwise, nil.
     function add_references (meta)
-        sources = get_sources(citekeys)
+        sources = get_sources(CITEKEYS)
         if #sources > 0 then
             meta['references'] = sources 
             return meta
@@ -203,20 +200,4 @@ do
 end
 
 
---- Calls citeproc, if requested.
---
--- If the metadata field ``call-citeproc`` is set to true,
--- calls citeproc to process citations.
---
--- @param doc The document in which to process citations, as pandoc.Pandoc.
---
--- @return If ``call-citeproc`` is true, the given document,
---         with citations processed, as pandoc.Pandoc.
--- @return Otherwise, nil.
-function call_citeproc (doc)
-    if doc.meta['call-citeproc'] == true then
-        return pandoc.utils.run_json_filter(doc, 'pandoc-citeproc')
-    end
-end
-
-return {{Cite = collect_sources, Meta = add_references, Pandoc = call_citeproc}}
+return {{Cite = collect_sources, Meta = add_references}}
