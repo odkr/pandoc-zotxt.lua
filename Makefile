@@ -1,34 +1,22 @@
-test: test-doc test-call-citeproc test-dont-call-citeproc
+test: test-doc test-bbt test-key 
 
 test-doc:
-	rm -f test/doc-is.html
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
-		-o test/doc-is.html test/doc.md
-	cmp test/doc-is.html test/doc-should.html
+	rm -f test/doc-is.txt
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o test/doc-is.txt test/doc.md
+	cmp test/doc-is.txt test/doc-should.txt
 
 test-bbt:
-	rm -f test/bbt-is.html
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
-		-o test/bbt-is.html test/bbt.md
-	cmp test/bbt-is.html test/bbt-should.html
+	rm -f test/bbt-is.txt
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o test/bbt-is.txt test/bbt.md
+	cmp test/bbt-is.txt test/bbt-should.txt
 
 test-key:
-	rm -f test/key-is.html
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
-		-o test/key-is.html test/key.md
-	cmp test/key-is.html test/key-should.html
-
-test-call-citeproc:
-	rm -f test/call-citeproc-is.html
-	pandoc --lua-filter ./pandoc-zotxt.lua \
-		-o test/call-citeproc-is.html test/call-citeproc.md
-	cmp test/call-citeproc-is.html test/call-citeproc-should.html
-
-test-dont-call-citeproc:
-	rm -f test/dont-call-citeproc-is.html
-	pandoc --lua-filter ./pandoc-zotxt.lua \
-		-o test/dont-call-citeproc-is.html test/dont-call-citeproc.md
-	cmp test/dont-call-citeproc-is.html test/dont-call-citeproc-should.html
+	rm -f test/key-is.txt
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o test/key-is.txt test/key.md
+	cmp test/key-is.txt test/key-should.txt
 
 performance-comparison:
 	time pandoc -F pandoc-zotxt -o /dev/null test/long.md
