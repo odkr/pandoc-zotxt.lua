@@ -33,6 +33,8 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 -- See ``get_source_json`` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
+-- The version of this script.
+local VERSION = '0.2.3'
 
 -- Shorthands
 -- ==========
@@ -42,20 +44,20 @@ local floor = math.floor
 local concat = table.concat
 local insert = table.insert
 local remove = table.remove
+local unpack = table.unpack
 
 
 -- Libraries
 -- =========
 
 do
-    local script_dir = PANDOC_SCRIPT_FILE:match('(.-)[\\/][^\\/]-$') or '.'
-    local path_sep = package.config:sub(1, 1)
-    local lua_vers = {}
-    for _, v in ipairs({_VERSION:sub(5, 7), '5.3'}) do lua_vers[v] = true end
-    for k, _ in pairs(lua_vers) do
-        package.path = package.path .. ';' ..
-            concat({script_dir, 'share', 'lua', k, '?.lua'}, path_sep)
-    end
+    local sep = package.config:sub(1, 1)
+    local relpath = {'share', 'lua', '5.3', '?.lua'}
+    local regex = '(.-)[\\' .. sep .. ']([^\\' .. sep .. ']-)$'
+    local wd, fname = PANDOC_SCRIPT_FILE:match(regex)
+    if not wd then wd = '.' end
+    package.path = concat({package.path, concat({wd, unpack(relpath)}, sep),
+        concat({wd, fname .. '-' .. VERSION, unpack(relpath)}, sep)}, ';')
 end
 
 local json = require 'lunajson'
