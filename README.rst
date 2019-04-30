@@ -21,7 +21,7 @@ try `pandoc-zotxt <https://github.com/egh/zotxt>`_, which works with
 Pandoc 1.12 or later (but also requires Python_ 2.7).
 
 1. Download the `current release
-   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.1>`_.
+   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.2>`_.
 2. Unpack it.
 3. Copy the whole directory to the ``filters``
    subdirectory of your Pandoc data directory.
@@ -37,16 +37,15 @@ manual pages (typically ``/usr/local/share/man/``).
 
 If you are using a Unix-ish operating system, you can do all of the above by::
 
-    PANDOC_DATA_DIR=$(pandoc --version |
-        sed -n 's/^Default user data directory: //p')
-    mkdir -p "${PANDOC_DATA_DIR:?}/filters"
-    cd "${PANDOC_DATA_DIR:?}/filters"
-    curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.1 |
-        tar -xz
-    mv pandoc-zotxt.lua-0.3.1/pandoc-zotxt.lua .
-    sudo cp pandoc-zotxt.lua-0.3.1/man/pandoc-zotxt.lua.1 \
-        /usr/local/share/man/man1
-
+    PANDOC_DATA_DIR=$(pandoc --version | 
+        sed -n 's/^Default user data directory: \([^ ]*\).*/\1/p')
+    cd -P "${PANDOC_DATA_DIR:?}/filters" && {
+        curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.2 |
+            tar -xz
+            mv pandoc-zotxt.lua-0.3.2/pandoc-zotxt.lua .
+            sudo cp pandoc-zotxt.lua-0.3.2/man/pandoc-zotxt.lua.1 \
+                /usr/local/share/man/man1
+    }
 
 ``pandoc-zotxt.lua`` vs ``pandoc-zotxt``
 ========================================
