@@ -83,15 +83,15 @@ do
     -- types of citation keys, starting with the last type for which
     -- a lookup was successful.
     --
-    -- The constant ``ZOTXT_QUERY_URL`` defines where to get data from.
-    -- The constant ``ZOTXT_KEYTYPES`` defines what keytypes to try.
+    -- The constant `ZOTXT_QUERY_URL` defines where to get data from.
+    -- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
     -- See <https://github.com/egh/zotxt> for details.
     --
     -- @tparam string key The lookup key.
     --
-    -- @return If the cited source was found, bibliographic data for
-    --  that source as CSL JSON string. Otherwise, nil and the error 
-    --  message of the lookup attempt for the first keytype.
+    -- @treturn string If the cited source was found, bibliographic data for
+    --  that source as CSL JSON string. Otherwise, `nil`.
+    -- @treturn string If no source was found, an error message.
     function get_source_json (key)
         local _, reply
         for i = 1, #KEYTYPES do
@@ -138,7 +138,8 @@ end
 -- @tparam string citekey A citation key.
 --
 -- @treturn table If the cited source was found, bibliographic data for
---  that source in CSL format. Otherwise, nil and the error 
+--  that source in CSL format. Otherwise, `nil` .
+-- @treturn string If the cited source was not found, the error 
 --  message of the lookup attempt for the first keytype.
 function get_source (citekey)
     local data, err = get_source_json(citekey)
@@ -172,14 +173,15 @@ function get_sources (citekeys)
     return sources
 end
 
+
 do
     local CITEKEYS = {}
     local SEEN = {}
 
     --- Collects all citekeys used in a document.
     --
-    -- Saves them into the variable ``citekeys``,
-    -- which is shared with ``add_references``.
+    -- Saves them into the variable `CITEKEYS`, which is shared with
+    -- `add_references` and `update_bibliography`.
     --
     -- @param citations A pandoc.Cite element.
     function collect_sources (citations)
@@ -196,14 +198,14 @@ do
 
     --- Adds all cited sources to the metadata block of a document.
     --
-    -- Reads citekeys of cited sources from the variable ``CITEKEYS``,
-    -- which is shared with ``collect_sources``.
+    -- Reads citekeys of cited sources from the variable `CITEKEYS`,
+    -- which is shared with `collect_sources`.
     --
     -- @param meta The metadata block of a document, as pandoc.Meta.
     --
     -- @return If sources were found, an updated metadata block, 
-    --         as pandoc.Meta, with the field ``references`` added.
-    -- @return Otherwise, nil.
+    --  as pandoc.Meta, with the field `references` added.
+    --  Otherwise, nil.
     function add_references (meta)
         local refs = get_sources(CITEKEYS)
         if #refs > 0 then
@@ -245,20 +247,20 @@ do
         if not ret then return nil, err end
         return true
     end
-    
-    function add_sources (meta)
-        if meta['bibliography'] then
-            local biblio = meta['bibliography']
-            if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
-            biblio = pandoc.utils.stringify(biblio)
-            if biblio:sub(#biblio - 4, #biblio) == '.json' then
-                local ret, err = update_bibliography(biblio)
-                if not ret then warn(err) end
-                return
-            end
+end
+
+function add_sources (meta)
+    if meta['bibliography'] then
+        local biblio = meta['bibliography']
+        if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
+        biblio = pandoc.utils.stringify(biblio)
+        if biblio:sub(#biblio - 4, #biblio) == '.json' then
+            local ret, err = update_bibliography(biblio)
+            if not ret then warn(err) end
+            return
         end
-        return add_references(meta)
     end
+    return add_references(meta)
 end
 
 
