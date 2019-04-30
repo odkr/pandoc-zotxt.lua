@@ -71,6 +71,8 @@ local encode = json.encode
 
 --- Prints warnings to STDERR.
 --
+-- @param string ... Strings to be written to STDERR.
+--
 -- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
 function warn (...)
     io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
@@ -287,12 +289,20 @@ end
 -- @tparam pandoc.Meta meta A metadata block.
 function add_sources (meta)
     if meta['zotxt-bibliography'] then
-        local biblio = meta['zotxt-bibliography']
+        local biblio = meta['zotero-bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = pandoc.utils.stringify(biblio)
-        local ret, err, errno = update_bibliography(biblio)
-        if not ret and not errno == 1 then warn(err) end
-        return
+        local ret, err = update_bibliography(biblio)
+        if not ret then warn(err) end
+        if not meta['bibliography'] then
+            meta['bibliography'] = biblio
+        elseif meta['bibliography'].t == 'MetaInlines' then
+            meta['bibliography'] = {pandoc.utils.stringify(meta['bibliography']), biblio}
+        elseif meta['bibliography'].t == 'MetaList' then
+            warn('yo')
+            insert(meta['bibliography'], biblio)
+        end
+        return meta
     end
     return add_references(meta)
 end
