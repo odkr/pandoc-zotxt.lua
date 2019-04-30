@@ -1,3 +1,3 @@
 A BetterBibTex citation:
 
-@crenshaw1989 makes a good case.
+@crenshaw1989DemarginalizingIntersectionRace makes a good case.
