@@ -50,8 +50,6 @@ local concat = table.concat
 local insert = table.insert
 local remove = table.remove
 
-local text = require 'text'
-
 do
     local s_dir = PANDOC_SCRIPT_FILE:match('(.-)[\\/][^\\/]-$') or '.'
     local path_sep = package.config:sub(1, 1)
@@ -65,14 +63,7 @@ do
     end
 end
 
--- C-JSON is slightly faster; just in case you're writing a book.
-local json
-do
-    local cjson_loaded
-    cjson_loaded, json = pcall(function() return require 'cjson' end)
-    if cjson_loaded then json.encode_number_precision(1)
-    else json = require 'lunajson' end
-end
+local json = require 'lunajson'
 
 
 -- Functions
@@ -124,7 +115,7 @@ end
 -- This is needed because in JavaScript, all numbers are
 -- floating point numbers. But Pandoc expects integers.
 --
--- @parem data Data of any type.
+-- @param data Data of any type.
 --
 -- @return The given data, with all numbers converted into strings.
 function stringify (data)
