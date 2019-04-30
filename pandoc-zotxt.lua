@@ -73,6 +73,36 @@ function warn (...)
     io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
 end
 
+--- Makes a backup of a file.
+--
+-- @tparam string fname The file to back up.
+-- @tparam[opt] string backup The name of the backup.
+--  By default '.backup' is appended to fname.
+--
+-- @treturn bool `true` if a backup was made or the file does not exist.
+--  `nil` otherwise.
+-- @treturn string If an error occurred, an error message.
+-- @treturn integer If an error occurred, the error number.
+function backup (fname, backup)
+    if not backup then backup = fname .. '.backup' end
+    local f, err, errno = open(fname, 'r')
+    if not f then 
+        if errno == 2 then return true end
+        return nil, err, errno
+    end
+    local data, err, errno = f:read()
+    if not data then return nil, err, errno end
+    local ret, err, errno = f:close()
+    if not ret then return nil, err, errno end
+    f, err, errno = open(backup, 'w')
+    if not f then return nil, err, errno end
+    ret, err, errno = f:write(data)
+    if not ret then return nil, err, errno end
+    ret, err, errno = f:close()
+    if not ret then return nil, err, errno end
+    return true
+end
+
 
 do
     local KEYTYPES = ZOTXT_KEYTYPES
@@ -228,11 +258,9 @@ do
     -- @treturn bool If updating the biblography succeeded, `true`.
     --  Otherwise `nil`.
     -- @treturn string If an error occurred, an error message.
-    -- @treturn integer If an error occurred, an error number.
-    --  Only returned for 'internal' errors. 
     function update_bibliography (fname)
-        if biblio:sub(#fname - 4, #fname) == '.json' then
-            return nil, fname .. ': not a JSON file.', 1
+        if fname:sub(#fname - 4, #fname) ~= '.json' then
+            return nil, fname .. ': not a JSON file.'
         end
         local f, err, errno = open(fname, 'r')
         local refs = {}
@@ -243,9 +271,10 @@ do
             if not ret then return nil, err end
             refs = stringify(decode(data))
         -- This works on POSIX systems, it might be wrong on Windows.
-        elseif errno ~= 2
+        elseif errno ~= 2 then
             return nil, err
         end
+        local count = #refs
         for _, citekey in ipairs(CITEKEYS) do
             local found = false
             for _, ref in ipairs(refs) do
@@ -256,30 +285,33 @@ do
             end
             if not found then refs[#refs + 1] = get_source(citekey) end
         end
-        local data, err = encode(refs)
-        if not data then return nil, err end
-        -- A backup would be nice.
-        f, err = open(fname, 'w')
-        if not f then return nil, err end
-        ret, err = f:write(data, '\n')
-        if not ret then return nil, err end
-        ret, err = f:close()
-        if not ret then return nil, err end
+        if (count < #refs) then
+            local data, err = encode(refs)
+            if not data then return nil, err end
+            ret, err = backup(fname)
+            if not ret then return nil, err end
+            f, err = open(fname, 'w')
+            if not f then return nil, err end
+            ret, err = f:write(data, '\n')
+            if not ret then return nil, err end
+            ret, err = f:close()
+            if not ret then return nil, err end
+        end
         return true
     end
 end
 
 
---- Adds sources as references or the the biblography.
+--- Adds sources to the biblography file or as references.
 --
--- Checks whether the current documents uses a bibliography and whether that
--- bibliography is stored in a JSON file. If so, adds cited sources that aren't
--- in the bibliography to the biblography. Otherwise, adds all cited sources
--- to the document's metadata.
+-- Checks whether the current documents uses a bibliography, whether zotxt
+-- is allowed to manage it, and whether it's a JSON file. If so, adds cited
+-- sources that aren't in it yet to the file. Otherwise, adds all cited
+-- sources to the document's metadata.
 --
 -- @tparam pandoc.Meta meta A metadata block.
 function add_sources (meta)
-    if meta['bibliography'] then
+    if meta['bibliography'] and meta['zotxt-manage-bibliography'] then
         local biblio = meta['bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = pandoc.utils.stringify(biblio)
