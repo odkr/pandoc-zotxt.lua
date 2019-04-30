@@ -138,7 +138,7 @@ end
 -- @tparam string citekey A citation key.
 --
 -- @treturn table If the cited source was found, bibliographic data for
---  that source in CSL format. Otherwise, `nil` .
+--  that source in CSL format. Otherwise, `nil`.
 -- @treturn string If the cited source was not found, the error 
 --  message of the lookup attempt for the first keytype.
 function get_source (citekey)
@@ -196,12 +196,12 @@ do
     end
 
 
-    --- Adds all cited sources to the metadata block of a document.
+    --- Adds cited sources to the metadata block of a document.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
     -- which is shared with `collect_sources`.
     --
-    -- @param meta The metadata block of a document, as pandoc.Meta.
+    -- @tparam pandoc.Meta meta A metadata block.
     --
     -- @return If sources were found, an updated metadata block, 
     --  as pandoc.Meta, with the field `references` added.
@@ -214,8 +214,27 @@ do
         end
     end
     
-    function update_bibliography (biblio)    
-        local f, err, errno = open(biblio, 'r')
+    
+    --- Adds cited sources to a bibliography file.
+    --
+    -- Retrieves sources that aren't in the bibliography yet from Zotero
+    -- and adds them. The bibliography must be a CSL JSON file.
+    --
+    -- Reads citekeys of cited sources from the variable `CITEKEYS`,
+    -- which is shared with `collect_sources`.
+    --
+    -- @tparam string fname The filename of the biblography.
+    --
+    -- @treturn bool If updating the biblography succeeded, `true`.
+    --  Otherwise `nil`.
+    -- @treturn string If an error occurred, an error message.
+    -- @treturn integer If an error occurred, an error number.
+    --  Only returned for 'internal' errors. 
+    function update_bibliography (fname)
+        if biblio:sub(#fname - 4, #fname) == '.json' then
+            return nil, fname .. ': not a JSON file.', 1
+        end
+        local f, err, errno = open(fname, 'r')
         local refs = {}
         if f then
             local data, err = f:read()
@@ -239,7 +258,8 @@ do
         end
         local data, err = encode(refs)
         if not data then return nil, err end
-        f, err = open(biblio, 'w')
+        -- A backup would be nice.
+        f, err = open(fname, 'w')
         if not f then return nil, err end
         ret, err = f:write(data, '\n')
         if not ret then return nil, err end
@@ -249,16 +269,23 @@ do
     end
 end
 
+
+--- Adds sources as references or the the biblography.
+--
+-- Checks whether the current documents uses a bibliography and whether that
+-- bibliography is stored in a JSON file. If so, adds cited sources that aren't
+-- in the bibliography to the biblography. Otherwise, adds all cited sources
+-- to the document's metadata.
+--
+-- @tparam pandoc.Meta meta A metadata block.
 function add_sources (meta)
     if meta['bibliography'] then
         local biblio = meta['bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = pandoc.utils.stringify(biblio)
-        if biblio:sub(#biblio - 4, #biblio) == '.json' then
-            local ret, err = update_bibliography(biblio)
-            if not ret then warn(err) end
-            return
-        end
+        local ret, err, errno = update_bibliography(biblio)
+        if not ret and not errno == 1 then warn(err) end
+        return
     end
     return add_references(meta)
 end
