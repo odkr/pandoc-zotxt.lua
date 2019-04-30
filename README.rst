@@ -21,7 +21,7 @@ try `pandoc-zotxt <https://github.com/egh/zotxt>`_, which works with
 Pandoc 1.12 or later (but also requires Python_ 2.7).
 
 1. Download the `current release
-   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.2.3>`_.
+   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.1>`_.
 2. Unpack it.
 3. Copy the whole directory to the ``filters``
    subdirectory of your Pandoc data directory.
@@ -41,10 +41,10 @@ If you are using a Unix-ish operating system, you can do all of the above by::
         sed -n 's/^Default user data directory: //p')
     mkdir -p "${PANDOC_DATA_DIR:?}/filters"
     cd "${PANDOC_DATA_DIR:?}/filters"
-    curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.2.3 |
+    curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.1 |
         tar -xz
-    # mv pandoc-zotxt.lua-0.2.3/pandoc-zotxt.lua .
-    sudo cp pandoc-zotxt.lua-0.2.3/man/pandoc-zotxt.lua.1 \
+    mv pandoc-zotxt.lua-0.3.1/pandoc-zotxt.lua .
+    sudo cp pandoc-zotxt.lua-0.3.1/man/pandoc-zotxt.lua.1 \
         /usr/local/share/man/man1
 
 
@@ -105,7 +105,7 @@ If there's something wrong with ``pandoc-zotxt.lua``, `open an issue
 License
 =======
 
-Copyright 2018 Odin Kroeger
+Copyright 2018, 2019 Odin Kroeger
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -133,9 +133,7 @@ GitHub:
 <https://github.com/odkr/pandoc-zotxt.lua>
 
 
-See also
-========
-<https://github.com/egh/zotxt>
+
 
 .. _BetterBibTex: https://retorque.re/zotero-better-bibtex/
 .. _Pandoc: https://www.pandoc.org/
