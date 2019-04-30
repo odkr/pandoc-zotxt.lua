@@ -36,57 +36,34 @@ pandoc \-\-lua\-filter pandoc\-zotxt.lua \-F pandoc\-citeproc
 .SH DESCRIPTION
 .sp
 \fBpandoc\-zotxt.lua\fP looks up sources of citations in Zotero and adds
-their bibliographic data either to a document\(aqs bibliography or its
-\fBreferences\fP metadata field, where \fBpandoc\-citeproc\fP can pick it up.
+them either to a document\(aqs \fBreferences\fP metadata field or to its
+bibliography, where \fBpandoc\-citeproc\fP can pick them up.
 .sp
-You should insert citations either as so\-called "easy citekeys" (provided
-by zotxt) or as "BetterBibTex Citation Keys" (provided by BetterBibTex). (See
-the documentation of zotxt and BetterBibTex respectively for details.) Then
-simply run \fBpandoc\-zotxt.lua\fP before \fBpandoc\-citeproc\fP\&. That\(aqs all all
-there is to it.
+You cite your sources using so\-called "easy citekeys" (provided by zotxt) or
+"BetterBibTex Citation Keys" (provided by BetterBibTex) and then tell
+\fBpandoc\fP to run \fBpandoc\-zotxt.lua\fP before \fBpandoc\-citeproc\fP\&.
+That\(aqs all all there is to it. (See the documentation of zotxt and
+BetterBibTex respectively for details.)
 .sp
-You can also use \fBpandoc\-zotxt.lua\fP to manage a bibliography.
-(It must be a CSL JSON file.) It will then add any source you cite.
+You can also use \fBpandoc\-zotxt.lua\fP to manage a bibliography file.
+Simply set the \fBzotero\-bibliography\fP metadata field to a filename.
+\fBpandoc\-zotxt.lua\fP will then add the sources you cite to that file,
+rather than to the \fBreferences\fP metadata field. It will also add
+that file to the document\(aqs \fBbibliography\fP metadata field, so
+that \fBpandoc\-citeproc\fP picks it up.
 .sp
-All you have to do is:
-.INDENT 0.0
-.IP 1. 3
-Set the \fBzotxt\-bibliography\fP metadata field to a filename.
-.IP 2. 3
-Add that file to the \fBbibliography\fP metadata field.
-.UNINDENT
+Note, \fBpandoc\-zotxt.lua\fP only \fIadds\fP sources to bibliography files.
+It doesn\(aqt update or delete them. To update your bibliography file,
+delete and let \fBpandoc\-zotxt.lua\fP regenerate it.
+.SH AUTHOR
 .sp
-\fBpandoc\-zotxt.lua\fP never updates or deletes entries. If you need to update
-or delete an entry, simply delete the bibliography file and let
-\fBpandoc\-zotxt.lua\fP regenerate it.
-.SH LICENSE
-.sp
-Copyright 2018, 2019 Odin Kroeger
-.sp
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-.sp
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-.sp
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-.SH REQUIREMENTS
-.sp
-\fBpandoc\-zotxt.lua\fP requires zotxt for Zotero.
+Odin Kroeger
 .SH FURTHER INFORMATION
 .INDENT 0.0
 .IP \(bu 2
 <\fI\%https://www.pandoc.org/\fP>
+.IP \(bu 2
+<\fI\%https://github.com/jgm/pandoc\-citeproc\fP>
 .IP \(bu 2
 <\fI\%https://www.zotero.org/\fP>
 .IP \(bu 2
