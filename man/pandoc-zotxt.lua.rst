@@ -7,37 +7,48 @@ Looks up sources in Zotero
 --------------------------
 
 :Author: Odin Kroeger
-:Date: May 9, 2018
-:Version: 0.2.2
+:Date: April 30, 2019
+:Version: 0.3.0a
 :Manual section: 1
 
 
 SYNOPSIS
 ========
 
-pandoc [...] --lua-filter pandoc-zotxt.lua-0.2.1/pandoc-zotxt.lua [...]
+pandoc --lua-filter pandoc-zotxt.lua -F pandoc-citeproc
 
 
 DESCRIPTION
 ===========
 
 ``pandoc-zotxt.lua`` looks up sources of citations in Zotero and adds
-their bibliographic data to the metadata of the document, where it
-can be read by ``pandoc-citeproc``.
+their bibliographic data either to a document's bibliography or its
+``references`` metadata field, where ``pandoc-citeproc`` can pick it up.
 
-You need the ``zotxt`` plugin for Zotero. Citations should be inserted
-as so-called easy citekeys. See the documentation of ``zotxt`` for details.
+You should insert citations either as so-called "easy citekeys" (provided
+by zotxt) or as "BetterBibTex Citation Keys" (provided by BetterBibTex). (See
+the documentation of zotxt and BetterBibTex respectively for details.) Then
+simply run ``pandoc-zotxt.lua`` before ``pandoc-citeproc``. That's all all
+there is to it. 
 
-If you want ``pandoc-zotxt.lua`` to call ``pandoc-citeproc`` automatically,
-set the metadata field ``call-citeproc`` to ``true`` (or another truey value).
-This is useful if you are using ``panzer``, which insists on calling
-Lua filters after 'ordinary' ones.
+You can also use ``pandoc-zotxt.lua`` to manage a bibliography.
+(It must be a CSL JSON file.) It will then add any source you cite.
+
+All you have to do is:
+
+1. Set the ``zotxt-bibliography`` metadata field to a filename. 
+
+2. Add that file to the ``bibliography`` metadata field.
+
+``pandoc-zotxt.lua`` never updates or deletes entries. If you need to update
+or delete an entry, simply delete the bibliography file and let 
+``pandoc-zotxt.lua`` regenerate it.
 
 
 LICENSE
 =======
 
-Copyright 2018 Odin Kroeger
+Copyright 2018, 2019 Odin Kroeger
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,12 +69,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
+REQUIREMENTS
+============
+
+``pandoc-zotxt.lua`` requires zotxt for Zotero.
+
+
+
 FURTHER INFORMATION
 ===================
 
-* <https://github.com/odkr/pandoc-zotxt.lua>
+* <https://www.pandoc.org/>
+* <https://www.zotero.org/>
 * <https://github.com/egh/zotxt>
-* <https://github.com/msprev/panzer>
+* <https://retorque.re/zotero-better-bibtex/>
+* <https://github.com/odkr/pandoc-zotxt.lua>
 
 
 SEE ALSO
