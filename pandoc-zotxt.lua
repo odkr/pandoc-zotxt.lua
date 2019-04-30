@@ -37,14 +37,15 @@ local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 -- Shorthands
 -- ==========
 
+local open = io.open
 local floor = math.floor
 local concat = table.concat
 local insert = table.insert
 local remove = table.remove
 
 
--- Boilerplate
--- ===========
+-- Libraries
+-- =========
 
 do
     local script_dir = PANDOC_SCRIPT_FILE:match('(.-)[\\/][^\\/]-$') or '.'
@@ -58,10 +59,17 @@ do
 end
 
 local json = require 'lunajson'
+local decode = json.decode
+local encode = json.encode
 
 
 -- Functions
 -- =========
+
+function warn (...)
+    io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
+end
+
 
 do
     local KEYTYPES = ZOTXT_KEYTYPES
@@ -132,9 +140,9 @@ end
 function get_source (citekey)
     local data, err = get_source_json(citekey)
     if data == nil then
-        io.stderr:write('pandoc-zotxt.lua: ', err, '\n')
+        warn(err)
     else
-        local source = stringify(json.decode(data)[1])
+        local source = stringify(decode(data)[1])
         source.id = citekey
         return source
     end
@@ -182,22 +190,68 @@ do
 
     --- Adds all cited sources to the metadata block of a document.
     --
-    -- Reads citekeys of cited sources from the variable ```citekeys``,
+    -- Reads citekeys of cited sources from the variable ``CITEKEYS``,
     -- which is shared with ``collect_sources``.
     --
     -- @param meta The metadata block of a document, as pandoc.Meta.
     --
     -- @return If sources were found, an updated metadata block, 
-    --         as pandoc.Meta, with the field ```references`` added.
+    --         as pandoc.Meta, with the field ``references`` added.
     -- @return Otherwise, nil.
     function add_references (meta)
-        sources = get_sources(CITEKEYS)
-        if #sources > 0 then
-            meta['references'] = sources 
+        local refs = get_sources(CITEKEYS)
+        if #refs > 0 then
+            meta['references'] = refs 
             return meta
         end
+    end
+    
+    function update_bibliography (biblio)    
+        local f, err, errno = open(biblio, 'r')
+        local refs = {}
+        if f then
+            local data, err = f:read()
+            if not data then warn(err) return end
+            local ret, err = f:close()
+            if not ret then warn(err) return end
+            refs = stringify(decode(data))
+        else
+            warn(err)
+            -- This works on POSIX systems, it might be wrong on Windows.
+            if errno ~= 2 then return end
+        end
+        for _, citekey in ipairs(CITEKEYS) do
+            local found = false
+            for _, ref in ipairs(refs) do
+                if citekey == ref.id then
+                    found = true
+                    break
+                end
+            end
+            if not found then refs[#refs + 1] = get_source(citekey) end
+        end
+        local data, err = encode(refs)
+        if not data then warn(err) return end
+        f, err = open(biblio, 'w')
+        if not f then warn(err) return end
+        ret, err = f:write(data, '\n')
+        if not ret then warn(err) return end
+        ret, err = f:close()
+        if not ret then warn(err) return end
+    end
+    
+    function add_sources (meta)
+        if meta['bibliography'] then
+            local biblio = meta['bibliography']
+            if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
+            biblio = pandoc.utils.stringify(biblio)
+            if biblio:sub(#biblio - 4, #biblio) == '.json' then
+                return update_bibliography(biblio)
+            end
+        end
+        return add_references(meta)
     end
 end
 
 
-return {{Cite = collect_sources, Meta = add_references}}
+return {{Cite = collect_sources, Meta = add_sources}}
