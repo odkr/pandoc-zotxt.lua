@@ -66,6 +66,9 @@ local encode = json.encode
 -- Functions
 -- =========
 
+--- Prints warnings to STDERR.
+--
+-- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
 function warn (...)
     io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
 end
@@ -74,9 +77,9 @@ end
 do
     local KEYTYPES = ZOTXT_KEYTYPES
 
-    ---  Gets bibliographic data from Zotero.
+    ---  Retrieves bibliographic data from Zotero.
     --
-    -- Tries to get bibliographic data by citation key, trying different
+    -- Retrieves bibliographic data by citation key, trying different
     -- types of citation keys, starting with the last type for which
     -- a lookup was successful.
     --
@@ -134,13 +137,13 @@ end
 -- 
 -- @tparam string citekey A citation key.
 --
--- @treturn table The cited source, in CSL data format.
---
--- Prints an error message to STDERR if a source cannot be found.
+-- @treturn table If the cited source was found, bibliographic data for
+--  that source in CSL format. Otherwise, nil and the error 
+--  message of the lookup attempt for the first keytype.
 function get_source (citekey)
     local data, err = get_source_json(citekey)
     if data == nil then
-        warn(err)
+        return data, err
     else
         local source = stringify(decode(data)[1])
         source.id = citekey
@@ -149,19 +152,22 @@ function get_source (citekey)
 end
 
 
-
---- Retrieves bibliographic data for sources from Zotero.
+--- Retrieves bibliographic data for multiple sources from Zotero.
 -- 
 -- @tparam {string,...} citekeys A list of citation keys.
 --
 -- @treturn {table,...} The cited sources, in CSL data format.
 --
--- Prints error messages to STDERR if sources cannot be found.
+-- Prints an error message to STDERR for every source that cannot be found.
 function get_sources (citekeys)
     local sources = {}
     for _, citekey in ipairs(citekeys) do
-        local source = get_source(citekey)
-        if source then insert(sources, source) end
+        local source, err = get_source(citekey)
+        if source then 
+            insert(sources, source)
+        else
+            warn(err)
+        end
     end
     return sources
 end
@@ -211,14 +217,13 @@ do
         local refs = {}
         if f then
             local data, err = f:read()
-            if not data then warn(err) return end
+            if not data then return nil, err end
             local ret, err = f:close()
-            if not ret then warn(err) return end
+            if not ret then return nil, err end
             refs = stringify(decode(data))
-        else
-            warn(err)
-            -- This works on POSIX systems, it might be wrong on Windows.
-            if errno ~= 2 then return end
+        -- This works on POSIX systems, it might be wrong on Windows.
+        elseif errno ~= 2
+            return nil, err
         end
         for _, citekey in ipairs(CITEKEYS) do
             local found = false
@@ -231,13 +236,14 @@ do
             if not found then refs[#refs + 1] = get_source(citekey) end
         end
         local data, err = encode(refs)
-        if not data then warn(err) return end
+        if not data then return nil, err end
         f, err = open(biblio, 'w')
-        if not f then warn(err) return end
+        if not f then return nil, err end
         ret, err = f:write(data, '\n')
-        if not ret then warn(err) return end
+        if not ret then return nil, err end
         ret, err = f:close()
-        if not ret then warn(err) return end
+        if not ret then return nil, err end
+        return true
     end
     
     function add_sources (meta)
@@ -246,7 +252,9 @@ do
             if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
             biblio = pandoc.utils.stringify(biblio)
             if biblio:sub(#biblio - 4, #biblio) == '.json' then
-                return update_bibliography(biblio)
+                local ret, err = update_bibliography(biblio)
+                if not ret then warn(err) end
+                return
             end
         end
         return add_references(meta)
