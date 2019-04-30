@@ -1,6 +1,6 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
--- @release 0.2.3
+-- @release 0.3.0a
 -- @author Odin Kroeger
 -- @copyright 2018 Odin Kroeger
 --
@@ -34,7 +34,8 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
-local VERSION = '0.2.3'
+local VERSION = '0.3.0a'
+
 
 -- Shorthands
 -- ==========
@@ -73,36 +74,6 @@ local encode = json.encode
 -- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
 function warn (...)
     io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
-end
-
---- Makes a backup of a file.
---
--- @tparam string fname The file to back up.
--- @tparam[opt] string backup The name of the backup.
---  By default '.backup' is appended to fname.
---
--- @treturn bool `true` if a backup was made or the file does not exist.
---  `nil` otherwise.
--- @treturn string If an error occurred, an error message.
--- @treturn integer If an error occurred, the error number.
-function backup (fname, backup)
-    if not backup then backup = fname .. '.backup' end
-    local f, err, errno = open(fname, 'r')
-    if not f then 
-        if errno == 2 then return true end
-        return nil, err, errno
-    end
-    local data, err, errno = f:read()
-    if not data then return nil, err, errno end
-    local ret, err, errno = f:close()
-    if not ret then return nil, err, errno end
-    f, err, errno = open(backup, 'w')
-    if not f then return nil, err, errno end
-    ret, err, errno = f:write(data)
-    if not ret then return nil, err, errno end
-    ret, err, errno = f:close()
-    if not ret then return nil, err, errno end
-    return true
 end
 
 
@@ -241,7 +212,11 @@ do
     function add_references (meta)
         local refs = get_sources(CITEKEYS)
         if #refs > 0 then
-            meta['references'] = refs 
+            if meta['references'] then
+                insert(meta['references'], refs)
+            else
+                meta['references'] = refs 
+            end
             return meta
         end
     end
@@ -290,8 +265,6 @@ do
         if (count < #refs) then
             local data, err = encode(refs)
             if not data then return nil, err end
-            ret, err = backup(fname)
-            if not ret then return nil, err end
             f, err = open(fname, 'w')
             if not f then return nil, err end
             ret, err = f:write(data, '\n')
@@ -313,8 +286,8 @@ end
 --
 -- @tparam pandoc.Meta meta A metadata block.
 function add_sources (meta)
-    if meta['bibliography'] and meta['zotxt-manage-bibliography'] then
-        local biblio = meta['bibliography']
+    if meta['zotxt-bibliography'] then
+        local biblio = meta['zotxt-bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = pandoc.utils.stringify(biblio)
         local ret, err, errno = update_bibliography(biblio)
