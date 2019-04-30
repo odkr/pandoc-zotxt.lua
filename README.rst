@@ -21,13 +21,12 @@ try `pandoc-zotxt <https://github.com/egh/zotxt>`_, which works with
 Pandoc 1.12 or later (but also requires Python_ 2.7).
 
 1. Download the `current release
-   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.2>`_.
+   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.3>`_.
 2. Unpack it.
-3. Copy the whole directory to the ``filters``
-   subdirectory of your Pandoc data directory.
-4. Move the file ``pandoc-zotxt.lua`` from that subdirectory
-   into the ``filters`` subdirectory (i.e., one level up).
-
+3. Copy the whole repository directory to the ``filters``
+   sub-directory of your Pandoc data directory.
+4. Move the file ``pandoc-zotxt.lua`` from the repository directory
+   up into the ``filters`` directory.
 
 Where your Pandoc data directory is located depends on your operating system.
 ``pandoc --version`` will tell you. Consult the Pandoc manual for details.
@@ -35,17 +34,20 @@ Where your Pandoc data directory is located depends on your operating system.
 You may also want to copy the manual page to wherever your system stores 
 manual pages (typically ``/usr/local/share/man/``).
 
-If you are using a Unix-ish operating system, you can do all of the above by::
+If you are using a Unix-ish operating system, a recent version of Pandoc,
+and the `filters` sub-directory already exists, then you can do all of the
+above by::
 
-    PANDOC_DATA_DIR=$(pandoc --version | 
-        sed -n 's/^Default user data directory: \([^ ]*\).*/\1/p')
+    PANDOC_DATA_DIR=$(pandoc --version |
+        sed -n 's/^Default user data directory: \(.*\) or .*/\1/p')
     cd -P "${PANDOC_DATA_DIR:?}/filters" && {
-        curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.2 |
+        curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.3 |
             tar -xz
-            mv pandoc-zotxt.lua-0.3.2/pandoc-zotxt.lua .
-            sudo cp pandoc-zotxt.lua-0.3.2/man/pandoc-zotxt.lua.1 \
+            mv pandoc-zotxt.lua-0.3.3/pandoc-zotxt.lua .
+            sudo cp pandoc-zotxt.lua-0.3.3/man/pandoc-zotxt.lua.1 \
                 /usr/local/share/man/man1
     }
+
 
 ``pandoc-zotxt.lua`` vs ``pandoc-zotxt``
 ========================================
