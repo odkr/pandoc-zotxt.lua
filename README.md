@@ -25,8 +25,8 @@ which works with Pandoc 1.12 or later (but also requires
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack it.
 3. Copy the whole repository directory to the `filters` sub-directory
-   of your Pandoc data directory (`pandoc --version` will tell you where
-   your Pandoc data directory is).
+   of your Pandoc data directory    
+   (`pandoc --version` will tell you where your Pandoc data directory is).
 4. Move the file `pandoc-zotxt.lua` from the repository directory
    up into the `filters` directory.
 
@@ -36,7 +36,7 @@ system stores them (typically `/usr/local/share/man/man1`).
 
 Moreover, if you're using a Unix-ish operating system and have 
 [cURL](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
-you can probably do all of the above by copy-pasting these instructions
+you can (probably) do all of the above by copy-pasting these instructions
 into a terminal:
 
 ```sh
@@ -75,13 +75,12 @@ into a terminal:
 `pandoc-zotxt.lua` vs `pandoc-zotxt`
 ------------------------------------
 
-|-------------------------------|--------------------------------------|
 | `pandoc-zotxt.lua`            | `pandoc-zotxt`                       |
-|-------------------------------|--------------------------------------|
+| ----------------------------- | ------------------------------------ |
 | Requires Pandoc 2.0.          | Requires Pandoc 1.12 and Python 2.7. |
 | Faster for BetterBibTex.      | Slower for BetterBibTex.             |
 | Doesn't use temporary files.  | Uses a temporary file.               |
-|-------------------------------+--------------------------------------|
+
 
 Also, `pandoc-zotxt.lua` supports:
 
