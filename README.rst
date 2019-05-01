@@ -32,30 +32,32 @@ Where your Pandoc data directory is located depends on your operating system.
 ``pandoc --version`` will tell you. Consult the Pandoc manual for details.
 
 You may also want to copy the manual page to wherever your system stores 
-manual pages (typically ``/usr/local/share/man/``).
+them (typically ``/usr/local/share/man``).
 
 If you are using a modern Unix-ish operating system, 
 you probably can do all of the above by::
 
     (
         set -Cefu
-        PANDOC_ZOTXT_VERS=0.3.5
-        PANDOC_ZOTXT_URL="https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v${PANDOC_ZOTXT_VERS:?}"
-        PANDOC_ZOTXT_SIG_URL="https://github.com/odkr/pandoc-zotxt.lua/releases/download/v$PANDOC_ZOTXT_VERS/v$PANDOC_ZOTXT_VERS.tar.gz.asc"
+        VERS=0.3.5
+        BASE_URL="https://github.com/odkr/pandoc-zotxt.lua"
+        AR_URL="$BASE_URL/archive/v${VERS:?}.tar.gz"
+        SIG_URL="$BASE_URL/releases/download/v$VERS/v$VERS.tar.gz.asc"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
         mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
-            PANDOC_ZOTXT_AR="v$PANDOC_ZOTXT_VERS.tar.gz"
-            wget -nc "$PANDOC_ZOTXT_SIG_URL" || ERR=$?
+            AR="v$VERS.tar.gz" SIG="$AR.asc"
+            curl -LsS "$AR_URL" >"$AR" || ERR=$?
             if [ "${ERR-0}" -eq 127 ]; then
-                curl "$PANDOC_ZOTXT_URL" >"$PANDOC_ZOTXT_AR" 
+                wget -q -nc -O "$AR" "$AR_URL"
+                wget -q -nc "$SIG_URL"
             else
-                wget -nc -O "$PANDOC_ZOTXT_AR" "$PANDOC_ZOTXT_URL"
-                gpg --verify "$PANDOC_ZOTXT_AR.asc" "$PANDOC_ZOTXT_AR" || ERR=$?
-                [ "${ERR-0}" -ne 0 ] && [ "${ERR-0}" -ne 127 ] && exit
+                curl -LsS "$SIG_URL" >"$SIG"
             fi
-            tar -xzf "$PANDOC_ZOTXT_AR"
-            mv "pandoc-zotxt.lua-$PANDOC_ZOTXT_VERS/pandoc-zotxt.lua" .
-            sudo cp "pandoc-zotxt.lua-${PANDOC_ZOTXT_VERS:?}/man/pandoc-zotxt.lua.1" \
+            gpg --verify "$SIG" "$AR" || ERR=$?
+            [ "${ERR-0}" -ne 0 ] && [ "${ERR-0}" -ne 127 ] && exit
+            tar -xzf "$AR"
+            mv "pandoc-zotxt.lua-$VERS/pandoc-zotxt.lua" .
+            sudo cp "pandoc-zotxt.lua-${VERS:?}/man/pandoc-zotxt.lua.1" \
                 /usr/local/share/man/man1
         }
         exit
