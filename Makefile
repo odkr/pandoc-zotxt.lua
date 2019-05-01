@@ -1,4 +1,4 @@
-test: test-doc test-bbt
+test: test-doc test-bbt test-biblio
 
 test-doc:
 	rm -f test/doc-is.txt
@@ -12,6 +12,13 @@ test-bbt:
 		-o test/bbt-is.txt test/bbt.md
 	cmp test/bbt-is.txt test/bbt-should.txt
 
+test-biblio:
+	rm -f test/biblio-is.txt test/biblio.json
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o test/biblio-is.txt test/biblio.md
+	cmp test/biblio-is.txt test/biblio-should.txt
+	test -e test/biblio.json
+
 test-key:
 	rm -f test/key-is.txt
 	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
@@ -22,5 +29,5 @@ performance-comparison:
 	time pandoc -F pandoc-zotxt -o /dev/null test/long.md
 	time pandoc --lua-filter ./pandoc-zotxt.lua -o /dev/null test/long.md
 
-.PHONY: test test-doc test-bbt test-call-citeproc test-dont-call-citeproc \
+.PHONY: test test-doc test-bbt test-biblio test-key \
 	performance-comparison 
