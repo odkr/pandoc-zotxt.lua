@@ -36,6 +36,9 @@ local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 -- The version of this script.
 local VERSION = '0.3.3'
 
+-- The path seperator of the operating system
+local PATH_SEP = package.config:sub(1, 1)
+
 
 -- Shorthands
 -- ==========
@@ -51,14 +54,16 @@ local unpack = table.unpack
 -- Libraries
 -- =========
 
+function split_path (fname) 
+    return fname:match('(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$')
+end
+
 do
-    local sep = package.config:sub(1, 1)
-    local relpath = {'share', 'lua', '5.3', '?.lua'}
-    local regex = '(.-)[\\' .. sep .. ']([^\\' .. sep .. ']-)$'
-    local wd, fname = PANDOC_SCRIPT_FILE:match(regex)
+    local sd = {'share', 'lua', '5.3', '?.lua'}
+    local wd, fname = split_path(PANDOC_SCRIPT_FILE)
     if not wd then wd = '.' end
-    package.path = concat({package.path, concat({wd, unpack(relpath)}, sep),
-        concat({wd, fname .. '-' .. VERSION, unpack(relpath)}, sep)}, ';')
+    package.path = concat({package.path, concat({wd, unpack(sd)}, PATH_SEP),
+        concat({wd, fname .. '-' .. VERSION, unpack(sd)}, PATH_SEP)}, ';')
 end
 
 local json = require 'lunajson'
@@ -71,11 +76,55 @@ local encode = json.encode
 
 --- Prints warnings to STDERR.
 --
--- @param string ... Strings to be written to STDERR.
+-- @tparam string ... Strings to be written to STDERR.
 --
 -- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
 function warn (...)
-    io.stderr:write('pandoc-zotxt.lua: ', ..., '\n')
+    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
+end
+
+
+--- Checks if a file exists.
+--
+-- @tparam string fname Name of the file.
+--
+-- @return True or not `nil` if the file exists. `nil` otherwise.
+-- @treturn Error code if the file does not exist. 
+--
+-- @see <https://stackoverflow.com/questions/1340230/>
+function exists (fname)
+    local ok, err, errno = os.rename(fname, fname)
+    if not ok and errno == 13 then return true end
+    return ok, err 
+end
+
+
+--- Checks if a filename points to a directory.
+--
+-- @tparam string fname Name of the directory.
+--
+-- @return True or not `nil` if the directory exists. `nil` otherwise.
+-- @treturn Error code if the directory does not exist. 
+--
+-- @see <https://stackoverflow.com/questions/1340230/>
+function is_dir (fname)
+    if fname:sub(-#PATH_SEP) == PATH_SEP then
+        return exists(fname)
+    end
+    return exists(fname .. PATH_SEP)
+end
+
+
+--- Returns the working directory of the first input file or '.'.
+--
+-- @treturn string The working directory.
+function get_wd ()
+    local first_input_file = PANDOC_STATE.input_files[1]
+    if first_input_file then
+        local first_input_dir = split_path(first_input_file)
+        if is_dir(first_input_dir) then return first_input_dir end
+    end
+    return '.'
 end
 
 
@@ -94,9 +143,9 @@ do
     --
     -- @tparam string key The lookup key.
     --
-    -- @treturn string If the cited source was found, bibliographic data for
-    --  that source as CSL JSON string. Otherwise, `nil`.
-    -- @treturn string If no source was found, an error message.
+    -- @treturn string Bibliographic data for that source as CSL JSON string
+    --  if the source was found, `nil` otherwise.
+    -- @treturn string An error message if the soruce was not found.
     function get_source_json (key)
         local _, reply
         for i = 1, #KEYTYPES do
@@ -142,10 +191,10 @@ end
 -- 
 -- @tparam string citekey A citation key.
 --
--- @treturn table If the cited source was found, bibliographic data for
---  that source in CSL format. Otherwise, `nil`.
--- @treturn string If the cited source was not found, the error 
---  message of the lookup attempt for the first keytype.
+-- @treturn table Bibliographic data for that source in CSL format,
+--  if the source was found, `nil` otherwise.
+-- @treturn string The error message of the lookup attempt for the first
+--  keytype if the source wasn't found.
 function get_source (citekey)
     local data, err = get_source_json(citekey)
     if data == nil then
@@ -162,7 +211,7 @@ end
 -- 
 -- @tparam {string,...} citekeys A list of citation keys.
 --
--- @treturn {table,...} The cited sources, in CSL data format.
+-- @treturn {table,...} The cited sources found, in CSL format.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 function get_sources (citekeys)
@@ -208,16 +257,16 @@ do
     --
     -- @tparam pandoc.Meta meta A metadata block.
     --
-    -- @return If sources were found, an updated metadata block, 
-    --  as pandoc.Meta, with the field `references` added.
-    --  Otherwise, nil.
+    -- @treturn pandoc.Meta An updated metadata block, with the field
+    --  `references` added when needed, if sources were found;
+    --  `nil` otherwise.
     function add_references (meta)
         local refs = get_sources(CITEKEYS)
         if #refs > 0 then
-            if meta['references'] then
-                insert(meta['references'], refs)
+            if meta.references then
+                insert(meta.references, refs)
             else
-                meta['references'] = refs 
+                meta.references = refs 
             end
             return meta
         end
@@ -226,7 +275,7 @@ do
     
     --- Adds cited sources to a bibliography file.
     --
-    -- Retrieves sources that aren't in the bibliography yet from Zotero
+    -- Retrieves sources that aren't in the bibliography from Zotero
     -- and adds them. The bibliography must be a CSL JSON file.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
@@ -234,11 +283,11 @@ do
     --
     -- @tparam string fname The filename of the biblography.
     --
-    -- @treturn bool If updating the biblography succeeded, `true`.
-    --  Otherwise `nil`.
-    -- @treturn string If an error occurred, an error message.
+    -- @treturn bool `true` if updating the biblography succeeded
+    --  (or not update was needed), `nil` otherwise.
+    -- @treturn string An error message if an error occurred.
     function update_bibliography (fname)
-        if fname:sub(#fname - 4, #fname) ~= '.json' then
+        if fname:sub(-5) ~= '.json' then
             return nil, fname .. ': not a JSON file.'
         end
         local f, err, errno = open(fname, 'r')
@@ -246,10 +295,9 @@ do
         if f then
             local data, err = f:read()
             if not data then return nil, err end
-            local ret, err = f:close()
-            if not ret then return nil, err end
+            local ok, err = f:close()
+            if not ok then return nil, err end
             refs = numtostr(decode(data))
-        -- This works on POSIX systems, it might be wrong on Windows.
         elseif errno ~= 2 then
             return nil, err
         end
@@ -264,43 +312,48 @@ do
             end
             if not found then refs[#refs + 1] = get_source(citekey) end
         end
-        if (count < #refs) then
+        if (#refs > count) then
             local data, err = encode(refs)
             if not data then return nil, err end
             f, err = open(fname, 'w')
             if not f then return nil, err end
-            ret, err = f:write(data, '\n')
-            if not ret then return nil, err end
-            ret, err = f:close()
-            if not ret then return nil, err end
+            ok, err = f:write(data, '\n')
+            if not ok then return nil, err end
+            ok, err = f:close()
+            if not ok then return nil, err end
         end
         return true
     end
 end
 
 
---- Adds sources to the biblography file or as references.
+--- Adds sources as references or to the bibliography.
 --
--- Checks whether the current documents uses a bibliography, whether zotxt
--- is allowed to manage it, and whether it's a JSON file. If so, adds cited
+-- Checks whether the current documents uses a bibliography. If so, adds cited
 -- sources that aren't in it yet to the file. Otherwise, adds all cited
 -- sources to the document's metadata.
 --
 -- @tparam pandoc.Meta meta A metadata block.
+--
+-- @treturn pandoc.Meta An updated metadata block, with references or
+--  a pointer to the bibliography file added or `nil`.
 function add_sources (meta)
     local stringify = pandoc.utils.stringify
     if meta['zotero-bibliography'] then
         local biblio = meta['zotero-bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = stringify(biblio)
-        local ret, err = update_bibliography(biblio)
-        if not ret then warn(err) end
-        if not meta['bibliography'] then
-            meta['bibliography'] = biblio
-        elseif meta['bibliography'].t == 'MetaInlines' then
-            meta['bibliography'] = {stringify(meta['bibliography']), biblio}
-        elseif meta['bibliography'].t == 'MetaList' then
-            insert(meta['bibliography'], biblio)
+        if biblio:sub(1, #PATH_SEP) ~= PATH_SEP then 
+            biblio = get_wd() .. PATH_SEP .. biblio
+        end
+        local ok, err = update_bibliography(biblio)
+        if not ok then warn(err) end
+        if not meta.bibliography then
+            meta.bibliography = biblio
+        elseif meta.bibliography.t == 'MetaInlines' then
+            meta.bibliography = {stringify(meta.bibliography), biblio}
+        elseif meta.bibliography.t == 'MetaList' then
+            insert(meta.bibliography, biblio)
         end
         return meta
     end
