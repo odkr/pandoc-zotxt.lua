@@ -8,7 +8,7 @@ Looks up sources in Zotero
 
 :Author: Odin Kroeger
 :Date: April 30, 2019
-:Version: 0.3.2
+:Version: 0.3.3
 :Manual section: 1
 
 
@@ -37,6 +37,10 @@ Simply set the ``zotero-bibliography`` metadata field to a filename.
 rather than to the ``references`` metadata field. It will also add
 that file to the document's ``bibliography`` metadata field, so
 that ``pandoc-citeproc`` picks it up.
+
+``pandoc-zotxt.lua`` takes relative filenames to be relative to the directory
+of the first input file you pass to ``pandoc`` or, if you don't pass any input
+files, as relative to the current working directory.
 
 Note, ``pandoc-zotxt.lua`` only *adds* sources to bibliography files.
 It doesn't update or delete them. To update your bibliography file,
