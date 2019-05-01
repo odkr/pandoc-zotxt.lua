@@ -1,6 +1,6 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
--- @release 0.3.2
+-- @release 0.3.3
 -- @author Odin Kroeger
 -- @copyright 2018 Odin Kroeger
 --
@@ -34,7 +34,7 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
-local VERSION = '0.3.2'
+local VERSION = '0.3.3'
 
 
 -- Shorthands
@@ -124,11 +124,11 @@ end
 -- @param data Data of any type.
 --
 -- @return The given data, with all numbers converted into strings.
-function stringify (data)
+function numtostr (data)
     local data_type = type(data)
     if data_type == 'table' then
         local s = {}
-        for k, v in pairs(data) do s[k] = stringify(v) end
+        for k, v in pairs(data) do s[k] = numtostr(v) end
         return s
     elseif data_type == 'number' then
         return tostring(floor(data))
@@ -151,7 +151,7 @@ function get_source (citekey)
     if data == nil then
         return data, err
     else
-        local source = stringify(decode(data)[1])
+        local source = numtostr(decode(data)[1])
         source.id = citekey
         return source
     end
@@ -248,7 +248,7 @@ do
             if not data then return nil, err end
             local ret, err = f:close()
             if not ret then return nil, err end
-            refs = stringify(decode(data))
+            refs = numtostr(decode(data))
         -- This works on POSIX systems, it might be wrong on Windows.
         elseif errno ~= 2 then
             return nil, err
@@ -288,18 +288,18 @@ end
 --
 -- @tparam pandoc.Meta meta A metadata block.
 function add_sources (meta)
-    if meta['zotxt-bibliography'] then
+    local stringify = pandoc.utils.stringify
+    if meta['zotero-bibliography'] then
         local biblio = meta['zotero-bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
-        biblio = pandoc.utils.stringify(biblio)
+        biblio = stringify(biblio)
         local ret, err = update_bibliography(biblio)
         if not ret then warn(err) end
         if not meta['bibliography'] then
             meta['bibliography'] = biblio
         elseif meta['bibliography'].t == 'MetaInlines' then
-            meta['bibliography'] = {pandoc.utils.stringify(meta['bibliography']), biblio}
+            meta['bibliography'] = {stringify(meta['bibliography']), biblio}
         elseif meta['bibliography'].t == 'MetaList' then
-            warn('yo')
             insert(meta['bibliography'], biblio)
         end
         return meta
