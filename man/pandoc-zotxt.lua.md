@@ -1,8 +1,6 @@
----
-title: PANDOC-ZOTXT.LUA(1)
-author: Odin Kroeger
-date: May 2, 2019
-...
+% PANDOC-ZOTXT.LUA(1)
+% Odin Kroeger
+% May 2, 2019
 
 # NAME
 
@@ -49,23 +47,17 @@ Odin Kroeger
 
 # FURTHER INFORMATION
 
-Pandoc
-: <https://www.pandoc.org/>
+Pandoc: <https://www.pandoc.org/>
 
-pandoc-citeproc
-: <https://github.com/jgm/pandoc-citeproc>
+pandoc-citeproc: <https://github.com/jgm/pandoc-citeproc>
 
-Zotero
-: <https://www.zotero.org/>
+Zotero: <https://www.zotero.org/>
 
-zotxt
-: <https://github.com/egh/zotxt>
+zotxt: <https://github.com/egh/zotxt>
 
-BetterBibTex
-: <https://retorque.re/zotero-better-bibtex/>
+BetterBibTex: <https://retorque.re/zotero-better-bibtex/>
 
-pandoc-zotxt.lua
-: <https://github.com/odkr/pandoc-zotxt.lua>
+pandoc-zotxt.lua: <https://github.com/odkr/pandoc-zotxt.lua>
 
 
 # CAVEATS
