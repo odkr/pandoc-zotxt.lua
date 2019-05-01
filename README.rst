@@ -45,7 +45,8 @@ you probably can do all of the above by::
         SIG_URL="$BASE_URL/releases/download/v$VERS/v$VERS.tar.gz.asc"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
         mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
-            AR="v$VERS.tar.gz" SIG="$AR.asc"
+            AR="v$VERS.tar.gz"
+            SIG="$AR.asc"
             curl -LsS "$AR_URL" >"$AR" || ERR=$?
             if [ "${ERR-0}" -eq 127 ]; then
                 wget -q -nc -O "$AR" "$AR_URL"
