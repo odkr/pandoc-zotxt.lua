@@ -1,0 +1,81 @@
+---
+title: PANDOC-ZOTXT.LUA(1)
+author: Odin Kroeger
+date: May 2, 2019
+...
+
+# NAME
+
+pandoc-zotxt.lua - Looks up sources in Zotero
+
+
+# SYNOPSIS
+
+**pandoc**\ **--lua-filter**\ *pandoc-zotxt.lua*\ **-F** *pandoc-citeproc*
+
+
+# DESCRIPTION
+
+**pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
+them either to a document's `references` metadata field or to its
+bibliography, where **pandoc-citeproc** can pick them up.
+
+You cite your sources using so-called "easy citekeys" (provided by *zotxt*) or
+"BetterBibTex Citation Keys" (provided by *BetterBibTex*) and then tell 
+**pandoc** to run **pandoc-zotxt.lua** before **pandoc-citeproc**.
+That's all all there is to it. (See the documentation of *zotxt* and 
+*BetterBibTex* respectively for details.)
+
+You can also use **pandoc-zotxt.lua** to manage a bibliography file. This is
+typically a lot faster. Simply set the `zotero-bibliography` metadata field
+to a filename. **pandoc-zotxt.lua** will then add the sources you cite to that
+file, rather than to the `references` metadata field. It will also add
+that file to the document's `bibliography` metadata field, so
+that **pandoc-zotxt.lua** picks it up.
+
+**pandoc-zotxt.lua** takes relative filenames to be relative to the directory
+of the first input file you pass to **pandoc** or, if you don't pass any input
+files, as relative to the current working directory.
+
+Note, **pandoc-zotxt.lua** only ever *adds* sources to bibliography files.
+It doesn't update or delete them. To update your bibliography file,
+delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
+
+
+# AUTHOR
+
+Odin Kroeger
+
+
+# FURTHER INFORMATION
+
+Pandoc
+: <https://www.pandoc.org/>
+
+pandoc-citeproc
+: <https://github.com/jgm/pandoc-citeproc>
+
+Zotero
+: <https://www.zotero.org/>
+
+zotxt
+: <https://github.com/egh/zotxt>
+
+BetterBibTex
+: <https://retorque.re/zotero-better-bibtex/>
+
+pandoc-zotxt.lua
+: <https://github.com/odkr/pandoc-zotxt.lua>
+
+
+# CAVEATS
+
+If you're using an older Windows systems and have more than 26 drives.
+**pandoc-zotxt.lua** will fail to recognise absolute paths as such
+on any drive that isn't assigned a letter as symbol (i.e., drives
+'after' drive "Z").
+
+
+# SEE ALSO
+
+pandoc(1), pandoc-citeproc(1)
