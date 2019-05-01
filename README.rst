@@ -34,19 +34,32 @@ Where your Pandoc data directory is located depends on your operating system.
 You may also want to copy the manual page to wherever your system stores 
 manual pages (typically ``/usr/local/share/man/``).
 
-If you are using a Unix-ish operating system, a recent version of Pandoc,
-and the `filters` sub-directory already exists, then you can do all of the
-above by::
+If you are using a modern Unix-ish operating system, 
+you probably can do all of the above by::
 
-    PANDOC_DATA_DIR=$(pandoc --version |
-        sed -n 's/^Default user data directory: \(.*\) or .*/\1/p')
-    cd -P "${PANDOC_DATA_DIR:?}/filters" && {
-        curl https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v0.3.3 |
-            tar -xz
-            mv pandoc-zotxt.lua-0.3.3/pandoc-zotxt.lua .
-            sudo cp pandoc-zotxt.lua-0.3.3/man/pandoc-zotxt.lua.1 \
+    (
+        set -Cefu
+        PANDOC_ZOTXT_VERS=0.3.3
+        PANDOC_ZOTXT_URL="https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v${PANDOC_ZOTXT_VERS:?}"
+        PANDOC_ZOTXT_SIG_URL="https://github.com/odkr/pandoc-zotxt.lua/releases/download/v$PANDOC_ZOTXT_VERS/v$PANDOC_ZOTXT_VERS.tar.gz.asc"
+        PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
+        mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
+            PANDOC_ZOTXT_AR="v$PANDOC_ZOTXT_VERS.tar.gz"
+            wget -nc "$PANDOC_ZOTXT_SIG_URL" || ERR=$?
+            if [ "${ERR-0}" -eq 127 ]; then
+                curl "$PANDOC_ZOTXT_URL" >"$PANDOC_ZOTXT_AR" 
+            else
+                wget -nc -O "$PANDOC_ZOTXT_AR" "$PANDOC_ZOTXT_URL"
+                gpg --verify "$PANDOC_ZOTXT_AR.asc" "$PANDOC_ZOTXT_AR" || ERR=$?
+                [ "${ERR-0}" -ne 0 ] && [ "${ERR-0}" -ne 127 ] && exit
+            fi
+            tar -xzf "$PANDOC_ZOTXT_AR"
+            mv "pandoc-zotxt.lua-$PANDOC_ZOTXT_VERS/pandoc-zotxt.lua" .
+            sudo cp "pandoc-zotxt.lua-${PANDOC_ZOTXT_VERS:?}/man/pandoc-zotxt.lua.1" \
                 /usr/local/share/man/man1
-    }
+        }
+        exit
+    )
 
 
 ``pandoc-zotxt.lua`` vs ``pandoc-zotxt``
@@ -81,7 +94,7 @@ To run the test suite, just say::
     make test
 
 There is also a test for using Zotero item IDs as citation keys.
-But since item IDs are particular to the datebase used, you
+But since item IDs are particular to the database used, you
 need to adapt this test yourself. Have a look at ``key.md``,
 ``key-is.html`` and ``key-should.html`` in ``test``. Once you've
 adapted those to your database, you can run the test by::
