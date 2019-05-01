@@ -1,5 +1,4 @@
-pandoc-zotxt.lua
-================
+# pandoc-zotxt.lua
 
 `pandoc-zotxt.lua` looks up sources of citations in 
 [Zotero](https://www.zotero.org/) and adds them either to a
@@ -11,10 +10,11 @@ file , where `pandoc-citeproc` can pick them up.
 See the [manual page](man/pandoc-zotxt.lua.md) for more details.
 
 
-Installing `pandoc-zotxt.lua`
------------------------------
+## Installing `pandoc-zotxt.lua`
 
 You use `pandoc-zotxt.lua` **at your own risk**. You have been warned.
+
+### Requirements
 
 `pandoc-zotxt.lua` should run under any POSIX-compliant operating system 
 (e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
@@ -23,12 +23,12 @@ version of Windows *and* have more than 26 drives, `pandoc-zotxt.lua`
 won't recognise absolute paths as such on any drive that isn't assigned a
 letter as symbol (i.e., drives 'after' drive "Z").
 
-on drives with symbols beyond 'Z'.
-
-You also need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using
+You need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using
 an older version of Pandoc, try [pandoc-zotxt](https://github.com/egh/zotxt),
 which works with Pandoc 1.12 or later (but also requires 
 [Python](https://www.python.org/) 2.7).
+
+### Installation
 
 1. Download the 
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
@@ -43,9 +43,9 @@ If you're using a POSIX-compliant operating system, you may also want
 to copy the manual page to wherever your system stores them
 (typically `/usr/local/share/man/man1`).
 
-Moreover, if you're using a POSIX-compliant operating systemand have 
+Moreover, if you're using a POSIX-compliant operating system and have 
 [cURL](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
-you can (probably) do all of the above by simply copy-pasting the
+you can (probably) do all of the above by copy-pasting the
 following instructions into a terminal:
 
 ```sh
@@ -53,25 +53,15 @@ following instructions into a terminal:
         set -Cefu
         NAME=pandoc-zotxt.lua VERSION=0.3.5
         REPOSITORY="${NAME:?}-${VERSION:?}"
-        BASE_URL="https://github.com/odkr/$NAME"
         ARCHIVE="v$VERSION.tar.gz"
-        SIGNATURE="$ARCHIVE.asc"
-        ARCHIVE_URL="$BASE_URL/archive/v${VERSION:?}.tar.gz"
-        SIGNATURE_URL="$BASE_URL/releases/download/v$VERSION/v$VERSION.tar.gz.asc"
+        ARCHIVE_URL="https://github.com/odkr/$NAME/archive/v${VERSION:?}.tar.gz"
         MAN_PATH="/usr/local/share/man/man1"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
         mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
             curl -LsS "$ARCHIVE_URL" >"$ARCHIVE" || ERR=$?
-            if [ "${ERR-0}" -eq 127 ]; then
-                wget -q -nc -O "$ARCHIVE" "$ARCHIVE_URL"
-                wget -q -nc "$SIGNATURE_URL"
-            else
-                curl -LsS "$SIGNATURE_URL" >"$SIGNATURE"
-            fi
-            gpg --verify "$SIGNATURE" "$ARCHIVE" || ERR=$?
-            [ "${ERR-0}" -ne 0 ] && [ "${ERR-0}" -ne 127 ] && exit
+            [ "${ERR-0}" -eq 127 ] && wget -q -nc -O "$ARCHIVE" "$ARCHIVE_URL"
             tar -xzf "$ARCHIVE"
-            rm -f "$ARCHIVE" "$SIGNATURE"
+            rm -f "$ARCHIVE"
             mv "$REPOSITORY/pandoc-zotxt.lua" .
             [ -d "$MAN_PATH" ] && \
                 sudo cp "${REPOSITORY:?}/man/pandoc-zotxt.lua.1" "$MAN_PATH"
@@ -81,8 +71,7 @@ following instructions into a terminal:
 ```
 
 
-`pandoc-zotxt.lua` vs `pandoc-zotxt`
-------------------------------------
+## `pandoc-zotxt.lua` vs `pandoc-zotxt`
 
 | `pandoc-zotxt.lua`            | `pandoc-zotxt`                       |
 | ----------------------------- | ------------------------------------ |
@@ -91,14 +80,13 @@ following instructions into a terminal:
 | Doesn't use temporary files.  | Uses a temporary file.               |
 
 
-Also, `pandoc-zotxt.lua` supports:
+Morever, `pandoc-zotxt.lua` supports:
 
 * Using Zotero item ID as citation keys.
 * Updating a JSON bibliography.
 
 
-Test suite
-----------
+## Test suite
 
 For the test suite to work, you need Zotero and the sources that are cited
 in the test documents. You can import those sources from the files
@@ -120,22 +108,19 @@ you can run the test by:
     make test-key
 ```
 
-Documentation
--------------
+## Documentation
 
 See the [manual page](man/pandoc-zotxt.lua.md)
 and the source for details.
 
 
-Contact
--------
+## Contact
 
 If there's something wrong with `pandoc-zotxt.lua`, 
 [open an issue](https://github.com/odkr/pandoc-zotxt.lua/issues).
 
 
-License
--------
+## License
 
 Copyright 2018, 2019 Odin Kroeger
 
@@ -158,8 +143,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-Further Information
--------------------
+## Further Information
+
 
 GitHub:
     <https://github.com/odkr/pandoc-zotxt.lua>
