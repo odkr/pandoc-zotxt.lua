@@ -97,6 +97,7 @@ function is_path_absolute (path)
     return path:sub(1, 1) == PATH_SEP
 end
 
+
 --- Checks if a file exists.
 --
 -- @tparam string fname Name of the file.
