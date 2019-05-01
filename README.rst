@@ -39,27 +39,30 @@ you probably can do all of the above by::
 
     (
         set -Cefu
-        VERS=0.3.5
-        BASE_URL="https://github.com/odkr/pandoc-zotxt.lua"
-        AR_URL="$BASE_URL/archive/v${VERS:?}.tar.gz"
-        SIG_URL="$BASE_URL/releases/download/v$VERS/v$VERS.tar.gz.asc"
+        NAME=pandoc-zotxt.lua VERSION=0.3.5
+        REPOSITORY="${NAME:?}-${VERSION:?}"
+        BASE_URL="https://github.com/odkr/$NAME"
+        ARCHIVE="v$VERSION.tar.gz"
+        SIGNATURE="$ARCHIVE.asc"
+        ARCHIVE_URL="$BASE_URL/archive/v${VERSION:?}.tar.gz"
+        SIGNATURE_URL="$BASE_URL/releases/download/v$VERSION/v$VERSION.tar.gz.asc"
+        MAN_PATH="/usr/local/share/man/man1"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
         mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
-            AR="v$VERS.tar.gz"
-            SIG="$AR.asc"
-            curl -LsS "$AR_URL" >"$AR" || ERR=$?
+            curl -LsS "$ARCHIVE_URL" >"$ARCHIVE" || ERR=$?
             if [ "${ERR-0}" -eq 127 ]; then
-                wget -q -nc -O "$AR" "$AR_URL"
-                wget -q -nc "$SIG_URL"
+                wget -q -nc -O "$ARCHIVE" "$ARCHIVE_URL"
+                wget -q -nc "$SIGNATURE_URL"
             else
-                curl -LsS "$SIG_URL" >"$SIG"
+                curl -LsS "$SIGNATURE_URL" >"$SIGNATURE"
             fi
-            gpg --verify "$SIG" "$AR" || ERR=$?
+            gpg --verify "$SIGNATURE" "$ARCHIVE" || ERR=$?
             [ "${ERR-0}" -ne 0 ] && [ "${ERR-0}" -ne 127 ] && exit
-            tar -xzf "$AR"
-            mv "pandoc-zotxt.lua-$VERS/pandoc-zotxt.lua" .
-            sudo cp "pandoc-zotxt.lua-${VERS:?}/man/pandoc-zotxt.lua.1" \
-                /usr/local/share/man/man1
+            tar -xzf "$ARCHIVE"
+            rm -f "$ARCHIVE" "$SIGNATURE"
+            mv "$REPOSITORY/pandoc-zotxt.lua" .
+            [ -d "$MAN_PATH" ] && \
+                sudo cp "${REPOSITORY:?}/man/pandoc-zotxt.lua.1" "$MAN_PATH"
         }
         exit
     )
