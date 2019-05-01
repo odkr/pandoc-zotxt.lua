@@ -84,15 +84,28 @@ function warn (...)
 end
 
 
+--- Checks if a path is absolute.
+--
+-- Doesn't identify absolute paths on older Windows systems
+-- if there are more than 26 drives.
+--
+-- @tparam string path A path.
+--
+-- @treturn bool `true` if the path is absolute, `false` otherwise.
+function is_path_absolute (path)
+    if PATH_SEP == '\\' and path:match('^%a:\\') then return true end
+    return path:sub(1, 1) == PATH_SEP
+end
+
 --- Checks if a file exists.
 --
 -- @tparam string fname Name of the file.
 --
--- @return True or not `nil` if the file exists. `nil` otherwise.
+-- @return `true` or not `nil` if the file exists. `nil` otherwise.
 -- @treturn Error code if the file does not exist. 
 --
 -- @see <https://stackoverflow.com/questions/1340230/>
-function exists (fname)
+function does_file_exist (fname)
     local ok, err, errno = os.rename(fname, fname)
     if not ok and errno == 13 then return true end
     return ok, err 
@@ -109,9 +122,9 @@ end
 -- @see <https://stackoverflow.com/questions/1340230/>
 function is_dir (fname)
     if fname:sub(-#PATH_SEP) == PATH_SEP then
-        return exists(fname)
+        return does_file_exist(fname)
     end
-    return exists(fname .. PATH_SEP)
+    return does_file_exist(fname .. PATH_SEP)
 end
 
 
@@ -343,7 +356,7 @@ function add_sources (meta)
         local biblio = meta['zotero-bibliography']
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = stringify(biblio)
-        if biblio:sub(1, #PATH_SEP) ~= PATH_SEP then 
+        if not is_path_absolute(biblio) then
             biblio = get_wd() .. PATH_SEP .. biblio
         end
         local ok, err = update_bibliography(biblio)
