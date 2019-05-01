@@ -1,6 +1,8 @@
-% PANDOC-ZOTXT.LUA(1)
-% Odin Kroeger
-% May 2, 2019
+---
+title: PANDOC-ZOTXT.LUA(1)
+author: Odin Kroeger
+date: May 2, 2019
+---
 
 # NAME
 
@@ -9,7 +11,7 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 # SYNOPSIS
 
-**pandoc**\ **--lua-filter**\ *pandoc-zotxt.lua*\ **-F** *pandoc-citeproc*
+**pandoc** **--lua-filter** *pandoc-zotxt.lua* **-F** *pandoc-citeproc*
 
 
 # DESCRIPTION
