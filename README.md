@@ -16,8 +16,14 @@ Installing `pandoc-zotxt.lua`
 
 You use `pandoc-zotxt.lua` **at your own risk**. You have been warned.
 
-You need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using an
-older version of Pandoc, try [pandoc-zotxt](https://github.com/egh/zotxt),
+`pandoc-zotxt.lua` should run under any POSIX-compliant operating system 
+(e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
+*not* been tested under Windows, however. Also, if you're using an old
+version of Windows *and* have more than 26 drives, `pandoc-zotxt.lua`
+won't recognise absolute paths on drives with symbols beyond 'Z'.
+
+You also need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using
+an older version of Pandoc, try [pandoc-zotxt](https://github.com/egh/zotxt),
 which works with Pandoc 1.12 or later (but also requires 
 [Python](https://www.python.org/) 2.7).
 
@@ -30,14 +36,14 @@ which works with Pandoc 1.12 or later (but also requires
 4. Move the file `pandoc-zotxt.lua` from the repository directory
    up into the `filters` directory.
 
-If you're using a Unix-ish operating system (e.g., macOS, FreeBSD, OpenBSD,
-NetBSD, Linux), you may also want to copy the manual page to wherever your 
-system stores them (typically `/usr/local/share/man/man1`).
+If you're using a POSIX-compliant operating system, you may also want
+to copy the manual page to wherever your system stores them
+(typically `/usr/local/share/man/man1`).
 
-Moreover, if you're using a Unix-ish operating system and have 
+Moreover, if you're using a POSIX-compliant operating systemand have 
 [cURL](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
-you can (probably) do all of the above by copy-pasting these instructions
-into a terminal:
+you can (probably) do all of the above by simply copy-pasting the
+following instructions into a terminal:
 
 ```sh
     (
