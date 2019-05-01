@@ -21,7 +21,7 @@ try `pandoc-zotxt <https://github.com/egh/zotxt>`_, which works with
 Pandoc 1.12 or later (but also requires Python_ 2.7).
 
 1. Download the `current release
-   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.3>`_.
+   <https://codeload.github.com/odkr/pandoc-zotxt/tar.gz/v0.3.5>`_.
 2. Unpack it.
 3. Copy the whole repository directory to the ``filters``
    sub-directory of your Pandoc data directory.
@@ -39,7 +39,7 @@ you probably can do all of the above by::
 
     (
         set -Cefu
-        PANDOC_ZOTXT_VERS=0.3.3
+        PANDOC_ZOTXT_VERS=0.3.5
         PANDOC_ZOTXT_URL="https://codeload.github.com/odkr/pandoc-zotxt.lua/tar.gz/v${PANDOC_ZOTXT_VERS:?}"
         PANDOC_ZOTXT_SIG_URL="https://github.com/odkr/pandoc-zotxt.lua/releases/download/v$PANDOC_ZOTXT_VERS/v$PANDOC_ZOTXT_VERS.tar.gz.asc"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"

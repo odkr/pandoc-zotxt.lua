@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PANDOC-ZOTXT.LUA 1 "April 30, 2019" "0.3.2" ""
+.TH PANDOC-ZOTXT.LUA 1 "April 30, 2019" "0.3.5" ""
 .SH NAME
 pandoc-zotxt.lua \- Looks up sources in Zotero
 .
@@ -51,6 +51,10 @@ Simply set the \fBzotero\-bibliography\fP metadata field to a filename.
 rather than to the \fBreferences\fP metadata field. It will also add
 that file to the document\(aqs \fBbibliography\fP metadata field, so
 that \fBpandoc\-citeproc\fP picks it up.
+.sp
+\fBpandoc\-zotxt.lua\fP takes relative filenames to be relative to the directory
+of the first input file you pass to \fBpandoc\fP or, if you don\(aqt pass any input
+files, as relative to the current working directory.
 .sp
 Note, \fBpandoc\-zotxt.lua\fP only \fIadds\fP sources to bibliography files.
 It doesn\(aqt update or delete them. To update your bibliography file,
