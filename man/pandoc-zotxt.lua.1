@@ -45,10 +45,10 @@ You cite your sources using so\-called "easy citekeys" (provided by zotxt) or
 That\(aqs all all there is to it. (See the documentation of zotxt and
 BetterBibTex respectively for details.)
 .sp
-You can also use \fBpandoc\-zotxt.lua\fP to manage a bibliography file.
-Simply set the \fBzotero\-bibliography\fP metadata field to a filename.
-\fBpandoc\-zotxt.lua\fP will then add the sources you cite to that file,
-rather than to the \fBreferences\fP metadata field. It will also add
+You can also use \fBpandoc\-zotxt.lua\fP to manage a bibliography file. This is
+typically a lot faster. Simply set the \fBzotero\-bibliography\fP metadata field
+to a filename. \fBpandoc\-zotxt.lua\fP will then add the sources you cite to that
+file, rather than to the \fBreferences\fP metadata field. It will also add
 that file to the document\(aqs \fBbibliography\fP metadata field, so
 that \fBpandoc\-citeproc\fP picks it up.
 .sp
@@ -58,7 +58,7 @@ files, as relative to the current working directory.
 .sp
 Note, \fBpandoc\-zotxt.lua\fP only \fIadds\fP sources to bibliography files.
 It doesn\(aqt update or delete them. To update your bibliography file,
-delete and let \fBpandoc\-zotxt.lua\fP regenerate it.
+delete it. \fBpandoc\-zotxt.lua\fP will then regenerate it from scratch.
 .SH AUTHOR
 .sp
 Odin Kroeger
