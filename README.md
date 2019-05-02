@@ -46,8 +46,8 @@ following commands into a bourne shell:
 (
     set -Cefu
     NAME=pandoc-zotxt.lua VERS=0.3.5
-    REPO="${NAME:?}-${VERS:?}" CMD="${NAME:?}"
-    URL="https://github.com/odkr/$NAME/archive/v${VERS:?}.tar.gz"
+    REPO="${NAME:?}-${VERS:?}" CMD="$NAME"
+    URL="https://github.com/odkr/$NAME/archive/v$VERS.tar.gz"
     MAN="/usr/local/share/man/man1"
     FILTERS="${HOME:?}/.pandoc/filters"
     mkdir -p "${FILTERS:?}"
@@ -57,7 +57,7 @@ following commands into a bourne shell:
         [ "${ERR-0}" -eq 127 ] && wget -q -O - "$URL"
     } | tar xz
     mv "$REPO/$CMD" .
-    [ -d "$MAN" ] && sudo cp "${REPO:?}/man/$CMD.1" "${MAN:?}"
+    [ -d "${MAN:?}" ] && sudo cp "${REPO:?}/man/${CMD:?}.1" "${MAN:?}"
 )
 ```
 
