@@ -54,11 +54,10 @@ local unpack = table.unpack
 -- Libraries
 -- =========
 
-
 do
-    local SPLIT_RE = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
+    local split_re = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
     function split_path (fname) 
-        return fname:match(SPLIT_RE)
+        return fname:match(split_re)
     end
 end
 
@@ -189,7 +188,7 @@ end
 
 
 do
-    local KEYTYPES = ZOTXT_KEYTYPES
+    local keytypes = ZOTXT_KEYTYPES
 
     ---  Retrieves bibliographic data from Zotero.
     --
@@ -208,13 +207,13 @@ do
     -- @treturn string An error message if the soruce was not found.
     function get_source_json (key)
         local _, reply
-        for i = 1, #KEYTYPES do
-            local query_url = concat({ZOTXT_QUERY_URL, KEYTYPES[i], '=', key})
+        for i = 1, #keytypes do
+            local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
             _, reply = pandoc.mediabag.fetch(query_url, '.')
             if reply:sub(1, 1) == '[' then
                 if i > 1 then
-                    local keytype = remove(KEYTYPES, i)
-                    insert(KEYTYPES, 1, keytype)
+                    local keytype = remove(keytypes, i)
+                    insert(keytypes, 1, keytype)
                 end
                 return reply
             end
@@ -366,7 +365,7 @@ do
 end
 
 
---- Adds sources as references or to the bibliography.
+--- Adds sources to the document's metadata or to the bibliography.
 --
 -- Checks whether the current documents uses a bibliography. If so, adds cited
 -- sources that aren't in it yet to the file. Otherwise, adds all cited
@@ -375,18 +374,22 @@ end
 -- @tparam pandoc.Meta meta A metadata block.
 --
 -- @treturn pandoc.Meta An updated metadata block, with references or
---  a pointer to the bibliography file added or `nil`.
+--  a pointer to the bibliography file added or `nil` if nothing
+--  was done or an error occurred.
+--
+-- Prints messages to STDERR if errors occur.
 function add_sources (meta)
-    local stringify = pandoc.utils.stringify
     if meta['zotero-bibliography'] then
-        local biblio = meta['zotero-bibliography']
-        if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
-        biblio = stringify(biblio)
+        local stringify = pandoc.utils.stringify
+        local biblio = stringify(meta['zotero-bibliography'])
         if not is_path_absolute(biblio) then
             biblio = get_input_directory() .. PATH_SEP .. biblio
         end
         local ok, err = update_bibliography(biblio)
-        if not ok then warn(err) end
+        if not ok then
+            warn(err)
+            return nil
+        end
         if not meta.bibliography then
             meta.bibliography = biblio
         elseif meta.bibliography.t == 'MetaInlines' then
