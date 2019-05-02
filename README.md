@@ -18,10 +18,7 @@ You use `pandoc-zotxt.lua` **at your own risk**. You have been warned.
 
 `pandoc-zotxt.lua` should run under any POSIX-compliant operating system 
 (e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
-*not* been tested under Windows, however. Also, if you're using an old
-version of Windows *and* have more than 26 drives, `pandoc-zotxt.lua`
-won't recognise absolute paths as such on any drive that isn't assigned a
-letter as symbol (i.e., drives 'after' drive "Z").
+*not* been tested under Windows, however.
 
 You need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using
 an older version of Pandoc, try [pandoc-zotxt](https://github.com/egh/zotxt),

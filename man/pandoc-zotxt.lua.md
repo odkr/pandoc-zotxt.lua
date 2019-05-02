@@ -62,14 +62,6 @@ BetterBibTex: <https://retorque.re/zotero-better-bibtex/>
 pandoc-zotxt.lua: <https://github.com/odkr/pandoc-zotxt.lua>
 
 
-# CAVEATS
-
-If you're using an older Windows systems and have more than 26 drives.
-**pandoc-zotxt.lua** will fail to recognise absolute paths as such
-on any drive that isn't assigned a letter as symbol (i.e., drives
-'after' drive "Z").
-
-
 # SEE ALSO
 
 pandoc(1), pandoc-citeproc(1)
