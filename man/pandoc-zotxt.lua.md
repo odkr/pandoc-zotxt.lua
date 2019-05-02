@@ -42,26 +42,6 @@ It doesn't update or delete them. To update your bibliography file,
 delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
 
 
-# AUTHOR
-
-Odin Kroeger
-
-
-# FURTHER INFORMATION
-
-Pandoc: <https://www.pandoc.org/>
-
-pandoc-citeproc: <https://github.com/jgm/pandoc-citeproc>
-
-Zotero: <https://www.zotero.org/>
-
-zotxt: <https://github.com/egh/zotxt>
-
-BetterBibTex: <https://retorque.re/zotero-better-bibtex/>
-
-pandoc-zotxt.lua: <https://github.com/odkr/pandoc-zotxt.lua>
-
-
 # SEE ALSO
 
 pandoc(1), pandoc-citeproc(1)

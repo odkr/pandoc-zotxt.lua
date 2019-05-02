@@ -43,24 +43,23 @@ install `pandoc-zotxt.lua` by copy-pasting the
 following commands into a bourne shell:
 
 ```sh
-    (
-        set -Cefu
-        NAME=pandoc-zotxt.lua VERSION=0.3.5
-        REPOSITORY="${NAME:?}-${VERSION:?}"
-        URL="https://github.com/odkr/$NAME/archive/v${VERSION:?}.tar.gz"
-        MAN_PATH="/usr/local/share/man/man1"
-        PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
-        mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
-            {
-                curl -LsS "$URL" || ERR=$?
-                [ "${ERR-0}" -eq 127 ] && wget -q -O - "$URL"
-            } | tar xz
-            mv "$REPOSITORY/pandoc-zotxt.lua" .
-            [ -d "$MAN_PATH" ] && \
-                sudo cp "${REPOSITORY:?}/man/pandoc-zotxt.lua.1" "$MAN_PATH"
-        }
-        exit
-    )
+(
+    set -Cefu
+    NAME=pandoc-zotxt.lua VERS=0.3.5
+    REPO="${NAME:?}-${VERS:?}" CMD="${NAME:?}"
+    URL="https://github.com/odkr/$NAME/archive/v${VERS:?}.tar.gz"
+    MAN="/usr/local/share/man/man1"
+    FILTERS="${HOME:?}/.pandoc/filters"
+    mkdir -p "${FILTERS:?}"
+    cd -P "$FILTERS" || exit
+    {
+        curl -LsS "$URL" || ERR=$?
+        [ "${ERR-0}" -eq 127 ] && wget -q -O - "$URL"
+    } | tar xz
+    mv "$REPO/$CMD" .
+    [ -d "$MAN" ] && sudo cp "${REPO:?}/man/$CMD.1" "${MAN:?}"
+    exit
+)
 ```
 
 This will also try to copy the manual page to `/usr/local/share/man/man1`;
