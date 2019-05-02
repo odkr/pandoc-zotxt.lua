@@ -50,15 +50,14 @@ following instructions into a terminal:
         set -Cefu
         NAME=pandoc-zotxt.lua VERSION=0.3.5
         REPOSITORY="${NAME:?}-${VERSION:?}"
-        ARCHIVE="v$VERSION.tar.gz"
-        ARCHIVE_URL="https://github.com/odkr/$NAME/archive/v${VERSION:?}.tar.gz"
+        URL="https://github.com/odkr/$NAME/archive/v${VERSION:?}.tar.gz"
         MAN_PATH="/usr/local/share/man/man1"
         PANDOC_FILTERS="${HOME:?}/.pandoc/filters"
         mkdir -p "${PANDOC_FILTERS:?}" && cd -P "$PANDOC_FILTERS" && {
-            curl -LsS "$ARCHIVE_URL" >"$ARCHIVE" || ERR=$?
-            [ "${ERR-0}" -eq 127 ] && wget -q -nc -O "$ARCHIVE" "$ARCHIVE_URL"
-            tar -xzf "$ARCHIVE"
-            rm -f "$ARCHIVE"
+            {
+                curl -LsS "$URL" || ERR=$?
+                [ "${ERR-0}" -eq 127 ] && wget -q -nc -O - "$URL"
+            } | tar xz
             mv "$REPOSITORY/pandoc-zotxt.lua" .
             [ -d "$MAN_PATH" ] && \
                 sudo cp "${REPOSITORY:?}/man/pandoc-zotxt.lua.1" "$MAN_PATH"
@@ -85,9 +84,13 @@ Morever, `pandoc-zotxt.lua` supports:
 
 ## Test suite
 
-For the test suite to work, you need Zotero and the sources that are cited
-in the test documents. You can import those sources from the files
-`items.rdf` in the directory `test`.
+For the test suite to work, you need [Pandoc](https://www.pandoc.org/) 2.7.2 
+and [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3.
+The test suite may or may not work with other versions of Pandoc and
+`pandoc-citeproc`.
+
+You also need Zotero and the sources that are cited in the test documents.
+You can import those sources from the files `test/items.rdf`.
 
 To run the test suite, just say:
 
