@@ -35,18 +35,8 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 -- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
--- Patterns matching citation key types.
--- More precisely, mapping of the indices of citation key types in the
--- list above to such patterns. Simply put, the order of those patterns
--- must correspond to the order of those keys in the above list.
--- See `get_source_json` and <https://github.com/egh/zotxt> for details.
-local ZOTXT_KEYTYPE_RE = {'^@%a+:%d+%w*$', '^@%a+%d+%w*$', '^@[A-Z0-9]+$'}
-
 -- The version of this script.
 local VERSION = '0.3.7'
-
--- The path seperator of the operating system
-local PATH_SEP = package.config:sub(1, 1)
 
 
 -- Shorthands
@@ -62,6 +52,12 @@ local unpack = table.unpack
 
 -- Libraries
 -- =========
+
+local text = require 'text'
+local sub = text.sub
+
+-- The path seperator of the operating system
+local PATH_SEP = sub(package.config, 1, 1)
 
 --- Splits a file's path into its directory and its filename part.
 --
@@ -119,7 +115,7 @@ end
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
     if PATH_SEP == '\\' and path:match('^.:\\') then return true end
-    return path:sub(1, 1) == PATH_SEP
+    return sub(path, 1, 1) == PATH_SEP
 end
 
 
@@ -143,7 +139,7 @@ end
 -- @treturn number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate other errors.
 function read_json_file (fname)
-    if not fname:sub(-5) == '.json' then
+    if not sub(fname, -5) == '.json' then
         return nil, fname .. ': not a JSON file.', -1
     end
     local f, err, errno = open(fname, 'r')
@@ -179,39 +175,29 @@ function write_json_file (data, fname)
 end
 
 
+---  Retrieves bibliographic data from Zotero.
+--
+-- Retrieves bibliographic data by citation key, trying different
+-- types of citation keys, starting with the last type for which
+-- a lookup was successful.
+--
+-- The constant `ZOTXT_QUERY_URL` defines where to get data from.
+-- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
+-- See <https://github.com/egh/zotxt> for details.
+--
+-- @tparam string key The lookup key.
+-- @treturn string Bibliographic data for that source as CSL JSON string
+--  if the source was found, `nil` otherwise.
+-- @treturn string An error message if the source was not found.
 do
     local keytypes = ZOTXT_KEYTYPES
-    local first = true 
 
-    ---  Retrieves bibliographic data from Zotero.
-    --
-    -- Retrieves bibliographic data by citation key, trying different
-    -- types of citation keys, starting with the last type for which
-    -- a lookup was successful.
-    --
-    -- The constant `ZOTXT_QUERY_URL` defines where to get data from.
-    -- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
-    -- See <https://github.com/egh/zotxt> for details.
-    --
-    -- @tparam string key The lookup key.
-    -- @treturn string Bibliographic data for that source as CSL JSON string
-    --  if the source was found, `nil` otherwise.
-    -- @treturn string An error message if the source was not found.
     function get_source_json (key)
         local _, reply
-        if first then
-            for i, expr in pairs(ZOTXT_KEYTYPE_RE) do
-                if i > 1 and key:match(expr) then
-                    move_to_front(keytypes, i)
-                    break
-                end
-            end
-            first = false
-        end
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
             _, reply = pandoc.mediabag.fetch(query_url, '.')
-            if reply:sub(1, 1) == '[' then
+            if sub(reply, 1, 1) == '[' then
                 if i > 1 then move_to_front(keytypes, i) end
                 return reply
             end
