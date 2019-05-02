@@ -27,7 +27,7 @@ That's all all there is to it. (See the documentation of *zotxt* and
 *BetterBibTex* respectively for details.)
 
 You can also use **pandoc-zotxt.lua** to manage a bibliography file. This is
-typically a lot faster. Simply set the `zotero-bibliography` metadata field
+usually a lot faster. Simply set the `zotero-bibliography` metadata field
 to a filename. **pandoc-zotxt.lua** will then add the sources you cite to that
 file, rather than to the `references` metadata field. It will also add
 that file to the document's `bibliography` metadata field, so
@@ -40,6 +40,11 @@ files, as relative to the current working directory.
 Note, **pandoc-zotxt.lua** only ever *adds* sources to bibliography files.
 It doesn't update or delete them. To update your bibliography file,
 delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
+
+
+# CAVEATS
+
+**pandoc-zotxt.lua** is Unicode-agnostic.
 
 
 # SEE ALSO
