@@ -90,7 +90,7 @@ The test suite may or may not work with other versions of Pandoc and
 `pandoc-citeproc`.
 
 You also need Zotero and the sources that are cited in the test documents.
-You can import those sources from the files `test/items.rdf`.
+You can import those sources from `test/items.rdf`.
 
 To run the test suite, just say:
 
