@@ -180,7 +180,8 @@ end
 
 
 do
-    local keytypes = nil
+    local keytypes = ZOTXT_KEYTYPES
+    local first = true 
 
     ---  Retrieves bibliographic data from Zotero.
     --
@@ -198,14 +199,14 @@ do
     -- @treturn string An error message if the source was not found.
     function get_source_json (key)
         local _, reply
-        if not keytypes then
-            keytypes = ZOTXT_KEYTYPES
+        if first then
             for i, expr in pairs(ZOTXT_KEYTYPE_RE) do
                 if i > 1 and key:match(expr) then
                     move_to_front(keytypes, i)
                     break
                 end
             end
+            first = false
         end
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
