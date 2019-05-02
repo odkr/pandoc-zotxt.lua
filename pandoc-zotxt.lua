@@ -180,7 +180,7 @@ function write_json_file (data, fname)
     if not json then return nil, err, -1 end
     f, err, errno = open(fname, 'w')
     if not f then return nil, err, errno end
-    ok, err, errno = f:write(data, '\n')
+    ok, err, errno = f:write(json, '\n')
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
