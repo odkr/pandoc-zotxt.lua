@@ -178,9 +178,9 @@ end
 function write_json_file (data, fname)
     local json, err = encode(data)
     if not json then return nil, err, -1 end
-    f, err, errno = open(fname, 'w')
+    local f, err, errno = open(fname, 'w')
     if not f then return nil, err, errno end
-    ok, err, errno = f:write(json, '\n')
+    local ok, err, errno = f:write(json, '\n')
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
