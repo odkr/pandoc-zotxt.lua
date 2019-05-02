@@ -1,6 +1,6 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
--- @release 0.3.5
+-- @release 0.3.6a
 -- @author Odin Kroeger
 -- @copyright 2018 Odin Kroeger
 --
@@ -26,15 +26,22 @@
 -- =========
 
 -- The URL to lookup citation data.
--- See ``get_source_json`` and <https://github.com/egh/zotxt> for details.
+-- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
--- Keytypes.
--- See ``get_source_json`` and <https://github.com/egh/zotxt> for details.
+-- Types of citation keys.
+-- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
+-- Patterns matching citation key types.
+-- More precisely, mapping of the indices of citatio key types in the
+-- list above to such patterns. Simply put, the order of those patterns
+-- corresponds the order of keys above.
+-- See `get_source_json` and <https://github.com/egh/zotxt> for details.
+local ZOTXT_KEYTYPE_RE = {'^@%a+:%d+%w*$', '^@%a+%d+%w*$', '^@[A-Z0-9]+$'}
+
 -- The version of this script.
-local VERSION = '0.3.5'
+local VERSION = '0.3.6a'
 
 -- The path seperator of the operating system
 local PATH_SEP = package.config:sub(1, 1)
@@ -55,9 +62,9 @@ local unpack = table.unpack
 -- =========
 
 do
-    local split_re = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
+    local split_expr = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
     function split_path (fname) 
-        return fname:match(split_re)
+        return fname:match(split_expr)
     end
 end
 
@@ -188,7 +195,7 @@ end
 
 
 do
-    local keytypes = ZOTXT_KEYTYPES
+    local keytypes = nil
 
     ---  Retrieves bibliographic data from Zotero.
     --
@@ -204,9 +211,19 @@ do
     --
     -- @treturn string Bibliographic data for that source as CSL JSON string
     --  if the source was found, `nil` otherwise.
-    -- @treturn string An error message if the soruce was not found.
+    -- @treturn string An error message if the source was not found.
     function get_source_json (key)
         local _, reply
+        if not keytypes then
+            keytypes = ZOTXT_KEYTYPES
+            for i, expr in pairs(ZOTXT_KEYTYPE_RE) do
+                if i > 1 and key:match(expr) then
+                    local keytype = remove(keytypes, i)
+                    insert(keytypes, 1, keytype)
+                    break
+                end
+            end
+        end
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
             _, reply = pandoc.mediabag.fetch(query_url, '.')
