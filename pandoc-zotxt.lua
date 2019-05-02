@@ -34,9 +34,9 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- Patterns matching citation key types.
--- More precisely, mapping of the indices of citatio key types in the
+-- More precisely, mapping of the indices of citation key types in the
 -- list above to such patterns. Simply put, the order of those patterns
--- corresponds the order of keys above.
+-- must correspond to the order of those keys in the above list.
 -- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPE_RE = {'^@%a+:%d+%w*$', '^@%a+%d+%w*$', '^@[A-Z0-9]+$'}
 
@@ -61,10 +61,15 @@ local unpack = table.unpack
 -- Libraries
 -- =========
 
+--- Splits a file's path into its directory and its filename part.
+--
+-- @tparam string path The path to the file.
+-- @treturn string The file's path.
+-- @treturn string The file's name.
 do
     local split_expr = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
-    function split_path (fname) 
-        return fname:match(split_expr)
+    function split_path (path) 
+        return path:match(split_expr)
     end
 end
 
@@ -84,6 +89,18 @@ local encode = json.encode
 -- Functions
 -- =========
 
+--- Moves an element to the beginning of a list.
+--
+-- @tparam list The list.
+-- @tparam integer The index of the element.
+-- @treturn table The list.
+function move_to_front (list, i)
+    local element = remove(list, i)
+    insert(list, 1, element)
+    return list
+end
+
+
 --- Prints warnings to STDERR.
 --
 -- @tparam string ... Strings to be written to STDERR.
@@ -97,7 +114,6 @@ end
 --- Checks if a path is absolute.
 --
 -- @tparam string path A path.
---
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
     if PATH_SEP == '\\' and path:match('^.:\\') then return true end
@@ -108,11 +124,10 @@ end
 --- Checks if a file exists.
 --
 -- @tparam string fname Name of the file.
---
 -- @return `true` or not `nil` if the file exists. `nil` otherwise.
 -- @treturn Error code if the file does not exist. 
 --
--- @see <https://stackoverflow.com/questions/1340230/>
+-- See <https://stackoverflow.com/questions/1340230/>
 function does_file_exist (fname)
     local ok, err, errno = os.rename(fname, fname)
     if not ok and errno == 13 then return true end
@@ -123,13 +138,12 @@ end
 --- Checks if a filename points to a directory.
 --
 -- @tparam string fname Name of the directory.
---
--- @return True or not `nil` if the directory exists. `nil` otherwise.
+-- @return `true` or not `nil` if the directory exists. `nil` otherwise.
 -- @treturn Error code if the directory does not exist. 
 --
--- @see <https://stackoverflow.com/questions/1340230/>
+-- See <https://stackoverflow.com/questions/1340230/>
 function is_dir (fname)
-    if not fname:sub(-#PATH_SEP) == PATH_SEP then fname = fname .. PATH_SEP end
+    if fname:sub(-#PATH_SEP) ~= PATH_SEP then fname = fname .. PATH_SEP end
     return does_file_exist(fname)
 end
 
@@ -150,7 +164,6 @@ end
 --- Reads a JSON file.
 --
 -- @tparam string fname Name of the file.
---
 -- @return The parsed data if reading the file succeeded, `nil `otherwise.
 -- @treturn string An error message, if an error occurred.
 -- @treturn number An error number. Positive numbers are OS error numbers, 
@@ -175,9 +188,7 @@ end
 --
 -- @param data Arbitrary data.
 -- @tparam string fname Name of the file.
---
--- @return A true-y value of saving that data as JSON succeeded, 
---  `nil` otherwise.
+-- @treturn bool `true` if saving that data as JSON succeeded, `nil` otherwise.
 -- @treturn string An error message if an error occurred.
 -- @treturn integer An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate other errors.
@@ -208,7 +219,6 @@ do
     -- See <https://github.com/egh/zotxt> for details.
     --
     -- @tparam string key The lookup key.
-    --
     -- @treturn string Bibliographic data for that source as CSL JSON string
     --  if the source was found, `nil` otherwise.
     -- @treturn string An error message if the source was not found.
@@ -218,8 +228,7 @@ do
             keytypes = ZOTXT_KEYTYPES
             for i, expr in pairs(ZOTXT_KEYTYPE_RE) do
                 if i > 1 and key:match(expr) then
-                    local keytype = remove(keytypes, i)
-                    insert(keytypes, 1, keytype)
+                    move_to_front(keytypes, i)
                     break
                 end
             end
@@ -228,10 +237,7 @@ do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
             _, reply = pandoc.mediabag.fetch(query_url, '.')
             if reply:sub(1, 1) == '[' then
-                if i > 1 then
-                    local keytype = remove(keytypes, i)
-                    insert(keytypes, 1, keytype)
-                end
+                if i > 1 then move_to_front(keytypes, i) end
                 return reply
             end
         end
@@ -247,7 +253,6 @@ end
 -- floating point numbers. But Pandoc expects integers.
 --
 -- @param data Data of any type.
---
 -- @return The given data, with all numbers converted into strings.
 function numtostr (data)
     local data_type = type(data)
@@ -266,7 +271,6 @@ end
 --- Retrieves bibliographic data for sources from Zotero.
 -- 
 -- @tparam string citekey A citation key.
---
 -- @treturn table Bibliographic data for that source in CSL format,
 --  if the source was found, `nil` otherwise.
 -- @treturn string The error message of the lookup attempt for the first
@@ -286,7 +290,6 @@ end
 --- Retrieves bibliographic data for multiple sources from Zotero.
 -- 
 -- @tparam {string,...} citekeys A list of citation keys.
---
 -- @treturn {table,...} The cited sources found, in CSL format.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
@@ -306,7 +309,6 @@ end
 
 do
     local CITEKEYS = {}
-    local SEEN = {}
 
     --- Collects all citekeys used in a document.
     --
@@ -314,13 +316,16 @@ do
     -- `add_references` and `update_bibliography`.
     --
     -- @param citations A pandoc.Cite element.
-    function collect_sources (citations)
-        local c = citations.citations
-        for i = 1, #c do
-            id = c[i].id
-            if SEEN[id] == nil then
-                SEEN[id] = true
-                insert(CITEKEYS, id)
+    do
+        local seen = {}
+        function collect_sources (citations)
+            local c = citations.citations
+            for i = 1, #c do
+                id = c[i].id
+                if not seen[id] then
+                    seen[id] = true
+                    insert(CITEKEYS, id)
+                end
             end
         end
     end
@@ -332,7 +337,6 @@ do
     -- which is shared with `collect_sources`.
     --
     -- @tparam pandoc.Meta meta A metadata block.
-    --
     -- @treturn pandoc.Meta An updated metadata block, with the field
     --  `references` added when needed, if sources were found;
     --  `nil` otherwise.
@@ -355,7 +359,6 @@ do
     -- which is shared with `collect_sources`.
     --
     -- @tparam string fname The filename of the biblography.
-    --
     -- @treturn bool `true` if updating the biblography succeeded
     --  (or not update was needed), `nil` otherwise.
     -- @treturn string An error message if an error occurred.
@@ -389,7 +392,6 @@ end
 -- sources to the document's metadata.
 --
 -- @tparam pandoc.Meta meta A metadata block.
---
 -- @treturn pandoc.Meta An updated metadata block, with references or
 --  a pointer to the bibliography file added or `nil` if nothing
 --  was done or an error occurred.
@@ -403,18 +405,18 @@ function add_sources (meta)
             biblio = get_input_directory() .. PATH_SEP .. biblio
         end
         local ok, err = update_bibliography(biblio)
-        if not ok then
+        if ok then
+            if not meta.bibliography then
+                meta.bibliography = biblio
+            elseif meta.bibliography.t == 'MetaInlines' then
+                meta.bibliography = {stringify(meta.bibliography), biblio}
+            elseif meta.bibliography.t == 'MetaList' then
+                insert(meta.bibliography, biblio)
+            end
+            return meta
+        else
             warn(err)
-            return nil
         end
-        if not meta.bibliography then
-            meta.bibliography = biblio
-        elseif meta.bibliography.t == 'MetaInlines' then
-            meta.bibliography = {stringify(meta.bibliography), biblio}
-        elseif meta.bibliography.t == 'MetaList' then
-            insert(meta.bibliography, biblio)
-        end
-        return meta
     end
     return add_references(meta)
 end
