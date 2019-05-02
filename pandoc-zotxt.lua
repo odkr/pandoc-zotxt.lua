@@ -123,10 +123,8 @@ end
 --
 -- @see <https://stackoverflow.com/questions/1340230/>
 function is_dir (fname)
-    if fname:sub(-#PATH_SEP) == PATH_SEP then
-        return does_file_exist(fname)
-    end
-    return does_file_exist(fname .. PATH_SEP)
+    if not fname:sub(-#PATH_SEP) == PATH_SEP then fname = fname .. PATH_SEP end
+    return does_file_exist(fname)
 end
 
 
@@ -140,6 +138,53 @@ function get_input_directory ()
         if is_dir(first_input_dir) then return first_input_dir end
     end
     return '.'
+end
+
+
+--- Reads a JSON file.
+--
+-- @tparam string fname Name of the file.
+--
+-- @return The parsed data if reading the file succeeded, `nil `otherwise.
+-- @treturn string An error message, if an error occurred.
+-- @treturn number An error number. Positive numbers are OS error numbers, 
+--  negative numbers indicate other errors.
+function read_json_file (fname)
+    if not fname:sub(-5) == '.json' then
+        return nil, fname .. ': not a JSON file.', -1
+    end
+    local f, err, errno = open(fname, 'r')
+    if not f then return nil, err, errno end
+    local data, err, errno = f:read()
+    if not data then return nil, err, errno end
+    local ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    data, err = decode(data)
+    if not data then return nil, err, -2 end
+    return numtostr(data)
+end
+
+
+--- Writes data as JSON to a file.
+--
+-- @param data Arbitrary data.
+-- @tparam string fname Name of the file.
+--
+-- @return A true-y value of saving that data as JSON succeeded, 
+--  `nil` otherwise.
+-- @treturn string An error message if an error occurred.
+-- @treturn integer An error number. Positive numbers are OS error numbers, 
+--  negative numbers indicate other errors.
+function write_json_file (data, fname)
+    local json, err = encode(data)
+    if not json then return nil, err, -1 end
+    f, err, errno = open(fname, 'w')
+    if not f then return nil, err, errno end
+    ok, err, errno = f:write(data, '\n')
+    if not ok then return nil, err, errno end
+    ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    return true
 end
 
 
@@ -290,9 +335,6 @@ do
     
     --- Adds cited sources to a bibliography file.
     --
-    -- Retrieves sources that aren't in the bibliography from Zotero
-    -- and adds them. The bibliography must be a CSL JSON file.
-    --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
     -- which is shared with `collect_sources`.
     --
@@ -302,19 +344,10 @@ do
     --  (or not update was needed), `nil` otherwise.
     -- @treturn string An error message if an error occurred.
     function update_bibliography (fname)
-        if fname:sub(-5) ~= '.json' then
-            return nil, fname .. ': not a JSON file.'
-        end
-        local f, err, errno = open(fname, 'r')
-        local refs = {}
-        if f then
-            local data, err = f:read()
-            if not data then return nil, err end
-            local ok, err = f:close()
-            if not ok then return nil, err end
-            refs = numtostr(decode(data))
-        elseif errno ~= 2 then
-            return nil, err
+        local refs, err, errno = read_json_file(fname)
+        if not refs then
+            if errno ~=2 then return nil, err, errno end
+            refs = {}
         end
         local count = #refs
         for _, citekey in ipairs(CITEKEYS) do
@@ -327,16 +360,7 @@ do
             end
             if not found then refs[#refs + 1] = get_source(citekey) end
         end
-        if (#refs > count) then
-            local data, err = encode(refs)
-            if not data then return nil, err end
-            f, err = open(fname, 'w')
-            if not f then return nil, err end
-            ok, err = f:write(data, '\n')
-            if not ok then return nil, err end
-            ok, err = f:close()
-            if not ok then return nil, err end
-        end
+        if (#refs > count) then return write_json_file(refs, fname) end
         return true
     end
 end
