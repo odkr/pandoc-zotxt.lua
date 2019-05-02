@@ -45,7 +45,7 @@ following commands into a bourne shell:
 ```sh
 (
     set -Cefu
-    NAME=pandoc-zotxt.lua VERS=0.3.5
+    NAME=pandoc-zotxt.lua VERS=0.3.6
     REPO="${NAME:?}-${VERS:?}" CMD="$NAME"
     URL="https://github.com/odkr/$NAME/archive/v$VERS.tar.gz"
     MAN="/usr/local/share/man/man1"
