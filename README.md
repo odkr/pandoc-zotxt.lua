@@ -46,9 +46,7 @@ following commands into a bourne shell:
 (
     set -Cefu
     NAME=pandoc-zotxt.lua VERS=0.3.6
-    REPO="${NAME:?}-${VERS:?}" CMD="$NAME"
-    URL="https://github.com/odkr/$NAME/archive/v$VERS.tar.gz"
-    MAN="/usr/local/share/man/man1"
+    URL="https://github.com/odkr/${NAME:?}/archive/v${VERS:?}.tar.gz"
     FILTERS="${HOME:?}/.pandoc/filters"
     mkdir -p "${FILTERS:?}"
     cd -P "$FILTERS" || exit
@@ -56,14 +54,14 @@ following commands into a bourne shell:
         curl -LsS "$URL" || ERR=$?
         [ "${ERR-0}" -eq 127 ] && wget -q -O - "$URL"
     } | tar xz
-    mv "$REPO/$CMD" .
-    [ -d "${MAN:?}" ] && sudo cp "${REPO:?}/man/${CMD:?}.1" "${MAN:?}"
+    mv "$NAME-$VERS/pandoc-zotxt.lua" .
 )
 ```
 
-This will also try to copy the manual page to `/usr/local/share/man/man1`;
-this is why the system asks you for a password.
-
+You may also want to copy the manual page from the `man` directory in the
+repository to wherever your operating system searches for manual pages
+(`/usr/local/share/man/man1` should work on many systems, many modern
+Linux systems use `$HOME/.local/share/man/man1`).
 
 
 ## `pandoc-zotxt.lua` vs `pandoc-zotxt`
