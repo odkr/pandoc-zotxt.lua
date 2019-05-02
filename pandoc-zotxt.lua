@@ -157,6 +157,7 @@ function get_input_directory ()
     local first_input_file = PANDOC_STATE.input_files[1]
     if first_input_file then
         local first_input_dir = split_path(first_input_file)
+        if not first_input_dir then return '.' end
         if is_dir(first_input_dir) then return first_input_dir end
     end
     return '.'
