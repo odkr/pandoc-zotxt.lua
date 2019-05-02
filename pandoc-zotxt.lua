@@ -1,7 +1,7 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.6
+-- @release 0.3.7
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -43,7 +43,7 @@ local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 local ZOTXT_KEYTYPE_RE = {'^@%a+:%d+%w*$', '^@%a+%d+%w*$', '^@[A-Z0-9]+$'}
 
 -- The version of this script.
-local VERSION = '0.3.6'
+local VERSION = '0.3.7'
 
 -- The path seperator of the operating system
 local PATH_SEP = package.config:sub(1, 1)
