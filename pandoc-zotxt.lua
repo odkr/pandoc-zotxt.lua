@@ -54,8 +54,12 @@ local unpack = table.unpack
 -- Libraries
 -- =========
 
-function split_path (fname) 
-    return fname:match('(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$')
+
+do
+    local SPLIT_RE = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
+    function split_path (fname) 
+        return fname:match(SPLIT_RE)
+    end
 end
 
 do
@@ -86,14 +90,11 @@ end
 
 --- Checks if a path is absolute.
 --
--- Doesn't identify absolute paths on older Windows systems
--- if there are more than 26 drives.
---
 -- @tparam string path A path.
 --
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
-    if PATH_SEP == '\\' and path:match('^%a:\\') then return true end
+    if PATH_SEP == '\\' and path:match('^.:\\') then return true end
     return path:sub(1, 1) == PATH_SEP
 end
 
@@ -132,7 +133,7 @@ end
 --- Returns the working directory of the first input file or '.'.
 --
 -- @treturn string The working directory.
-function get_wd ()
+function get_input_directory ()
     local first_input_file = PANDOC_STATE.input_files[1]
     if first_input_file then
         local first_input_dir = split_path(first_input_file)
@@ -358,7 +359,7 @@ function add_sources (meta)
         if biblio.t == 'MetaList' then biblio = biblio[#biblio] end
         biblio = stringify(biblio)
         if not is_path_absolute(biblio) then
-            biblio = get_wd() .. PATH_SEP .. biblio
+            biblio = get_input_directory() .. PATH_SEP .. biblio
         end
         local ok, err = update_bibliography(biblio)
         if not ok then warn(err) end
