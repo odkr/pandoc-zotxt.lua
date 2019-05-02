@@ -30,20 +30,17 @@ which works with Pandoc 1.12 or later (but also requires
 1. Download the 
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack it.
-3. Copy the whole repository directory to the `filters` sub-directory
-   of your Pandoc data directory    
-   (`pandoc --version` will tell you where your Pandoc data directory is).
+3. Move the repository directory to the `filters` sub-directory of your
+   Pandoc data directory (`pandoc --version` will tell you where that is).
 4. Move the file `pandoc-zotxt.lua` from the repository directory
    up into the `filters` directory.
 
-If you're using a POSIX-compliant operating system, you may also want
-to copy the manual page to wherever your system stores them
-(typically `/usr/local/share/man/man1`).
+### POSIX-compliant systems
 
-Moreover, if you're using a POSIX-compliant operating system and have 
-[curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
-you can (probably) do all of the above by copy-pasting the
-following instructions into a terminal:
+If you have [curl](https://curl.haxx.se/) or 
+[wget](https://www.gnu.org/software/wget/), you can (probably)
+install `pandoc-zotxt.lua` by copy-pasting the
+following instructions into a bourne shell:
 
 ```sh
     (
@@ -65,6 +62,10 @@ following instructions into a terminal:
         exit
     )
 ```
+
+This will also try to copy the manual page to `/usr/local/share/man/man1`;
+this is why the system asks you for a password.
+
 
 
 ## `pandoc-zotxt.lua` vs `pandoc-zotxt`
