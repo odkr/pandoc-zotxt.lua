@@ -123,44 +123,15 @@ function is_path_absolute (path)
 end
 
 
---- Checks if a file exists.
---
--- @tparam string fname Name of the file.
--- @return `true` or not `nil` if the file exists. `nil` otherwise.
--- @treturn Error code if the file does not exist. 
---
--- See <https://stackoverflow.com/questions/1340230/>
-function does_file_exist (fname)
-    local ok, err, errno = os.rename(fname, fname)
-    if not ok and errno == 13 then return true end
-    return ok, err 
-end
-
-
---- Checks if a filename points to a directory.
---
--- @tparam string fname Name of the directory.
--- @return `true` or not `nil` if the directory exists. `nil` otherwise.
--- @treturn Error code if the directory does not exist. 
---
--- See <https://stackoverflow.com/questions/1340230/>
-function is_dir (fname)
-    if fname:sub(-#PATH_SEP) ~= PATH_SEP then fname = fname .. PATH_SEP end
-    return does_file_exist(fname)
-end
-
-
---- Returns the working directory of the first input file or '.'.
+--- Returns the directory of the first input file or '.'.
 --
 -- @treturn string The working directory.
 function get_input_directory ()
-    local first_input_file = PANDOC_STATE.input_files[1]
-    if first_input_file then
-        local first_input_dir = split_path(first_input_file)
-        if not first_input_dir then return '.' end
-        if is_dir(first_input_dir) then return first_input_dir end
-    end
-    return '.'
+    local file = PANDOC_STATE.input_files[1]
+    if not file then return '.' end
+    local dir = split_path(file)
+    if not dir then return '.' end
+    return dir 
 end
 
 
