@@ -404,7 +404,7 @@ function add_sources (meta)
         if not is_path_absolute(biblio) then
             biblio = get_input_directory() .. PATH_SEP .. biblio
         end
-        local ok, err = update_bibliography(biblio)
+        local ok, err = pcall(update_bibliography, biblio)
         if ok then
             if not meta.bibliography then
                 meta.bibliography = biblio
