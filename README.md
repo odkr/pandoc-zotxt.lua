@@ -58,7 +58,6 @@ following commands into a bourne shell:
     } | tar xz
     mv "$REPO/$CMD" .
     [ -d "$MAN" ] && sudo cp "${REPO:?}/man/$CMD.1" "${MAN:?}"
-    exit
 )
 ```
 
