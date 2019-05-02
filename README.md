@@ -41,7 +41,7 @@ to copy the manual page to wherever your system stores them
 (typically `/usr/local/share/man/man1`).
 
 Moreover, if you're using a POSIX-compliant operating system and have 
-[cURL](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
+[curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
 you can (probably) do all of the above by copy-pasting the
 following instructions into a terminal:
 
