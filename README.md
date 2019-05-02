@@ -38,7 +38,7 @@ which works with Pandoc 1.12 or later (but also requires
 ### POSIX-compliant systems
 
 If you have [curl](https://curl.haxx.se/) or 
-[wget](https://www.gnu.org/software/wget/), you can (probably)
+[wget](https://www.gnu.org/software/wget/), you can
 install `pandoc-zotxt.lua` by copy-pasting the
 following commands into a bourne shell:
 
@@ -59,9 +59,7 @@ following commands into a bourne shell:
 ```
 
 You may also want to copy the manual page from the `man` directory in the
-repository to wherever your operating system searches for manual pages
-(`/usr/local/share/man/man1` should work on many systems, many modern
-Linux systems use `$HOME/.local/share/man/man1`).
+repository to wherever your operating system searches for manual pages.
 
 
 ## `pandoc-zotxt.lua` vs `pandoc-zotxt`
@@ -75,8 +73,8 @@ Linux systems use `$HOME/.local/share/man/man1`).
 
 Morever, `pandoc-zotxt.lua` supports:
 
-* Using Zotero item ID as citation keys.
 * Updating a JSON bibliography.
+* Using Zotero item ID as citation keys.
 
 
 ## Test suite
@@ -95,15 +93,6 @@ To run the test suite, just say:
     make test
 ```
 
-There is also a test for using Zotero item IDs as citation keys.
-But since item IDs are particular to the database used, you
-need to adapt this test yourself. Have a look at `key.md` and
-`key-is.txt` in `test`. Once you've adapted those to your database,
-you can run the test by:
-
-```sh
-    make test-key
-```
 
 ## Documentation
 
@@ -141,7 +130,6 @@ SOFTWARE.
 
 
 ## Further Information
-
 
 GitHub:
     <https://github.com/odkr/pandoc-zotxt.lua>
