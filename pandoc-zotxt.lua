@@ -139,9 +139,6 @@ end
 -- @treturn number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate other errors.
 function read_json_file (fname)
-    if not sub(fname, -5) == '.json' then
-        return nil, fname .. ': not a JSON file.', -1
-    end
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
     local data, err, errno = f:read()
@@ -154,11 +151,11 @@ function read_json_file (fname)
 end
 
 
---- Writes data as JSON to a file.
+--- Writes data to a file in JSON.
 --
 -- @param data Arbitrary data.
 -- @tparam string fname Name of the file.
--- @treturn bool `true` if saving that data as JSON succeeded, `nil` otherwise.
+-- @treturn bool `true` if saving that data in JSON succeeded, `nil` otherwise.
 -- @treturn string An error message if an error occurred.
 -- @treturn integer An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate other errors.
@@ -362,21 +359,25 @@ function add_sources (meta)
     if meta['zotero-bibliography'] then
         local stringify = pandoc.utils.stringify
         local biblio = stringify(meta['zotero-bibliography'])
-        if not is_path_absolute(biblio) then
-            biblio = get_input_directory() .. PATH_SEP .. biblio
-        end
-        local ok, err = pcall(update_bibliography, biblio)
-        if ok then
-            if not meta.bibliography then
-                meta.bibliography = biblio
-            elseif meta.bibliography.t == 'MetaInlines' then
-                meta.bibliography = {stringify(meta.bibliography), biblio}
-            elseif meta.bibliography.t == 'MetaList' then
-                insert(meta.bibliography, biblio)
+        if sub(biblio, -5) == '.json' then            
+            if not is_path_absolute(biblio) then
+                biblio = get_input_directory() .. PATH_SEP .. biblio
             end
-            return meta
+            local ok, err = pcall(update_bibliography, biblio)
+            if ok then
+                if not meta.bibliography then
+                    meta.bibliography = biblio
+                elseif meta.bibliography.t == 'MetaInlines' then
+                    meta.bibliography = {stringify(meta.bibliography), biblio}
+                elseif meta.bibliography.t == 'MetaList' then
+                    insert(meta.bibliography, biblio)
+                end
+                return meta
+            else
+                warn(err)
+            end
         else
-            warn(err)
+            warn(biblio, ': not a JSON file.')
         end
     end
     return add_references(meta)
