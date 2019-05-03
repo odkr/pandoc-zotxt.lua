@@ -141,7 +141,7 @@ end
 function read_json_file (fname)
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
-    local data, err, errno = f:read()
+    local data, err, errno = f:read("a")
     if not data then return nil, err, errno end
     local ok, err, errno = f:close()
     if not ok then return nil, err, errno end
