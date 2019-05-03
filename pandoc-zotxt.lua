@@ -183,8 +183,8 @@ end
 -- See <https://github.com/egh/zotxt> for details.
 --
 -- @tparam string key The lookup key.
--- @treturn string Bibliographic data for that source as CSL JSON string
---  if the source was found, `nil` otherwise.
+-- @treturn string Bibliographic data for that source as CSL JSON string,
+--  `nil` if the source wasn't found.
 -- @treturn string An error message if the source was not found.
 do
     local keytypes = ZOTXT_KEYTYPES
@@ -230,7 +230,7 @@ end
 -- 
 -- @tparam string citekey A citation key.
 -- @treturn table Bibliographic data for that source in CSL format,
---  if the source was found, `nil` otherwise.
+--  `nil` if the source wasn't found.
 -- @treturn string The error message of the lookup attempt for the first
 --  keytype if the source wasn't found.
 function get_source (citekey)
@@ -296,8 +296,7 @@ do
     --
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn pandoc.Meta An updated metadata block, with the field
-    --  `references` added when needed, if sources were found;
-    --  `nil` otherwise.
+    --  `references` added when needed, `nil` if no sources were found.
     function add_references (meta)
         local refs = get_sources(CITEKEYS)
         if #refs > 0 then
@@ -351,7 +350,7 @@ end
 --
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn pandoc.Meta An updated metadata block, with references or
---  a pointer to the bibliography file added or `nil` if nothing
+--  a pointer to the bibliography file, `nil` if nothing
 --  was done or an error occurred.
 --
 -- Prints messages to STDERR if errors occur.
