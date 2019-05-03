@@ -36,7 +36,7 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
-local VERSION = '0.3.8'
+local VERSION = '0.3.9'
 
 
 -- Shorthands
