@@ -30,8 +30,9 @@ You can also use **pandoc-zotxt.lua** to manage a bibliography file. This is
 usually a lot faster. Simply set the `zotero-bibliography` metadata field
 to a filename. **pandoc-zotxt.lua** will then add the sources you cite to that
 file, rather than to the `references` metadata field. It will also add
-that file to the document's `bibliography` metadata field, so
-that **pandoc-zotxt.lua** picks it up.
+that file to the document's `bibliography` metadata field, so that
+**pandoc-zotxt.lua** picks it up. The biblography is stored in CSL JSON,
+so the filename must end in ".json".
 
 **pandoc-zotxt.lua** takes relative filenames to be relative to the directory
 of the first input file you pass to **pandoc** or, if you don't pass any input

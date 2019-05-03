@@ -7,20 +7,20 @@
 pandoc-zotxt.lua - Looks up sources in Zotero
 .SH SYNOPSIS
 .PP
-\f[B]pandoc\f[R] \f[B]--lua-filter\f[R] \f[I]pandoc-zotxt.lua\f[R]
+\f[B]pandoc\f[R] \f[B]\[en]lua-filter\f[R] \f[I]pandoc-zotxt.lua\f[R]
 \f[B]-F\f[R]\ \f[I]pandoc-citeproc\f[R]
 .SH DESCRIPTION
 .PP
 \f[B]pandoc-zotxt.lua\f[R] looks up sources of citations in Zotero and
-adds them either to a document\[aq]s \f[C]references\f[R] metadata field
+adds them either to a document\[cq]s \f[C]references\f[R] metadata field
 or to its bibliography, where \f[B]pandoc-citeproc\f[R] can pick them
 up.
 .PP
-You cite your sources using so-called \[dq]easy citekeys\[dq] (provided
-by \f[I]zotxt\f[R]) or \[dq]BetterBibTex Citation Keys\[dq] (provided by
+You cite your sources using so-called \[lq]easy citekeys\[rq] (provided
+by \f[I]zotxt\f[R]) or \[lq]BetterBibTex Citation Keys\[rq] (provided by
 \f[I]BetterBibTex\f[R]) and then tell \f[B]pandoc\f[R] to run
 \f[B]pandoc-zotxt.lua\f[R] before \f[B]pandoc-citeproc\f[R].
-That\[aq]s all all there is to it.
+That\[cq]s all all there is to it.
 (See the documentation of \f[I]zotxt\f[R] and \f[I]BetterBibTex\f[R]
 respectively for details.)
 .PP
@@ -31,17 +31,19 @@ Simply set the \f[C]zotero-bibliography\f[R] metadata field to a
 filename.
 \f[B]pandoc-zotxt.lua\f[R] will then add the sources you cite to that
 file, rather than to the \f[C]references\f[R] metadata field.
-It will also add that file to the document\[aq]s \f[C]bibliography\f[R]
+It will also add that file to the document\[cq]s \f[C]bibliography\f[R]
 metadata field, so that \f[B]pandoc-zotxt.lua\f[R] picks it up.
+The biblography is stored in CSL JSON, so the filename must end in
+\[lq].json\[rq].
 .PP
 \f[B]pandoc-zotxt.lua\f[R] takes relative filenames to be relative to
 the directory of the first input file you pass to \f[B]pandoc\f[R] or,
-if you don\[aq]t pass any input files, as relative to the current
+if you don\[cq]t pass any input files, as relative to the current
 working directory.
 .PP
 Note, \f[B]pandoc-zotxt.lua\f[R] only ever \f[I]adds\f[R] sources to
 bibliography files.
-It doesn\[aq]t update or delete them.
+It doesn\[cq]t update or delete them.
 To update your bibliography file, delete it.
 \f[B]pandoc-zotxt.lua\f[R] will then regenerate it from scratch.
 .SH CAVEATS
