@@ -1,7 +1,7 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.8
+-- @release 0.3.9
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -383,4 +383,4 @@ function add_sources (meta)
 end
 
 
-return {{Cite = collect_sources, Meta = add_sources}}
+return {{Cite = collect_sources}, {Meta = add_sources}}
