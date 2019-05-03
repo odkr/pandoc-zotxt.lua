@@ -1,7 +1,7 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.11
+-- @release 0.3.12
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -36,7 +36,7 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
-local VERSION = '0.3.11'
+local VERSION = '0.3.12'
 
 
 -- Shorthands
@@ -87,6 +87,16 @@ local encode = json.encode
 -- Functions
 -- =========
 
+--- Prints warnings to STDERR.
+--
+-- @tparam string ... Strings to be written to STDERR.
+--
+-- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
+function warn (...)
+    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
+end
+
+
 --- Moves an element to the beginning of a list.
 --
 -- @tparam list The list.
@@ -99,13 +109,25 @@ function move_to_front (list, i)
 end
 
 
---- Prints warnings to STDERR.
+--- Converts all numbers in a multi-dimensional table to strings.
 --
--- @tparam string ... Strings to be written to STDERR.
+-- Also converts floating point numbers to integers.
+-- This is needed because in JavaScript, all numbers are
+-- floating point numbers. But Pandoc expects integers.
 --
--- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
-function warn (...)
-    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
+-- @param data Data of any type.
+-- @return The given data, with all numbers converted into strings.
+function numtostr (data)
+    local data_type = type(data)
+    if data_type == 'table' then
+        local s = {}
+        for k, v in pairs(data) do s[k] = numtostr(v) end
+        return s
+    elseif data_type == 'number' then
+        return tostring(floor(data))
+    else
+        return data
+    end
 end
 
 
@@ -141,7 +163,7 @@ end
 function read_json_file (fname)
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
-    local data, err, errno = f:read("a")
+    local data, err, errno = f:read('a')
     if not data then return nil, err, errno end
     local ok, err, errno = f:close()
     if not ok then return nil, err, errno end
@@ -172,7 +194,7 @@ function write_json_file (data, fname)
 end
 
 
----  Retrieves bibliographic data from Zotero.
+---  Retrieves bibliographic data from Zotero in JSON.
 --
 -- Retrieves bibliographic data by citation key, trying different
 -- types of citation keys, starting with the last type for which
@@ -204,29 +226,7 @@ do
 end
 
 
---- Converts all numbers in a multi-dimensional table to strings.
---
--- Also converts floating point numbers to integers.
--- This is needed because in JavaScript, all numbers are
--- floating point numbers. But Pandoc expects integers.
---
--- @param data Data of any type.
--- @return The given data, with all numbers converted into strings.
-function numtostr (data)
-    local data_type = type(data)
-    if data_type == 'table' then
-        local s = {}
-        for k, v in pairs(data) do s[k] = numtostr(v) end
-        return s
-    elseif data_type == 'number' then
-        return tostring(floor(data))
-    else
-        return data
-    end
-end
-
-
---- Retrieves bibliographic data for sources from Zotero.
+--- Retrieves bibliographic data for a single source from Zotero.
 -- 
 -- @tparam string citekey A citation key.
 -- @treturn table Bibliographic data for that source in CSL format,
@@ -362,7 +362,7 @@ function add_sources (meta)
             if not is_path_absolute(biblio) then
                 biblio = get_input_directory() .. PATH_SEP .. biblio
             end
-            local ok, err = pcall(update_bibliography, biblio)
+            local ok, err = update_bibliography(biblio)
             if ok then
                 if not meta.bibliography then
                     meta.bibliography = biblio
