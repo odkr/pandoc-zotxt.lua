@@ -200,10 +200,10 @@ local function newdecoder()
 		inf, inf, inf, inf, inf, inf, inf, inf,
 		inf, inf, inf, inf, inf, inf, inf, inf,
 		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
+		__index = function()
+			return inf
+		end
 	}
-	f_str_hextbl.__index = function()
-		return inf
-	end
 	setmetatable(f_str_hextbl, f_str_hextbl)
 
 	local f_str_escapetbl = {
@@ -215,10 +215,10 @@ local function newdecoder()
 		['n']  = '\n',
 		['r']  = '\r',
 		['t']  = '\t',
+		__index = function()
+			decode_error("invalid escape sequence")
+		end
 	}
-	f_str_escapetbl.__index = function()
-		decode_error("invalid escape sequence")
-	end
 	setmetatable(f_str_escapetbl, f_str_escapetbl)
 
 	local function surrogate_first_error()
@@ -273,8 +273,8 @@ local function newdecoder()
 				else  -- surrogate pair 2nd
 					if f_str_surrogate_prev ~= 0 then
 						ucode = 0x10000 +
-								(f_str_surrogate_prev - 0xD800) * 0x400 +
-								(ucode - 0xDC00)
+						        (f_str_surrogate_prev - 0xD800) * 0x400 +
+						        (ucode - 0xDC00)
 						f_str_surrogate_prev = 0
 						c1 = floor(ucode / 0x40000)
 						ucode = ucode - c1 * 0x40000
@@ -307,33 +307,34 @@ local function newdecoder()
 	local f_str_keycache = setmetatable({}, {__mode="v"})
 
 	local function f_str(iskey)
-		local newpos = pos-2
-		local pos2 = pos
-		local c1, c2
+		local newpos = pos
+		local tmppos, c1, c2
 		repeat
-			newpos = find(json, '"', pos2, true)  -- search '"'
+			newpos = find(json, '"', newpos, true)  -- search '"'
 			if not newpos then
 				decode_error("unterminated string")
 			end
-			pos2 = newpos+1
-			while true do  -- skip preceding '\\'s
-				c1, c2 = byte(json, newpos-2, newpos-1)
-				if c2 ~= 0x5C or c1 ~= 0x5C then
-					break
-				end
-				newpos = newpos-2
+			tmppos = newpos-1
+			newpos = newpos+1
+			c1, c2 = byte(json, tmppos-1, tmppos)
+			if c2 == 0x5C and c1 == 0x5C then  -- skip preceding '\\'s
+				repeat
+					tmppos = tmppos-2
+					c1, c2 = byte(json, tmppos-1, tmppos)
+				until c2 ~= 0x5C or c1 ~= 0x5C
+				tmppos = newpos-2
 			end
 		until c2 ~= 0x5C  -- leave if '"' is not preceded by '\'
 
-		local str = sub(json, pos, pos2-2)
-		pos = pos2
+		local str = sub(json, pos, tmppos)
+		pos = newpos
 
 		if iskey then  -- check key cache
-			pos2 = f_str_keycache[str]
-			if pos2 then
-				return pos2
+			tmppos = f_str_keycache[str]  -- reuse tmppos for cache key/val
+			if tmppos then
+				return tmppos
 			end
-			pos2 = str
+			tmppos = str
 		end
 
 		if find(str, f_str_ctrl_pat) then
@@ -352,7 +353,7 @@ local function newdecoder()
 			end
 		end
 		if iskey then  -- commit key cache
-			f_str_keycache[pos2] = str
+			f_str_keycache[tmppos] = str
 		end
 		return str
 	end
@@ -368,28 +369,28 @@ local function newdecoder()
 		end
 		local ary = {}
 
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
+		pos = match(json, '^[ \n\r\t]*()', pos)
 
 		local i = 0
-		if byte(json, pos) ~= 0x5D then  -- check closing bracket ']' which means the array empty
-			local newpos = pos-1
+		if byte(json, pos) == 0x5D then  -- check closing bracket ']' which means the array empty
+			pos = pos+1
+		else
+			local newpos = pos
 			repeat
 				i = i+1
-				f = dispatcher[byte(json,newpos+1)]  -- parse value
-				pos = newpos+2
+				f = dispatcher[byte(json,newpos)]  -- parse value
+				pos = newpos+1
 				ary[i] = f()
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)  -- check comma
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*%]', pos)  -- check closing bracket
+			newpos = match(json, '^[ \n\r\t]*%]()', pos)  -- check closing bracket
 			if not newpos then
 				decode_error("no closing bracket of an array")
 			end
 			pos = newpos
 		end
 
-		pos = pos+1
 		if arraylen then -- commit the length of the array if `arraylen` is set
 			ary[0] = i
 		end
@@ -405,54 +406,53 @@ local function newdecoder()
 		end
 		local obj = {}
 
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
-		if byte(json, pos) ~= 0x7D then  -- check closing bracket '}' which means the object empty
-			local newpos = pos-1
+		pos = match(json, '^[ \n\r\t]*()', pos)
+		if byte(json, pos) == 0x7D then  -- check closing bracket '}' which means the object empty
+			pos = pos+1
+		else
+			local newpos = pos
 
 			repeat
-				pos = newpos+1
-				if byte(json, pos) ~= 0x22 then  -- check '"'
+				if byte(json, newpos) ~= 0x22 then  -- check '"'
 					decode_error("not key")
 				end
-				pos = pos+1
+				pos = newpos+1
 				local key = f_str(true)  -- parse key
 
 				-- optimized for compact json
 				-- c1, c2 == ':', <the first char of the value> or
 				-- c1, c2, c3 == ':', ' ', <the first char of the value>
 				f = f_err
-				do
-					local c1, c2, c3 = byte(json, pos, pos+3)
-					if c1 == 0x3A then
-						newpos = pos
-						if c2 == 0x20 then
-							newpos = newpos+1
-							c2 = c3
-						end
+				local c1, c2, c3 = byte(json, pos, pos+3)
+				if c1 == 0x3A then
+					if c2 ~= 0x20 then
 						f = dispatcher[c2]
+						newpos = pos+2
+					else
+						f = dispatcher[c3]
+						newpos = pos+3
 					end
 				end
 				if f == f_err then  -- read a colon and arbitrary number of spaces
-					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+					newpos = match(json, '^[ \n\r\t]*:[ \n\r\t]*()', pos)
 					if not newpos then
 						decode_error("no colon after a key")
 					end
-					f = dispatcher[byte(json, newpos+1)]
+					f = dispatcher[byte(json, newpos)]
+					newpos = newpos+1
 				end
-				pos = newpos+2
+				pos = newpos
 				obj[key] = f()  -- parse value
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*}', pos)
+			newpos = match(json, '^[ \n\r\t]*}()', pos)
 			if not newpos then
 				decode_error("no closing bracket of an object")
 			end
 			pos = newpos
 		end
 
-		pos = pos+1
 		rec_depth = rec_depth - 1
 		return obj
 	end
@@ -462,8 +462,8 @@ local function newdecoder()
 		indexed by the code of the value's first char.
 		Nil key means the end of json.
 	--]]
-	dispatcher = {
-		       f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+	dispatcher = { [0] =
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
@@ -479,11 +479,10 @@ local function newdecoder()
 		f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
 		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
+		__index = function()
+			decode_error("unexpected termination")
+		end
 	}
-	dispatcher[0] = f_err
-	dispatcher.__index = function()
-		decode_error("unexpected termination")
-	end
 	setmetatable(dispatcher, dispatcher)
 
 	--[[
@@ -493,9 +492,7 @@ local function newdecoder()
 		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
 		rec_depth = 0
 
-		pos = pos or 1
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
+		pos = match(json, '^[ \n\r\t]*()', pos)
 
 		f = dispatcher[byte(json, pos)]
 		pos = pos+1

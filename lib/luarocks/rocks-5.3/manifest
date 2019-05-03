@@ -1,7 +1,7 @@
 commands = {}
 dependencies = {
    lunajson = {
-      ["1.2-0"] = {
+      ["1.2.2-1"] = {
          {
             constraints = {
                {
@@ -18,21 +18,21 @@ dependencies = {
 }
 modules = {
    lunajson = {
-      "lunajson/1.2-0"
+      "lunajson/1.2.2-1"
    },
    ["lunajson.decoder"] = {
-      "lunajson/1.2-0"
+      "lunajson/1.2.2-1"
    },
    ["lunajson.encoder"] = {
-      "lunajson/1.2-0"
+      "lunajson/1.2.2-1"
    },
    ["lunajson.sax"] = {
-      "lunajson/1.2-0"
+      "lunajson/1.2.2-1"
    }
 }
 repository = {
    lunajson = {
-      ["1.2-0"] = {
+      ["1.2.2-1"] = {
          {
             arch = "installed",
             commands = {},
