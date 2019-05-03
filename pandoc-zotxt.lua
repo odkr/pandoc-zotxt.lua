@@ -137,7 +137,7 @@ end
 -- @return The parsed data if reading the file succeeded, `nil `otherwise.
 -- @treturn string An error message, if an error occurred.
 -- @treturn number An error number. Positive numbers are OS error numbers, 
---  negative numbers indicate other errors.
+--  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
@@ -146,7 +146,7 @@ function read_json_file (fname)
     local ok, err, errno = f:close()
     if not ok then return nil, err, errno end
     data, err = decode(data)
-    if not data then return nil, err, -2 end
+    if not data then return nil, err, -1 end
     return numtostr(data)
 end
 
@@ -158,7 +158,7 @@ end
 -- @treturn bool `true` if saving that data in JSON succeeded, `nil` otherwise.
 -- @treturn string An error message if an error occurred.
 -- @treturn integer An error number. Positive numbers are OS error numbers, 
---  negative numbers indicate other errors.
+--  negative numbers indicate a JSON encoding error.
 function write_json_file (data, fname)
     local json, err = encode(data)
     if not json then return nil, err, -1 end
