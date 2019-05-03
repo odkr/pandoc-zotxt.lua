@@ -45,14 +45,14 @@ following commands into a bourne shell:
 ```sh
 (
     set -Cefu
-    NAME=pandoc-zotxt.lua VERS=0.3.10
+    NAME=pandoc-zotxt.lua VERS=0.3.11
     URL="https://github.com/odkr/${NAME:?}/archive/v${VERS:?}.tar.gz"
     FILTERS="${HOME:?}/.pandoc/filters"
     mkdir -p "${FILTERS:?}"
     cd -P "$FILTERS" || exit
     {
-        curl -LsS "$URL" || ERR=$?
-        [ "${ERR-0}" -eq 127 ] && wget -q -O - "$URL"
+        curl -L "$URL" || ERR=$?
+        [ "${ERR-0}" -eq 127 ] && wget -O - "$URL"
     } | tar xz
     mv "$NAME-$VERS/pandoc-zotxt.lua" .
 )

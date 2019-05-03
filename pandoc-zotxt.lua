@@ -1,7 +1,7 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.10
+-- @release 0.3.11
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -36,7 +36,7 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
-local VERSION = '0.3.10'
+local VERSION = '0.3.11'
 
 
 -- Shorthands
