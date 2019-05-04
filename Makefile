@@ -18,6 +18,9 @@ test-biblio:
 		-o test/biblio-is.txt test/biblio.md
 	cmp test/biblio-is.txt test/biblio-should.txt
 	test -e test/biblio.json
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o test/biblio-is.txt test/biblio.md
+	cmp test/biblio-is.txt test/biblio-should.txt
 
 test-key:
 	rm -f test/key-is.txt
