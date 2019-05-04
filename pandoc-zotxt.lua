@@ -326,7 +326,7 @@ do
         if #CITEKEYS == 0 then return end
         local refs, err, errno = read_json_file(fname)
         if not refs then
-            if err ~= '' and errno ~=2 then return nil, err, errno end
+            if err and errno ~= 2 then return nil, err, errno end
             refs = {}
         end
         local count = #refs
