@@ -1,7 +1,7 @@
 --- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.14
+-- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -80,8 +80,8 @@ do
 end
 
 local json = require 'lunajson'
-local decode = json.decode
 local encode = json.encode
+local decode = json.decode
 
 
 -- Functions
@@ -163,12 +163,12 @@ end
 function read_json_file (fname)
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
-    local data, err, errno = f:read('a')
-    if not data then return nil, err, errno end
+    local json, err, errno = f:read('a')
+    if not json then return nil, err, errno end
     local ok, err, errno = f:close()
     if not ok then return nil, err, errno end
-    data, err = decode(data)
-    if not data then return nil, err, -1 end
+    local data, err = decode(json) 
+    if not data then return nil, err or 'JSON parse error', -1 end
     return numtostr(data)
 end
 
@@ -234,11 +234,13 @@ end
 -- @treturn string The error message of the lookup attempt for the first
 --  keytype if the source wasn't found.
 function get_source (citekey)
-    local data, err = get_source_json(citekey)
-    if data == nil then
-        return data, err
+    local json, err = get_source_json(citekey)
+    if json == nil then
+        return nil, err
     else
-        local source = numtostr(decode(data)[1])
+        local data, err = decode(json)
+        if not data then return nil, err or 'JSON parse error' end
+        local source = numtostr(data[1])
         source.id = citekey
         return source
     end
@@ -298,6 +300,7 @@ do
     -- @treturn pandoc.Meta An updated metadata block, with the field
     --  `references` added when needed, `nil` if no sources were found.
     function add_references (meta)
+        if #CITEKEYS == 0 then return end
         local refs = get_sources(CITEKEYS)
         if #refs > 0 then
             if meta.references then
@@ -320,9 +323,10 @@ do
     --  (or not update was needed), `nil` otherwise.
     -- @treturn string An error message if an error occurred.
     function update_bibliography (fname)
+        if #CITEKEYS == 0 then return end
         local refs, err, errno = read_json_file(fname)
         if not refs then
-            if errno ~=2 then return nil, err, errno end
+            if err ~= '' and errno ~=2 then return nil, err, errno end
             refs = {}
         end
         local count = #refs
