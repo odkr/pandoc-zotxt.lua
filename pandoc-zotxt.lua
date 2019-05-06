@@ -1,10 +1,61 @@
---- pandoc-zotxt.lua Looks up citations in Zotero and adds references. 
+--- pandoc-zotxt.lua - Looks up citations in Zotero and adds references. 
 --
 -- @script pandoc-zotxt.lua
 -- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
+--
+--
+-- SYNOPSIS
+-- ========
+-- 
+--      pandoc --lua-filter pandoc-zotxt.lua -F pandoc-citeproc
+-- 
+-- 
+-- DESCRIPTION
+-- ===========
+-- 
+-- pandoc-zotxt.lua looks up sources of citations in Zotero and adds them
+-- either to a document's `references` metadata field or to its bibliography,
+-- where pandoc-citeproc can pick them up.
+-- 
+-- You cite your sources using so-called "easy citekeys" (provided by zotxt) or
+-- "BetterBibTex Citation Keys" (provided by BetterBibTex) and then tell pandoc
+-- to run pandoc-zotxt.lua before pandoc-citeproc. That's all all there is to
+-- it. (See the documentation of zotxt and BetterBibTex respectively for
+-- details.)
+-- 
+-- You can also use pandoc-zotxt.lua to manage a bibliography file. This is
+-- usually a lot faster. Simply set the `zotero-bibliography` metadata field 
+-- to a filename. pandoc-zotxt.lua will then add the sources you cite to that
+-- file, rather than to the `references` metadata field. It will also add 
+-- that file to the document's `bibliography` metadata field, so that
+-- pandoc-zotxt.lua picks it up. The biblography is stored in CSL JSON, 
+-- so the filename must end in ".json".
+-- 
+-- pandoc-zotxt.lua takes relative filenames to be relative to the directory
+-- of the first input file you pass to pandoc or, if you don't pass any input
+-- files, as relative to the current working directory.
+-- 
+-- Note, pandoc-zotxt.lua only ever adds sources to bibliography files.
+-- It doesn't update or delete them. To update your bibliography file,
+-- delete it. pandoc-zotxt.lua will then regenerate it from scratch.
+-- 
+-- CAVEATS
+-- =======
+-- 
+-- pandoc-zotxt.lua is Unicode-agnostic.
+-- 
+-- 
+-- SEE ALSO
+-- ========
+-- 
+-- pandoc(1), pandoc-citeproc(1)
+--
+--
+-- LICENSE
+-- =======
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to
@@ -24,22 +75,23 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 -- IN THE SOFTWARE.
 
--- Constants
+
+-- CONSTANTS
 -- =========
 
 -- The URL to lookup citation data.
--- See `get_source_json` and <https://github.com/egh/zotxt> for details.
+-- See `get_source` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
 -- Types of citation keys.
--- See `get_source_json` and <https://github.com/egh/zotxt> for details.
+-- See `get_source` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
 local VERSION = '0.3.14'
 
 
--- Shorthands
+-- SHORTHANDS
 -- ==========
 
 local open = io.open
@@ -49,7 +101,7 @@ local remove = table.remove
 local unpack = table.unpack
 
 
--- Libraries
+-- LIBRARIES
 -- =========
 
 local text = require 'text'
@@ -83,7 +135,7 @@ local encode = json.encode
 local decode = json.decode
 
 
--- Functions
+-- FUNCTIONS
 -- =========
 
 --- Prints warnings to STDERR.
