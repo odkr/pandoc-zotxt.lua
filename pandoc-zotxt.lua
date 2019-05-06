@@ -194,7 +194,7 @@ function write_json_file (data, fname)
 end
 
 
----  Retrieves bibliographic data from Zotero in JSON.
+---  Retrieves bibliographic data for a source from Zotero.
 --
 -- Retrieves bibliographic data by citation key, trying different
 -- types of citation keys, starting with the last type for which
@@ -205,65 +205,29 @@ end
 -- See <https://github.com/egh/zotxt> for details.
 --
 -- @tparam string key The lookup key.
--- @treturn string Bibliographic data for that source as CSL JSON string,
---  `nil` if the source wasn't found.
+-- @treturn table Bibliographic data for that source in CSL format,
+--  `nil` if the source wasn't found or an error occurred.
 -- @treturn string An error message if the source was not found.
 do
     local keytypes = ZOTXT_KEYTYPES
+    local fetch = pandoc.mediabag.fetch
 
-    function get_source_json (key)
+    function get_source (key)
+
+
         local _, reply
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
-            _, reply = pandoc.mediabag.fetch(query_url, '.')
-            if sub(reply, 1, 1) == '[' then
-                if i > 1 then move_to_front(keytypes, i) end
-                return reply
+            _, reply = fetch(query_url, '.')
+            local ok, data = pcall(decode, reply)
+            if ok then
+                local source = numtostr(data[1])
+                source.id = key
+                return source
             end
         end
         return nil, reply
     end
-end
-
-
---- Retrieves bibliographic data for a single source from Zotero.
--- 
--- @tparam string citekey A citation key.
--- @treturn table Bibliographic data for that source in CSL format,
---  `nil` if the source wasn't found.
--- @treturn string The error message of the lookup attempt for the first
---  keytype if the source wasn't found.
-function get_source (citekey)
-    local json, err = get_source_json(citekey)
-    if json == nil then
-        return nil, err
-    else
-        local data, err = decode(json)
-        if not data then return nil, err or 'JSON parse error' end
-        local source = numtostr(data[1])
-        source.id = citekey
-        return source
-    end
-end
-
-
---- Retrieves bibliographic data for multiple sources from Zotero.
--- 
--- @tparam {string,...} citekeys A list of citation keys.
--- @treturn {table,...} The cited sources found, in CSL format.
---
--- Prints an error message to STDERR for every source that cannot be found.
-function get_sources (citekeys)
-    local sources = {}
-    for _, citekey in ipairs(citekeys) do
-        local source, err = get_source(citekey)
-        if source then 
-            insert(sources, source)
-        else
-            warn(err)
-        end
-    end
-    return sources
 end
 
 
@@ -299,17 +263,20 @@ do
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn pandoc.Meta An updated metadata block, with the field
     --  `references` added when needed, `nil` if no sources were found.
+    --
+    -- Prints an error message to STDERR for every source that cannot be found.
     function add_references (meta)
         if #CITEKEYS == 0 then return end
-        local refs = get_sources(CITEKEYS)
-        if #refs > 0 then
-            if meta.references then
-                insert(meta.references, refs)
+        if not meta.references then meta.references = {} end
+        for _, citekey in ipairs(CITEKEYS) do
+            local ref, err = get_source(citekey)
+            if ref then
+                insert(meta.references, ref)
             else
-                meta.references = refs 
+                warn(err)
             end
-            return meta
         end
+        return meta
     end
     
     
