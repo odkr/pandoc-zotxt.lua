@@ -4,17 +4,20 @@ author: Odin Kroeger
 date: May 2, 2019
 ---
 
-# NAME
+NAME
+====
 
 pandoc-zotxt.lua - Looks up sources in Zotero
 
 
-# SYNOPSIS
+SYNOPSIS
+========
 
 **pandoc** **--lua-filter** *pandoc-zotxt.lua* **-F** *pandoc-citeproc*
 
 
-# DESCRIPTION
+DESCRIPTION
+===========
 
 **pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
 them either to a document's `references` metadata field or to its
@@ -43,11 +46,13 @@ It doesn't update or delete them. To update your bibliography file,
 delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
 
 
-# CAVEATS
+CAVEATS
+=======
 
 **pandoc-zotxt.lua** is Unicode-agnostic.
 
 
-# SEE ALSO
+SEE ALSO
+========
 
 pandoc(1), pandoc-citeproc(1)
