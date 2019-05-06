@@ -43,7 +43,6 @@ local VERSION = '0.3.14'
 -- ==========
 
 local open = io.open
-local floor = math.floor
 local concat = table.concat
 local insert = table.insert
 local remove = table.remove
@@ -97,40 +96,6 @@ function warn (...)
 end
 
 
---- Moves an element to the beginning of a list.
---
--- @tparam list The list.
--- @tparam integer The index of the element.
--- @treturn table The list.
-function move_to_front (list, i)
-    local element = remove(list, i)
-    insert(list, 1, element)
-    return list
-end
-
-
---- Converts all numbers in a multi-dimensional table to strings.
---
--- Also converts floating point numbers to integers.
--- This is needed because in JavaScript, all numbers are
--- floating point numbers. But Pandoc expects integers.
---
--- @param data Data of any type.
--- @return The given data, with all numbers converted into strings.
-function numtostr (data)
-    local data_type = type(data)
-    if data_type == 'table' then
-        local s = {}
-        for k, v in pairs(data) do s[k] = numtostr(v) end
-        return s
-    elseif data_type == 'number' then
-        return tostring(floor(data))
-    else
-        return data
-    end
-end
-
-
 --- Checks if a path is absolute.
 --
 -- @tparam string path A path.
@@ -153,44 +118,31 @@ function get_input_directory ()
 end
 
 
---- Reads a JSON file.
+--- Converts all numbers in a multi-dimensional table to strings.
 --
--- @tparam string fname Name of the file.
--- @return The parsed data if reading the file succeeded, `nil `otherwise.
--- @treturn string An error message, if an error occurred.
--- @treturn number An error number. Positive numbers are OS error numbers, 
---  negative numbers indicate a JSON decoding error.
-function read_json_file (fname)
-    local f, err, errno = open(fname, 'r')
-    if not f then return nil, err, errno end
-    local json, err, errno = f:read('a')
-    if not json then return nil, err, errno end
-    local ok, err, errno = f:close()
-    if not ok then return nil, err, errno end
-    local data, err = decode(json) 
-    if not data then return nil, err or 'JSON parse error', -1 end
-    return numtostr(data)
-end
-
-
---- Writes data to a file in JSON.
+-- Also converts floating point numbers to integers.
+-- This is needed because in JavaScript, all numbers are
+-- floating point numbers. But Pandoc expects integers.
 --
--- @param data Arbitrary data.
--- @tparam string fname Name of the file.
--- @treturn bool `true` if saving that data in JSON succeeded, `nil` otherwise.
--- @treturn string An error message if an error occurred.
--- @treturn integer An error number. Positive numbers are OS error numbers, 
---  negative numbers indicate a JSON encoding error.
-function write_json_file (data, fname)
-    local json, err = encode(data)
-    if not json then return nil, err, -1 end
-    local f, err, errno = open(fname, 'w')
-    if not f then return nil, err, errno end
-    local ok, err, errno = f:write(json, '\n')
-    if not ok then return nil, err, errno end
-    ok, err, errno = f:close()
-    if not ok then return nil, err, errno end
-    return true
+-- @param data Data of any type.
+-- @return The given data, with all numbers converted into strings.
+do
+    local pairs = pairs
+    local tostring = tostring
+    local floor = math.floor
+
+    function numtostr (data)
+        local data_type = type(data)
+        if data_type == 'table' then
+            local s = {}
+            for k, v in pairs(data) do s[k] = numtostr(v) end
+            return s
+        elseif data_type == 'number' then
+            return tostring(floor(data))
+        else
+            return data
+        end
+    end
 end
 
 
@@ -211,16 +163,20 @@ end
 do
     local keytypes = ZOTXT_KEYTYPES
     local fetch = pandoc.mediabag.fetch
+    local decode = decode
+    local concat = concat
+    local remove = remove
+    local insert = insert
 
     function get_source (key)
-
-
         local _, reply
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
             _, reply = fetch(query_url, '.')
             local ok, data = pcall(decode, reply)
             if ok then
+                local keytype = remove(keytypes, i)
+                insert(keytypes, 1, keytype)
                 local source = numtostr(data[1])
                 source.id = key
                 return source
@@ -231,17 +187,101 @@ do
 end
 
 
+--- Reads a JSON file.
+--
+-- @tparam string fname Name of the file.
+-- @return The parsed data if reading the file succeeded, `nil `otherwise.
+-- @treturn string An error message, if an error occurred.
+-- @treturn number An error number. Positive numbers are OS error numbers, 
+--  negative numbers indicate a JSON decoding error.
+function read_json_file (fname)
+    local f, err, errno = open(fname, 'r')
+    if not f then return nil, err, errno end
+    local json, err, errno = f:read('a')
+    if not json then return nil, err, errno end
+    local ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    local ok, data = pcall(decode, json) 
+    if not ok then return nil, 'JSON parse error', -1 end
+    return numtostr(data)
+end
+
+
+--- Writes data to a file in JSON.
+--
+-- @param data Arbitrary data.
+-- @tparam string fname Name of the file.
+-- @treturn bool `true` if saving that data in JSON succeeded, `nil` otherwise.
+-- @treturn string An error message if an error occurred.
+-- @treturn integer An error number. Positive numbers are OS error numbers, 
+--  negative numbers indicate a JSON encoding error.
+function write_json_file (data, fname)
+    local ok, json = pcall(encode, data)
+    if not ok then return nil, 'JSON encoding error', -1 end
+    local f, err, errno = open(fname, 'w')
+    if not f then return nil, err, errno end
+    local ok, err, errno = f:write(json, '\n')
+    if not ok then return nil, err, errno end
+    ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    return true
+end
+
+
+--- Adds cited sources to a bibliography file.
+--
+-- @tparam string fname The filename of the biblography.
+-- @tparam {string,...} citekeys The citation keys of the source to add.
+-- @treturn bool `true` if updating the biblography succeeded
+--  (or not update was needed), `nil` otherwise.
+-- @treturn string An error message if an error occurred.
+--
+-- Prints an error message to STDERR for every source that cannot be found.
+function update_bibliography (fname, citekeys)
+    if #citekeys == 0 then return end
+    local ipairs = ipairs
+    local insert = insert
+    local refs, err, errno = read_json_file(fname)
+    if not refs then
+        if err and errno ~= 2 then return nil, err, errno end
+        refs = {}
+    end
+    local count = #refs
+    for _, citekey in ipairs(citekeys) do
+        local present = false
+        for _, ref in ipairs(refs) do
+            if citekey == ref.id then
+                present = true
+                break
+            end
+        end
+        if not present then
+            local ref, err = get_source(citekey)
+            if ref then
+                insert(refs, ref)
+            else
+                warn(err)
+            end
+        end
+    end
+    if (#refs > count) then return write_json_file(refs, fname) end
+    return true
+end
+
+
 do
     local CITEKEYS = {}
 
     --- Collects all citekeys used in a document.
     --
     -- Saves them into the variable `CITEKEYS`, which is shared with
-    -- `add_references` and `update_bibliography`.
+    -- `add_references` and `add_bibliography`.
     --
     -- @param citations A pandoc.Cite element.
     do
+        local insert = insert
         local seen = {}
+        
         function collect_sources (citations)
             local c = citations.citations
             for i = 1, #c do
@@ -255,7 +295,7 @@ do
     end
 
 
-    --- Adds cited sources to the metadata block of a document.
+    --- Adds sources to the metadata block of a document.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
     -- which is shared with `collect_sources`.
@@ -279,36 +319,42 @@ do
         return meta
     end
     
-    
-    --- Adds cited sources to a bibliography file.
+
+    --- Adds sources to a bibliography and the biblography to the document.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
     -- which is shared with `collect_sources`.
     --
-    -- @tparam string fname The filename of the biblography.
-    -- @treturn bool `true` if updating the biblography succeeded
-    --  (or not update was needed), `nil` otherwise.
+    -- @tparam pandoc.Meta A metadata block.
+    -- @treturn pandoc.Meta An updated metadata block, with the field
+    --  `bibliography` added when needed, `nil` if no sources were found
+    --  or `zotero-bibliography` is not set.
     -- @treturn string An error message if an error occurred.
-    function update_bibliography (fname)
-        if #CITEKEYS == 0 then return end
-        local refs, err, errno = read_json_file(fname)
-        if not refs then
-            if err and errno ~= 2 then return nil, err, errno end
-            refs = {}
+    --
+    -- Prints an error message to STDERR for every source that cannot be found.
+    function add_bibliography (meta)
+        if not #CITEKEYS or not meta['zotero-bibliography'] then return end
+        local stringify = pandoc.utils.stringify
+        local fname = stringify(meta['zotero-bibliography'])
+        if sub(fname, -5) ~= '.json' then
+            return nil, fname .. ': not a JSON file'
+        end 
+        if not is_path_absolute(fname) then
+            fname = get_input_directory() .. PATH_SEP .. fname
         end
-        local count = #refs
-        for _, citekey in ipairs(CITEKEYS) do
-            local found = false
-            for _, ref in ipairs(refs) do
-                if citekey == ref.id then
-                    found = true
-                    break
-                end
+        local ok, err = update_bibliography(fname, CITEKEYS)
+        if ok then
+            if not meta.bibliography then
+                meta.bibliography = fname
+            elseif meta.bibliography.t == 'MetaInlines' then
+                meta.bibliography = {stringify(meta.bibliography), fname}
+            elseif meta.bibliography.t == 'MetaList' then
+                insert(meta.bibliography, fname)
             end
-            if not found then refs[#refs + 1] = get_source(citekey) end
+            return meta
+        else
+            return nil, err
         end
-        if (#refs > count) then return write_json_file(refs, fname) end
-        return true
     end
 end
 
@@ -326,29 +372,10 @@ end
 --
 -- Prints messages to STDERR if errors occur.
 function add_sources (meta)
-    if meta['zotero-bibliography'] then
-        local stringify = pandoc.utils.stringify
-        local biblio = stringify(meta['zotero-bibliography'])
-        if sub(biblio, -5) == '.json' then            
-            if not is_path_absolute(biblio) then
-                biblio = get_input_directory() .. PATH_SEP .. biblio
-            end
-            local ok, err = update_bibliography(biblio)
-            if ok then
-                if not meta.bibliography then
-                    meta.bibliography = biblio
-                elseif meta.bibliography.t == 'MetaInlines' then
-                    meta.bibliography = {stringify(meta.bibliography), biblio}
-                elseif meta.bibliography.t == 'MetaList' then
-                    insert(meta.bibliography, biblio)
-                end
-                return meta
-            else
-                warn(err)
-            end
-        else
-            warn(biblio, ': not a JSON file.')
-        end
+    do
+        local meta, err = add_bibliography(meta)
+        if meta then return meta end
+        if err then warn(err) end
     end
     return add_references(meta)
 end
