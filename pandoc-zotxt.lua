@@ -76,6 +76,39 @@
 -- IN THE SOFTWARE.
 
 
+-- INITIALISATION
+-- ==============
+
+local pandoc_zotxt = {}
+
+local ipairs = ipairs
+local pairs = pairs
+local pcall = pcall
+local require = require
+local tostring = tostring
+local type = type
+
+local io = io
+local math = math
+local package = package
+
+local open = io.open
+local concat = table.concat
+local insert = table.insert
+local remove = table.remove
+local unpack = table.unpack
+
+local pandoc = pandoc
+local PANDOC_STATE = PANDOC_STATE
+local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
+local stringify = pandoc.utils.stringify
+
+local _ENV = pandoc_zotxt
+
+local text = require 'text'
+local sub = text.sub
+
+
 -- CONSTANTS
 -- =========
 
@@ -87,25 +120,15 @@ local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 -- @see `get_source` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
+-- The name of this script.
+local NAME = 'pandoc-zotxt.lua'
+
 -- The version of this script.
 local VERSION = '0.3.14'
 
 
--- SHORTHANDS
--- ==========
-
-local open = io.open
-local concat = table.concat
-local insert = table.insert
-local remove = table.remove
-local unpack = table.unpack
-
-
 -- LIBRARIES
 -- =========
-
-local text = require 'text'
-local sub = text.sub
 
 --- The path seperator of the operating system
 local PATH_SEP = sub(package.config, 1, 1)
@@ -124,11 +147,11 @@ do
 end
 
 do
-    local sd = {'share', 'lua', '5.3', '?.lua'}
+    local expr = {'share', 'lua', '5.3', '?.lua'}
     local wd, fname = split_path(PANDOC_SCRIPT_FILE)
     if not wd then wd = '.' end
-    package.path = concat({package.path, concat({wd, unpack(sd)}, PATH_SEP),
-        concat({wd, fname .. '-' .. VERSION, unpack(sd)}, PATH_SEP)}, ';')
+    package.path = concat({package.path, concat({wd, unpack(expr)}, PATH_SEP),
+        concat({wd, fname .. '-' .. VERSION, unpack(expr)}, PATH_SEP)}, ';')
 end
 
 local json = require 'lunajson'
@@ -138,6 +161,46 @@ local decode = json.decode
 
 -- FUNCTIONS
 -- =========
+
+--- Prints warnings to STDERR.
+--
+-- @tparam string ... Strings to be written to STDERR.
+--
+-- Prefixes every line with `NAME` and appends a single linefeed if needed.
+function warn (...)
+    local stderr = io.stderr
+    local str = concat({...})
+    for line in str:gmatch('([^\n]*)\n?') do
+        stderr:write(NAME, ': ', line, '\n')
+    end
+end
+
+
+--- Applies a function to every element of a table.
+--
+-- @tparam func f The function.
+-- @tparam tab tbl The table.
+-- @treturn tab The return values of `f`.
+function map (f, tbl)
+    local ret = {}
+    for k, v in pairs(tbl) do ret[k] = f(v) end
+    return ret
+end
+
+
+--- Locates an element in a table.
+--
+-- @param elem The element.
+-- @tparam tab tbl The table.
+-- @treturn integer The index of `elem` in `tbl` 
+--  or `nil` if `tbl` does not contain `elem`.
+function find (elem, tbl)
+    for i, v in ipairs(tbl) do
+        if v == elem then return i end
+    end
+    return nil
+end
+
 
 --- Checks if a path is absolute.
 --
@@ -161,26 +224,17 @@ function get_input_directory ()
 end
 
 
---- Prints warnings to STDERR.
---
--- @tparam string ... Strings to be written to STDERR.
---
--- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
-function warn (...)
-    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
-end
-
-
 do
     local pairs = pairs
     local tostring = tostring
+    local type = type
     local floor = math.floor
 
     --- Converts all numbers in a multi-dimensional table to strings.
     --
-    -- Also converts floating point numbers to integers.
-    -- This is needed because in JavaScript, all numbers are
-    -- floating point numbers. But Pandoc expects integers.
+    -- Also converts floating point numbers to integers. This is needed 
+    -- because all numbers are floating point numbers in JSON. But older
+    -- versions of Pandoc expect integers.
     --
     -- @param data Data of any type.
     -- @return The given data, with all numbers converted into strings.
@@ -202,10 +256,11 @@ end
 do
     local keytypes = ZOTXT_KEYTYPES
     local fetch = pandoc.mediabag.fetch
+    local pcall = pcall
     local decode = decode
     local concat = concat
-    local remove = remove
     local insert = insert
+    local remove = remove
 
     ---  Retrieves bibliographic data for a source from Zotero.
     --
@@ -229,8 +284,7 @@ do
             _, reply = fetch(query_url, '.')
             local ok, data = pcall(decode, reply)
             if ok then
-                local keytype = remove(keytypes, i)
-                insert(keytypes, 1, keytype)
+                insert(keytypes, 1, remove(keytypes, i))
                 local source = numtostr(data[1])
                 source.id = citekey
                 return source
@@ -293,23 +347,14 @@ end
 -- Prints an error message to STDERR for every source that cannot be found.
 function update_bibliography (fname, citekeys)
     if #citekeys == 0 then return end
-    local ipairs = ipairs
-    local insert = insert
     local refs, err, errno = read_json_file(fname)
     if not refs then
         if err and errno ~= 2 then return nil, err, errno end
         refs = {}
     end
-    local count = #refs
+    local ids = map(function (x) return x.id end, refs)
     for _, citekey in ipairs(citekeys) do
-        local present = false
-        for _, ref in ipairs(refs) do
-            if citekey == ref.id then
-                present = true
-                break
-            end
-        end
-        if not present then
+        if not find(citekey, ids) then
             local ref, err = get_source(citekey)
             if ref then
                 insert(refs, ref)
@@ -318,7 +363,9 @@ function update_bibliography (fname, citekeys)
             end
         end
     end
-    if (#refs > count) then return write_json_file(refs, fname) end
+    if (#refs > #ids) then
+        return write_json_file(refs, fname)
+    end
     return true
 end
 
@@ -388,7 +435,6 @@ do
     -- Prints an error message to STDERR for every source that cannot be found.
     function add_bibliography (meta)
         if not #CITEKEYS or not meta['zotero-bibliography'] then return end
-        local stringify = pandoc.utils.stringify
         local fname = stringify(meta['zotero-bibliography'])
         if sub(fname, -5) ~= '.json' then
             return nil, fname .. ': not a JSON file'
@@ -435,4 +481,16 @@ function add_sources (meta)
 end
 
 
-return {{Cite = collect_sources}, {Meta = add_sources}}
+-- BOILERPLATE
+-- ===========
+
+local PASSES = {
+    {Cite = collect_sources},
+    {Meta = add_sources}
+}
+
+for i, pass in ipairs(PASSES) do
+    insert(pandoc_zotxt, i, pass)
+end
+
+return pandoc_zotxt
