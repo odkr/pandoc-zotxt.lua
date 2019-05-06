@@ -81,6 +81,7 @@
 
 local pandoc_zotxt = {}
 
+local assert = assert
 local ipairs = ipairs
 local pairs = pairs
 local pcall = pcall
@@ -134,22 +135,37 @@ local VERSION = '0.3.14'
 local PATH_SEP = sub(package.config, 1, 1)
 
 do
-    local split_expr = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
+    local split_expr = '(.-[\\' .. PATH_SEP .. ']*)([^\\' .. PATH_SEP .. ']-)$'
+    local dot_expr = PATH_SEP .. '%.' .. PATH_SEP
+    local sep_expr = PATH_SEP .. '+'
     
-    --- Splits a file's path into its directory and its filename part.
+    --- Splits a file's path into a directory and a filename part.
     --
     -- @tparam string path The path to the file.
     -- @treturn string The file's path.
     -- @treturn string The file's name.
-    function split_path (path) 
-        return path:match(split_expr)
+    --
+    -- This function makes an educated guess given the string it's passed.
+    -- It doesn't look at the filesystem. Don't copy-paste this.
+    function split_path (path)
+        assert(path ~= '', 'path is the empty string')
+        local sane = path:gsub(dot_expr, PATH_SEP):gsub(sep_expr, PATH_SEP)
+        local dir, fname = sane:match(split_expr)
+        if dir == '' then dir = '.' end
+        if fname == '' then fname = '.' end
+        if #dir > 2 and sub(dir, 1, 1 + #PATH_SEP) == '.' .. PATH_SEP then
+            dir = sub(dir, 2 + #PATH_SEP)
+        end
+        if #dir > 1 and sub(dir, -#PATH_SEP) == PATH_SEP then 
+            dir = sub(dir, 1, -#PATH_SEP - 1)
+        end
+        return dir, fname
     end
 end
 
 do
     local expr = {'share', 'lua', '5.3', '?.lua'}
     local wd, fname = split_path(PANDOC_SCRIPT_FILE)
-    if not wd then wd = '.' end
     package.path = concat({package.path, concat({wd, unpack(expr)}, PATH_SEP),
         concat({wd, fname .. '-' .. VERSION, unpack(expr)}, PATH_SEP)}, ';')
 end
@@ -166,7 +182,8 @@ local decode = json.decode
 --
 -- @tparam string ... Strings to be written to STDERR.
 --
--- Prefixes every line with `NAME` and appends a single linefeed if needed.
+-- Prefixes every line with `NAME` and ": " and
+-- appends a single linefeed if needed.
 function warn (...)
     local stderr = io.stderr
     local str = concat({...})
@@ -219,7 +236,6 @@ function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
     local dir = split_path(file)
-    if not dir then return '.' end
     return dir 
 end
 
