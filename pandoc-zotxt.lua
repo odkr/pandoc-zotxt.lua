@@ -6,8 +6,7 @@
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
 --
---
--- SYNOPSIS
+-- SYNOPSIS 
 -- ========
 -- 
 --      pandoc --lua-filter pandoc-zotxt.lua -F pandoc-citeproc
@@ -42,6 +41,7 @@
 -- It doesn't update or delete them. To update your bibliography file,
 -- delete it. pandoc-zotxt.lua will then regenerate it from scratch.
 -- 
+--
 -- CAVEATS
 -- =======
 -- 
@@ -80,11 +80,11 @@
 -- =========
 
 -- The URL to lookup citation data.
--- See `get_source` and <https://github.com/egh/zotxt> for details.
+-- @see `get_source` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
 -- Types of citation keys.
--- See `get_source` and <https://github.com/egh/zotxt> for details.
+-- @see `get_source` and <https://github.com/egh/zotxt> for details.
 local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The version of this script.
@@ -107,16 +107,17 @@ local unpack = table.unpack
 local text = require 'text'
 local sub = text.sub
 
--- The path seperator of the operating system
+--- The path seperator of the operating system
 local PATH_SEP = sub(package.config, 1, 1)
 
---- Splits a file's path into its directory and its filename part.
---
--- @tparam string path The path to the file.
--- @treturn string The file's path.
--- @treturn string The file's name.
 do
     local split_expr = '(.-)[\\' .. PATH_SEP .. ']([^\\' .. PATH_SEP .. ']-)$'
+    
+    --- Splits a file's path into its directory and its filename part.
+    --
+    -- @tparam string path The path to the file.
+    -- @treturn string The file's path.
+    -- @treturn string The file's name.
     function split_path (path) 
         return path:match(split_expr)
     end
@@ -137,16 +138,6 @@ local decode = json.decode
 
 -- FUNCTIONS
 -- =========
-
---- Prints warnings to STDERR.
---
--- @tparam string ... Strings to be written to STDERR.
---
--- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
-function warn (...)
-    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
-end
-
 
 --- Checks if a path is absolute.
 --
@@ -170,19 +161,29 @@ function get_input_directory ()
 end
 
 
---- Converts all numbers in a multi-dimensional table to strings.
+--- Prints warnings to STDERR.
 --
--- Also converts floating point numbers to integers.
--- This is needed because in JavaScript, all numbers are
--- floating point numbers. But Pandoc expects integers.
+-- @tparam string ... Strings to be written to STDERR.
 --
--- @param data Data of any type.
--- @return The given data, with all numbers converted into strings.
+-- Prefixes messages with 'pandoc-zotxt.lua: ' and appends a linefeed.
+function warn (...)
+    io.stderr:write('pandoc-zotxt.lua: ', concat({...}), '\n')
+end
+
+
 do
     local pairs = pairs
     local tostring = tostring
     local floor = math.floor
 
+    --- Converts all numbers in a multi-dimensional table to strings.
+    --
+    -- Also converts floating point numbers to integers.
+    -- This is needed because in JavaScript, all numbers are
+    -- floating point numbers. But Pandoc expects integers.
+    --
+    -- @param data Data of any type.
+    -- @return The given data, with all numbers converted into strings.
     function numtostr (data)
         local data_type = type(data)
         if data_type == 'table' then
@@ -198,20 +199,6 @@ do
 end
 
 
----  Retrieves bibliographic data for a source from Zotero.
---
--- Retrieves bibliographic data by citation key, trying different
--- types of citation keys, starting with the last type for which
--- a lookup was successful.
---
--- The constant `ZOTXT_QUERY_URL` defines where to get data from.
--- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
--- See <https://github.com/egh/zotxt> for details.
---
--- @tparam string key The lookup key.
--- @treturn table Bibliographic data for that source in CSL format,
---  `nil` if the source wasn't found or an error occurred.
--- @treturn string An error message if the source was not found.
 do
     local keytypes = ZOTXT_KEYTYPES
     local fetch = pandoc.mediabag.fetch
@@ -220,17 +207,32 @@ do
     local remove = remove
     local insert = insert
 
-    function get_source (key)
+    ---  Retrieves bibliographic data for a source from Zotero.
+    --
+    -- Retrieves bibliographic data by citation key, trying different
+    -- types of citation keys, starting with the last type for which
+    -- a lookup was successful.
+    --
+    -- The constant `ZOTXT_QUERY_URL` defines where to get data from.
+    -- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
+    -- See <https://github.com/egh/zotxt> for details.
+    --
+    -- @tparam string citekey The lookup key.
+    -- @treturn table Bibliographic data for that source in CSL format,
+    --  `nil` if the source wasn't found or an error occurred.
+    -- @treturn string An error message if the source was not found.
+    function get_source (citekey)
         local _, reply
         for i = 1, #keytypes do
-            local query_url = concat({ZOTXT_QUERY_URL, keytypes[i], '=', key})
+            local query_url = concat({ZOTXT_QUERY_URL, 
+                keytypes[i], '=', citekey})
             _, reply = fetch(query_url, '.')
             local ok, data = pcall(decode, reply)
             if ok then
                 local keytype = remove(keytypes, i)
                 insert(keytypes, 1, keytype)
                 local source = numtostr(data[1])
-                source.id = key
+                source.id = citekey
                 return source
             end
         end
@@ -324,16 +326,16 @@ end
 do
     local CITEKEYS = {}
 
-    --- Collects all citekeys used in a document.
-    --
-    -- Saves them into the variable `CITEKEYS`, which is shared with
-    -- `add_references` and `add_bibliography`.
-    --
-    -- @param citations A pandoc.Cite element.
     do
         local insert = insert
         local seen = {}
-        
+
+        --- Collects all citekeys used in a document.
+        --
+        -- Saves them into the variable `CITEKEYS`, which is shared with
+        -- `add_references` and `add_bibliography`.
+        --
+        -- @param citations A pandoc.Cite element.        
         function collect_sources (citations)
             local c = citations.citations
             for i = 1, #c do
@@ -377,7 +379,7 @@ do
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
     -- which is shared with `collect_sources`.
     --
-    -- @tparam pandoc.Meta A metadata block.
+    -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn pandoc.Meta An updated metadata block, with the field
     --  `bibliography` added when needed, `nil` if no sources were found
     --  or `zotero-bibliography` is not set.
