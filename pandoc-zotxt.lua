@@ -131,13 +131,13 @@ local VERSION = '0.3.14'
 -- LIBRARIES
 -- =========
 
---- The path seperator of the operating system
+-- The path seperator of the operating system
 local PATH_SEP = sub(package.config, 1, 1)
 
 do
-    local split_expr = '(.-[\\' .. PATH_SEP .. ']*)([^\\' .. PATH_SEP .. ']-)$'
-    local dot_expr = PATH_SEP .. '%.' .. PATH_SEP
-    local sep_expr = PATH_SEP .. '+'
+    local split_expr = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
+    local san_exprs = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
+        {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''}}
     
     --- Splits a file's path into a directory and a filename part.
     --
@@ -146,22 +146,18 @@ do
     -- @treturn string The file's name.
     --
     -- This function makes an educated guess given the string it's passed.
-    -- It doesn't look at the filesystem. Don't copy-paste this.
+    -- It doesn't look at the filesystem. The guess is educated enough though.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
-        local sane = path:gsub(dot_expr, PATH_SEP):gsub(sep_expr, PATH_SEP)
-        local dir, fname = sane:match(split_expr)
+        for _, s in ipairs(san_exprs) do path = path:gsub(unpack(s)) end
+        local dir, fname = path:match(split_expr)
+        dir = dir:gsub('(.)' .. PATH_SEP .. '$', '%1')
         if dir == '' then dir = '.' end
         if fname == '' then fname = '.' end
-        if #dir > 2 and sub(dir, 1, 1 + #PATH_SEP) == '.' .. PATH_SEP then
-            dir = sub(dir, 2 + #PATH_SEP)
-        end
-        if #dir > 1 and sub(dir, -#PATH_SEP) == PATH_SEP then 
-            dir = sub(dir, 1, -#PATH_SEP - 1)
-        end
         return dir, fname
     end
 end
+
 
 do
     local expr = {'share', 'lua', '5.3', '?.lua'}
@@ -182,8 +178,8 @@ local decode = json.decode
 --
 -- @tparam string ... Strings to be written to STDERR.
 --
--- Prefixes every line with `NAME` and ": " and
--- appends a single linefeed if needed.
+-- Prefixes every line with the global constant `NAME` and ": ".
+-- Also, appends a single linefeed if needed.
 function warn (...)
     local stderr = io.stderr
     local str = concat({...})
@@ -193,26 +189,27 @@ function warn (...)
 end
 
 
---- Applies a function to every element of a table.
+--- Applies a function to every element of a list.
 --
 -- @tparam func f The function.
--- @tparam tab tbl The table.
+-- @tparam tab list The list.
 -- @treturn tab The return values of `f`.
-function map (f, tbl)
+function map (f, list)
     local ret = {}
-    for k, v in pairs(tbl) do ret[k] = f(v) end
+    for k, v in pairs(list) do ret[k] = f(v) end
     return ret
 end
 
 
---- Locates an element in a table.
+--- Returns the position of an element in a list.
 --
 -- @param elem The element.
--- @tparam tab tbl The table.
--- @treturn integer The index of `elem` in `tbl` 
---  or `nil` if `tbl` does not contain `elem`.
-function find (elem, tbl)
-    for i, v in ipairs(tbl) do
+-- @tparam tab list The list.
+-- @treturn integer The index of `elem` in `list`,
+--  `nil` if `list` does not contain `elem`.
+function get_position (elem, list)
+    assert(type(list) == 'table', 'given list is not of type "table".')
+    for i, v in ipairs(list) do
         if v == elem then return i end
     end
     return nil
@@ -223,15 +220,19 @@ end
 --
 -- @tparam string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
+--
+-- @todo Add a seperate test, manipulating PATH_SEP.
 function is_path_absolute (path)
     if PATH_SEP == '\\' and path:match('^.:\\') then return true end
-    return sub(path, 1, 1) == PATH_SEP
+    return path:match('^' .. PATH_SEP)
 end
 
 
 --- Returns the directory of the first input file or '.'.
 --
--- @treturn string The working directory.
+-- @treturn string The directory of that file.
+--
+-- @todo Add a seperate test, manipulating the first argument to the call.
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
@@ -254,11 +255,15 @@ do
     --
     -- @param data Data of any type.
     -- @return The given data, with all numbers converted into strings.
-    function numtostr (data)
+    function convert_numbers_to_strings (data, depth)
         local data_type = type(data)
+        if not depth then depth = 1 end
+        assert(depth < 512, 'too many recursions')
         if data_type == 'table' then
             local s = {}
-            for k, v in pairs(data) do s[k] = numtostr(v) end
+            for k, v in pairs(data) do 
+                s[k] = convert_numbers_to_strings(v, depth + 1)
+            end
             return s
         elseif data_type == 'number' then
             return tostring(floor(data))
@@ -281,18 +286,24 @@ do
     ---  Retrieves bibliographic data for a source from Zotero.
     --
     -- Retrieves bibliographic data by citation key, trying different
-    -- types of citation keys, starting with the last type for which
-    -- a lookup was successful.
+    -- types of citation keys, starting with the last one a lookup was
+    -- successful for.
     --
-    -- The constant `ZOTXT_QUERY_URL` defines where to get data from.
-    -- The constant `ZOTXT_KEYTYPES` defines what keytypes to try.
+    -- The global constant `ZOTXT_QUERY_URL` defines where to get data from.
+    -- The global constant `ZOTXT_KEYTYPES` defines what keytypes to try.
     -- See <https://github.com/egh/zotxt> for details.
     --
-    -- @tparam string citekey The lookup key.
-    -- @treturn table Bibliographic data for that source in CSL format,
+    -- @tparam string citekey The citation key of the source,
+    --  e.g., 'name:2019word', 'name2019WordWordWord'.
+    -- @treturn table Bibliographic data in CSL format,
     --  `nil` if the source wasn't found or an error occurred.
-    -- @treturn string An error message if the source was not found.
+    -- @treturn string An error message, if applicable.
+    --
+    -- @todo Make a unit test for a Better BibTeX key.
+    -- @todo Make a unit test for error message display.
     function get_source (citekey)
+        assert(type(citekey) == 'string', 'given citekey is not a string')
+        assert(citekey ~= '', 'given citekey is the empty string')
         local _, reply
         for i = 1, #keytypes do
             local query_url = concat({ZOTXT_QUERY_URL, 
@@ -301,7 +312,7 @@ do
             local ok, data = pcall(decode, reply)
             if ok then
                 insert(keytypes, 1, remove(keytypes, i))
-                local source = numtostr(data[1])
+                local source = convert_numbers_to_strings(data[1])
                 source.id = citekey
                 return source
             end
@@ -314,11 +325,12 @@ end
 --- Reads a JSON file.
 --
 -- @tparam string fname Name of the file.
--- @return The parsed data if reading the file succeeded, `nil `otherwise.
--- @treturn string An error message, if an error occurred.
+-- @return The parsed data, `nil` if an error occurred.
+-- @treturn string An error message, if applicable.
 -- @treturn number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
+    assert(fname ~= '', 'given filename is the empty string')
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
     local json, err, errno = f:read('a')
@@ -327,19 +339,20 @@ function read_json_file (fname)
     if not ok then return nil, err, errno end
     local ok, data = pcall(decode, json) 
     if not ok then return nil, 'JSON parse error', -1 end
-    return numtostr(data)
+    return convert_numbers_to_strings(data)
 end
 
 
 --- Writes data to a file in JSON.
 --
--- @param data Arbitrary data.
+-- @param data Data.
 -- @tparam string fname Name of the file.
--- @treturn bool `true` if saving that data in JSON succeeded, `nil` otherwise.
--- @treturn string An error message if an error occurred.
+-- @treturn bool `true` if saving the data, `nil` otherwise.
+-- @treturn string An error message, if applicable.
 -- @treturn integer An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON encoding error.
 function write_json_file (data, fname)
+    assert(fname ~= '', 'given filename is the empty string')
     local ok, json = pcall(encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
     local f, err, errno = open(fname, 'w')
@@ -355,13 +368,15 @@ end
 --- Adds cited sources to a bibliography file.
 --
 -- @tparam string fname The filename of the biblography.
--- @tparam {string,...} citekeys The citation keys of the source to add.
--- @treturn bool `true` if updating the biblography succeeded
---  (or not update was needed), `nil` otherwise.
--- @treturn string An error message if an error occurred.
+-- @tparam {string,...} citekeys The citation keys of the sources to add,
+--  e.g., 'name:2019word', 'name2019WordWordWord'.
+-- @treturn bool `true` if the bibliography was updated
+--   or no update was needed, `nil` if an error occurred.
+-- @treturn string An error message, if applicable.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 function update_bibliography (fname, citekeys)
+    assert(type(citekeys) == 'table', 'given list of keys is not a table')
     if #citekeys == 0 then return end
     local refs, err, errno = read_json_file(fname)
     if not refs then
@@ -370,7 +385,7 @@ function update_bibliography (fname, citekeys)
     end
     local ids = map(function (x) return x.id end, refs)
     for _, citekey in ipairs(citekeys) do
-        if not find(citekey, ids) then
+        if not get_position(citekey, ids) then
             local ref, err = get_source(citekey)
             if ref then
                 insert(refs, ref)
@@ -415,11 +430,11 @@ do
     --- Adds sources to the metadata block of a document.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
-    -- which is shared with `collect_sources`.
+    -- which is shared with `collect_sources`.  Never modifies `CITEKEYS`.
     --
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn pandoc.Meta An updated metadata block, with the field
-    --  `references` added when needed, `nil` if no sources were found.
+    --  `references` added if needed, `nil` if no sources were found.
     --
     -- Prints an error message to STDERR for every source that cannot be found.
     function add_references (meta)
@@ -440,20 +455,20 @@ do
     --- Adds sources to a bibliography and the biblography to the document.
     --
     -- Reads citekeys of cited sources from the variable `CITEKEYS`,
-    -- which is shared with `collect_sources`.
+    -- which is shared with `collect_sources`. Never modifies `CITEKEYS`.
     --
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn pandoc.Meta An updated metadata block, with the field
-    --  `bibliography` added when needed, `nil` if no sources were found
-    --  or `zotero-bibliography` is not set.
-    -- @treturn string An error message if an error occurred.
+    --  `bibliography` added when needed, `nil` if no sources were found,
+    --  `zotero-bibliography` is not set, or an error occurred.
+    -- @treturn string An error message, if applicable.
     --
     -- Prints an error message to STDERR for every source that cannot be found.
     function add_bibliography (meta)
         if not #CITEKEYS or not meta['zotero-bibliography'] then return end
         local fname = stringify(meta['zotero-bibliography'])
-        if sub(fname, -5) ~= '.json' then
-            return nil, fname .. ': not a JSON file'
+        if not fname:match('.json$') then
+            return nil, fname .. ': does not end in ".json".'
         end 
         if not is_path_absolute(fname) then
             fname = get_input_directory() .. PATH_SEP .. fname
@@ -499,14 +514,14 @@ end
 
 -- BOILERPLATE
 -- ===========
+--
+-- Returning the whole script, rather than only a list of mappings of 
+-- Pandoc data types to functions, allows for unit testing.
 
-local PASSES = {
-    {Cite = collect_sources},
-    {Meta = add_sources}
-}
+-- First pass. Collect citations.
+pandoc_zotxt[1] = {Cite = collect_sources}
 
-for i, pass in ipairs(PASSES) do
-    insert(pandoc_zotxt, i, pass)
-end
+-- Second pass. Add cited sources.
+pandoc_zotxt[2] = {Meta = add_sources}
 
 return pandoc_zotxt
