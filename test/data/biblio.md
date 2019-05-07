@@ -1,3 +1,6 @@
+---
+zotero-bibliography: ../tmp/biblio.json
+---
 
 # The Fox
 
