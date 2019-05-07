@@ -1,5 +1,3 @@
 .DS_Store
-test/bbt-is.txt
-test/biblio-is.txt
 test/biblio.json
-test/doc-is.txt
+test/tmp/*
