@@ -22,7 +22,7 @@
 -- 
 -- You cite your sources using so-called "easy citekeys" (provided by zotxt) or
 -- "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero) and
--- then tell  pandoc to run pandoc-zotxt.lua before pandoc-citeproc.
+-- then tell pandoc to run pandoc-zotxt.lua before pandoc-citeproc.
 -- That's all all there is to it. (See the documentation of zotxt and 
 -- Better BibTeX for Zotero respectively for details.)
 -- 
