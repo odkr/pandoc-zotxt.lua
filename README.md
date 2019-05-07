@@ -5,7 +5,9 @@
 document's `references` metadata field or to a bibliography
 file , where `pandoc-citeproc` can pick them up.
 
-`pandoc-zotxt.lua` requires [zotxt](https://github.com/egh/zotxt/).
+`pandoc-zotxt.lua` requires [zotxt](https://github.com/egh/zotxt/). It
+supports [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/),
+hereafter "Better BibTeX" for short.
 
 See the [manual page](man/pandoc-zotxt.lua.md) for more details.
 
@@ -67,7 +69,7 @@ repository to wherever your operating system searches for manual pages.
 | `pandoc-zotxt.lua`            | `pandoc-zotxt`                       |
 | ----------------------------- | ------------------------------------ |
 | Requires Pandoc 2.0.          | Requires Pandoc 1.12 and Python 2.7. |
-| Faster for BetterBibTex.      | Slower for BetterBibTex.             |
+| Faster for Better BibTeX.     | Slower for Better BibTeX.            |
 | Doesn't use temporary files.  | Uses a temporary file.               |
 
 
@@ -79,18 +81,38 @@ Morever, `pandoc-zotxt.lua` supports:
 
 ## Test suite
 
-For the test suite to work, you need [Pandoc](https://www.pandoc.org/) 2.7.2 
+The test suite runs only on POSIX-compliant system and requires some version
+of [make](https://en.wikipedia.org/wiki/Make_(software)), a POSIX-compiant
+shell, and Zotero. It targets [Pandoc](https://www.pandoc.org/) 2.7.2 
 and [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3.
-The test suite may or may not work with other versions of Pandoc and
-`pandoc-citeproc`.
+It may or may not work with other versions of Pandoc and `pandoc-citeproc`. 
 
-You also need Zotero and the sources that are cited in the test documents.
-You can import those sources from `test/items.rdf`.
+You also need the sources that are cited in the test documents.
+You can import those from `test/items.rdf`.
 
 To run the test suite, just say:
 
 ```sh
     make test
+```
+
+If you want to test Better BibTeX citation keys, you need Better BibTeX,
+of course. And you need to set your citation key format to: 
+"[auth:lower][year][shorttitle3_3]". 
+
+To run the Better BibTeX tests, say:
+
+```sh
+    make test-keytype-betterbibtex
+```
+
+If you want to test Zotero item IDs as citation keys, you need to adapt
+the corresponding tests to your database. 
+
+Once you've done so, say:
+
+```sh
+    make test-keytype-zotid
 ```
 
 
