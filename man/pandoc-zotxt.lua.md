@@ -24,10 +24,10 @@ them either to a document's `references` metadata field or to its
 bibliography, where **pandoc-citeproc** can pick them up.
 
 You cite your sources using so-called "easy citekeys" (provided by *zotxt*) or
-"BetterBibTex Citation Keys" (provided by *BetterBibTex*) and then tell 
-**pandoc** to run **pandoc-zotxt.lua** before **pandoc-citeproc**.
+"Better BibTeX Citation Keys" (provided by *Better BibTeX for Zotero*) and
+then tell  **pandoc** to run **pandoc-zotxt.lua** before **pandoc-citeproc**.
 That's all all there is to it. (See the documentation of *zotxt* and 
-*BetterBibTex* respectively for details.)
+*Better BibTeX for Zotero* respectively for details.)
 
 You can also use **pandoc-zotxt.lua** to manage a bibliography file. This is
 usually a lot faster. Simply set the `zotero-bibliography` metadata field
