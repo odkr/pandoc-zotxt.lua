@@ -1,73 +1,60 @@
-test: test-units test-abs-path test-warnings \
-	test-keytype-easykey test-bibliography
-all-tests: test test-keytype-betterbibtex test-keytype-zotid
+BASE_DIR := test
+DATA_DIR := $(BASE_DIR)/data
+NORM_DIR := $(BASE_DIR)/norms
+TMP_DIR  := $(BASE_DIR)/tmp
+UNIT_DIR := $(BASE_DIR)/unit_tests
 
-test-units:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
-	pandoc --lua-filter test/unit_tests/main.lua /dev/null
+KEYTYPE_TEST := test-easy-citekey test-better-bibtex test-zotero-id
 
-test-abs-path:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
+test-units: test-units-main \
+	test-warn test-is-path-absolute test-get-input-directory
+
+test: test-units test-easy-citekey test-bibliography 
+
+all-tests: test test-better-bibtex test-zotero-id
+
+prepare-tmp:
+	mkdir -p $(TMP_DIR)
+	rm -f $(TMP_DIR)/*
+
+test-units-main: prepare-tmp
+	pandoc --lua-filter $(UNIT_DIR)/main.lua /dev/null
+
+test-warn: prepare-tmp
+	for TEST in $(shell find $(UNIT_DIR)/warn -name '*.lua' \
+		-exec basename \{\} \; | sed 's/.lua$$//' | sort); do \
+		pandoc --lua-filter $(UNIT_DIR)/warn/$$TEST.lua /dev/null \
+			>/dev/null 2>$(TMP_DIR)/$$TEST.out; \
+		cmp $(NORM_DIR)/warn/$$TEST.out $(TMP_DIR)/$$TEST.out; \
+	done
+
+test-is-path-absolute: prepare-tmp
 	sed 's/^local \{1,\}PATH_SEP \{1,\}= \{1,\}\(.*\)/PATH_SEP = \1/' \
-		<pandoc-zotxt.lua >test/tmp/pandoc-zotxt.lua
-	pandoc --lua-filter test/unit_tests/is_path_absolute.lua /dev/null
+		<pandoc-zotxt.lua >$(TMP_DIR)/pandoc-zotxt.lua
+	pandoc --lua-filter $(UNIT_DIR)/is_path_absolute.lua /dev/null
 
-test-warnings:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
-	pandoc --lua-filter test/unit_tests/warn/warn_01.lua \
-		/dev/null 2>test/tmp/warn_01.err >/dev/null
-	cmp test/norms/warn/warn_01.out test/tmp/warn_01.err
-	pandoc --lua-filter test/unit_tests/warn/warn_02.lua \
-		/dev/null 2>test/tmp/warn_02.err >/dev/null
-	cmp test/norms/warn/warn_02.out test/tmp/warn_02.err
-	pandoc --lua-filter test/unit_tests/warn/warn_03.lua \
-		/dev/null 2>test/tmp/warn_03.err >/dev/null
-	cmp test/norms/warn/warn_03.out test/tmp/warn_03.err
-	pandoc --lua-filter test/unit_tests/warn/warn_04.lua \
-		/dev/null 2>test/tmp/warn_04.err >/dev/null
-	cmp test/norms/warn/warn_04.out test/tmp/warn_04.err
-	pandoc --lua-filter test/unit_tests/warn/warn_05.lua \
-		/dev/null 2>test/tmp/warn_05.err >/dev/null
-	cmp test/norms/warn/warn_05.out test/tmp/warn_05.err
-	pandoc --lua-filter test/unit_tests/warn/warn_06.lua \
-		/dev/null 2>test/tmp/warn_06.err >/dev/null
-	cmp test/norms/warn/warn_06.out test/tmp/warn_06.err
+test-get-input-directory:
+	pandoc --lua-filter $(UNIT_DIR)/get_input_directory/pwd.lua </dev/null
+	pandoc --lua-filter $(UNIT_DIR)/get_input_directory/simple.lua \
+		-o /dev/null $(DATA_DIR)/test-easy-citekey.md
 
-test-keytype-easykey:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
+$(KEYTYPE_TEST): prepare-tmp
 	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o test/tmp/doc.txt test/data/doc.md
-	cmp test/tmp/doc.txt test/norms/doc.txt
+		-o $(TMP_DIR)/$@.txt $(DATA_DIR)/$@.md
+	cmp $(TMP_DIR)/$@.txt $(NORM_DIR)/$@.txt
 
-test-keytype-betterbibtex:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
+test-bibliography: prepare-tmp
 	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o test/tmp/bbt.txt test/data/bbt.md
-	cmp test/tmp/bbt.txt test/norms/bbt.txt
-
-test-keytype-zotid:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
+		-o $(TMP_DIR)/test-bibliography.txt $(DATA_DIR)/test-bibliography.md
+	cmp $(TMP_DIR)/test-bibliography.txt $(NORM_DIR)/test-bibliography.txt
+	test -e $(TMP_DIR)/test-bibliography.json
 	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o test/tmp/key.txt test/data/key.md
-	cmp test/tmp/key.txt test/norms/key.txt
-
-test-bibliography:
-	mkdir -p test/tmp
-	rm -f test/tmp/*
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o test/tmp/biblio.txt test/data/biblio.md
-	cmp test/tmp/biblio.txt test/norms/biblio.txt
-	test -e test/tmp/biblio.json
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o test/tmp/biblio.txt test/data/biblio.md
-	cmp test/tmp/biblio.txt test/norms/biblio.txt
+		-o $(TMP_DIR)/test-bibliography.txt $(DATA_DIR)/test-bibliography.md
+	cmp $(TMP_DIR)/test-bibliography.txt $(NORM_DIR)/test-bibliography.txt
 	
-.PHONY: test test-units test-warnings test-keytype-easykey test-bibliography \
-	test test-keytype-betterbibtex test-keytype-zotid
+.PHONY: prepare-tmp \
+	test-units test-units-main \
+	test-warn test-is-path-absolute test-get-input-directory \
+	test test-easy-citekey test-bibliography \
+	all-tests test-better-bibtex test-zotero-id
 

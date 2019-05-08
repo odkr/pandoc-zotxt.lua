@@ -1,6 +1,6 @@
---- is_path_absolute.lua - Unit test for is_path_absolute. 
+--- simple.lua - Unit test for get_input_directory. 
 --
--- @script is_path_absolute.lua
+-- @script simple.lua
 -- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
@@ -72,39 +72,17 @@ do
 end
 
 local SCRIPT_DIR, SCRIPT_NAME = split_path(PANDOC_SCRIPT_FILE)
-local TEST_BASE_DIR = SCRIPT_DIR .. PATH_SEP .. '..'
+local TEST_BASE_DIR = SCRIPT_DIR .. PATH_SEP .. '..' .. PATH_SEP .. '..'
 local REPO_BASE_DIR = TEST_BASE_DIR .. PATH_SEP .. '..'
 
 package.path = package.path .. ';' .. 
     concat({REPO_BASE_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
 
--- The makefile must generate that script!
-local P = require 'test/tmp/pandoc-zotxt'
+local P = require 'pandoc-zotxt'
+
 
 
 -- TEST
 -- ====
 
-do
-    P.PATH_SEP = '\\'
-    assert(P.is_path_absolute('\\') == true)
-    assert(P.is_path_absolute('C:\\') == true)
-    assert(P.is_path_absolute('[:\\') == true)
-    assert(P.is_path_absolute('\\test') == true)
-    assert(P.is_path_absolute('test') == false)
-    assert(P.is_path_absolute('test\\test') == false)
-    assert(P.is_path_absolute('/') == false)
-    assert(P.is_path_absolute('/test') == false)
-    assert(P.is_path_absolute('test/test') == false)
-
-    P.PATH_SEP = '/'
-    assert(P.is_path_absolute('\\') == false)
-    assert(P.is_path_absolute('C:\\') == false)
-    assert(P.is_path_absolute('[:\\') == false)
-    assert(P.is_path_absolute('\\test') == false)
-    assert(P.is_path_absolute('test') == false)
-    assert(P.is_path_absolute('test\\test') == false)
-    assert(P.is_path_absolute('/') == true)
-    assert(P.is_path_absolute('/test') == true)
-    assert(P.is_path_absolute('test/test') == false)
-end
+assert(P.get_input_directory() == 'test/data')

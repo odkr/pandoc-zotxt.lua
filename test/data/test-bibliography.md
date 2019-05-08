@@ -1,5 +1,5 @@
 ---
-zotero-bibliography: ../tmp/biblio.json
+zotero-bibliography: ../tmp/test-bibliography.json
 ---
 
 # The Fox
