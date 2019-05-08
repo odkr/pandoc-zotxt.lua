@@ -1,7 +1,6 @@
 --- pwd.lua - Unit test for get_input_directory. 
 --
 -- @script pwd.lua
--- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT

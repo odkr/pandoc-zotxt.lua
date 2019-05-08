@@ -1,7 +1,6 @@
 --- is_path_absolute.lua - Unit test for is_path_absolute. 
 --
 -- @script is_path_absolute.lua
--- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT

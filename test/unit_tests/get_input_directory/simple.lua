@@ -1,7 +1,6 @@
 --- simple.lua - Unit test for get_input_directory. 
 --
 -- @script simple.lua
--- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
