@@ -85,33 +85,46 @@ The test suite runs only on POSIX-compliant system and requires some version
 of [make](https://en.wikipedia.org/wiki/Make_(software)), a POSIX-compiant
 shell, and Zotero. It targets [Pandoc](https://www.pandoc.org/) 2.7.2 
 and [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3.
+And it assumes that you are using the default CSL file that ships with 
+`pandoc-citeproc` (`chicago-author-date.csl`).
+
 It may or may not work with other versions of Pandoc and `pandoc-citeproc`. 
 
 You also need the sources that are cited in the test documents.
-You can import those from `test/items.rdf`.
+You can import those into Zotero from `test/items.rdf`.
 
 To run the test suite, just say:
 
-```sh
+```
     make test
 ```
 
+`make test` does *not* run the tests for Better BibTeX and Zotero item IDs.
+This is because these tests don't work out of the box.
+
 If you want to test Better BibTeX citation keys, you need Better BibTeX,
-of course. And you need to set your citation key format to: 
+of course. Moreover, you have to set your citation key format to: 
 "[auth:lower][year][shorttitle3_3]". 
 
-To run the Better BibTeX tests, say:
+To run the Better BibTeX test, say:
 
-```sh
+```
     make test-better-bibtex
 ```
 
-If you want to test Zotero item IDs as citation keys, you need to adapt
-the corresponding tests to your database. 
+Zotero item IDs are particular to the database the items are stored in. So,
+if you want to test whether Zotero item IDs work, you need to adapt this
+test to your database: First, import the sources from `test/items.rdf`. Next,
+look up the item ID of Kristie Dotson's "A Cautionary Tale: On Limiting
+Epistemic Oppression" in your Zotero database. Then, replace "QN9S6E2T"
+in `test/data/test-zotero-id.md` with that ID.
 
-Once you've done so, say:
+If you want to test using Zotero item IDs as citation keys, you have to adapt
+the corresponding tests to your database. This is because  
 
-```sh
+To run the Zotero item ID test, say:
+
+```
     make test-zotero-id
 ```
 
