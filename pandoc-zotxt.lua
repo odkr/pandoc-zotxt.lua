@@ -1,20 +1,11 @@
 --- pandoc-zotxt.lua - Looks up citations in Zotero and adds references. 
 --
--- @script pandoc-zotxt.lua
--- @release 0.3.15b
--- @author Odin Kroeger
--- @copyright 2018, 2019 Odin Kroeger
--- @license MIT
---
--- 
--- SYNOPSIS
--- ========
+-- # SYNOPSIS
 -- 
 --      pandoc --lua-filter pandoc-zotxt.lua -F pandoc-citeproc
 -- 
 -- 
--- DESCRIPTION
--- ===========
+-- # DESCRIPTION
 -- 
 -- pandoc-zotxt.lua looks up sources of citations in Zotero and adds
 -- them either to a document's `references` metadata field or to its
@@ -43,20 +34,24 @@
 -- delete it. pandoc-zotxt.lua will then regenerate it from scratch.
 -- 
 -- 
--- CAVEATS
--- =======
+-- # CAVEATS
 -- 
 -- pandoc-zotxt.lua is Unicode-agnostic.
 -- 
 -- 
--- SEE ALSO
--- ========
+-- # SEE ALSO
 -- 
 -- pandoc(1), pandoc-citeproc(1)
+--
+--
+-- @script pandoc-zotxt.lua
+-- @release 0.3.15b
+-- @author Odin Kroeger
+-- @copyright 2018, 2019 Odin Kroeger
+-- @license MIT
 
 
--- INITIALISATION
--- ==============
+-- # INITIALISATION
 
 local pandoc_zotxt = {}
 
@@ -89,28 +84,37 @@ local text = require 'text'
 local sub = text.sub
 
 
--- CONSTANTS
--- =========
+-- # CONSTANTS
 
--- The URL to lookup citation data.
--- @see `get_source` and <https://github.com/egh/zotxt> for details.
+--- The URL to lookup citation data.
+--
+-- See <https://github.com/egh/zotxt> for details.
+--
+-- @see get_source
 ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
--- Types of citation keys.
--- @see `get_source` and <https://github.com/egh/zotxt> for details.
-ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
+--- Types of citation keys.
+--
+-- See <https://github.com/egh/zotxt> for details.
+--
+-- @table ZOTXT_KEYTYPES
+-- @see get_source
+ZOTXT_KEYTYPES = {
+	'easykey',	   -- zotxt easy citekey 
+	'betterbibtexkey', -- Better BibTeX citation key
+	'key'		   -- Zotero item ID
+}
 
--- The name of this script.
+--- The name of this script.
 NAME = 'pandoc-zotxt.lua'
 
--- The version of this script.
+--- The version of this script.
 VERSION = '0.3.14'
 
 
--- LIBRARIES
--- =========
+-- # LIBRARIES
 
--- The path seperator of the operating system
+--- The path seperator of the operating system.
 PATH_SEP = sub(package.config, 1, 1)
 
 do
@@ -150,8 +154,7 @@ local encode = json.encode
 local decode = json.decode
 
 
--- FUNCTIONS
--- =========
+-- # FUNCTIONS
 
 --- Prints warnings to STDERR.
 --
@@ -265,8 +268,8 @@ do
     -- types of citation keys, starting with the last one a lookup was
     -- successful for.
     --
-    -- The global constant `ZOTXT_QUERY_URL` defines where to get data from.
-    -- The global constant `ZOTXT_KEYTYPES` defines what keytypes to try.
+    -- The global `ZOTXT_QUERY_URL` defines where to get data from.
+    -- The global `ZOTXT_KEYTYPES` defines what keytypes to try.
     -- See <https://github.com/egh/zotxt> for details.
     --
     -- @tparam string citekey The citation key of the source,
@@ -484,8 +487,7 @@ function add_sources (meta)
 end
 
 
--- BOILERPLATE
--- ===========
+-- # BOILERPLATE
 --
 -- Returning the whole script, rather than only a list of mappings of 
 -- Pandoc data types to functions, allows for unit testing.
