@@ -103,7 +103,7 @@ of course. And you need to set your citation key format to:
 To run the Better BibTeX tests, say:
 
 ```sh
-    make test-keytype-betterbibtex
+    make test-better-bibtex
 ```
 
 If you want to test Zotero item IDs as citation keys, you need to adapt
@@ -112,7 +112,7 @@ the corresponding tests to your database.
 Once you've done so, say:
 
 ```sh
-    make test-keytype-zotid
+    make test-zotero-id
 ```
 
 
