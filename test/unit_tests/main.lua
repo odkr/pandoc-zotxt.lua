@@ -406,7 +406,8 @@ do
     assert(err ~= '')
     assert(errno == 2)
 
-    local fname = concat({TEST_BASE_DIR, 'data', 'test.json'}, PATH_SEP)
+    local fname = concat({TEST_BASE_DIR, 
+        'data', 'test-read_json_file.json'}, PATH_SEP)
     local data, err, errno = P.read_json_file(fname)
     assert(data ~= nil)
     assert(err == nil)
@@ -423,7 +424,8 @@ do
         assert(pcall(P.write_json_file, nil, invalid) == false)
     end
 
-    local fname = concat({TEST_BASE_DIR, 'tmp', 'test.json'}, PATH_SEP)
+    local fname = concat({TEST_BASE_DIR, 
+        'tmp', 'test-write_json_file.json'}, PATH_SEP)
     local ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     local ok, err, errno = P.write_json_file(SAMPLE_SOURCE, fname)
@@ -447,8 +449,9 @@ do
         end
     end
 
-    local fname = concat({TEST_BASE_DIR, 'tmp', 'test.json'}, PATH_SEP)
-    local ok, err = os.remove(fname)
+    local fname = concat({TEST_BASE_DIR, 'tmp',
+        'test-update_bibliography.json'}, PATH_SEP)
+    local ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     local ok, err = P.update_bibliography(fname, {'haslanger:2012resisting'})
     assert(ok == true)
