@@ -208,8 +208,6 @@ end
 --- Returns the directory of the first input file or '.'.
 --
 -- @treturn string The directory of that file.
---
--- @todo Add a seperate test, manipulating the first argument to the call.
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
