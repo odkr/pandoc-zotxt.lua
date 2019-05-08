@@ -160,7 +160,7 @@ local decode = json.decode
 --
 -- @tparam string ... Strings to be written to STDERR.
 --
--- Prefixes every line with the global constant `NAME` and ": ".
+-- Prefixes every line with the global `NAME` and ": ".
 -- Also, appends a single linefeed if needed.
 function warn (...)
     local stderr = io.stderr
@@ -187,8 +187,8 @@ end
 --
 -- @param elem The element.
 -- @tparam tab list The list.
--- @treturn integer The index of `elem` in `list`,
---  `nil` if `list` does not contain `elem`.
+-- @treturn integer The index of the element,
+--  `nil` if the list doesn't contain the element.
 function get_position (elem, list)
     assert(type(list) == 'table', 'given list is not of type "table".')
     for i, v in ipairs(list) do
@@ -228,7 +228,7 @@ do
     --- Converts all numbers in a multi-dimensional table to strings.
     --
     -- Also converts floating point numbers to integers. This is needed 
-    -- because all numbers are floating point numbers in JSON. But older
+    -- because all numbers are floating point numbers in JSON, but older
     -- versions of Pandoc expect integers.
     --
     -- @param data Data of any type.
@@ -322,7 +322,7 @@ end
 --
 -- @param data Data.
 -- @tparam string fname Name of the file.
--- @treturn bool `true` if saving the data, `nil` otherwise.
+-- @treturn bool `true` if the data was written to the file, `nil` otherwise.
 -- @treturn string An error message, if applicable.
 -- @treturn integer An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON encoding error.
@@ -388,7 +388,7 @@ do
         -- Saves them into the variable `CITEKEYS`, which is shared with
         -- `add_references` and `add_bibliography`.
         --
-        -- @param citations A pandoc.Cite element.        
+        -- @tparam pandoc.Cite citations A citation.        
         function collect_sources (citations)
             local c = citations.citations
             for i = 1, #c do
