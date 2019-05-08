@@ -7,10 +7,10 @@ UNIT_DIR := $(BASE_DIR)/unit_tests
 KEYTYPE_TEST := test-keytype-easy-citekey \
 	test-keytype-better-bibtex test-keytype-zotero-id
 
+test: test-units test-keytype-easy-citekey test-bibliography 
+
 test-units: test-units-main test-warn test-is-path-absolute \
 	test-get-input-directory test-update-bibliography
-
-test: test-units test-keytype-easy-citekey test-bibliography 
 
 test-better-bibtex: test-get-source-better-bibtex test-keytype-better-bibtex
 
