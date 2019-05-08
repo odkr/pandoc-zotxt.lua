@@ -84,12 +84,11 @@ Morever, `pandoc-zotxt.lua` supports:
 ### Requirements
 
 1. A POSIX-compliant operating system
-2. A POSIX-compiant bourne shell
-3. A version of [make](https://en.wikipedia.org/wiki/Make_(software))
-4. Zotero
-5. *zotxt*
-6. [Pandoc](https://www.pandoc.org/) 2.7.2
-7. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
+2. A version of [make](https://en.wikipedia.org/wiki/Make_(software))
+3. Zotero
+4. *zotxt*
+5. [Pandoc](https://www.pandoc.org/) 2.7.2
+6. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
 
 ### Assumptions
 
