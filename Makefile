@@ -32,8 +32,6 @@ test-warn: prepare-tmp
 	done
 
 test-is-path-absolute: prepare-tmp
-	sed 's/^local \{1,\}PATH_SEP \{1,\}= \{1,\}\(.*\)/PATH_SEP = \1/' \
-		<pandoc-zotxt.lua >$(TMP_DIR)/pandoc-zotxt.lua
 	pandoc --lua-filter $(UNIT_DIR)/is_path_absolute.lua /dev/null
 
 test-get-input-directory:

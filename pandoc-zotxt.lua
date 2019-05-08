@@ -94,28 +94,24 @@ local sub = text.sub
 
 -- The URL to lookup citation data.
 -- @see `get_source` and <https://github.com/egh/zotxt> for details.
-local ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
+ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
 
 -- Types of citation keys.
 -- @see `get_source` and <https://github.com/egh/zotxt> for details.
-local ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
+ZOTXT_KEYTYPES = {'easykey', 'betterbibtexkey', 'key'}
 
 -- The name of this script.
-local NAME = 'pandoc-zotxt.lua'
+NAME = 'pandoc-zotxt.lua'
 
 -- The version of this script.
-local VERSION = '0.3.14'
+VERSION = '0.3.14'
 
 
 -- LIBRARIES
 -- =========
 
 -- The path seperator of the operating system
--- Note: (1) The Makefile assumes that this constant is set and 
---           that its definition matches the `sed` regular expression 
---           `^local \{1,\}PATH_SEP \{1,\}= \{1,\}\(.*\)`. 
---       (2) No other line in this file should match that expression.
-local PATH_SEP = sub(package.config, 1, 1)
+PATH_SEP = sub(package.config, 1, 1)
 
 do
     local split_expr = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
@@ -254,6 +250,7 @@ end
 
 
 do
+    local query_url = ZOTXT_QUERY_URL
     local keytypes = ZOTXT_KEYTYPES
     local fetch = pandoc.mediabag.fetch
     local pcall = pcall
@@ -282,8 +279,7 @@ do
         assert(citekey ~= '', 'given citekey is the empty string')
         local _, reply
         for i = 1, #keytypes do
-            local query_url = concat({ZOTXT_QUERY_URL, 
-                keytypes[i], '=', citekey})
+            local query_url = concat({query_url, keytypes[i], '=', citekey})
             _, reply = fetch(query_url, '.')
             local ok, data = pcall(decode, reply)
             if ok then

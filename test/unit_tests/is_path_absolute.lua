@@ -78,7 +78,7 @@ package.path = package.path .. ';' ..
     concat({REPO_BASE_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
 
 -- The makefile must generate that script!
-local P = require 'test/tmp/pandoc-zotxt'
+local P = require 'pandoc-zotxt'
 
 
 -- TEST
