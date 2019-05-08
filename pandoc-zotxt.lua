@@ -111,6 +111,10 @@ local VERSION = '0.3.14'
 -- =========
 
 -- The path seperator of the operating system
+-- Note: (1) The Makefile assumes that this constant is set and 
+--           that its definition matches the `sed` regular expression 
+--           `^local \{1,\}PATH_SEP \{1,\}= \{1,\}\(.*\)`. 
+--       (2) No other line in this file should match that expression.
 local PATH_SEP = sub(package.config, 1, 1)
 
 do
