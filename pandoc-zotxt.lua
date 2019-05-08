@@ -214,8 +214,7 @@ end
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
-    local dir = split_path(file)
-    return dir 
+    return split_path(file)
 end
 
 
@@ -234,9 +233,9 @@ do
     -- @param data Data of any type.
     -- @return The given data, with all numbers converted into strings.
     function convert_numbers_to_strings (data, depth)
-        local data_type = type(data)
         if not depth then depth = 1 end
         assert(depth < 512, 'too many recursions')
+        local data_type = type(data)
         if data_type == 'table' then
             local s = {}
             for k, v in pairs(data) do 
