@@ -277,9 +277,6 @@ do
     -- @treturn table Bibliographic data in CSL format,
     --  `nil` if the source wasn't found or an error occurred.
     -- @treturn string An error message, if applicable.
-    --
-    -- @todo Make a unit test for a Better BibTeX key.
-    -- @todo Make a unit test for error message display.
     function get_source (citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
         assert(citekey ~= '', 'given citekey is the empty string')
