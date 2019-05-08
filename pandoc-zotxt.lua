@@ -199,11 +199,9 @@ end
 --
 -- @tparam string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
---
--- @todo Add a seperate test, manipulating PATH_SEP.
 function is_path_absolute (path)
     if PATH_SEP == '\\' and path:match('^.:\\') then return true end
-    return path:match('^' .. PATH_SEP)
+    return path:match('^' .. PATH_SEP) ~= nil
 end
 
 
