@@ -1,4 +1,4 @@
-A BetterBibTex citation:
+A Better BibTeX citation:
 
 Crenshaw (1989) makes a good case.
 
