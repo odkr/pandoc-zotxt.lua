@@ -123,7 +123,7 @@ If you want to test Better BibTeX citation keys, you need Better BibTeX,
 of course. Moreover, you have to set your citation key format to: 
 "[auth:lower][year][shorttitle3_3]". 
 
-To run the Better BibTeX test, say:
+To run the Better BibTeX tests, say:
 
 ```
     make test-better-bibtex
@@ -144,7 +144,7 @@ test to your database:
 To run the Zotero item ID test, say:
 
 ```
-    make test-zotero-id
+    make test-keytype-zotero-id
 ```
 
 
