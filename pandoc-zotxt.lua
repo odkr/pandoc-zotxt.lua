@@ -91,7 +91,7 @@ local sub = text.sub
 -- See <https://github.com/egh/zotxt> for details.
 --
 -- @see get_source
-ZOTXT_QUERY_URL = 'http://localhost:23119/zotxt/items?'
+ZOTXT_QUERY_URL_BASE = 'http://localhost:23119/zotxt/items?'
 
 --- Types of citation keys.
 --
@@ -252,7 +252,7 @@ end
 
 
 do
-    local query_url = ZOTXT_QUERY_URL
+    local query_url_base = ZOTXT_QUERY_URL_BASE
     local keytypes = ZOTXT_KEYTYPES
     local fetch = pandoc.mediabag.fetch
     local pcall = pcall
@@ -281,7 +281,8 @@ do
         assert(citekey ~= '', 'given citekey is the empty string')
         local _, reply
         for i = 1, #keytypes do
-            local query_url = concat({query_url, keytypes[i], '=', citekey})
+            local query_url = concat({query_url_base,
+                keytypes[i], '=', citekey})
             _, reply = fetch(query_url, '.')
             local ok, data = pcall(decode, reply)
             if ok then
