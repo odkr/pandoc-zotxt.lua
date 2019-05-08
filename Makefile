@@ -4,7 +4,8 @@ NORM_DIR := $(BASE_DIR)/norms
 TMP_DIR  := $(BASE_DIR)/tmp
 UNIT_DIR := $(BASE_DIR)/unit_tests
 
-KEYTYPE_TEST := test-keytype-easy-citekey test-keytype-better-bibtex test-keytype-zotero-id
+KEYTYPE_TEST := test-keytype-easy-citekey \
+	test-keytype-better-bibtex test-keytype-zotero-id
 
 test-units: test-units-main test-warn test-is-path-absolute \
 	test-get-input-directory test-update-bibliography
@@ -40,7 +41,7 @@ test-get-input-directory:
 	pandoc --lua-filter $(UNIT_DIR)/get_input_directory/simple.lua \
 		-o /dev/null $(DATA_DIR)/test-keytype-easy-citekey.md
 
-test-update-bibliography:
+test-update-bibliography: prepare-tmp
 	pandoc --lua-filter $(UNIT_DIR)/update_bibliography.lua /dev/null \
 		2>$(TMP_DIR)/update_bibliography.out
 	cmp $(NORM_DIR)/update_bibliography.out $(TMP_DIR)/update_bibliography.out
