@@ -100,6 +100,11 @@ The tests assume that:
 2. You have imported the sources cited in the test documents.
    You can import those into Zotero from `test/items.rdf`.
 
+3. You don't have any sources in your Zotero database that
+   match the same easy citekeys as those in `test/items.rdf`.
+   (If you do, you'll need to adapt them.)
+
+
 ### Core tests
 
 To run the test suite, say:
@@ -110,6 +115,7 @@ To run the test suite, say:
 
 `make test` does *not* run the tests for Better BibTeX and Zotero item IDs.
 This is because these tests don't work out of the box.
+
 
 ### Better BibTeX
 
@@ -122,6 +128,7 @@ To run the Better BibTeX test, say:
 ```
     make test-better-bibtex
 ```
+
 
 ### Zotero item IDs
 
