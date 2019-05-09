@@ -325,8 +325,8 @@ do
 end
 
 
--- find
--- ----
+-- get_position
+-- ------------
 
 do
     for _, v in pairs({nil, false, 0, 'x', function () end}) do
