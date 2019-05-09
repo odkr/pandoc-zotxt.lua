@@ -418,7 +418,7 @@ do
         function collect_sources (citations)
             local c = citations.citations
             for i = 1, #c do
-                id = c[i].id
+                local id = c[i].id
                 if not seen[id] then
                     seen[id] = true
                     insert(CITEKEYS, id)
