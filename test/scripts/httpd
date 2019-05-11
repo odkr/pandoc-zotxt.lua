@@ -80,14 +80,6 @@ MAX_SHUTDOWN_TIME = 5
 # LIBRARIES
 # =========
 
-from argparse import ArgumentParser
-from os import chdir, devnull, dup2, fork, getpid, kill, path, umask, setsid
-from signal import signal, SIG_IGN, SIGINT, SIGCHLD, SIGKILL, SIGTERM
-from sys import argv, exit, stdin, stdout, stderr
-from time import sleep
-
-import socket
-
 try:
     import SimpleHTTPServer as server
 except ModuleNotFoundError:
@@ -98,15 +90,28 @@ try:
 except ModuleNotFoundError:
     import socketserver
 
+import argparse
+import atexit
+import os
+import signal
+import socket
+import sys
+import time
+
 
 # INITIALISATION
 # ==============
 
-base_dir = path.realpath(path.join(path.split(argv[0])[0], '..'))
-data_dir = path.join(base_dir, 'data', 'http-server')
-pid_fname = path.join(base_dir, 'run', 'http-server.pid')
+base_dir = os.path.realpath(os.path.join(os.path.split(sys.argv[0])[0], '..'))
+data_dir = os.path.join(base_dir, 'data', 'http-server')
+pid_fname = os.path.join(base_dir, 'run', 'http-server.pid')
 
-parser = ArgumentParser(description='Starts a simle HTTP server.')
+if os.path.exists(pid_fname):
+    rel_fname = pid_fname.replace(os.path.join(os.getcwd(), ''), '', 1)
+    sys.stderr.write('httpd: {} exists.\n'.format(rel_fname))
+    sys.exit(69)
+
+parser = argparse.ArgumentParser(description='Starts a simle HTTP server.')
 parser.add_argument('port', type=int, metavar='PORT')
 args = parser.parse_args()
 
@@ -118,17 +123,17 @@ httpd = socketserver.TCPServer(('localhost', args.port), handler)
 # PARENT
 # ======
 
-pid = fork()
+pid = os.fork()
 
 if pid > 0:
     # Don't wait for the child, lest it becomes a zombie.
-    signal(SIGCHLD, SIG_IGN)
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
     # Try to reach the child, checking whether it accepts connections.
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     for i in range(MAX_STARTUP_TIME):
         if i > 1:
-            sleep(1)
+            time.sleep(1)
         try:
             s.connect(('localhost', args.port))
         except socket.error:
@@ -140,40 +145,41 @@ if pid > 0:
         # but we couldn't connect to the child, so we kill it.
         for i in range(MAX_SHUTDOWN_TIME):
             if i > 1:
-                sleep(i)
+                time.sleep(i)
             try:
-                kill(pid, SIGTERM)
+                os.kill(pid, signal.SIGTERM)
             except OSError as err:
                 if err.errno == 3:
                     break
         else:
             try:
-                kill(pid, SIGKILL)
+                os.kill(pid, signal.SIGKILL)
             except OSError:
                 pass
-        exit(1)
-    exit()
+        sys.exit(1)
+    sys.exit()
 
 
 # CHILD
 # =====
 
 # Deamonise!
-chdir(data_dir)
-setsid()
-umask(0o077)
-for stream, mode in ((stdin, 'r'), (stdout, 'a+'), (stderr, 'a+')):
+os.chdir(data_dir)
+os.setsid()
+os.umask(0o077)
+for stream, mode in ((sys.stdin, 'r'), (sys.stdout, 'a+'), (sys.stderr, 'a+')):
     stream.flush()
-    fd = open(devnull, mode)
-    dup2(fd.fileno(), stream.fileno())
+    fd = open(os.devnull, mode)
+    os.dup2(fd.fileno(), stream.fileno())
 
-# Write the PID file.
+# Create the PID file.
+atexit.register(os.unlink, pid_fname)
 with open(pid_fname, 'w') as pid_file:
-    pid_file.write('{!s}\n'.format(getpid()))
+    pid_file.write('{!s}\n'.format(os.getpid()))
 
 # Shutdown if we receive an INT or a TERM.
-for sig in (SIGTERM, SIGINT):
-    signal(sig, httpd.shutdown)
+for signo in (signal.SIGTERM, signal.SIGINT):
+    signal.signal(signo, httpd.shutdown)
 
 httpd.serve_forever(0.1)
 httpd.server_close()
