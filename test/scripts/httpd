@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=C0111, C0103, C0413
+# pylint: disable = C0111, C0103, C0413
 #
 # httpd - A simple HTTP server
 #
@@ -71,7 +71,7 @@
 # =========
 
 # How long may the server take to start up, before we give up.
-MAX_STARTUP_TIME = 5
+MAX_STARTUP_TIME = 60
 
 # How long may the server take to shut down, before we kill it.
 MAX_SHUTDOWN_TIME = 5
@@ -90,13 +90,26 @@ try:
 except ImportError:
     import socketserver
 
+try:
+    import urllib.request as request
+except ImportError:
+    import urllib as request
+
 import argparse
 import atexit
 import os
 import signal
-import socket
 import sys
 import time
+
+
+# FUNCTIONS
+# =========
+
+# pylint: disable = W0621
+def warn(msg, *args, **kwargs):
+    sys.stderr.write(''.join(('httpd: ', msg.format(*args, **kwargs), '\n')))
+
 
 
 # INITIALISATION
@@ -108,16 +121,12 @@ pid_fname = os.path.join(base_dir, 'run', 'http-server.pid')
 
 if os.path.exists(pid_fname):
     rel_fname = pid_fname.replace(os.path.join(os.getcwd(), ''), '', 1)
-    sys.stderr.write('httpd: {} exists.\n'.format(rel_fname))
+    warn('{} exists.', rel_fname)
     sys.exit(69)
 
 parser = argparse.ArgumentParser(description='Starts a simle HTTP server.')
 parser.add_argument('port', type=int, metavar='PORT')
 args = parser.parse_args()
-
-socketserver.TCPServer.allow_reuse_address = True
-handler = server.SimpleHTTPRequestHandler
-httpd = socketserver.TCPServer(('localhost', args.port), handler)
 
 
 # PARENT
@@ -129,34 +138,33 @@ if pid > 0:
     # Don't wait for the child, lest it becomes a zombie.
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
-    # Try to reach the child, checking whether it accepts connections.
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    for i in range(MAX_STARTUP_TIME):
-        if i > 1:
-            time.sleep(1)
+    # Wait until the child is ready to serve requests.
+    try_until = time.time() + MAX_STARTUP_TIME
+    while True:
         try:
-            s.connect(('localhost', args.port))
-        except socket.error:
-            continue
-        s.close()
-        break
-    else:
-        # If we reach this point, MAX_STARTUP_TIME has passed,
-        # but we couldn't connect to the child, so we kill it.
-        for i in range(MAX_SHUTDOWN_TIME):
-            if i > 1:
-                time.sleep(i)
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except OSError as err:
-                if err.errno == 3:
-                    break
-        else:
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except OSError:
-                pass
-        sys.exit(1)
+            request.urlopen('http://localhost:{}'.format(args.port))
+            break
+        # pylint: disable=W0703
+        except Exception as err:
+            time.sleep(1)
+            if time.time() > try_until:
+                # If we reach this point, MAX_STARTUP_TIME has passed,
+                # but we couldn't connect to the child, so we kill it.
+                warn(str(err))
+                for i in range(MAX_SHUTDOWN_TIME):
+                    if i > 1:
+                        time.sleep(i)
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except OSError as err:
+                        if err.errno == 3:
+                            break
+                else:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                sys.exit(69)
     sys.exit()
 
 
@@ -177,9 +185,14 @@ atexit.register(os.unlink, pid_fname)
 with open(pid_fname, 'w') as pid_file:
     pid_file.write('{!s}\n'.format(os.getpid()))
 
-# Shutdown if we receive an INT or a TERM.
-for signo in (signal.SIGTERM, signal.SIGINT):
+# Prepare server.
+socketserver.TCPServer.allow_reuse_address = True
+handler = server.SimpleHTTPRequestHandler
+httpd = socketserver.TCPServer(('localhost', args.port), handler)
+
+# Shutdown on INT, QUIT or TERM.
+for signo in (signal.SIGTERM, signal.SIGQUIT, signal.SIGINT):
     signal.signal(signo, httpd.shutdown)
 
-httpd.serve_forever(0.1)
+httpd.serve_forever()
 httpd.server_close()
