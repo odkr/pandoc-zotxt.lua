@@ -108,7 +108,7 @@ Simply say:
 
 The default test suite spins up a simple HTTP server pretending to be Zotero.
 (This is what it needs Python for.) Alternatively, you can run the tests
-using a real Zotero, with *zotxt* and Better BibTeX installed. (But you
+using the real Zotero, with *zotxt* and Better BibTeX installed. (But you
 really don't want to do this.)
 
 #### Requirements
