@@ -137,14 +137,6 @@ The real-world test suite makes the same assumptions as the default one, plus:
 4. You have modified the both test suites, the default and the real world one,
    to refer to the Zotero item IDs of your Zotero database.
 
-#### Execution
-
-Say:
-
-```
-    make test -e NO_HTTP_SERVER=true
-```
-
 #### Adapting Zotero item IDs
 
 Two sources are looked up by their Zotero item ID:
@@ -157,21 +149,29 @@ IDs that these sources have in *your* Zotero database.
 
 You can look up those IDs by searching for those sources in your [Zotero
 online library](https://zotero.org/). Their URLs should have the form:
-"https://www.zotero.org/**<your username>**/items/itemKey/**ABCD1234**".
+"https:\/\/www.zotero.org/*yourUsername*/items/itemKey/**ABCD1234**".
 The last part is the item ID.
 
 You need to make changes to two files:
 
-`test/unit/test.lua`
-:   Change the assignment for `zotero_id.id` in the function 
+`test/unit/test.lua`: 
+    Change the assignment for `zotero_id.id` in the function 
     `test_retrieval:test_get_source` from `TPN8FXZV` to
     the ID of Haslanger's *Resiting Reality* in your database.
 
-`test/data/test-keytype-zotero-id.md`
-:   Change `QN9S6E2T` to the ID of Dotson's "A Cautionary Tale".
+`test/data/test-keytype-zotero-id.md`:
+    Change `QN9S6E2T` to the ID of Dotson's "A Cautionary Tale".
 
 You also need to rename `key=TPN8FXZV` and `key=QN9S6E2T` in 
 `test/data/http-server` accordingly.
+
+#### Execution
+
+Say:
+
+```
+    make test -e NO_HTTP_SERVER=true
+```
 
 
 ## Documentation
