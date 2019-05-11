@@ -148,9 +148,8 @@ You must adapt the tests for these lookups, so that they use the
 IDs that these sources have in *your* Zotero database. 
 
 You can look up those IDs by searching for those sources in your [Zotero
-online library](https://zotero.org/). Their URLs should have the form:
-"https://<i></i>www.zotero.org/*yourUsername*/items/itemKey/**ABCD1234**".
-The last part is the item ID.
+online library](https://zotero.org/). Their URLs should end in:
+"/*yourUsername*/items/itemKey/**ABCD1234**". That last part is the item ID.
 
 You need to make changes to two files:
 
