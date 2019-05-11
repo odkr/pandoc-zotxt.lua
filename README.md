@@ -79,73 +79,99 @@ Morever, `pandoc-zotxt.lua` supports:
 * Using Zotero item ID as citation keys.
 
 
-## Test suite
+## Testing
 
-### Requirements
+### The default test suite
+
+#### Requirements
 
 1. A POSIX-compliant operating system
-2. A version of [make](https://en.wikipedia.org/wiki/Make_(software))
-3. Zotero
-4. *zotxt*
-5. [Pandoc](https://www.pandoc.org/) 2.7.2
-6. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
+2. [Python](https://www.python.org/) 2.7, 3.5, or later.
+3. [Pandoc](https://www.pandoc.org/) 2.7.2
+4. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
 
-### Assumptions
+#### Assumptions
 
-The tests assume that:
+The default test suit only assumes that you are using the Citation Style
+Language stylesheet that ships with `pandoc-citeproc`, namely, 
+`chicago-author-date.csl`.
 
-1. You are using the Citation Style Language stylesheet that ships
-   with `pandoc-citeproc`, namely, `chicago-author-date.csl`
+#### Execution
 
-2. You have imported the sources cited in the test documents.
-   You can import those into Zotero from `test/items.rdf`.
-
-3. You don't have any sources in your Zotero database that
-   match the same easy citekeys as those in `test/items.rdf`.
-   (If you do, you'll need to adapt them.)
-
-
-### Core tests
-
-To run the test suite, say:
+Simply say:
 
 ```
     make test
 ```
 
-`make test` does *not* run the tests for Better BibTeX and Zotero item IDs.
-This is because these tests don't work out of the box.
+### The real-world test suite
 
+The default test suite spins up a simple HTTP server pretending to be Zotero.
+(This is what it needs Python for.) Alternatively, you can run the tests
+using a real Zotero, with *zotxt* and Better BibTeX installed. (But you
+really don't want to do this.)
 
-### Better BibTeX
+#### Requirements
 
-If you want to test Better BibTeX citation keys, you need Better BibTeX,
-of course. Moreover, you have to set your citation key format to: 
-"[auth:lower][year][shorttitle3_3]". 
+1. A POSIX-compliant operating system
+2. Zotero
+3. *zotxt*
+4. Better BibTeX
+5. [Pandoc](https://www.pandoc.org/) 2.7.2
+6. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
 
-To run the Better BibTeX tests, say:
+#### Assumptions
+
+The real-world test suite makes the same assumptions as the default one, plus:
+
+1. You have imported the sources cited in the test documents.
+   You can import those into Zotero from `test/items.rdf`.
+
+2. You don't have any sources in your Zotero database that
+   match the same easy citekeys as those in `test/items.rdf`.
+   (If you do, you'll need to adapt them.)
+ 
+3. You hat set your Better BibTex citation key format to:
+  "[auth:lower][year][shorttitle3_3]". 
+
+4. You have modified the both test suites, the default and the real world one,
+   to refer to the Zotero item IDs of your Zotero database.
+
+#### Execution
+
+Say:
 
 ```
-    make test-better-bibtex
+    make test -e NO_HTTP_SERVER=true
 ```
 
+#### Adapting Zotero item IDs
 
-### Zotero item IDs
+Two sources are looked up by their Zotero item ID:
 
-Zotero item IDs are particular to the database the items are stored in. So,
-if you want to test whether Zotero item IDs work, you need to adapt this
-test to your database: 
+1. Sally Haslanger's *Resisting Reality*
+2. Kristie Dotson's "A Cautionary Tale: On Limiting Epistemic Oppression"
 
-1. Import the sources from `test/items.rdf`.
-2. Look up the item ID of Kristie Dotson's "A Cautionary Tale: On Limiting
-   Epistemic Oppression" in your Zotero database. 
-3. Replace "QN9S6E2T" in `test/data/test-zotero-id.md` with that ID.
+You must adapt the tests for these lookups, so that they use the
+IDs that these sources have in *your* Zotero database. 
 
-To run the Zotero item ID test, say:
+You can look up those IDs by searching for those sources in your [Zotero
+online library](https://zotero.org/). Their URLs should have the form:
+"https://www.zotero.org/**<your username>**/items/itemKey/**ABCD1234**".
+The last part is the item ID.
 
-```
-    make test-keytype-zotero-id
-```
+You need to make changes to two files:
+
+`test/unit/test.lua`
+:   Change the assignment for `zotero_id.id` in the function 
+    `test_retrieval:test_get_source` from `TPN8FXZV` to
+    the ID of Haslanger's *Resiting Reality* in your database.
+
+`test/data/test-keytype-zotero-id.md`
+:   Change `QN9S6E2T` to the ID of Dotson's "A Cautionary Tale".
+
+You also need to rename `key=TPN8FXZV` and `key=QN9S6E2T` in 
+`test/data/http-server` accordingly.
 
 
 ## Documentation
