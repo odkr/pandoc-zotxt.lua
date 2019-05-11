@@ -1,6 +1,6 @@
---- get_source-better-bibtex.lua - Unit test for get_source. 
+--- warn_01.lua - A test for the warn function of pandoc-zotxt.lua. 
 --
--- @script get_source-better-bibtex.lua
+-- @script warn_01.lua
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -8,8 +8,7 @@
 -- This script must be run as a Pandoc filter from the root of the repository.
 --
 --
--- LICENSE
--- =======
+-- # LICENSE
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to
@@ -70,64 +69,20 @@ do
     end
 end
 
-local SCRIPT_DIR, SCRIPT_NAME = split_path(PANDOC_SCRIPT_FILE)
-local TEST_BASE_DIR = SCRIPT_DIR .. PATH_SEP .. '..'
-local REPO_BASE_DIR = TEST_BASE_DIR .. PATH_SEP .. '..'
-
-package.path = package.path .. ';' .. 
-    concat({REPO_BASE_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
-
-local P = require 'pandoc-zotxt'
-
-
--- DATA
--- ====
-
-local SAMPLE_SOURCE = {
-    id = 'haslanger:2012resisting', type = 'book',
-    author = {{family = 'Haslanger', given = 'Sally'}},
-    title = 'Resisting Reality: Social Construction and Social Critique',
-    publisher = 'Oxford University Press',
-    ['publisher-place'] = 'Oxford',
-    issued = {['date-parts'] = {{'2012'}}},
-    ['title-short'] = 'Resisting Reality',
-    ISBN = '978-0-19-989262-4'
-}
-
-
--- FUNCTIONS
--- =========
-
---- Tests if two tables are equal.
---
--- @tparam tbl a First table.
--- @tparam tbl b Second table.
---
--- @treturn bool Whether they are equal.
-function tbl_equals (a, b)
-    local keys = {}
-    for k, _ in pairs(a) do keys[k] = true end
-    for k, _ in pairs(b) do keys[k] = true end
-    for k, _ in pairs(keys) do
-        if type(a[k]) == 'table' and type(b[k]) == 'table' then
-            return tbl_equals(a[k], b[k])
-        elseif a[k] ~= b[k] then
-            return false
-        end
-    end
-    return true
-end
-
-
--- TEST
--- ====
-
 do
-    local id = 'haslanger2012ResistingRealitySocial'
-    local source, err = P.get_source(id)
-    assert(source ~= nil)
-    assert(err == nil)
-    source.id = id
-    SAMPLE_SOURCE.id = id
-    assert(tbl_equals(source, SAMPLE_SOURCE))
+    local wd, fname = split_path(PANDOC_SCRIPT_FILE)
+    if not wd then wd = '.' end
+    package.path = package.path .. ';' .. 
+        concat({wd, '..', '..', 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
 end
+
+local pandoc_zotxt = require 'pandoc-zotxt'
+
+
+-- TESTS
+-- =====
+
+local dir = pandoc_zotxt.get_input_directory()
+
+assert(dir == '.', 
+    format('get_input_directory: returned "%s", but expected "."', dir))

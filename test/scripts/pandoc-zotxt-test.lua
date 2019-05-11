@@ -1,15 +1,23 @@
---- simple.lua - Unit test for get_input_directory. 
+--- pandoc-zotxt-test.lua - A wrapper to call pandoc-zotxt.lua.
 --
--- @script simple.lua
--- @author Odin Kroeger
--- @copyright 2018, 2019 Odin Kroeger
--- @license MIT
+-- # SYNOPSIS
+-- 
+--      pandoc --lua-filter pandoc-zotxt-test.lua
+-- 
+-- 
+-- # DESCRIPTION
+-- 
+-- A fake Pandoc filter that calls pandoc-zotxt.lua, but modifies its
+-- configuration before doing so. Currently, it only changes the
+-- URL for source lookups. This is useful for testing.
 --
--- This script must be run as a Pandoc filter from the root of the repository.
+--
+-- # AUTHOR
+--
+-- Copyright 2019 Odin Kroeger
 --
 --
--- LICENSE
--- =======
+-- # LICENSE
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to
@@ -28,17 +36,21 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 -- IN THE SOFTWARE.
+--
+-- @script test.lua
+-- @author Odin Kroeger
+-- @copyright 2018, 2019 Odin Kroeger
+-- @license MIT
 
--- SHORTHANDS
--- ==========
+
+-- # SHORTHANDS
 
 local concat = table.concat
+local insert = table.insert
 local unpack = table.unpack
-local format = string.format
 
 
--- LIBRARIES
--- =========
+-- # LIBRARIES
 
 local text = require 'text'
 local sub = text.sub
@@ -70,18 +82,44 @@ do
     end
 end
 
-local SCRIPT_DIR, SCRIPT_NAME = split_path(PANDOC_SCRIPT_FILE)
-local TEST_BASE_DIR = SCRIPT_DIR .. PATH_SEP .. '..' .. PATH_SEP .. '..'
-local REPO_BASE_DIR = TEST_BASE_DIR .. PATH_SEP .. '..'
+--- The directory of this script.
+local SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
+
+--- The directory of the test suite. 
+local TEST_DIR = concat({SCRIPT_DIR, '..'}, PATH_SEP)
+
+--- The repository directory.
+local REPO_DIR = concat({TEST_DIR, '..'}, PATH_SEP)
 
 package.path = package.path .. ';' .. 
-    concat({REPO_BASE_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
+    concat({REPO_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
 
-local P = require 'pandoc-zotxt'
+local M = require 'pandoc-zotxt'
 
 
+-- # BOILERPLATE
 
--- TEST
--- ====
+--- Runs the tests
+--
+-- Looks up the `tests` metadata field in the current Pandoc document
+-- and passes it to `lu.LuaUnit.run`, as is.
+--
+-- @tparam pandoc.Doc doc A Pandoc document.
+function run (doc)
+    local meta = doc.meta
+    if meta then
+        local config = {}
+        for k, v in pairs(meta) do config[k] = v end
+        if config['query-base-url'] then
+            if config['query-base-url']:match('/$') then
+                M.ZOTXT_QUERY_BASE_URL = config['query-base-url']
+            else
+                M.ZOTXT_QUERY_BASE_URL = config['query-base-url'] .. '/'
+            end
+        end
+    end
+end
 
-assert(P.get_input_directory() == 'test/data')
+insert(M, 1, {Pandoc = run})
+return M
+

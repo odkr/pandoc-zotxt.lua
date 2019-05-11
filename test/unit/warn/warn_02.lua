@@ -1,7 +1,6 @@
 --- warn_02.lua - A test for the warn function of pandoc-zotxt.lua. 
 --
 -- @script warn_02.lua
--- @release 0.3.14a
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -9,8 +8,7 @@
 -- This script must be run as a Pandoc filter from the root of the repository.
 --
 --
--- LICENSE
--- =======
+-- # LICENSE
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to
