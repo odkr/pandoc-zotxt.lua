@@ -190,8 +190,9 @@ socketserver.TCPServer.allow_reuse_address = True
 handler = server.SimpleHTTPRequestHandler
 httpd = socketserver.TCPServer(('localhost', args.port), handler)
 
-# Shutdown on INT, QUIT or TERM.
-for signo in (signal.SIGTERM, signal.SIGQUIT, signal.SIGINT):
+# Shutdown on INT, QUIT, TERM, and unexpected signals.
+for signo in (signal.SIGTERM, signal.SIGQUIT, signal.SIGINT,
+              signal.SIGABRT, signal.SIGTSTP):
     signal.signal(signo, httpd.shutdown)
 
 httpd.serve_forever()
