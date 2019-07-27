@@ -19,10 +19,10 @@
 -- 
 -- You can also use pandoc-zotxt.lua to manage a bibliography file. This is
 -- usually a lot faster. Simply set the `zotero-bibliography` metadata field
--- to a filename. pandoc-zotxt.lua will then add the sources you cite to that
+-- to a filename. pandoc-zotxt.lua will then add every source you cite to that
 -- file, rather than to the `references` metadata field. It will also add
 -- that file to the document's `bibliography` metadata field, so that
--- pandoc-zotxt.lua picks it up. The biblography is stored in CSL JSON,
+-- pandoc-zotxt.lua picks it up. The biblography is stored as a JSON file,
 -- so the filename must end in ".json".
 -- 
 -- pandoc-zotxt.lua takes relative filenames to be relative to the directory
@@ -30,7 +30,7 @@
 -- files, as relative to the current working directory.
 -- 
 -- Note, pandoc-zotxt.lua only ever adds sources to bibliography files.
--- It doesn't update or delete them. To update your bibliography file,
+-- It never updates or deletes them. To update your bibliography file,
 -- delete it. pandoc-zotxt.lua will then regenerate it from scratch.
 -- 
 -- 
