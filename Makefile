@@ -32,7 +32,8 @@ GENERATION_TESTS	:= $(ZOTXT_GENERATION_TESTS)
 
 SIMPLE_UNIT_TESTS	:= test_core  # test_citekey test_ordered_table
 NETWORK_UNIT_TESTS	:= test_zotxt # test_zotero
-UNIT_TESTS		:= $(SIMPLE_UNIT_TESTS) test_get_input_directory test_warn
+UNIT_TESTS		:= $(SIMPLE_UNIT_TESTS) \
+	test_get_input_directory test_warn test_get_citekeys
 
 
 # ARGUMENTS
@@ -46,7 +47,7 @@ FAKE_ZOTXT_ARGS	:= -M reference-manager=FakeConnector \
 # TESTS
 # =====
 
-test: install-luaunit prepare-tmpdir $(UNIT_TESTS) test-zotxt
+test: install-luaunit prepare-tmpdir test-unit test-zotxt
 
 test-unit: $(UNIT_TESTS)
 
@@ -92,9 +93,13 @@ test_warn: prepare-tmpdir
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
 	done
 
+test_get_citekeys:
+	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
+		-M tests=$@ $(DATA_DIR)/test-zotxt-keytype-easy-citekey.md
+
 test-zotxt: test_zotxt $(ZOTXT_GENERATION_TESTS)
 	
-.PHONY: install-luaunit prepare-tmpdir start-fake-zotxt \
-	test test-unit test-zotxt \
+.PHONY: install-luaunit prepare-tmpdir \
+	test test-unit test_get_citekeys test-zotxt \
 	$(UNIT_TESTS) $(NETWORK_UNIT_TESTS) $(GENERATION_TESTS)
 

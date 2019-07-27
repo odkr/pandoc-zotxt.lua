@@ -580,11 +580,27 @@ end
 --     lu.assert_equals(keys, {'a', 'b', 'c'})
 -- end
 
+test_get_citekeys = {}
+
+function test_get_citekeys ()
+    local invalid = {nil, false, 0, '', {}}
+    for _, v in pairs(invalid) do
+        lu.assert_error(M.get_citekeys, v)
+    end
+    
+    should = {'haslanger:2012resisting','díaz-león:2013what',
+        'díaz-león:2015defence','díaz-león:2016woman',
+        'dotson:2016word','nobody:0000nothing'}
+
+    lu.assert_equals(M.get_citekeys(DOC), should)
+end
+
+
 
 test_zotxt = {}
 
 function test_zotxt:setup ()
-    self.db = CONFIG.db_connector:new(CONFIG, META)
+    self.db = CONFIG.db_connector:new(CONFIG, DOC.meta)
 end
 
 function test_zotxt:test_get_source ()
@@ -667,7 +683,7 @@ function run (doc)
     if meta.tests then tests = stringify(meta.tests) end
     CONFIG, err = M.get_db_configuration(doc.meta)
     if not CONFIG then M.warn(err) return nil end
-    META = doc.meta
+    DOC = doc
     exit(lu.LuaUnit.run(tests))
 end
 
