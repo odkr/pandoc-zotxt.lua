@@ -181,7 +181,7 @@ do
 end
 
 -- A JSON parser. 
--- (pandoc doesn't expose it's own, so we need this.)
+-- (Pandoc doesn't expose it's own, so we need this.)
 local json = require 'lunajson'
 local encode = json.encode
 local decode = json.decode
