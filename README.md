@@ -61,7 +61,8 @@ following commands into a bourne shell:
 ```
 
 You may also want to copy the manual page from the `man` directory in the
-repository to wherever your operating system searches for manual pages.
+repository to wherever your operating system searches for manual pages
+(e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
 
 ## `pandoc-zotxt.lua` vs `pandoc-zotxt`
@@ -75,28 +76,28 @@ repository to wherever your operating system searches for manual pages.
 
 Morever, `pandoc-zotxt.lua` supports:
 
-* Updating a JSON bibliography.
+* Using a bibliography file as cache, so that bibliographic data that
+  was already retrieved from Zotero need not be retrieved again.
 * Using Zotero item ID as citation keys.
 
 
 ## Testing
 
-### The default test suite
-
-#### Requirements
+### Requirements
 
 1. A POSIX-compliant operating system
-2. [Python](https://www.python.org/) 2.7, 3.5, or later.
-3. [Pandoc](https://www.pandoc.org/) 2.7.2
-4. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
+2. [Pandoc](https://www.pandoc.org/) 2.7.2
+3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
 
-#### Assumptions
+The test suite may or may not work with other versions of 
+Pandoc and pandoc-citeproc.
 
-The default test suit only assumes that you are using the Citation Style
-Language stylesheet that ships with `pandoc-citeproc`, namely, 
-`chicago-author-date.csl`.
+### Assumptions
 
-#### Execution
+You are using the default Citation Style Language stylesheet that ships with
+`pandoc-citeproc`, namely, `chicago-author-date.csl`.
+
+### Running the tests
 
 Simply say:
 
@@ -106,71 +107,21 @@ Simply say:
 
 ### The real-world test suite
 
-The default test suite spins up a simple HTTP server pretending to be Zotero.
-(This is what it needs Python for.) Alternatively, you can run the tests
-using the real Zotero, with *zotxt* and Better BibTeX installed. (But you
-really don't want to do this.)
-
-#### Requirements
-
-1. A POSIX-compliant operating system
-2. Zotero
-3. *zotxt*
-4. Better BibTeX
-5. [Pandoc](https://www.pandoc.org/) 2.7.2
-6. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) 0.16.1.3
-
-#### Assumptions
-
-The real-world test suite makes the same assumptions as the default one, plus:
-
-1. You have imported the sources cited in the test documents.
-   You can import those into Zotero from `test/items.rdf`.
-
-2. You don't have any sources in your Zotero database that
-   match the same easy citekeys as those in `test/items.rdf`.
-   (If you do, you'll need to adapt them.)
- 
-3. You hat set your Better BibTex citation key format to:
-  "[auth:lower][year][shorttitle3_3]". 
-
-4. You have modified the both test suites, the default and the real world one,
-   to refer to the Zotero item IDs of your Zotero database.
-
-#### Adapting Zotero item IDs
-
-Two sources are looked up by their Zotero item ID:
-
-1. Sally Haslanger's *Resisting Reality*
-2. Kristie Dotson's "A Cautionary Tale: On Limiting Epistemic Oppression"
-
-You must adapt the tests for these lookups, so that they use the
-IDs that these sources have in *your* Zotero database. 
-
-You can look up those IDs by searching for those sources in your [Zotero
-online library](https://zotero.org/). Their URLs should end in:
-"/*yourUsername*/items/itemKey/**ABCD1234**". That last part is the item ID.
-
-You need to make changes to two files:
-
-`test/unit/test.lua`: 
-    Change the assignment for `zotero_id.id` in the function 
-    `test_retrieval:test_get_source` from `TPN8FXZV` to
-    the ID of Haslanger's *Resiting Reality* in your database.
-
-`test/data/test-keytype-zotero-id.md`:
-    Change `QN9S6E2T` to the ID of Dotson's "A Cautionary Tale".
-
-You also need to rename `key=TPN8FXZV` and `key=QN9S6E2T` in 
-`test/data/http-server` accordingly.
-
-#### Execution
-
-Say:
+The default test suite doesn't try to connect to a Zotero installation,
+but uses canned responses from my Zotero database. You can force the
+test suite to connect to a local Zotero database by:
 
 ```
-    make test -e NO_HTTP_SERVER=true
+    make test -e REAL_BACKEND=yes
 ```
+
+Note, you will have to adapt the test suite to your database.
+
+Moreover, you will need:
+
+* Zotero (v5 or newer)
+* zotxt (v5 or newer)
+* Better BibTex
 
 
 ## Documentation
