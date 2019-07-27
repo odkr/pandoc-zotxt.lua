@@ -308,7 +308,6 @@ end
 --  was done or an error occurred.
 --
 -- Prints messages to STDERR if errors occur.
--- @todo Add tests.
 function add_sources (db, citekeys, meta)
     if #citekeys == 0 then return nil end
     do
@@ -331,8 +330,6 @@ end
 -- @treturn string An error message, if applicable.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
---
--- @todo Add tests.
 function add_bibliography (db, citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
     local fname = stringify(meta['zotero-bibliography'])
@@ -369,8 +366,6 @@ end
 -- @treturn string An error message, if applicable.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
---
--- @todo Add tests.
 function update_bibliography (db, citekeys, fname)
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
     if #citekeys == 0 then return end
@@ -404,8 +399,6 @@ end
 --  `references` added if needed, or `nil` if no sources were found.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
---
--- @todo Add tests.
 function add_references (db, citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = {} end
@@ -437,7 +430,6 @@ end
 -- (3) `getmetatable` is available.
 --
 -- @todo Add tests.
-
 function delegates_to(tbl, proto, depth)
     depth = depth or 1
     assert(type(tbl) == 'table', 'given object is not a table')
