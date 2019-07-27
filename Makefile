@@ -1,28 +1,54 @@
+# Interpret Makefile according to POSIX standard.
 .POSIX:
 
-BASE_DIR   := test
-DATA_DIR   := $(BASE_DIR)/data
-NORM_DIR   := $(BASE_DIR)/norms
-UNIT_DIR   := $(BASE_DIR)/unit
-TMP_DIR    := $(BASE_DIR)/tmp
-SCRIPT_DIR := $(BASE_DIR)/scripts
+# DIRECTORIES
+# ===========
 
-HTTP_SERVER_PORT	?= 23120
-SHELL			?= sh
-RM 			?= rm -f
-COLLECT_WARN_TESTS	:= find "$(UNIT_DIR)/warn" -type f -name '*.lua' \
+BASE_DIR	:= test
+DATA_DIR	:= $(BASE_DIR)/data
+NORM_DIR	:= $(BASE_DIR)/norms
+UNIT_DIR	:= $(BASE_DIR)/unit
+TMP_DIR		:= $(BASE_DIR)/tmp
+SCRIPT_DIR	:= $(BASE_DIR)/scripts
+
+
+# UTILITY PROGRAMMES
+# ==================
+
+SHELL		?= sh
+RM		?= rm -f
+
+WARN_TESTS	:= find "$(UNIT_DIR)/warn" -type f -name '*.lua' \
 	-exec basename \{\} \; | sed 's/.lua$$//' | sort
 
-SIMPLE_UNIT_TESTS	:= test_core test_retrieval
-UNIT_TESTS 		:= $(SIMPLE_UNIT_TESTS) \
-			   test_get_input_directory test_warn
-GENERATIVE_TESTS	:= test-keytype-easy-citekey \
-	test-keytype-better-bibtex test-keytype-zotero-id \
-	test-bibliography
 
-test: install-luaunit prepare-tmpdir start-http-server \
-	$(UNIT_TESTS) $(GENERATIVE_TESTS) \
-	stop-http-server
+# TARGETS FOR TESTING
+# ===================
+
+ZOTXT_GENERATION_TESTS	:= test-zotxt-keytype-easy-citekey \
+	test-zotxt-keytype-better-bibtex test-zotxt-keytype-zotero-id \
+	test-zotxt-bibliography
+GENERATION_TESTS	:= $(ZOTXT_GENERATION_TESTS)
+
+SIMPLE_UNIT_TESTS	:= test_core  # test_citekey test_ordered_table
+NETWORK_UNIT_TESTS	:= test_zotxt # test_zotero
+UNIT_TESTS		:= $(SIMPLE_UNIT_TESTS) test_get_input_directory test_warn
+
+
+# ARGUMENTS
+# =========
+
+FAKE_ZOTXT_ARGS	:= -M reference-manager=FakeConnector \
+	-M fake-connector=Zotxt \
+	-M fake-fetch-from="$(DATA_DIR)/fake/zotxt"
+
+
+# TESTS
+# =====
+
+test: install-luaunit prepare-tmpdir $(UNIT_TESTS) test-zotxt
+
+test-unit: $(UNIT_TESTS)
 
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
@@ -32,25 +58,28 @@ install-luaunit:
 	[ -e "share/lua/5.3/luaunit.lua" ] || \
 		luarocks install --tree=. luaunit
 
-start-http-server:
-ifeq ('$(NO_HTTP_SERVER)', '')
-	$(SHELL) test/scripts/httpdctl start "$(HTTP_SERVER_PORT)"
-endif
-
-stop-http-server:
-ifeq ('$(NO_HTTP_SERVER)', '')
-	$(SHELL) test/scripts/httpdctl stop
-endif
-
 $(SIMPLE_UNIT_TESTS): prepare-tmpdir
-ifeq ('$(NO_HTTP_SERVER)', '')
+	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null -M tests=$@ \
+		/dev/null	
+
+$(NETWORK_UNIT_TESTS): prepare-tmpdir
+ifeq ($(REAL_BACKEND), yes)
 	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		-M query-base-url=http://localhost:$(HTTP_SERVER_PORT) \
-		-M tests=$@ /dev/null || \
-		{ EX=$$?; sh test/scripts/httpdctl stop || :; exit "$$EX"; }
+		-M tests=$@ /dev/null
 else
 	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		-M tests=$@ /dev/null	
+		$(FAKE_ZOTXT_ARGS) -M tests=$@ /dev/null
+endif
+
+$(GENERATION_TESTS): prepare-tmpdir
+ifeq ($(REAL_BACKEND), yes)
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o "$(TMP_DIR)/$@.txt" "$(DATA_DIR)/$@.md"
+	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
+else
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
+		-o "$(TMP_DIR)/$@.txt" $(FAKE_ZOTXT_ARGS) "$(DATA_DIR)/$@.md"
+	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
 endif
 
 test_get_input_directory:
@@ -63,21 +92,9 @@ test_warn: prepare-tmpdir
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
 	done
 
-$(GENERATIVE_TESTS): prepare-tmpdir
-ifeq ('$(NO_HTTP_SERVER)', '')
-	-pandoc --lua-filter "$(SCRIPT_DIR)/pandoc-zotxt-test.lua" \
-		-F pandoc-citeproc -t plain -o "$(TMP_DIR)/$@.txt" \
-		-M query-base-url=http://localhost:$(HTTP_SERVER_PORT) \
-		"$(DATA_DIR)/$@.md"
-	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt" || \
-		{ EX=$$?; sh test/scripts/httpdctl stop || :; exit "$$EX"; }
-else
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o "$(TMP_DIR)/$@.txt" "$(DATA_DIR)/$@.md"
-	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
-endif
+test-zotxt: test_zotxt $(ZOTXT_GENERATION_TESTS)
 	
-.PHONY: install-luaunit prepare-lua-filters-release \
-	prepare-tmpdir start-http-server stop-http-server test \
-	$(UNIT_TESTS) $(GENERATIVE_TESTS)
+.PHONY: install-luaunit prepare-tmpdir start-fake-zotxt \
+	test test-unit test-zotxt \
+	$(UNIT_TESTS) $(NETWORK_UNIT_TESTS) $(GENERATION_TESTS)
 
