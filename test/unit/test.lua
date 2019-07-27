@@ -588,7 +588,7 @@ function test_get_citekeys ()
         lu.assert_error(M.get_citekeys, v)
     end
     
-    should = {'haslanger:2012resisting','díaz-león:2013what',
+    local should = {'haslanger:2012resisting','díaz-león:2013what',
         'díaz-león:2015defence','díaz-león:2016woman',
         'dotson:2016word','nobody:0000nothing'}
 
