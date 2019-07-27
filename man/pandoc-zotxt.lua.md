@@ -39,7 +39,7 @@ of the first input file you pass to **pandoc** or, if you don't pass any input
 files, as relative to the current working directory.
 
 Note, **pandoc-zotxt.lua** only ever *adds* sources to bibliography files.
-It *never* updates or delete them. To update your bibliography file,
+It *never* updates or deletes them. To update your bibliography file,
 delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
 
 
