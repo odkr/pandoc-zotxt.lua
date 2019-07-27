@@ -273,8 +273,6 @@ end
 --
 -- @tparam pandoc.Doc doc A document.
 -- @treturn {str,...} A list of citation keys.
---
--- @todo Add tests.
 function get_citekeys (doc)
     local walk_block = walk_block
     local citekeys = {}
