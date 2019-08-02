@@ -34,9 +34,27 @@
 -- delete it. pandoc-zotxt.lua will then regenerate it from scratch.
 -- 
 -- 
+-- # KNOWN ISSUES
+-- 
+-- Zotero v5.0.71 and v5.0.72 don't allow pandoc, and by extension
+-- pandoc-zotxt.lua, to access its interface. This is because these 
+-- versions of Zotero fail to handle HTTP requets from user agents 
+-- that don't set the "User Agent" HTTP header. And pandoc doesn't.
+-- 
+-- If you cannot (or rather would not) upgrade to a more recent version of
+-- Zotero, you can also pass `--request-header User-Agent:Pandoc/2` to pandoc.
+-- 
+-- Note, from Zotero v5.0.71 onwards, Zotero doesn't allow browsers to access
+-- its interface. It defines "browser" as any user agent that sets the "User
+-- Agent" HTTP header to a string that starts with "Mozilla/". Put another way,
+-- passing, for instance, `--request-header User-Agent:Mozilla/5` will fail. If
+-- you must set the "User Agent" to a string that starts with "Mozilla/", you
+-- also have to pass `--request-header Zotero-Allowed-Request:X`.
+--
+--
 -- # CAVEATS
 -- 
--- pandoc-zotxt.lua is Unicode-agnostic.
+-- pandoc-zotxt.lua is partly Unicode-agnostic.
 -- 
 -- 
 -- # SEE ALSO
