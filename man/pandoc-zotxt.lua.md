@@ -46,20 +46,24 @@ delete it. **pandoc-zotxt.lua** will then regenerate it from scratch.
 
 # KNOWN ISSUES
 
-Zotero v5.0.71 and v5.0.72 don't allow **pandoc**, and by extension
-**pandoc-zotxt.lua**, to access its interface. This is because these 
-versions of Zotero fail to handle HTTP requets from user agents that 
-don't set the "User Agent" HTTP header. And **pandoc** doesn't.
+Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents that 
+don't set the "User Agent" HTTP header. And **pandoc** doesn't. As a 
+consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions of 
+Zotero unless you tell **pandoc** to set the "User Agent" HTTP header.
 
 If you cannot (or rather would not) upgrade to a more recent version of Zotero,
-you can also pass **--request-header** *User-Agent:Pandoc/2* to **pandoc**.
+you can make *pandoc* set that header, thereby enabling **pandoc-zotxt.lua** to
+connect to your version of Zotero, by passing **--request-header**
+*User-Agent:Pandoc/2*.
 
 Note, from Zotero v5.0.71 onwards, Zotero doesn't allow browsers to access its
 interface. It defines "browser" as any user agent that sets the "User Agent"
-HTTP header to a string that starts with "Mozilla/". Put another way, passing,
-for instance, **--request-header** *User-Agent:Mozilla/5* will *fail*.
-If you must set the "User Agent" to a string that starts with "Mozilla/",
-you also have to pass **--request-header** *Zotero-Allowed-Request:X*.
+HTTP header to a string that starts with "Mozilla/". So, for instance,
+**--request-header** *User-Agent:Mozilla/5* will *not* enable
+**pandoc-zotxt.lua** to connect. If you must set the "User Agent" HTTP header
+to a string that starts with "Mozilla/", you also have set the HTTP header
+"Zotero-Allowed-Request". You can do so by **--request-header**
+*Zotero-Allowed-Request:X*.
 
 
 # CAVEATS

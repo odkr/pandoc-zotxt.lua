@@ -48,25 +48,29 @@ To update your bibliography file, delete it.
 \f[B]pandoc-zotxt.lua\f[R] will then regenerate it from scratch.
 .SH KNOWN ISSUES
 .PP
-Zotero v5.0.71 and v5.0.72 don\[aq]t allow \f[B]pandoc\f[R], and by
-extension \f[B]pandoc-zotxt.lua\f[R], to access its interface.
-This is because these versions of Zotero fail to handle HTTP requets
-from user agents that don\[aq]t set the \[dq]User Agent\[dq] HTTP
-header.
+Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
+that don\[aq]t set the \[dq]User Agent\[dq] HTTP header.
 And \f[B]pandoc\f[R] doesn\[aq]t.
+As a consequence, \f[B]pandoc-zotxt.lua\f[R] cannot retrieve data from
+these versions of Zotero unless you tell \f[B]pandoc\f[R] to set the
+\[dq]User Agent\[dq] HTTP header.
 .PP
 If you cannot (or rather would not) upgrade to a more recent version of
-Zotero, you can also pass \f[B]--request-header\f[R]
-\f[I]User-Agent:Pandoc/2\f[R] to \f[B]pandoc\f[R].
+Zotero, you can make \f[I]pandoc\f[R] set that header, thereby enabling
+\f[B]pandoc-zotxt.lua\f[R] to connect to your version of Zotero, by
+passing \f[B]--request-header\f[R] \f[I]User-Agent:Pandoc/2\f[R].
 .PP
 Note, from Zotero v5.0.71 onwards, Zotero doesn\[aq]t allow browsers to
 access its interface.
 It defines \[dq]browser\[dq] as any user agent that sets the \[dq]User
 Agent\[dq] HTTP header to a string that starts with \[dq]Mozilla/\[dq].
-Put another way, passing, for instance, \f[B]--request-header\f[R]
-\f[I]User-Agent:Mozilla/5\f[R] will \f[I]fail\f[R].
-If you must set the \[dq]User Agent\[dq] to a string that starts with
-\[dq]Mozilla/\[dq], you also have to pass \f[B]--request-header\f[R]
+So, for instance, \f[B]--request-header\f[R]
+\f[I]User-Agent:Mozilla/5\f[R] will \f[I]not\f[R] enable
+\f[B]pandoc-zotxt.lua\f[R] to connect.
+If you must set the \[dq]User Agent\[dq] HTTP header to a string that
+starts with \[dq]Mozilla/\[dq], you also have set the HTTP header
+\[dq]Zotero-Allowed-Request\[dq].
+You can do so by \f[B]--request-header\f[R]
 \f[I]Zotero-Allowed-Request:X\f[R].
 .SH CAVEATS
 .PP

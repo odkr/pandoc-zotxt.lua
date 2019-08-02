@@ -36,20 +36,24 @@
 -- 
 -- # KNOWN ISSUES
 -- 
--- Zotero v5.0.71 and v5.0.72 don't allow pandoc, and by extension
--- pandoc-zotxt.lua, to access its interface. This is because these 
--- versions of Zotero fail to handle HTTP requets from user agents 
--- that don't set the "User Agent" HTTP header. And pandoc doesn't.
+-- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
+-- that  don't set the "User Agent" HTTP header. And pandoc doesn't. As a
+-- consequence, pandoc-zotxt.lua cannot retrieve data from these versions of
+-- Zotero unless you tell pandoc to set the "User Agent" HTTP header.
 -- 
 -- If you cannot (or rather would not) upgrade to a more recent version of
--- Zotero, you can also pass `--request-header User-Agent:Pandoc/2` to pandoc.
+-- Zotero, you can make pandoc set that header, thereby enabling
+-- pandoc-zotxt.lua to connect to your version of Zotero, by passing
+-- "--request-header User-Agent:Pandoc/2".
 -- 
 -- Note, from Zotero v5.0.71 onwards, Zotero doesn't allow browsers to access
 -- its interface. It defines "browser" as any user agent that sets the "User
--- Agent" HTTP header to a string that starts with "Mozilla/". Put another way,
--- passing, for instance, `--request-header User-Agent:Mozilla/5` will fail. If
--- you must set the "User Agent" to a string that starts with "Mozilla/", you
--- also have to pass `--request-header Zotero-Allowed-Request:X`.
+-- Agent" HTTP header to a string that starts with "Mozilla/". So, for
+-- instance, "--request-header User-Agent:Mozilla/5" will not enable
+-- pandoc-zotxt.lua to connect. If you must set the "User Agent" HTTP header to
+-- a string that starts with "Mozilla/", you also have set the HTTP header
+-- "Zotero-Allowed-Request". You can do so by "--request-header
+-- Zotero-Allowed-Request:X".
 --
 --
 -- # CAVEATS
@@ -259,7 +263,7 @@ end
 --
 -- Note, `get_db_configuration` only processes settings that govern how
 -- `pandoc-zotxt.lua` connects to the reference manager you use (i.e. Zotero).
--- It does *not* process other settings (namely, `zotero-bibliography`).
+-- It does not process other settings (namely, `zotero-bibliography`).
 -- Also, not every matadata field is a configuration setting
 -- (namely, `references` and `bibliography` aren't).
 --
@@ -583,7 +587,7 @@ end
 function warn (...)
     local stderr = io.stderr
     local str = concat({...})
-    for line in str:gmatch('([^\n]*)\n?') do
+    for line in str:gmatch('([^\n])\n?') do
         stderr:write(NAME, ': ', line, '\n')
     end
 end
@@ -632,7 +636,7 @@ end
 --
 -- `pandoc-zotxt.lua` could, in principle, retrieve bibliographic data from
 -- different reference managers. (It just so happens that it currently only
--- supports *Zotero* via *zotxt*.) 
+-- supports Zotero via zotxt.) 
 --
 -- You can add support for other reference manangers (or other ways of
 -- retrieving data from Zotero) by adding prototypes that implement the
@@ -641,49 +645,49 @@ end
 --
 -- A database connector implements:
 --
--- ## Method `new` (*required*)
+-- ## Method `new` (required)
 --
--- *Arguments:*
+-- Arguments:
 --
--- * Settings (as `table` of key-value pairs)
--- * Document metadata (as `pandoc.Meta`)
+--  Settings (as `table` of key-value pairs)
+--  Document metadata (as `pandoc.Meta`)
 --
--- *Returns:*
+-- Returns:
 --
--- A database connection. The connection *must* delegate to `DbConncetor`.
+-- A database connection. The connection must delegate to `DbConncetor`.
 --
--- *On error:*
+-- On error:
 --
 -- Throw an error.
 --
--- ## Method `get_source` (*required*)
+-- ## Method `get_source` (required)
 --
--- *Arguments:*
+-- Arguments:
 --
--- * Citation key (as `string`)
+--  Citation key (as `string`)
 --
--- *Returns:*
+-- Returns:
 --
 -- A bibliographic item in CSL format (as `table`).
 --
--- *On error:*
+-- On error:
 --
 -- Return `nil` and an error message.
 --
--- *Behaviour:*
+-- Behaviour:
 --
--- If `get_source` retrieves data via HTTP GET requests it *should* do so
+-- If `get_source` retrieves data via HTTP GET requests it should do so
 -- by calling `self:read_url`. `DbConnector` implements a `read_url` method,
 -- so this will call `DbConnector:read_url`. This allows to test a database
 -- connector using `FakeConnector`.
 --
--- ## Method `add_settings` (*optional*)
+-- ## Method `add_settings` (optional)
 --
--- *Arguments:*
+-- Arguments:
 --
 -- A list of setting definitions (as `Settings`)
 --
--- *Behaviour:*
+-- Behaviour:
 --
 -- Should add any settings for the database connector. `Pandoc` will then
 -- look for those settings in the document's metadata and pass them to
@@ -786,7 +790,7 @@ FakeConnector = setmetatable({}, {__index = DbConnector})
 -- @tparam pandoc.Meta meta The document's metadata.
 --
 -- @treturn FakeConnector The 'connection' or `nil` if an error occurres.
--- @treturn string The data or an error message, if applicable (*not* `nil`).
+-- @treturn string The data or an error message, if applicable (not `nil`).
 function FakeConnector:new (args, meta)
     assert(delegates_to(args.fake_connector, DbConnector), 
         'connector to fake is not a connector')
@@ -824,7 +828,7 @@ end
 -- (in the directory passed to `FakeConnector:new` via `fetch_from`.)
 --
 -- @tparam string url The URL.
--- @treturn string The data or an error message (*not* `nil`).
+-- @treturn string The data or an error message (not `nil`).
 --
 -- Prints the requested URL and the file it serves to STDERR.
 function FakeConnector:read_url (url)
