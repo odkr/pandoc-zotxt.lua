@@ -18,12 +18,14 @@
 -- Better BibTeX for Zotero respectively for details.)
 -- 
 -- You can also use pandoc-zotxt.lua to manage a bibliography file. This is
--- usually a lot faster. Simply set the `zotero-bibliography` metadata field
--- to a filename. pandoc-zotxt.lua will then add every source you cite to that
--- file, rather than to the `references` metadata field. It will also add
--- that file to the document's `bibliography` metadata field, so that
--- pandoc-zotxt.lua picks it up. The biblography is stored as a JSON file,
--- so the filename must end in ".json".
+-- speeds up subsequent runs of pandoc-zotxt.lua for the same document,
+-- because pandoc-zotxt.lua will only fetch those sources from Zotero that
+-- aren't yet in that file. Simply set the `zotero-bibliography` metadata field
+-- to a filename. pandoc-zotxt.lua will then add sources to that file, rather
+-- than to the `references` metadata field. It will also add that file to the
+-- document's `bibliography` metadata field, so that pandoc-citeproc can pick
+-- them up. The biblography is stored as a JSON file, so the filename must end
+-- in ".json".
 -- 
 -- pandoc-zotxt.lua takes relative filenames to be relative to the directory
 -- of the first input file you pass to pandoc or, if you don't pass any input

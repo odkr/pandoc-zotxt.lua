@@ -26,19 +26,21 @@ Zotero\f[R] respectively for details.)
 .PP
 You can also use \f[B]pandoc-zotxt.lua\f[R] to manage a bibliography
 file.
-This is usually a lot faster.
+This is speeds up subsequent runs of \f[B]pandoc-zotxt.lua\f[R] for the
+same document, because \f[B]pandoc-zotxt.lua\f[R] will only fetch those
+sources from Zotero that aren\[aq]t yet in that file.
 Simply set the \f[C]zotero-bibliography\f[R] metadata field to a
 filename.
-\f[B]pandoc-zotxt.lua\f[R] will then add every source you cite to that
-file, rather than to the \f[C]references\f[R] metadata field.
+\f[B]pandoc-zotxt.lua\f[R] will then add sources to that file, rather
+than to the \f[C]references\f[R] metadata field.
 It will also add that file to the document\[aq]s \f[C]bibliography\f[R]
-metadata field, so that \f[B]pandoc-zotxt.lua\f[R] picks it up.
+metadata field, so that \f[B]pandoc-citeproc\f[R] can pick them up.
 The biblography is stored as a JSON file, so the filename must end in
 \[dq].json\[dq].
 .PP
-\f[B]pandoc-zotxt.lua\f[R] takes relative filenames to be relative to
-the directory of the first input file you pass to \f[B]pandoc\f[R] or,
-if you don\[aq]t pass any input files, as relative to the current
+\f[B]pandoc-zotxt.lua\f[R] interprets relative filenames as relative to
+the directory of the first input file that you pass to \f[B]pandoc\f[R]
+or, if you don\[aq]t pass any input file, as relative to the current
 working directory.
 .PP
 Note, \f[B]pandoc-zotxt.lua\f[R] only ever \f[I]adds\f[R] sources to
