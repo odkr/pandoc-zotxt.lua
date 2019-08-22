@@ -95,7 +95,7 @@
 --
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.17b
+-- @release 0.3.18b
 -- @author Odin Kroeger
 -- @copyright 2018, 2019 Odin Kroeger
 -- @license MIT
@@ -132,9 +132,9 @@ local sort = table.sort
 local unpack = table.unpack
 local format = string.format
 
-local pandoc = pandoc
 local PANDOC_STATE = PANDOC_STATE
 local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
+local pandoc = pandoc
 local stringify = pandoc.utils.stringify
 local sha1 = pandoc.utils.sha1
 local walk_block = pandoc.walk_block
@@ -159,7 +159,7 @@ do
     local san_exprs = {
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP}, -- '/./' -> '/'
         {PATH_SEP .. '+', PATH_SEP},              -- '//'  -> '/'
-        {'^%.' .. PATH_SEP, ''}                   -- '^./'  -> ''
+        {'^%.' .. PATH_SEP, ''}                   -- '^./' -> ''
     }
 
     --- Splits a file's path into a directory and a filename part.
@@ -182,17 +182,14 @@ do
 end
 
 
---- The directory this script resides in (set below).
-BASE_DIR = nil
+--- The directory this script resides in.
+BASE_DIR = split_path(PANDOC_SCRIPT_FILE)
 
---- The name of this script (set below).
-NAME = nil
-
-BASE_DIR, NAME = split_path(PANDOC_SCRIPT_FILE)
-
+--- The name of this script.
+NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '0.3.17b'
+VERSION = '0.3.18b'
 
 do
     local lib_expr = {'share', 'lua', '5.3', '?.lua'}
@@ -589,7 +586,7 @@ end
 function warn (...)
     local stderr = io.stderr
     local str = concat({...})
-    for line in str:gmatch('([^\n])\n?') do
+    for line in str:gmatch('([^\n]*)\n?') do
         stderr:write(NAME, ': ', line, '\n')
     end
 end
