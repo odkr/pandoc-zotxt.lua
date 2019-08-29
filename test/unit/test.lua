@@ -328,6 +328,25 @@ end
 --     end
 -- end
 
+function test_core:test_delegates_to ()
+    local c = {}
+    local b = setmetatable({}, {__index = c})
+    local a = setmetatable({}, {__index = b})
+    
+    local invalid = {nil, false, 0, 'a', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.delegates_to, a, invalid)
+        lu.assert_error(M.delegates_to, invalid, a)
+    end
+
+    lu.assert_false(M.delegates_to(a, a))
+    lu.assert_true(M.delegates_to(a, b))
+    lu.assert_true(M.delegates_to(b, c))
+    lu.assert_true(M.delegates_to(a, c))
+    lu.assert_false(M.delegates_to(c, a))
+    lu.assert_false(M.delegates_to(c, b))
+end
+
 function test_core:test_get_input_directory ()    
     lu.assert_equals(M.get_input_directory(), PATH_SEP .. 'dev')
 

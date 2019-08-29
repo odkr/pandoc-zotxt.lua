@@ -196,7 +196,7 @@ do
     
     package.path = concat({
         package.path,
-        concat({BASE_DIR,                         unpack(lib_expr)}, PATH_SEP),
+        concat({BASE_DIR, unpack(lib_expr)}, PATH_SEP),
         concat({BASE_DIR, NAME .. '-' .. VERSION, unpack(lib_expr)}, PATH_SEP)
     }, ';')
 end
@@ -449,8 +449,6 @@ end
 -- (1) `tbl` uses metatables to implement prototype inheritance.
 -- (2) `__metatable` isn't set for `tbl` or any of its prototypes.
 -- (3) `getmetatable` is available.
---
--- @todo Add tests.
 function delegates_to(tbl, proto, depth)
     depth = depth or 1
     assert(type(tbl) == 'table', 'given object is not a table')
