@@ -582,19 +582,28 @@ end
 
 test_get_citekeys = {}
 
-function test_get_citekeys ()
+function test_get_citekeys:test_invalid ()
     local invalid = {nil, false, 0, '', {}}
     for _, v in pairs(invalid) do
         lu.assert_error(M.get_citekeys, v)
     end
-    
-    local should = {'haslanger:2012resisting','díaz-león:2013what',
-        'díaz-león:2015defence','díaz-león:2016woman',
-        'dotson:2016word','nobody:0000nothing'}
-
-    lu.assert_equals(M.get_citekeys(DOC), should)
 end
 
+function test_get_citekeys:test_data ()
+    local should = {
+        ['test-empty.md'] = {},
+        ['test-zotxt-keytype-easy-citekey.md'] = {
+            'haslanger:2012resisting','díaz-león:2013what',
+            'díaz-león:2015defence','díaz-león:2016woman',
+            'dotson:2016word','nobody:0000nothing'
+        }
+    }
+
+    fname = select(2, M.split_path(PANDOC_STATE.input_files[1]))
+    yardstick = should[fname]
+    assert(yardstick ~= nil)
+    lu.assert_equals(M.get_citekeys(DOC), yardstick)
+end
 
 
 test_zotxt = {}

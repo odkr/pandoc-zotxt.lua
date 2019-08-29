@@ -94,8 +94,10 @@ test_warn: prepare-tmpdir
 	done
 
 test_get_citekeys:
-	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		-M tests=$@ $(DATA_DIR)/test-zotxt-keytype-easy-citekey.md
+	for DATA in test-empty.md test-zotxt-keytype-easy-citekey.md; do \
+		pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
+			-M tests=$@ "$(DATA_DIR)/$$DATA"; \
+	done
 
 test-zotxt: test_zotxt $(ZOTXT_GENERATION_TESTS)
 	
