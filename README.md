@@ -67,18 +67,21 @@ repository to wherever your operating system searches for manual pages
 
 ## `pandoc-zotxt.lua` vs `pandoc-zotxt`
 
+`pandoc-zotxt.lua`:
+
+* supports using a bibliography file as cache, so that bibliographic data that
+  was already retrieved from Zotero need not be retrieved again
+  (`pandoc-zotxt` doesn't).
+* retrieves Better BibTeX citation keys faster (than `pandoc-zotxt`).
+* supports using Zotero item ID as citation keys (`pandoc-zotxt` doesn't).
+* doesn't use a temporary file (`pandoc-zotxt` does).
+
+
+Requirements:
+
 | `pandoc-zotxt.lua`            | `pandoc-zotxt`                       |
 | ----------------------------- | ------------------------------------ |
 | Requires Pandoc 2.0.          | Requires Pandoc 1.12 and Python 2.7. |
-| Faster for Better BibTeX.     | Slower for Better BibTeX.            |
-| Doesn't use temporary files.  | Uses a temporary file.               |
-
-
-Morever, `pandoc-zotxt.lua` supports:
-
-* Using a bibliography file as cache, so that bibliographic data that
-  was already retrieved from Zotero need not be retrieved again.
-* Using Zotero item ID as citation keys.
 
 
 ## Testing
