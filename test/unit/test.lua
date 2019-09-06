@@ -177,6 +177,25 @@ function copy (data, s)
     return res
 end
 
+--- Reads a Markdown file.
+--
+-- @tparam string fname Name of the file.
+-- @return The parsed data, `nil` if an error occurred.
+-- @treturn string An error message, if applicable.
+-- @treturn number An error number. Positive numbers are OS error numbers.
+--
+-- May raise an uncatchable error.
+function read_md_file (fname)
+    assert(fname ~= '', 'given filename is the empty string')
+    local f, err, errno = open(fname, 'r')
+    if not f then return nil, err, errno end
+    local md, err, errno = f:read('a')
+    if not md then return nil, err, errno end
+    local ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    return pandoc.read(md, 'markdown')
+end
+
 
 -- # TESTS
 
@@ -349,7 +368,6 @@ end
 
 function test_core:test_get_input_directory ()    
     lu.assert_equals(M.get_input_directory(), PATH_SEP .. 'dev')
-
 end
 
 function test_core:test_is_path_absolute ()
@@ -415,6 +433,10 @@ function test_core:test_convert_numbers_to_strings ()
     end
 end
 
+function test_core:test_convert_meta_to_table ()
+    M.convert_meta_to_table(DOC.meta)
+end
+
 function test_core:test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
     for _, invalid in ipairs(invalid_inputs) do
@@ -459,6 +481,26 @@ function test_core:test_write_json_file ()
     lu.assert_nil(errno)
     
     lu.assert_equals(data, ZOTXT_SOURCE) 
+end
+
+function test_core:test_get_citekeys ()
+    local invalid = {nil, false, 0, '', {}}
+    for _, v in pairs(invalid) do
+        lu.assert_error(M.get_citekeys, v)
+    end
+    
+    local data_dir = stringify(DOC.meta['test-data-dir'])
+    local empty_fname = data_dir .. PATH_SEP .. 'test-empty.md'
+    local empty = read_md_file(empty_fname)
+    lu.assert_equals(M.get_citekeys(empty), {})
+
+    local test_fname = data_dir .. PATH_SEP .. 'test-keytype-easy-citekey.md'
+    local test_file = read_md_file(test_fname)
+    lu.assert_equals(M.get_citekeys(test_file), {
+        'haslanger:2012resisting','díaz-león:2013what',
+        'díaz-león:2015defence','díaz-león:2016woman',
+        'dotson:2016word','nobody:0000nothing'
+    })
 end
 
 -- function test_core:test_getterise ()
@@ -598,31 +640,6 @@ end
 --     lu.assert_not_nil(keys)
 --     lu.assert_equals(keys, {'a', 'b', 'c'})
 -- end
-
-test_get_citekeys = {}
-
-function test_get_citekeys:test_invalid ()
-    local invalid = {nil, false, 0, '', {}}
-    for _, v in pairs(invalid) do
-        lu.assert_error(M.get_citekeys, v)
-    end
-end
-
-function test_get_citekeys:test_data ()
-    local should = {
-        ['test-empty.md'] = {},
-        ['test-zotxt-keytype-easy-citekey.md'] = {
-            'haslanger:2012resisting','díaz-león:2013what',
-            'díaz-león:2015defence','díaz-león:2016woman',
-            'dotson:2016word','nobody:0000nothing'
-        }
-    }
-
-    fname = select(2, M.split_path(PANDOC_STATE.input_files[1]))
-    yardstick = should[fname]
-    assert(yardstick ~= nil)
-    lu.assert_equals(M.get_citekeys(DOC), yardstick)
-end
 
 
 test_zotxt = {}
