@@ -134,14 +134,6 @@ ZOTXT_SOURCE = {
 }
 
 
---- Configuration options.
---
--- `run` overrides these defaults.
---
--- @table
-CONFIG = M.DEFAULTS
-
-
 -- # FUNCTIONS
 
 --- Copies tables recursively.
@@ -434,7 +426,28 @@ function test_core:test_convert_numbers_to_strings ()
 end
 
 function test_core:test_convert_meta_to_table ()
-    M.convert_meta_to_table(DOC.meta)
+    local invalid = {nil, false, 0, '', function() end}
+    for _, v in pairs(invalid) do
+        lu.assert_error(M.convert_meta_to_table, v)
+    end
+    
+    local data_dir = stringify(DOC.meta['test-data-dir'])
+    local fname = data_dir .. PATH_SEP .. 'test-convert_meta_to_table.md'
+    local meta = read_md_file(fname).meta
+    lu.assert_not_nil(meta)
+
+    local data = M.convert_meta_to_table(meta)    
+    lu.assert_not_nil(data)
+    lu.assert_equals(data, {
+        title = 'This is the title: it contains a colon',
+        author = {
+            {name = 'Author One', affiliation = 'University of Somewhere'},
+            {name = 'Author Two', affiliation = 'University of Nowhere'},
+        },
+        keywords = {'nothing', 'nothingness'},
+        abstract = 'This is the abstract.It consists of two paragraphs.',
+        truth = false
+    })
 end
 
 function test_core:test_read_json_file ()
@@ -645,7 +658,11 @@ end
 test_zotxt = {}
 
 function test_zotxt:setup ()
-    self.db = CONFIG.db_connector:new(CONFIG, DOC.meta)
+    local db_connector = M.DEFAULT_CONNECTOR
+    local reference_mgr = DOC.meta['reference-manager']
+    if reference_mgr then db_connector = M.get_db_connector(reference_mgr) end
+    assert(db_connector, 'missing DB connector')
+    self.db = db_connector:new(DOC.meta)
 end
 
 function test_zotxt:test_get_source ()
@@ -726,8 +743,6 @@ function run (doc)
     local meta = doc.meta
     local tests, err
     if meta.tests then tests = stringify(meta.tests) end
-    CONFIG, err = M.get_db_configuration(doc.meta)
-    if not CONFIG then M.warn(err) return nil end
     DOC = doc
     exit(lu.LuaUnit.run(tests))
 end
