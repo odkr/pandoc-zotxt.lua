@@ -247,6 +247,7 @@ ZOTXT_KEYTYPES = {
 -- @tparam pandoc.Pandoc doc A document.
 -- @treturn[1] pandoc.Pandoc `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
+-- @raise An uncatchable error if it cannot retrieve any data.
 --
 -- @todo Add tests.
 function Pandoc (doc)
@@ -310,6 +311,7 @@ end
 -- @treturn[1] pandoc.Meta An updated metadata block, with references or
 --  a pointer to the bibliography file
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
+-- @raise An uncatchable error if it cannot retrieve any data.
 --
 -- @todo Add tests.
 function add_sources (db, citekeys, meta)
