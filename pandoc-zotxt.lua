@@ -171,6 +171,7 @@ do
     -- @tparam string path The path to the file.
     -- @treturn string The file's path.
     -- @treturn string The file's name.
+    -- @raise An error if `path` is the empty string.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
         for _, v in ipairs(san_exprs) do path = path:gsub(unpack(v)) end
@@ -322,6 +323,33 @@ function add_sources (db, citekeys, meta)
 end
 
 
+--- Adds sources to metadata block of a document.
+--
+-- Prints an error message to STDERR for every source that cannot be found.
+--
+-- @tparam DbConnector db A connection to a reference manager.
+-- @tparam {str,...} citekeys The citation keys of the sources to add.
+-- @tparam pandoc.Meta meta A metadata block.
+-- @treturn[1] pandoc.Meta An updated metadata block, with the field
+--  `references` added if needed.
+-- @treturn[2] nil `nil` if no sources were found.
+--
+-- @todo Add tests.
+function add_references (db, citekeys, meta)
+    if #citekeys == 0 then return end
+    if not meta.references then meta.references = {} end
+    for _, citekey in ipairs(citekeys) do
+        local ref, err = db:get_source(citekey)
+        if ref then
+            insert(meta.references, ref)
+        else
+            warn(err)
+        end
+    end
+    return meta
+end
+
+
 --- Adds sources to bibliography and the bibliography to document's metadata.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
@@ -334,12 +362,16 @@ end
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
---
+-- @raise May raise an uncatchable error if `zotero-bibliography` isn't a string.
 -- @todo Add tests.
+-- @todo test uncatchable error thingy!
 function add_bibliography (db, citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
     local fname = stringify(meta['zotero-bibliography'])
-    if not fname:match('.json$') then
+    -- @fixme test if this is a string.
+    if fname == '' then
+        return nil, 'filename of bibliography file is the empty string ("").'
+    elseif not fname:match('.json$') then
         return nil, fname .. ': does not end in ".json".'
     end 
     if not is_path_absolute(fname) then
@@ -373,10 +405,15 @@ end
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
+-- @raise An error if `citekeys` is not a `table`.
+-- @raise An error if `fname` is not a `string`.
+-- @raise An error if `fname` is the empty string.
 --
 -- @todo Add tests.
 function update_bibliography (db, citekeys, fname)
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
+    assert(type(fname) == 'string', 'given filename is not a string')
+    assert(fname ~= '', 'given filename is the empty string')
     if #citekeys == 0 then return end
     local refs, err, errno = read_json_file(fname)
     if not refs then
@@ -399,33 +436,6 @@ function update_bibliography (db, citekeys, fname)
 end
 
 
---- Adds sources to metadata block of a document.
---
--- Prints an error message to STDERR for every source that cannot be found.
---
--- @tparam DbConnector db A connection to a reference manager.
--- @tparam {str,...} citekeys The citation keys of the sources to add.
--- @tparam pandoc.Meta meta A metadata block.
--- @treturn[1] pandoc.Meta An updated metadata block, with the field
---  `references` added if needed.
--- @treturn[2] nil `nil` if no sources were found.
---
--- @todo Add tests.
-function add_references (db, citekeys, meta)
-    if #citekeys == 0 then return end
-    if not meta.references then meta.references = {} end
-    for _, citekey in ipairs(citekeys) do
-        local ref, err = db:get_source(citekey)
-        if ref then
-            insert(meta.references, ref)
-        else
-            warn(err)
-        end
-    end
-    return meta
-end
-
-
 -- # LOW-LEVEL FUNCTIONS
 
 -- ## Database connections
@@ -436,6 +446,7 @@ end
 -- @treturn[1] DbConnector A connector.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
+-- @raise An error if `name` is not a `string`.
 --
 -- @todo Add tests.
 function get_db_connector (name)
@@ -457,7 +468,10 @@ end
 -- @treturn[2] string An error message.
 -- @treturn[2] number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON decoding error.
+-- @raise An error if `fname` is not a `string`.
+-- @raise An error if `fname` is the empty string.
 function read_json_file (fname)
+    assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
     local f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
@@ -480,7 +494,10 @@ end
 -- @treturn[2] string An error message.
 -- @treturn[2] number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON encoding error.
+-- @raise An error if `fname` is not a `string`.
+-- @raise An error if `fname` is the empty string.
 function write_json_file (data, fname)
+    assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
     local ok, json = pcall(encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
@@ -506,6 +523,8 @@ end
 -- @tparam table tbl The table.
 -- @tparam table proto The prototype.
 -- @treturn bool Whether the table is delegates to the prototype.
+-- @raise An error if `tbl` or `proto` is not a `table`.
+-- @raise An error if the number of nested calls exceeds 512.
 function delegates_to(tbl, proto, depth)
     depth = depth or 1
     assert(type(tbl) == 'table', 'given object is not a table')
@@ -535,6 +554,7 @@ do
     --
     -- @param data Data.
     -- @return The given data, with all numbers converted into strings.
+    -- @raise An error if the number of nested calls exceeds 512.
     function convert_numbers_to_strings (data, depth)
         if not depth then depth = 1 end
         assert(depth < 512, 'too many recursions')
@@ -566,10 +586,12 @@ do
     --
     -- @tparam pandoc.Meta meta The document's metadata.
     -- @treturn tab The metadata as table.
+    -- @raise If `meta` is not a `table`.
+    -- @raise An error if the number of nested calls exceeds 512.
     function convert_meta_to_table (meta, depth)
         if not depth then depth = 1 end
-        assert(depth < 512, 'too many recursions')
         assert(type(meta) == 'table', 'given metadata is not a table')
+        assert(depth < 512, 'too many recursions')
         local ret = {}
         for k, v in pairs(meta) do
             if type(v) == 'table' then
@@ -622,6 +644,7 @@ end
 -- @tparam table list The list.
 -- @treturn[1] integer The index of the element.
 -- @treturn[2] nil `nil` if the list doesn't contain the element.
+-- @raise An error if `list` is not a `table`.
 function get_position (elem, list)
     assert(type(list) == 'table', 'given list is not a table.')
     for i, v in ipairs(list) do
@@ -781,6 +804,9 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
+    -- @raise An error if `citekey` is not a `string`.
+    -- @raise An error if `citekey` is the empty string.
+    -- @fixme Why bother about the empty string? That should be a return!
     function Zotxt:get_source (citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
         assert(citekey ~= '', 'given citekey is the empty string')
@@ -823,7 +849,6 @@ FakeConnector = setmetatable({}, {__index = DbConnector})
 --  - `fake-data-dir`: (`string`) 
 --    The directory to look up files in.
 --
--- @tparam pandoc.Meta meta The document's metadata.
 -- @treturn[1] FakeConnector The 'connection'.
 -- @treturn[2] nil `nil` if an error occurres
 -- @treturn[2] string An error message.
