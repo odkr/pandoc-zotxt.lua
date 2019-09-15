@@ -18,73 +18,60 @@ SCRIPT_DIR	:= $(BASE_DIR)/scripts
 SHELL		?= sh
 RM		?= rm -f
 
+
+# FILES
+# =====
+
 WARN_TESTS	:= find "$(UNIT_DIR)/warn" -type f -name '*.lua' \
-	-exec basename \{\} \; | sed 's/.lua$$//' | sort
+		        -exec basename \{\} \; | sed 's/.lua$$//' | sort
 
 
 # TARGETS FOR TESTING
 # ===================
 
-ZOTXT_GENERATION_TESTS	:= test-zotxt-keytype-easy-citekey \
-	test-zotxt-keytype-better-bibtex test-zotxt-keytype-zotero-id \
-	test-zotxt-bibliography
-GENERATION_TESTS	:= $(ZOTXT_GENERATION_TESTS)
+UNIT_TESTS		:= test_core test_zotxt
 
-SIMPLE_UNIT_TESTS	:= test_core  # test_citekey test_ordered_table
-NETWORK_UNIT_TESTS	:= test_zotxt # test_zotero
-UNIT_TESTS		:= $(SIMPLE_UNIT_TESTS) \
-	test_get_input_directory test_warn test_get_citekeys
+GENERATION_TESTS	:= test-keytype-easy-citekey \
+			   test-keytype-better-bibtex \
+			   test-keytype-zotero-id \
+			   test-bibliography
 
 
-# ARGUMENTS
-# =========
+# CONNECTORS 
+# ==========
 
-FAKE_ZOTXT_ARGS	:= -M reference-manager=FakeConnector \
-	-M fake-connector=Zotxt \
-	-M fake-fetch-from="$(DATA_DIR)/fake/zotxt"
+CONNECTOR	?= FakeConnector
+FAKE_ZOTXT	:= -M fake-db-connector=Zotxt \
+		   -M fake-data-dir="$(DATA_DIR)/fake/zotxt"
+
+CONNECTOR_ARGS	:= -M reference-manager=$(CONNECTOR) $(FAKE_ZOTXT)
 
 
 # TESTS
 # =====
 
-test: install-luaunit prepare-tmpdir test-unit test-zotxt
+test: install-luaunit prepare-tmpdir test-unit $(GENERATION_TESTS)
 
-test-unit: $(UNIT_TESTS)
-
-prepare-tmpdir:
-	mkdir -p "$(TMP_DIR)"
-	$(RM) "$(TMP_DIR)"/*
+test-unit: test_warn $(UNIT_TESTS)
 
 install-luaunit:
 	[ -e "share/lua/5.3/luaunit.lua" ] || \
 		luarocks install --tree=. luaunit
 
-$(SIMPLE_UNIT_TESTS): prepare-tmpdir
-	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null -M tests=$@ \
-		/dev/null	
+prepare-tmpdir:
+	mkdir -p "$(TMP_DIR)"
+	$(RM) "$(TMP_DIR)"/*
 
-$(NETWORK_UNIT_TESTS): prepare-tmpdir
-ifeq ($(REAL_BACKEND), yes)
+$(UNIT_TESTS): prepare-tmpdir
 	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		-M tests=$@ /dev/null
-else
-	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		$(FAKE_ZOTXT_ARGS) -M tests=$@ /dev/null
-endif
+		-M test-data-dir="$(DATA_DIR)" $(CONNECTOR_ARGS) -M tests=$@ \
+		/dev/null
 
 $(GENERATION_TESTS): prepare-tmpdir
-ifeq ($(REAL_BACKEND), yes)
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o "$(TMP_DIR)/$@.txt" "$(DATA_DIR)/$@.md"
+	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
+		$(CONNECTOR_ARGS) -t plain -o "$(TMP_DIR)/$@.txt" \
+		"$(DATA_DIR)/$@.md"
 	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
-else
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc -t plain \
-		-o "$(TMP_DIR)/$@.txt" $(FAKE_ZOTXT_ARGS) "$(DATA_DIR)/$@.md"
-	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
-endif
-
-test_get_input_directory:
-	pandoc --lua-filter "$(UNIT_DIR)/get_input_directory-pwd.lua" </dev/null
 
 test_warn: prepare-tmpdir
 	for TEST in `$(COLLECT_WARN_TESTS)`; do \
@@ -93,15 +80,6 @@ test_warn: prepare-tmpdir
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
 	done
 
-test_get_citekeys:
-	for DATA in test-empty.md test-zotxt-keytype-easy-citekey.md; do \
-		pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-			-M tests=$@ "$(DATA_DIR)/$$DATA"; \
-	done
-
-test-zotxt: test_zotxt $(ZOTXT_GENERATION_TESTS)
-	
 .PHONY: install-luaunit prepare-tmpdir \
-	test test-unit test_get_citekeys test-zotxt \
-	$(UNIT_TESTS) $(NETWORK_UNIT_TESTS) $(GENERATION_TESTS)
-
+	test test-unit test_warn \
+	$(UNIT_TESTS) $(GENERATION_TESTS)
