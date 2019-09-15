@@ -164,12 +164,13 @@ do
 
     --- Splits a file's path into a directory and a filename part.
     --
+    -- Makes an educated guess on the basis of the given path.
+    -- It doesn't look at the filesystem. 
+    -- (The guess is educated enough though.)
+    --
     -- @tparam string path The path to the file.
     -- @treturn string The file's path.
     -- @treturn string The file's name.
-    --
-    -- This function makes an educated guess on the basis of the given path.
-    -- It doesn't look at the filesystem. The guess is educated enough though.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
         for _, v in ipairs(san_exprs) do path = path:gsub(unpack(v)) end
@@ -238,13 +239,13 @@ ZOTXT_KEYTYPES = {
 
 --- Collects sources and adds bibliographic data to document.
 --
--- @tparam pandoc.Pandoc doc A document.
--- @treturn pandoc.Pandoc `doc`, but with bibliographic data added,
---  or `nil` if nothing was done or an error occurred.
---
--- May print error messages to STDERR.
+-- Prints messages to STDERR if errors occur.
 --
 -- See the manual page for detais.
+--
+-- @tparam pandoc.Pandoc doc A document.
+-- @treturn[1] pandoc.Pandoc `doc`, but with bibliographic data added.
+-- @treturn[2] nil `nil` if nothing was done or an error occurred.
 --
 -- @todo Add tests.
 function Pandoc (doc)
@@ -300,14 +301,15 @@ end
 -- sources that aren't in it yet. Otherwise, adds all cited sources
 -- to the given metadata block.
 --
+-- Prints messages to STDERR if errors occur.
+--
 -- @tparam DbConnector db A connection to a reference manager.
 -- @tparam {string,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
--- @treturn pandoc.Meta An updated metadata block, with references or
---  a pointer to the bibliography file, `nil` if nothing
---  was done or an error occurred.
+-- @treturn[1] pandoc.Meta An updated metadata block, with references or
+--  a pointer to the bibliography file
+-- @treturn[2] nil `nil` if nothing was done or an error occurred.
 --
--- Prints messages to STDERR if errors occur.
 -- @todo Add tests.
 function add_sources (db, citekeys, meta)
     if #citekeys == 0 then return nil end
@@ -322,15 +324,17 @@ end
 
 --- Adds sources to bibliography and the bibliography to document's metadata.
 --
+-- Prints an error message to STDERR for every source that cannot be found.
+--
 -- @tparam DbConnector db A connection to a reference manager.
 -- @tparam {str,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
--- @treturn pandoc.Meta An updated metadata block, with the field
---  `bibliography` added if needed, or `nil` if no sources were found,
+-- @treturn[1] pandoc.Meta An updated metadata block, with the field
+--  `bibliography` added if needed.
+-- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
--- @treturn string An error message, if applicable.
+-- @treturn[2] string An error message, if applicable.
 --
--- Prints an error message to STDERR for every source that cannot be found.
 -- @todo Add tests.
 function add_bibliography (db, citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
@@ -359,15 +363,17 @@ end
 
 --- Adds cited sources to a bibliography file.
 --
+-- Prints an error message to STDERR for every source that cannot be found.
+--
 -- @tparam DbConnector db A connection to a reference manager.
 -- @tparam {string,...} citekeys The citation keys of the sources to add,
--- @tparam string fname The filename of the biblography.
 --  e.g., 'name:2019word', 'name2019WordWordWord'.
--- @treturn bool `true` if the bibliography was updated
---   or no update was needed, `nil` if an error occurred.
--- @treturn string An error message, if applicable.
+-- @tparam string fname The filename of the bibliography.
+-- @treturn[1] bool `true` if the bibliography file was updated
+--  or no update was needed.
+-- @treturn[2] nil `nil` if an error occurrs.
+-- @treturn[2] string An error message.
 --
--- Prints an error message to STDERR for every source that cannot be found.
 -- @todo Add tests.
 function update_bibliography (db, citekeys, fname)
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
@@ -395,13 +401,15 @@ end
 
 --- Adds sources to metadata block of a document.
 --
+-- Prints an error message to STDERR for every source that cannot be found.
+--
 -- @tparam DbConnector db A connection to a reference manager.
 -- @tparam {str,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
--- @treturn pandoc.Meta An updated metadata block, with the field
---  `references` added if needed, or `nil` if no sources were found.
+-- @treturn[1] pandoc.Meta An updated metadata block, with the field
+--  `references` added if needed.
+-- @treturn[2] nil `nil` if no sources were found.
 --
--- Prints an error message to STDERR for every source that cannot be found.
 -- @todo Add tests.
 function add_references (db, citekeys, meta)
     if #citekeys == 0 then return end
@@ -424,9 +432,10 @@ end
 
 --- Look up a database connector by its name.
 --
--- @tparam string name The name of a database connector.
--- @treturn DbConnector A connector, or `nil` if an error occurred.
--- @treturn string An error message, if applicable.
+-- @tparam string name The name of a database connector.
+-- @treturn[1] DbConnector A connector.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
 --
 -- @todo Add tests.
 function get_db_connector (name)
@@ -443,9 +452,10 @@ end
 --- Reads a JSON file.
 --
 -- @tparam string fname Name of the file.
--- @return The parsed data, `nil` if an error occurred.
--- @treturn string An error message, if applicable.
--- @treturn number An error number. Positive numbers are OS error numbers, 
+-- @return[1] The parsed data
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
     assert(fname ~= '', 'given filename is the empty string')
@@ -465,9 +475,10 @@ end
 --
 -- @param data Data.
 -- @tparam string fname Name of the file.
--- @treturn bool `true` if the data was written to the file, `nil` otherwise.
--- @treturn string An error message, if applicable.
--- @treturn integer An error number. Positive numbers are OS error numbers, 
+-- @treturn[1] bool `true` if the data was written to the file.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] number An error number. Positive numbers are OS error numbers, 
 --  negative numbers indicate a JSON encoding error.
 function write_json_file (data, fname)
     assert(fname ~= '', 'given filename is the empty string')
@@ -487,14 +498,14 @@ end
 
 --- Checks whether an object delegates to a particular prototype.
 --
--- @tparam table tbl The table.
--- @tparam table proto The prototype.
--- @treturn Whether the table is delegates to the prototype.
---
 -- Assumes:
 -- (1) `tbl` uses metatables to implement prototype inheritance.
 -- (2) `__metatable` isn't set for `tbl` or any of its prototypes.
 -- (3) `getmetatable` is available.
+--
+-- @tparam table tbl The table.
+-- @tparam table proto The prototype.
+-- @treturn bool Whether the table is delegates to the prototype.
 function delegates_to(tbl, proto, depth)
     depth = depth or 1
     assert(type(tbl) == 'table', 'given object is not a table')
@@ -522,7 +533,7 @@ do
     -- because all numbers are floating point numbers in JSON, but older
     -- versions of Pandoc expect integers.
     --
-    -- @param data Data of any type.
+    -- @param data Data.
     -- @return The given data, with all numbers converted into strings.
     function convert_numbers_to_strings (data, depth)
         if not depth then depth = 1 end
@@ -553,7 +564,7 @@ do
     --
     -- Converts Pandoc's metadata types to Lua data types in the process.
     --
-    -- @tparam pandoc.Meta meta - The document's metadata.
+    -- @tparam pandoc.Meta meta The document's metadata.
     -- @treturn tab The metadata as table.
     function convert_meta_to_table (meta, depth)
         if not depth then depth = 1 end
@@ -594,7 +605,8 @@ end
 
 --- Returns the directory of the first input file or '.'.
 --
--- @treturn string The directory of that file.
+-- @treturn[1] string The directory of the first input file.
+-- @treturn[2] string '.' if no input files were given.
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
@@ -608,8 +620,8 @@ end
 --
 -- @param elem The element.
 -- @tparam table list The list.
--- @treturn integer The index of the element,
---  `nil` if the list doesn't contain the element.
+-- @treturn[1] integer The index of the element.
+-- @treturn[2] nil `nil` if the list doesn't contain the element.
 function get_position (elem, list)
     assert(type(list) == 'table', 'given list is not a table.')
     for i, v in ipairs(list) do
@@ -635,10 +647,10 @@ end
 
 --- Prints warnings to STDERR.
 --
--- @tparam string ... Strings to be written to STDERR.
---
 -- Prefixes every line with the global `NAME` and ": ".
 -- Also, appends a single linefeed if needed.
+--
+-- @tparam string ... Strings to be written to STDERR.
 function warn (...)
     local stderr = io.stderr
     local str = concat({...})
@@ -766,9 +778,9 @@ do
     --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn table A CSL item,
-    --  `nil` if the source wasn't found or an error occurred.
-    -- @treturn string An error message, if applicable.
+    -- @treturn[1] table A CSL item.
+    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+    -- @treturn[2] string An error message.
     function Zotxt:get_source (citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
         assert(citekey ~= '', 'given citekey is the empty string')
@@ -804,30 +816,30 @@ FakeConnector = setmetatable({}, {__index = DbConnector})
 --
 -- Takes the same arguments as the database connectors it 'fakes' plus:
 --
--- @tparam tab args Arguments
--- @tparam DbConnector args['fake-db-connector'] 
---  The database connector to 'fake'.
--- @tparam str args[fake-data-dir]
---  The directory to look up files in.
+-- @tparam tab args
+--
+--  - `fake-db-connector`: (`string`) 
+--    The name of the database connector to 'fake'.
+--  - `fake-data-dir`: (`string`) 
+--    The directory to look up files in.
+--
 -- @tparam pandoc.Meta meta The document's metadata.
+-- @treturn[1] FakeConnector The 'connection'.
+-- @treturn[2] nil `nil` if an error occurres
+-- @treturn[2] string An error message.
 --
--- @treturn FakeConnector The 'connection' or `nil` if an error occurres.
--- @treturn string The data or an error message, if applicable.
---
--- @todo Check if the format of @tparam is correct.
 -- @todo test error messages.
--- @fixme it isn't
 function FakeConnector:new (args)
     for _, v in ipairs({'fake-db-connector', 'fake-data-dir'}) do
         if args[v] == nil then
-            return nil, format('missing argument: "%s"', v)
-        else if type(args[v]) ~= 'string' then
+            return nil, format('missing argument: "%s".', v)
+        elseif type(args[v]) ~= 'string' then
             return nil, format('value of "%s": not a string.')
         end
     end
     local db_connector = get_db_connector(args['fake-db-connector'])
     if not delegates_to(db_connector, DbConnector) then
-        return nil, 'value of "fake-db-connector" is not a DB connector'
+        return nil, 'value of "fake-db-connector" is not a DB connector.'
     end
     local obj = setmetatable({data_dir = args['fake-data-dir']},
         {__index = self or FakeConnector})
@@ -841,12 +853,13 @@ end
 --
 -- Takes the given URL, hashes it using SHA-1, truncates the hash to eight
 -- characters and then returns the content of the file of that name
--- (in the directory passed to `FakeConnector:new` via `fetch_from`.)
---
--- @tparam string url The URL.
--- @treturn string The data or an error message (not `nil`).
+-- (in the directory passed to `FakeConnector:new` via `fake-data-dir`.)
 --
 -- Prints the requested URL and the file it serves to STDERR.
+--
+-- @tparam string url The URL.
+-- @treturn[1] string The data.
+-- @treturn[2] string An error message (*not* `nil`) if an error occurred.
 function FakeConnector:read_url (url)
     local hash = sub(sha1(url), 1, 8)
     warn(url, ' -> ', hash)
@@ -865,9 +878,9 @@ end
 --
 -- @tparam string citekey The citation key of the source,
 --  e.g., 'name:2019word', 'name2019TwoWords'.
--- @treturn table A CSL item,
---  `nil` if the source wasn't found or an error occurred.
--- @treturn string An error message, if applicable.
+-- @treturn[1] table A CSL item.
+-- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+-- @treturn[2] string An error message.
 function FakeConnector:get_source (...)
     return self.db_connection:get_source(...)
 end
