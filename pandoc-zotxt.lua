@@ -333,6 +333,7 @@ end
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found.
+-- @raise An uncatchable error if it cannot retrieve any data.
 --
 -- @todo Add tests.
 function add_references (db, citekeys, meta)
@@ -405,6 +406,7 @@ end
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
+-- @raise An uncatchable error if it cannot retrieve any data.
 -- @raise An error if `citekeys` is not a `table`.
 -- @raise An error if `fname` is not a `string`.
 -- @raise An error if `fname` is the empty string.
@@ -804,6 +806,7 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
+    -- @raise An uncatchable error if it cannot retrieve any data.
     -- @raise An error if `citekey` is not a `string`.
     -- @raise An error if `citekey` is the empty string.
     -- @fixme Why bother about the empty string? That should be a return!
