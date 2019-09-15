@@ -242,53 +242,32 @@ ZOTXT_KEYTYPES = {
 -- @treturn pandoc.Pandoc `doc`, but with bibliographic data added,
 --  or `nil` if nothing was done or an error occurred.
 --
+-- May print error messages to STDERR.
+--
 -- See the manual page for detais.
+--
+-- @todo Add tests.
 function Pandoc (doc)
-    local cf, err = get_db_configuration(doc.meta)
-    if not cf then warn(err) return nil end
-    local db_connector = cf.db_connector
-    assert(db_connector, 'no database connector')
+    local db_connector = DEFAULT_CONNECTOR
+    local meta = convert_meta_to_table(doc.meta)
+    local reference_mgr = meta['reference-manager']
+    if reference_mgr then
+        local err
+        db_connector, err = get_db_connector(reference_mgr)
+        if not db_connector then
+            warn(err)
+            return nil
+        end
+    end
     local citekeys = get_citekeys(doc)
     if #citekeys == 0 then return nil end
-    local db = db_connector:new(cf, doc.meta)
+    local db = db_connector:new(meta)
     doc.meta = add_sources(db, citekeys, doc.meta)
     return doc
 end
 
 
--- ## Connection Settings
-
---- Reads settings from document's metadata.
---
--- Note, `get_db_configuration` only processes settings that govern how
--- `pandoc-zotxt.lua` connects to the reference manager you use (i.e. Zotero).
--- It does not process other settings (namely, `zotero-bibliography`).
--- Also, not every matadata field is a configuration setting
--- (namely, `references` and `bibliography` aren't).
---
--- @tparam pandoc.Meta meta A metadata block.
--- @treturn table Configuration settings, or `nil` if an error occurred.
--- @treturn string An error message, if applicable.
---
--- @todo Add tests.
-function get_db_configuration (meta)
-    local settings = Settings:new()
-    settings:define{name = 'db_connector', fieldname = 'reference-manager', 
-        default = get_connector(DEFAULT_CONNECTOR), check = get_connector}
-    local cf
-    for i = 1, 2 do
-        local err
-        cf, err = settings:parse(meta)
-        if not cf then return nil, err end
-        if i == 2 then break end
-        if not cf.db_connector.add_settings then break end
-        cf.db_connector:add_settings(settings, meta)
-    end
-    return cf
-end
-
-
--- ## Bibliography Handling
+-- ## Handling bibliographic data
 
 --- Collects the citation keys occurring in a document.
 --
@@ -329,6 +308,7 @@ end
 --  was done or an error occurred.
 --
 -- Prints messages to STDERR if errors occur.
+-- @todo Add tests.
 function add_sources (db, citekeys, meta)
     if #citekeys == 0 then return nil end
     do
@@ -351,6 +331,7 @@ end
 -- @treturn string An error message, if applicable.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
+-- @todo Add tests.
 function add_bibliography (db, citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
     local fname = stringify(meta['zotero-bibliography'])
@@ -387,6 +368,7 @@ end
 -- @treturn string An error message, if applicable.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
+-- @todo Add tests.
 function update_bibliography (db, citekeys, fname)
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
     if #citekeys == 0 then return end
@@ -420,6 +402,7 @@ end
 --  `references` added if needed, or `nil` if no sources were found.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
+-- @todo Add tests.
 function add_references (db, citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = {} end
@@ -437,45 +420,21 @@ end
 
 -- # LOW-LEVEL FUNCTIONS
 
--- ## Prototypes
-
---- Checks whether an object delegates to a particular prototype.
---
--- @tparam table tbl The table.
--- @tparam table proto The prototype.
--- @treturn Whether the table is delegates to the prototype.
---
--- Assumes:
--- (1) `tbl` uses metatables to implement prototype inheritance.
--- (2) `__metatable` isn't set for `tbl` or any of its prototypes.
--- (3) `getmetatable` is available.
-function delegates_to(tbl, proto, depth)
-    depth = depth or 1
-    assert(type(tbl) == 'table', 'given object is not a table')
-    assert(type(proto) == 'table', 'given prototype is not a table')
-    assert(depth < 512, 'too many recursions')
-    local mt = getmetatable(tbl)
-    if not mt then return false end
-    if mt.__index == proto then return true end
-    return delegates_to(mt.__index, proto, depth + 1)
-end
-
-
--- ## Sanitisation
+-- ## Database connections
 
 --- Look up a database connector by its name.
 --
--- @tparam string name The name of a connector.
+-- @tparam string name The name of a database connector.
 -- @treturn DbConnector A connector, or `nil` if an error occurred.
 -- @treturn string An error message, if applicable.
 --
 -- @todo Add tests.
-function get_connector (name)
-    assert(type(name) == 'string', 'given connector name is not a string.')
-    if not _ENV[name] then return nil, name .. ': unkown connector' end
+function get_db_connector (name)
+    assert(type(name) == 'string', 'given DB connector name is not a string.')
+    if not _ENV[name] then return nil, 'unkown DB connector: ' .. name end
     local c = _ENV[name]
     if type(c) == 'table' and delegates_to(c, DbConnector) then return c end
-    return nil, name .. ': not a connector'
+    return nil, name .. ': not a DB connector'
 end
 
 
@@ -524,75 +483,34 @@ function write_json_file (data, fname)
 end
 
 
--- ## Paths
+-- ## Prototypes
 
---- Checks if a path is absolute.
+--- Checks whether an object delegates to a particular prototype.
 --
--- @tparam string path A path.
--- @treturn bool `true` if the path is absolute, `false` otherwise.
-function is_path_absolute (path)
-    if PATH_SEP == '\\' and path:match('^.:\\') then return true end
-    return path:match('^' .. PATH_SEP) ~= nil
-end
-
---- Returns the directory of the first input file or '.'.
+-- @tparam table tbl The table.
+-- @tparam table proto The prototype.
+-- @treturn Whether the table is delegates to the prototype.
 --
--- @treturn string The directory of that file.
-function get_input_directory ()
-    local file = PANDOC_STATE.input_files[1]
-    if not file then return '.' end
-    return split_path(file)
-end
-
--- ## Lists
-
---- Applies a function to every element of a list.
---
--- @tparam func func The function.
--- @tparam table list The list.
--- @treturn table The return values of `f`.
-function map (func, list)
-    local ret = {}
-    for i, v in ipairs(list) do ret[i] = func(v) end
-    return ret
+-- Assumes:
+-- (1) `tbl` uses metatables to implement prototype inheritance.
+-- (2) `__metatable` isn't set for `tbl` or any of its prototypes.
+-- (3) `getmetatable` is available.
+function delegates_to(tbl, proto, depth)
+    depth = depth or 1
+    assert(type(tbl) == 'table', 'given object is not a table')
+    assert(type(proto) == 'table', 'given prototype is not a table')
+    assert(depth < 512, 'too many recursions')
+    local mt = getmetatable(tbl)
+    if not mt then return false end
+    if mt.__index == proto then return true end
+    return delegates_to(mt.__index, proto, depth + 1)
 end
 
 
---- Returns the position of an element in a list.
---
--- @param elem The element.
--- @tparam table list The list.
--- @treturn integer The index of the element,
---  `nil` if the list doesn't contain the element.
-function get_position (elem, list)
-    assert(type(list) == 'table', 'given list is not of type "table".')
-    for i, v in ipairs(list) do
-        if v == elem then return i end
-    end
-    return nil
-end
-
-
--- ## Warnings
-
---- Prints warnings to STDERR.
---
--- @tparam string ... Strings to be written to STDERR.
---
--- Prefixes every line with the global `NAME` and ": ".
--- Also, appends a single linefeed if needed.
-function warn (...)
-    local stderr = io.stderr
-    local str = concat({...})
-    for line in str:gmatch('([^\n]*)\n?') do
-        stderr:write(NAME, ': ', line, '\n')
-    end
-end
-
-
--- ## Other
+-- ## Converters
 
 do
+    local assert = assert
     local pairs = pairs
     local tostring = tostring
     local type = type
@@ -621,6 +539,111 @@ do
         else
             return data
         end
+    end
+end
+
+do
+    local assert = assert
+    local pairs = pairs
+    local type = type
+    local str = {MetaBlocks = true, MetaInlines = true, MetaString = true}
+    local tab = {MetaList = true, MetaMap = true}
+
+    --- Converts a document's metadata block to a table.
+    --
+    -- Converts Pandoc's metadata types to Lua data types in the process.
+    --
+    -- @tparam pandoc.Meta meta - The document's metadata.
+    -- @treturn tab The metadata as table.
+    function convert_meta_to_table (meta, depth)
+        if not depth then depth = 1 end
+        assert(depth < 512, 'too many recursions')
+        assert(type(meta) == 'table', 'given metadata is not a table')
+        local ret = {}
+        for k, v in pairs(meta) do
+            if type(v) == 'table' then
+                if v.t == nil or v.t == 'MetaBool' then
+                    ret[k] = v
+                elseif str[v.t] then
+                    ret[k] = stringify(v)
+                elseif tab[v.t] then
+                    ret[k] = convert_meta_to_table(v, depth + 1)
+                else
+                    error('unknown type of metadata: ' .. v.t)
+                end
+            else
+                ret[k] = v
+            end
+        end        
+        return ret
+    end
+end
+
+
+-- ## Paths
+
+--- Checks if a path is absolute.
+--
+-- @tparam string path A path.
+-- @treturn bool `true` if the path is absolute, `false` otherwise.
+function is_path_absolute (path)
+    if PATH_SEP == '\\' and path:match('^.:\\') then return true end
+    return path:match('^' .. PATH_SEP) ~= nil
+end
+
+
+--- Returns the directory of the first input file or '.'.
+--
+-- @treturn string The directory of that file.
+function get_input_directory ()
+    local file = PANDOC_STATE.input_files[1]
+    if not file then return '.' end
+    return split_path(file)
+end
+
+
+-- ## Lists
+
+--- Returns the position of an element in a list.
+--
+-- @param elem The element.
+-- @tparam table list The list.
+-- @treturn integer The index of the element,
+--  `nil` if the list doesn't contain the element.
+function get_position (elem, list)
+    assert(type(list) == 'table', 'given list is not a table.')
+    for i, v in ipairs(list) do
+        if v == elem then return i end
+    end
+    return nil
+end
+
+
+--- Applies a function to every element of a list.
+--
+-- @tparam func func The function.
+-- @tparam table list The list.
+-- @treturn table The return values of `f`.
+function map (func, list)
+    local ret = {}
+    for i, v in ipairs(list) do ret[i] = func(v) end
+    return ret
+end
+
+
+-- ## Warnings
+
+--- Prints warnings to STDERR.
+--
+-- @tparam string ... Strings to be written to STDERR.
+--
+-- Prefixes every line with the global `NAME` and ": ".
+-- Also, appends a single linefeed if needed.
+function warn (...)
+    local stderr = io.stderr
+    local str = concat({...})
+    for line in str:gmatch('([^\n]*)\n?') do
+        stderr:write(NAME, ': ', line, '\n')
     end
 end
 
@@ -782,39 +805,35 @@ FakeConnector = setmetatable({}, {__index = DbConnector})
 -- Takes the same arguments as the database connectors it 'fakes' plus:
 --
 -- @tparam tab args Arguments
--- @tparam DbConnector args.fake_connector The database connector to 'fake'.
--- @tparam str args.fetch_from The directory to look up files in.
+-- @tparam DbConnector args['fake-db-connector'] 
+--  The database connector to 'fake'.
+-- @tparam str args[fake-data-dir]
+--  The directory to look up files in.
 -- @tparam pandoc.Meta meta The document's metadata.
 --
 -- @treturn FakeConnector The 'connection' or `nil` if an error occurres.
--- @treturn string The data or an error message, if applicable (not `nil`).
-function FakeConnector:new (args, meta)
-    assert(delegates_to(args.fake_connector, DbConnector), 
-        'connector to fake is not a connector')
-    assert(type(args.fetch_from) == 'string', 
-        'given path is not a string')
-    local obj = setmetatable({fetch_from = args.fetch_from},
-        {__index = self or FakeConnector})
-    local connector = args.fake_connector
-    if connector.add_settings then
-        local settings = Settings:new()
-        connector:add_settings(settings)
-        local cf, err = settings:parse(meta)
-        if not cf then warn(err) return nil end
-        for k, v in cf do args[k] = v end
-    end
-    obj.connection = connector:new(args)
-    function obj.connection:read_url(url) return obj:read_url(url) end
-    return obj
-end
-
-
---- Defines `fake-fetch-from` and `fake-connector`.
+-- @treturn string The data or an error message, if applicable.
 --
--- @tparam Settings settings A list of settings.
-function FakeConnector:add_settings (settings)
-    settings:define{name = 'fetch_from', fieldname = 'fake-fetch-from'}
-    settings:define{name = 'fake_connector', check = get_connector}
+-- @todo Check if the format of @tparam is correct.
+-- @todo test error messages.
+-- @fixme it isn't
+function FakeConnector:new (args)
+    for _, v in ipairs({'fake-db-connector', 'fake-data-dir'}) do
+        if args[v] == nil then
+            return nil, format('missing argument: "%s"', v)
+        else if type(args[v]) ~= 'string' then
+            return nil, format('value of "%s": not a string.')
+        end
+    end
+    local db_connector = get_db_connector(args['fake-db-connector'])
+    if not delegates_to(db_connector, DbConnector) then
+        return nil, 'value of "fake-db-connector" is not a DB connector'
+    end
+    local obj = setmetatable({data_dir = args['fake-data-dir']},
+        {__index = self or FakeConnector})
+    obj.db_connection = db_connector:new(args)
+    function obj.db_connection:read_url(url) return obj:read_url(url) end
+    return obj
 end
 
 
@@ -831,7 +850,7 @@ end
 function FakeConnector:read_url (url)
     local hash = sub(sha1(url), 1, 8)
     warn(url, ' -> ', hash)
-    local fname = self.fetch_from .. PATH_SEP .. hash
+    local fname = self.data_dir .. PATH_SEP .. hash
     local f, err = open(fname, 'r')
     if not f then return err end
     local data, err = f:read('a')
@@ -850,82 +869,7 @@ end
 --  `nil` if the source wasn't found or an error occurred.
 -- @treturn string An error message, if applicable.
 function FakeConnector:get_source (...)
-    return self.connection:get_source(...)
-end
-
-
--- ## Configuration settings
-
---- Handles settings.
---
--- Parses the metadata of a document and returns settings.
--- @type Settings
-Settings = {}
-
---- Creates a new settings parser.
---
--- @treturn Settings A settings parser.
-function Settings:new ()
-    return setmetatable({keys = {}, definitions = {}}, {__index = Settings})
-end
-
-
---- Defines a setting
---
--- @tparam tab def The definition
--- @tparam str def.name A name for the setting.
--- @tparam str [def.fieldname] The metadata field to read the setting from.
---  Defaults to `def.name`, substituting dashes ('-') for underscores ('_').
--- @tparam func [def.convert] A function that converts the value of a metadata
---  field to a native Lua datatype. Should return `nil` and an error message
---  if the conversion fails. Defaults to `pandoc.utils.stringify` for values
---  of types other than `boolean` and `number`.
--- @tparam func [def.check] A function that sanitises the value read from a
---  metadata field. Has the same function signature as and is called after
---  `def.convert`. Defaults to `nil`.
-function Settings:define (def)
-    assert(def, 'missing definition')
-    assert(def.name, 'missing key "name".')
-    local n = def.name
-    def.name = nil
-    self.keys[n] = true
-    if not self.definitions[n] then self.definitions[n] = {} end
-    local d = self.definitions[n]
-    for k, v in pairs(def) do d[k] = v end
-end
-
-
---- Parses the documents metadata and returns settings.
---
--- @tparam pandoc.Meta meta - The document's metadata.
--- @treturn tab The settings or `nil` if a setting could not be parsed.
--- @treturn str An error message, if applicable.
-function Settings:parse (meta)
-    local ret = {}
-    for n in pairs(self.keys) do
-        local d = self.definitions[n]
-        local k = d.fieldname
-        if not k then k = n:gsub('_', '-') end
-        local v = meta[k]
-        if v == nil then 
-            ret[n] = d.default
-        else
-            if not d.convert and type(v) == 'table' then 
-                d.convert = stringify
-            end
-            local fs = {d.convert, d.check}
-            for i = 1, #fs do
-                local f = fs[i]
-                if f then
-                    local err
-                    v, err = f(v)
-                    if v == nil then return nil, err end
-                end
-            end
-            ret[n] = v
-        end
-    end
-    return ret
+    return self.db_connection:get_source(...)
 end
 
 
