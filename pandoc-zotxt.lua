@@ -451,14 +451,13 @@ end
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @raise An error if `name` is not a `string`.
---
--- @todo Add tests.
 function get_db_connector (name)
     assert(type(name) == 'string', 'given DB connector name is not a string.')
+    if name == '' then return nil, 'given DB connector name is "".' end
     if not _ENV[name] then return nil, 'unkown DB connector: ' .. name end
     local c = _ENV[name]
     if type(c) == 'table' and delegates_to(c, DbConnector) then return c end
-    return nil, name .. ': not a DB connector'
+    return nil, name .. ': not a DB connector.'
 end
 
 

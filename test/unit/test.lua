@@ -516,6 +516,25 @@ function test_core:test_get_citekeys ()
     })
 end
 
+function test_core:test_get_db_conncetor ()
+    local invalid = {nil, false, 0, {}, function () end}
+    for _, v in pairs(invalid) do
+        lu.assert_error(M.get_db_connector, v)
+    end
+    
+    local errors = {'', '<na>', 'M', 'DbConnector'}
+    for _, v in pairs(errors) do
+        local data, err = M.get_db_connector(v)
+        lu.assert_nil(data)
+        lu.assert_is_string(err)
+    end
+    
+    local valid = {'Zotxt', 'FakeConnector'}
+    for _, v in pairs(valid) do
+        lu.assert_equals(M.get_db_connector(v), M[v])
+    end
+end
+
 -- function test_core:test_getterise ()
 --     Prototype = {_getters = {}}
 --     function Prototype._getters.one () return 1 end
