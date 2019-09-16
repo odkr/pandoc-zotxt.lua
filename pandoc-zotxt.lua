@@ -373,7 +373,7 @@ function add_bibliography (db, citekeys, meta)
     local fname = stringify(meta['zotero-bibliography'])
     -- @fixme test if this is a string.
     if fname == '' then
-        return nil, 'filename of bibliography file is the empty string ("").'
+        return nil, 'filename of bibliography file is "".'
     elseif not fname:match('.json$') then
         return nil, fname .. ': does not end in ".json".'
     end 
@@ -810,11 +810,9 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data.
     -- @raise An error if `citekey` is not a `string`.
-    -- @raise An error if `citekey` is the empty string.
-    -- @fixme Why bother about the empty string? That should be a return!
     function Zotxt:get_source (citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
-        assert(citekey ~= '', 'given citekey is the empty string')
+        if citekey == '' then return nil, 'citation key is "".' end
         local reply
         for i = 1, #keytypes do
             local query_url = format(base_url, keytypes[i], citekey)

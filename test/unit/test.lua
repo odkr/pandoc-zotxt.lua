@@ -667,12 +667,14 @@ end
 
 function test_zotxt:test_get_source ()
     lu.assert_error(self.db.get_source, nil, '<none>')
-    local invalid_input = {nil, false, 0, '', {}}
+    local invalid_input = {nil, false, 0, {}}
     for _, invalid in pairs(invalid_input) do
         lu.assert_error(self.db.get_source, self.db, invalid)
     end
 
     lu.assert_nil(select(2, pcall(self.db.get_source, self.db, '<none>')))
+
+    lu.assert_nil(self.db:get_source(''))
 
     local better_bibtex = copy(ZOTXT_SOURCE)
     better_bibtex.id = 'haslanger2012ResistingRealitySocial'
