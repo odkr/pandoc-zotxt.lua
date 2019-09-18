@@ -526,12 +526,9 @@ end
 -- @tparam table tbl The table.
 -- @tparam table proto The prototype.
 -- @treturn bool Whether the table is delegates to the prototype.
--- @raise An error if `tbl` or `proto` is not a `table`.
 -- @raise An error if the number of nested calls exceeds 512.
 function delegates_to(tbl, proto, depth)
     depth = depth or 1
-    assert(type(tbl) == 'table', 'given object is not a table')
-    assert(type(proto) == 'table', 'given prototype is not a table')
     assert(depth < 512, 'too many recursions')
     local mt = getmetatable(tbl)
     if not mt then return false end
@@ -589,11 +586,9 @@ do
     --
     -- @tparam pandoc.Meta meta The document's metadata.
     -- @treturn tab The metadata as table.
-    -- @raise If `meta` is not a `table`.
     -- @raise An error if the number of nested calls exceeds 512.
     function convert_meta_to_table (meta, depth)
         if not depth then depth = 1 end
-        assert(type(meta) == 'table', 'given metadata is not a table')
         assert(depth < 512, 'too many recursions')
         local ret = {}
         for k, v in pairs(meta) do
@@ -647,9 +642,7 @@ end
 -- @tparam table list The list.
 -- @treturn[1] integer The index of the element.
 -- @treturn[2] nil `nil` if the list doesn't contain the element.
--- @raise An error if `list` is not a `table`.
 function get_position (elem, list)
-    assert(type(list) == 'table', 'given list is not a table.')
     for i, v in ipairs(list) do
         if v == elem then return i end
     end
