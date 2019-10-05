@@ -135,6 +135,7 @@ local format = string.format
 local PANDOC_STATE = PANDOC_STATE
 local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
 local pandoc = pandoc
+if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 local stringify = pandoc.utils.stringify
 local sha1 = pandoc.utils.sha1
 local walk_block = pandoc.walk_block
@@ -228,9 +229,9 @@ ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?%s=%s'
 --
 -- @see Zotxt
 ZOTXT_KEYTYPES = {
-	'easykey',	       -- zotxt easy citekey 
+	'easykey',         -- zotxt easy citekey 
 	'betterbibtexkey', -- Better BibTeX citation key
-	'key'		       -- Zotero item ID
+	'key'              -- Zotero item ID
 }
 
 
@@ -424,7 +425,7 @@ function update_bibliography (db, citekeys, fname)
         if err and errno ~= 2 then return nil, err, errno end
         refs = {}
     end
-    local ids = map(function (x) return x.id end, refs)
+    local ids = map(function (ref) return ref.id end, refs)
     for _, citekey in ipairs(citekeys) do
         if not get_position(citekey, ids) then
             local ref, err = db:get_source(citekey)
