@@ -219,6 +219,10 @@ ZOTXT_KEYTYPES = {
 	'key'              -- Zotero item ID
 }
 
+--- The character sequence of the operating system to end a line.
+if PATH_SEP == '\\' then EOL = '\r\n'
+                    else EOL = '\n'   end
+
 
 -- # HIGH-LEVEL FUNCTIONS
 
@@ -360,7 +364,7 @@ function add_bibliography (db, citekeys, meta)
     -- @fixme test if this is a string.
     if fname == '' then
         return nil, 'filename of bibliography file is "".'
-    elseif not fname:match('.json$') then
+    elseif not fname:match '.json$' then
         return nil, fname .. ': does not end in ".json".'
     end 
     if not is_path_absolute(fname) then
@@ -604,7 +608,7 @@ end
 -- @tparam string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
-    if PATH_SEP == '\\' and path:match('^.:\\') then return true end
+    if PATH_SEP == '\\' and path:match ('^.:\\') then return true end
     return path:match('^' .. PATH_SEP) ~= nil
 end
 
@@ -650,17 +654,21 @@ end
 
 -- ## Warnings
 
---- Prints warnings to STDERR.
---
--- Prefixes every line with the global `SCRIPT_NAME` and ": ".
--- Also, appends a single linefeed if needed.
---
--- @tparam string ... Strings to be written to STDERR.
-function warn (...)
-    local stderr = io.stderr
-    local str = table.concat({...})
-    for line in str:gmatch('([^\n]*)\n?') do
-        stderr:write(SCRIPT_NAME, ': ', line, '\n')
+do
+    local line_pattern = '([^' .. EOL .. ']*)' .. EOL .. '?'
+    
+    --- Prints warnings to STDERR.
+    --
+    -- Prefixes every line with the global `SCRIPT_NAME` and ": ".
+    -- Also appends an end of line sequence if needed.
+    --
+    -- @tparam string ... Strings to be written to STDERR.
+    function warn (...)
+        local stderr = io.stderr
+        local str = table.concat({...})
+        for line in str:gmatch(line_pattern) do
+            stderr:write(SCRIPT_NAME, ': ', line, EOL)
+        end
     end
 end
 
@@ -839,7 +847,7 @@ function FakeConnector:new (args)
         if args[v] == nil then
             return nil, string.format('missing argument: "%s".', v)
         elseif type(args[v]) ~= 'string' then
-            return nil, string.format('value of "%s": not a string.')
+            return nil, string.format('value of "%s": not a string.', v)
         end
     end
     local db_connector = get_db_connector(args['fake-db-connector'])
