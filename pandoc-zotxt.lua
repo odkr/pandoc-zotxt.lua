@@ -123,35 +123,22 @@ local type = type
 local io = io
 local math = math
 local package = package
-
-local open = io.open
-local concat = table.concat
-local insert = table.insert
-local remove = table.remove
-local sort = table.sort
-local unpack = table.unpack
-local format = string.format
+local string = string
+local table = table
 
 local PANDOC_STATE = PANDOC_STATE
 local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
 local pandoc = pandoc
-if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
-local stringify = pandoc.utils.stringify
-local sha1 = pandoc.utils.sha1
-local walk_block = pandoc.walk_block
 
 local _ENV = M
 
-local text = require 'text'
-local lower = text.lower
-local upper = text.upper
-local sub = text.sub
+if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 
 
 -- # LIBRARIES
 
 --- The path seperator of the operating system.
-PATH_SEP = sub(package.config, 1, 1)
+PATH_SEP = package.config:sub(1, 1)
 
 do
     -- `string.match` expression that splits a path.
@@ -175,7 +162,7 @@ do
     -- @raise An error if `path` is the empty string.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
-        for _, v in ipairs(san_exprs) do path = path:gsub(unpack(v)) end
+        for _, v in ipairs(san_exprs) do path = path:gsub(table.unpack(v)) end
         local dir, fname = path:match(split_expr)
         if #dir > 1 then dir = dir:gsub(PATH_SEP .. '$', '') end
         if dir   == '' then dir   = '.' end
@@ -186,29 +173,27 @@ end
 
 
 --- The directory this script resides in.
-BASE_DIR = split_path(PANDOC_SCRIPT_FILE)
+SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
 
 --- The name of this script.
-NAME = 'pandoc-zotxt.lua'
+SCRIPT_NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '0.3.18b'
+SCRIPT_VERSION = '0.3.18b'
 
 do
-    local lib_expr = {'share', 'lua', '5.3', '?.lua'}
-    
-    package.path = concat({
-        package.path,
-        concat({BASE_DIR, unpack(lib_expr)}, PATH_SEP),
-        concat({BASE_DIR, NAME .. '-' .. VERSION, unpack(lib_expr)}, PATH_SEP)
+    local luarocks = {'share', 'lua', '5.3', '?.lua'}
+    package.path = table.concat({
+        package.path, 
+        table.concat({SCRIPT_DIR, table.unpack(luarocks)}, PATH_SEP),
+        table.concat({SCRIPT_DIR, SCRIPT_NAME .. '-' .. SCRIPT_VERSION, 
+                      table.unpack(luarocks)}, PATH_SEP)
     }, ';')
 end
 
 -- A JSON parser. 
 -- (Pandoc doesn't expose it's own, so we need this.)
 local json = require 'lunajson'
-local encode = json.encode
-local decode = json.decode
 
 
 -- # CONSTANTS
@@ -278,7 +263,6 @@ end
 -- @tparam pandoc.Doc doc A document.
 -- @treturn {str,...} A list of citation keys.
 function get_citekeys (doc)
-    local walk_block = walk_block
     local citekeys = {}
     local seen = {}
     local function collect_citekeys (cite)
@@ -292,7 +276,7 @@ function get_citekeys (doc)
         end
     end
     for _, v in ipairs(doc.blocks) do
-        walk_block(v, {Cite = collect_citekeys})
+        pandoc.walk_block(v, {Cite = collect_citekeys})
     end
     return citekeys
 end
@@ -345,7 +329,7 @@ function add_references (db, citekeys, meta)
     for _, citekey in ipairs(citekeys) do
         local ref, err = db:get_source(citekey)
         if ref then
-            insert(meta.references, ref)
+            table.insert(meta.references, ref)
         else
             warn(err)
         end
@@ -371,6 +355,7 @@ end
 -- @todo test uncatchable error thingy!
 function add_bibliography (db, citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
+    local stringify = pandoc.utils.stringify
     local fname = stringify(meta['zotero-bibliography'])
     -- @fixme test if this is a string.
     if fname == '' then
@@ -388,7 +373,7 @@ function add_bibliography (db, citekeys, meta)
         elseif meta.bibliography.tag == 'MetaInlines' then
             meta.bibliography = {stringify(meta.bibliography), fname}
         elseif meta.bibliography.tag == 'MetaList' then
-            insert(meta.bibliography, fname)
+            table.insert(meta.bibliography, fname)
         end
         return meta
     else
@@ -430,7 +415,7 @@ function update_bibliography (db, citekeys, fname)
         if not get_position(citekey, ids) then
             local ref, err = db:get_source(citekey)
             if ref then
-                insert(refs, ref)
+                table.insert(refs, ref)
             else
                 warn(err)
             end
@@ -477,13 +462,13 @@ end
 function read_json_file (fname)
     assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
-    local f, err, errno = open(fname, 'r')
+    local f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
-    local json, err, errno = f:read('a')
-    if not json then return nil, err, errno end
+    local str, err, errno = f:read('a')
+    if not str then return nil, err, errno end
     local ok, err, errno = f:close()
     if not ok then return nil, err, errno end
-    local ok, data = pcall(decode, json) 
+    local ok, data = pcall(json.decode, str) 
     if not ok then return nil, 'JSON parse error', -1 end
     return convert_numbers_to_strings(data)
 end
@@ -503,11 +488,11 @@ end
 function write_json_file (data, fname)
     assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
-    local ok, json = pcall(encode, data)
+    local ok, str = pcall(json.encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
-    local f, err, errno = open(fname, 'w')
+    local f, err, errno = io.open(fname, 'w')
     if not f then return nil, err, errno end
-    local ok, err, errno = f:write(json, '\n')
+    local ok, err, errno = f:write(str, '\n')
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
@@ -597,7 +582,7 @@ do
                 if v.t == nil or v.t == 'MetaBool' then
                     ret[k] = v
                 elseif str[v.t] then
-                    ret[k] = stringify(v)
+                    ret[k] = pandoc.utils.stringify(v)
                 elseif tab[v.t] then
                     ret[k] = convert_meta_to_table(v, depth + 1)
                 else
@@ -667,15 +652,15 @@ end
 
 --- Prints warnings to STDERR.
 --
--- Prefixes every line with the global `NAME` and ": ".
+-- Prefixes every line with the global `SCRIPT_NAME` and ": ".
 -- Also, appends a single linefeed if needed.
 --
 -- @tparam string ... Strings to be written to STDERR.
 function warn (...)
     local stderr = io.stderr
-    local str = concat({...})
+    local str = table.concat({...})
     for line in str:gmatch('([^\n]*)\n?') do
-        stderr:write(NAME, ': ', line, '\n')
+        stderr:write(SCRIPT_NAME, ': ', line, '\n')
     end
 end
 
@@ -781,13 +766,12 @@ end
 
 do
     local pcall = pcall
-    local concat = concat
-    local insert = insert
-    local remove = remove
     local select = select
-    local format = format
-    local decode = decode
-    local fetch = pandoc.mediabag.fetch
+    local decode = json.decode
+    local insert = table.insert
+    local remove = table.remove
+    local format = string.format
+
     local base_url = ZOTXT_BASE_URL
     local keytypes = ZOTXT_KEYTYPES
 
@@ -853,9 +837,9 @@ FakeConnector = setmetatable({}, {__index = DbConnector})
 function FakeConnector:new (args)
     for _, v in ipairs({'fake-db-connector', 'fake-data-dir'}) do
         if args[v] == nil then
-            return nil, format('missing argument: "%s".', v)
+            return nil, string.format('missing argument: "%s".', v)
         elseif type(args[v]) ~= 'string' then
-            return nil, format('value of "%s": not a string.')
+            return nil, string.format('value of "%s": not a string.')
         end
     end
     local db_connector = get_db_connector(args['fake-db-connector'])
@@ -882,10 +866,10 @@ end
 -- @treturn[1] string The data.
 -- @treturn[2] string An error message (*not* `nil`) if an error occurred.
 function FakeConnector:read_url (url)
-    local hash = sub(sha1(url), 1, 8)
+    local hash = pandoc.utils.sha1(url):sub(1, 8)
     warn(url, ' -> ', hash)
     local fname = self.data_dir .. PATH_SEP .. hash
-    local f, err = open(fname, 'r')
+    local f, err = io.open(fname, 'r')
     if not f then return err end
     local data, err = f:read('a')
     if not data then return err end
