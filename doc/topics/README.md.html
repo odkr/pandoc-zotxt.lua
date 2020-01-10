@@ -1,0 +1,255 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>pandoc-zotxt.lua</h1>
+
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Installing__pandoc_zotxt_lua_">Installing `pandoc-zotxt.lua` </a></li>
+<li><a href="#_pandoc_zotxt_lua__vs__pandoc_zotxt_">`pandoc-zotxt.lua` vs `pandoc-zotxt` </a></li>
+<li><a href="#Testing">Testing </a></li>
+<li><a href="#Documentation">Documentation </a></li>
+<li><a href="#Contact">Contact </a></li>
+<li><a href="#License">License </a></li>
+<li><a href="#Further_Information">Further Information </a></li>
+</ul>
+
+
+<h2>Topics</h2>
+<ul class="">
+  <li><strong>README</strong></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="nowrap">
+  <li><a href="../index.html">pandoc-zotxt.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+
+<h1>pandoc-zotxt.lua</h1>
+
+<p><a href="../index.html#">pandoc-zotxt.lua</a> looks up sources of citations in
+<a href="https://www.zotero.org/">Zotero</a> and adds them either to a
+document's <code>references</code> metadata field or to a bibliography
+file , where <code>pandoc-citeproc</code> can pick them up.</p>
+
+<p><a href="../index.html#">pandoc-zotxt.lua</a> requires <a href="https://github.com/egh/zotxt/">zotxt</a>. It
+supports <a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX for Zotero</a>,
+hereafter "Better BibTeX" for short.</p>
+
+<p>See the <a href="man/pandoc-zotxt.lua.md">manual page</a> for more details.</p>
+
+
+<p><a name="Installing__pandoc_zotxt_lua_"></a></p>
+<h2>Installing <a href="../index.html#">pandoc-zotxt.lua</a></h2>
+
+<p>You use <a href="../index.html#">pandoc-zotxt.lua</a> <strong>at your own risk</strong>. You have been warned.</p>
+
+<h3>Requirements</h3>
+
+<p><a href="../index.html#">pandoc-zotxt.lua</a> should run under any POSIX-compliant operating system
+(e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
+<em>not</em> been tested under Windows, however.</p>
+
+<p>You need <a href="https://www.pandoc.org/">Pandoc</a> 2.0 or later. If you are using
+an older version of Pandoc, try <a href="https://github.com/egh/zotxt">pandoc-zotxt</a>,
+which works with Pandoc 1.12 or later (but also requires
+<a href="https://www.python.org/">Python</a> 2.7).</p>
+
+<h3>Installation</h3>
+
+<ol>
+    <li>Download the
+    <a href="https://github.com/odkr/pandoc-zotxt.lua/releases/latest">latest release</a>.</li>
+    <li>Unpack it.</li>
+    <li>Move the repository directory to the <code>filters</code> sub-directory of your
+    Pandoc data directory (<code>pandoc --version</code> will tell you where that is).</li>
+    <li>Move the file <a href="../index.html#">pandoc-zotxt.lua</a> from the repository directory
+    up into the <code>filters</code> directory.</li>
+</ol>
+
+<h3>POSIX-compliant systems</h3>
+
+<p>If you have <a href="https://curl.haxx.se/">curl</a> or
+<a href="https://www.gnu.org/software/wget/">wget</a>, you can
+install <a href="../index.html#">pandoc-zotxt.lua</a> by copy-pasting the
+following commands into a bourne shell:</p>
+
+
+<pre>
+(
+    set -Cefu
+    NAME=pandoc-zotxt.lua VERS=<span class="number">0.3</span>.<span class="number">17</span>
+    URL=<span class="string">"https://github.com/odkr/${NAME:?}/archive/v${VERS:?}.tar.gz"</span>
+    FILTERS=<span class="string">"${HOME:?}/.pandoc/filters"</span>
+    mkdir -p <span class="string">"${FILTERS:?}"</span>
+    cd -P <span class="string">"$FILTERS"</span> || exit
+    {
+        curl -L <span class="string">"$URL"</span> || ERR=$?
+        [ <span class="string">"${ERR-0}"</span> -eq <span class="number">127</span> ] &amp;&amp; wget -O - <span class="string">"$URL"</span>
+    } | tar xz
+    mv <span class="string">"$NAME-$VERS/pandoc-zotxt.lua"</span> .
+)
+</pre>
+
+
+<p>You may also want to copy the manual page from the <code>man</code> directory in the
+repository to wherever your operating system searches for manual pages
+(e.g., <code>/usr/local/share/man/man1</code>, <code>/usr/share/man/man1</code>).</p>
+
+
+<p><a name="_pandoc_zotxt_lua__vs__pandoc_zotxt_"></a></p>
+<h2><a href="../index.html#">pandoc-zotxt.lua</a> vs <code>pandoc-zotxt</code></h2>
+
+<p><a href="../index.html#">pandoc-zotxt.lua</a>:</p>
+
+<ul>
+    <li>supports using a bibliography file as cache, so that bibliographic data that
+    was already retrieved from Zotero need not be retrieved again
+    (<code>pandoc-zotxt</code> doesn't).</li>
+    <li>retrieves Better BibTeX citation keys faster (than <code>pandoc-zotxt</code>).</li>
+    <li>supports using Zotero item ID as citation keys (<code>pandoc-zotxt</code> doesn't).</li>
+    <li>doesn't use a temporary file (<code>pandoc-zotxt</code> does).</li>
+</ul>
+
+
+<p>Requirements:</p>
+
+<p>| <a href="../index.html#">pandoc-zotxt.lua</a>            | <code>pandoc-zotxt</code>                       |
+| ----------------------------- | ------------------------------------ |
+| Requires Pandoc 2.0.          | Requires Pandoc 1.12 and Python 2.7. |</p>
+
+
+<p><a name="Testing"></a></p>
+<h2>Testing</h2>
+
+<h3>Requirements</h3>
+
+<ol>
+    <li>A POSIX-compliant operating system</li>
+    <li><a href="https://www.pandoc.org/">Pandoc</a> 2.7.2</li>
+    <li><a href="https://github.com/jgm/pandoc-citeproc">pandoc-citeproc</a> 0.16.1.3</li>
+</ol>
+
+<p>The test suite may or may not work with other versions of
+Pandoc and pandoc-citeproc.</p>
+
+<h3>Assumptions</h3>
+
+<p>You are using the default Citation Style Language stylesheet that ships with
+<code>pandoc-citeproc</code>, namely, <code>chicago-author-date.csl</code>.</p>
+
+<h3>Running the tests</h3>
+
+<p>Simply say:</p>
+
+<pre><code>     make test
+</code></pre>
+
+
+<h3>The real-world test suite</h3>
+
+<p>The default test suite doesn't try to connect to a Zotero installation,
+but uses canned responses from my Zotero database. You can force the
+test suite to connect to a local Zotero database by:</p>
+
+<pre><code>     make test -e REAL_BACKEND=yes
+</code></pre>
+
+
+<p>Note, you will have to adapt the test suite to your database.</p>
+
+<p>Moreover, you will need:</p>
+
+<ul>
+    <li>Zotero (v5 or newer)</li>
+    <li>zotxt (v5 or newer)</li>
+    <li>Better BibTex</li>
+</ul>
+
+
+<p><a name="Documentation"></a></p>
+<h2>Documentation</h2>
+
+<p>See the <a href="man/pandoc-zotxt.lua.md">manual page</a>
+and the source for details.</p>
+
+
+<p><a name="Contact"></a></p>
+<h2>Contact</h2>
+
+<p>If there's something wrong with <a href="../index.html#">pandoc-zotxt.lua</a>,
+<a href="https://github.com/odkr/pandoc-zotxt.lua/issues">open an issue</a>.</p>
+
+
+<p><a name="License"></a></p>
+<h2>License</h2>
+
+<p>Copyright 2018, 2019 Odin Kroeger</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</p>
+
+
+<p><a name="Further_Information"></a></p>
+<h2>Further Information</h2>
+
+<p>GitHub:</p>
+
+<pre>
+&lt;https://github.com/odkr/pandoc-zotxt.lua&gt;
+</pre>
+
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2019-10-12 19:29:30 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

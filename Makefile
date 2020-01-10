@@ -9,8 +9,8 @@ DATA_DIR	:= $(BASE_DIR)/data
 NORM_DIR	:= $(BASE_DIR)/norms
 UNIT_DIR	:= $(BASE_DIR)/unit
 TMP_DIR		:= $(BASE_DIR)/tmp
-SCRIPT_DIR	:= $(BASE_DIR)/scripts
-
+#SCRIPT_DIR	:= $(BASE_DIR)/scripts
+# fixme, the script_dir was for httpd, it's no longer needed!
 
 # UTILITY PROGRAMMES
 # ==================
@@ -61,11 +61,12 @@ install-luaunit:
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
 	$(RM) "$(TMP_DIR)"/*
+	cd -P "$(TMP_DIR)" || exit
 
 $(UNIT_TESTS): prepare-tmpdir
 	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
-		-M test-data-dir="$(DATA_DIR)" $(CONNECTOR_ARGS) -M tests=$@ \
-		/dev/null
+		-M test-data-dir="$(DATA_DIR)" -M test-tmp-dir="$(TMP_DIR)" \
+		$(CONNECTOR_ARGS) -M tests=$@ </dev/null
 
 $(GENERATION_TESTS): prepare-tmpdir
 	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
@@ -74,7 +75,7 @@ $(GENERATION_TESTS): prepare-tmpdir
 	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
 
 test_warn: prepare-tmpdir
-	for TEST in `$(COLLECT_WARN_TESTS)`; do \
+	for TEST in `$(WARN_TESTS)`; do \
 		pandoc --lua-filter "$(UNIT_DIR)/warn/$$TEST.lua" -o /dev/null \
 			/dev/null 2>"$(TMP_DIR)/$$TEST.out"; \
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \

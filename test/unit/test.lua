@@ -1,13 +1,13 @@
---- test.lua - A fake Pandoc filter that runs units for for pandoc-zotxt.lua.
+--- test.lua - A fake Pandoc filter that runs units for pandoc-zotxt.lua.
 --
 -- # SYNOPSIS
--- 
+--
 --      pandoc --lua-filter test.lua -o /dev/null FILE
--- 
--- 
+--
+--
 -- # DESCRIPTION
--- 
--- A fake Pandoc filter that runs units for for pandoc-zotxt.lua. 
+--
+-- A fake Pandoc filter that runs units for for pandoc-zotxt.lua.
 -- Which tests are run is goverend by the `tests` metadata field in FILE.
 -- This field is passed to lu.LuaUnit.run. If `tests` is not set,
 -- runs all tests.
@@ -51,18 +51,19 @@
 -- # SHORTHANDS
 
 local open = io.open
-local popen = io.popen
-local time = os.time
-local execute = os.execute
+-- local popen = io.popen
+-- local time = os.time
+-- local execute = os.execute
 local exit = os.exit
 local concat = table.concat
 local unpack = table.unpack
-local format = string.format
-
-local stringify = pandoc.utils.stringify
-
+-- local format = string.format
 
 -- # LIBRARIES
+
+-- luacheck: globals pandoc
+if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
+local stringify = pandoc.utils.stringify
 
 local text = require 'text'
 local sub = text.sub
@@ -79,7 +80,8 @@ do
         {PATH_SEP .. '+', PATH_SEP},              -- '//'  -> '/'
         {'^%.' .. PATH_SEP, ''}                   -- './'  -> ''
     }
-    
+
+    -- luacheck: globals split_path
     --- Splits a file's path into a directory and a filename part.
     --
     -- @tparam string path The path to the file.
@@ -98,10 +100,11 @@ do
     end
 end
 
---- The directory of the script. 
+-- luacheck: globals PANDOC_SCRIPT_FILE
+--- The directory of the script.
 local SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
 
---- The directory of the test suite. 
+--- The directory of the test suite.
 local TEST_DIR = concat({SCRIPT_DIR, '..'}, PATH_SEP)
 
 --- The test suite's data directory.
@@ -113,7 +116,7 @@ local TMP_DIR = concat({TEST_DIR, 'tmp'}, PATH_SEP)
 --- The repository directory.
 local REPO_DIR = concat({TEST_DIR, '..'}, PATH_SEP)
 
-package.path = package.path .. ';' .. 
+package.path = package.path .. ';' ..
     concat({REPO_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
 
 local lu = require 'luaunit'
@@ -123,6 +126,7 @@ local M = require 'pandoc-zotxt'
 -- # CONSTANTS
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
+-- luacheck: globals ZOTXT_SOURCE
 ZOTXT_SOURCE = {
     id = 'haslanger:2012resisting', type = 'book',
     author = {{family = 'Haslanger', given = 'Sally'}},
@@ -136,6 +140,7 @@ ZOTXT_SOURCE = {
 
 -- # FUNCTIONS
 
+-- luacheck: globals copy
 --- Copies tables recursively.
 --
 -- Handles metatables, recursive structures, tables as keys, and
@@ -169,6 +174,7 @@ function copy (data, s)
     return res
 end
 
+-- luacheck: globals read_md_file
 --- Reads a Markdown file.
 --
 -- @tparam string fname Name of the file.
@@ -179,11 +185,12 @@ end
 -- May raise an uncatchable error.
 function read_md_file (fname)
     assert(fname ~= '', 'given filename is the empty string')
-    local f, err, errno = open(fname, 'r')
+    local f, md, ok, err, errno
+    f, err, errno = open(fname, 'r')
     if not f then return nil, err, errno end
-    local md, err, errno = f:read('a')
+    md, err, errno = f:read('a')
     if not md then return nil, err, errno end
-    local ok, err, errno = f:close()
+    ok, err, errno = f:close()
     if not ok then return nil, err, errno end
     return pandoc.read(md, 'markdown')
 end
@@ -191,11 +198,12 @@ end
 
 -- # TESTS
 
+-- luacheck: globals test_core
 test_core = {}
 
-function test_core:test_split_path ()
+function test_core.test_split_path ()
     local invalid_inputs = {nil, false, 0, '', {}, function () end}
-    
+
     for _, v in ipairs(invalid_inputs) do
         lu.assert_error(M.split_path, v)
     end
@@ -234,7 +242,7 @@ function test_core:test_split_path ()
         ['a/b/c/d']             = {'a/b/c',     'd' },
         ['a/../.././c/d']       = {'a/../../c', 'd' }
 }
-    
+
     for k, v in pairs(tests) do
         local dir, fname = M.split_path(k)
         lu.assert_equals(dir, v[1])
@@ -242,10 +250,12 @@ function test_core:test_split_path ()
     end
 end
 
-function test_core:test_map ()
+function test_core.test_map ()
     local function base (x) return x end
     local function successor (x) return x + 1 end
-  
+
+    -- @fixme: This is a bad test, each false input must be tested indivudally
+    -- correct elsehwere! FIXME FIXME FIXME
     local invalid_inputs = {nil, false, 0, '', {}}
     for _, a in ipairs(invalid_inputs) do
         for _, b in ipairs({nil, false, 0, '', base}) do
@@ -267,14 +277,14 @@ end
 
 -- function test_core:test_filter ()
 --     local function flt (x) return x == 1 end
--- 
+--
 --     local invalid_inputs = {nil, false, 0, '', {}}
 --     for _, a in ipairs(invalid_inputs) do
 --         for _, b in ipairs({nil, false, 0, '', base}) do
 --             lu.assert_error(M.filter, a, b)
 --         end
 --     end
--- 
+--
 --     local tests = {
 --         [{}]        = {},
 --         [{1}]       = {},
@@ -282,18 +292,18 @@ end
 --         [{1, 1, 1}] = {1, 1, 1},
 --         [{0, 0, 0}] = {}
 --     }
--- 
+--
 --     for k, v in ipairs(tests) do
 --         lu.assert_equals(M.filter(flt, k), v)
 --     end
 -- end
 
-function test_core:test_get_position ()
+function test_core.test_get_position ()
     local invalid_inputs = {nil, false, 0, 'x', function () end}
     for _, v in ipairs(invalid_inputs) do
         lu.assert_error(M.get_position, nil, v)
     end
-    
+
     local tests = {
         [{nil, {}}]         = nil,
         [{nil, {1, 2, 3}}]  = nil,
@@ -303,7 +313,7 @@ function test_core:test_get_position ()
         [{2, {1, 2, 3}}]    = 2,
         [{3, {1, 2, 3}}]    = 3
     }
-    
+
     for k, v in pairs(tests) do
         lu.assert_equals(M.get_position(unpack(k)), v)
     end
@@ -314,13 +324,13 @@ end
 --     for _, v in ipairs(invalid_inputs) do
 --         lu.assert_error(M.get_element(v))
 --     end
--- 
+--
 --     local input = {
 --         [1] = {[2] = {3, 4}, [5] = 6},
 --         a = {b = {'c', 'd'}, e = 'f'},
 --         ['_'] = {b = {3, 'd'}, [5] = 'f'}
 --     }
--- 
+--
 --     local tests = {
 --      [{}] = nil,
 --      [{1}] = {[2] = {3, 4}, [5] = 6},
@@ -333,21 +343,21 @@ end
 --      [{'_', 'b'}] = {3, 'd'},
 --      [{'_', 5}] = 'f'
 --     }
--- 
+--
 --     for k, v in pairs(tests) do
 --         lu.assert_equals(M.get_element(input, unpack(k)), v)
 --     end
 -- end
 
-function test_core:test_delegates_to ()
+function test_core.test_delegates_to ()
     local c = {}
     local b = setmetatable({}, {__index = c})
     local a = setmetatable({}, {__index = b})
-    
+
     local invalid = {nil, false, 0, 'a', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.delegates_to, a, invalid)
-        lu.assert_error(M.delegates_to, invalid, a)
+        lu.assert_error(M.delegates_to, a, v)
+        lu.assert_error(M.delegates_to, v, a)
     end
 
     lu.assert_false(M.delegates_to(a, a))
@@ -358,14 +368,14 @@ function test_core:test_delegates_to ()
     lu.assert_false(M.delegates_to(c, b))
 end
 
-function test_core:test_get_input_directory ()    
-    lu.assert_equals(M.get_input_directory(), PATH_SEP .. 'dev')
+function test_core.test_get_input_directory ()
+    lu.assert_equals(M.get_input_directory(), '.')
 end
 
-function test_core:test_is_path_absolute ()
+function test_core.test_is_path_absolute ()
     local original_path_sep = M.PATH_SEP
     lu.assert_error(M.is_path_absolute)
-    
+
     M.PATH_SEP = '\\'
     local tests = {
         ['\\']          = true,
@@ -377,14 +387,14 @@ function test_core:test_is_path_absolute ()
         ['/']           = false,
         ['/test']       = false,
         ['test/test']   = false
-    }    
+    }
 
     for k, v in pairs(tests) do
         lu.assert_equals(M.is_path_absolute(k), v)
     end
 
     M.PATH_SEP = '/'
-    local tests = {
+    tests = {
         ['\\']          = false,
         ['C:\\']        = false,
         ['[:\\']        = false,
@@ -394,16 +404,16 @@ function test_core:test_is_path_absolute ()
         ['/']           = true,
         ['/test']       = true,
         ['test/test']   = false
-    }    
+    }
 
     for k, v in pairs(tests) do
         lu.assert_equals(M.is_path_absolute(k), v)
     end
-    
+
     M.PATH_SEP = original_path_sep
 end
 
-function test_core:test_convert_numbers_to_strings ()
+function test_core.test_convert_numbers_to_strings ()
     local a = {}
     a.a = a
     lu.assert_error(M.convert_numbers_to_strings, a)
@@ -415,28 +425,29 @@ function test_core:test_convert_numbers_to_strings ()
         [{a = nil, b = true, c = 1, d = 1.12, e = 'a', f = {}}] =
             {a = nil, b = true, c = '1', d = '1', e = 'a', f = {}},
         [{a = nil, b = true, c = 1, d = 1.12, e = 'a',
-            f = {nil, true, 1, 1.12, 'a', {}}}] = 
-                {a = nil, b = true, c = '1', d = '1', e = 'a', 
+            f = {nil, true, 1, 1.12, 'a', {}}}] =
+                {a = nil, b = true, c = '1', d = '1', e = 'a',
                     f = {nil, true, '1', '1', 'a', {}}}
     }
-    
+
     for k, v in pairs(tests) do
         lu.assert_equals(M.convert_numbers_to_strings(k), v)
     end
 end
 
-function test_core:test_convert_meta_to_table ()
+function test_core.test_convert_meta_to_table ()
     local invalid = {nil, false, 0, '', function() end}
     for _, v in pairs(invalid) do
         lu.assert_error(M.convert_meta_to_table, v)
     end
-    
+
+    -- luacheck: globals DOC
     local data_dir = stringify(DOC.meta['test-data-dir'])
     local fname = data_dir .. PATH_SEP .. 'test-convert_meta_to_table.md'
     local meta = read_md_file(fname).meta
     lu.assert_not_nil(meta)
 
-    local data = M.convert_meta_to_table(meta)    
+    local data = M.convert_meta_to_table(meta)
     lu.assert_not_nil(data)
     lu.assert_equals(data, {
         title = 'This is the title: it contains a colon',
@@ -450,58 +461,61 @@ function test_core:test_convert_meta_to_table ()
     })
 end
 
-function test_core:test_read_json_file ()
+function test_core.test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
     for _, invalid in ipairs(invalid_inputs) do
         lu.assert_error(M.read_json_file, invalid)
     end
 
-    local ok, err, errno = M.read_json_file('<does not exist>')
+    local data, ok, err, errno
+    ok, err, errno = M.read_json_file('<does not exist>')
     lu.assert_nil(ok)
     lu.assert_not_equals(err, '')
     lu.assert_equals(errno, 2)
-    
-    local fname = concat({DATA_DIR, 'test-read_json_file.json'}, PATH_SEP)
-    local data, err, errno = M.read_json_file(fname)
+
+    local fname = concat({DATA_DIR, 'bibliography.json'}, PATH_SEP)
+    data, err, errno = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
     lu.assert_equals(data, ZOTXT_SOURCE)
 end
 
-function test_core:test_write_json_file ()
+function test_core.test_write_json_file ()
     local invalid_inputs = {nil, false, '', {}}
     for _, invalid in ipairs(invalid_inputs) do
         lu.assert_error(M.read_json_file, nil, invalid)
     end
 
-    local ok, err, errno = M.read_json_file('<does not exist>')
+    local data, ok, err, errno
+    ok, err, errno = M.read_json_file('<does not exist>')
     lu.assert_nil(ok)
     lu.assert_not_equals(err, '')
     lu.assert_equals(errno, 2)
-    
+
     local fname = concat({TMP_DIR, 'test-write_json_file.json'}, PATH_SEP)
-    local ok, err, errno = os.remove(fname)
-    if not ok and errno ~= 2 then error(err) end    
-    local ok, err, errno = M.write_json_file(ZOTXT_SOURCE, fname)
+    ok, err, errno = os.remove(fname)
+    if not ok and errno ~= 2 then error(err) end
+    ok, err, errno = M.write_json_file(ZOTXT_SOURCE, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     lu.assert_nil(errno)
 
-    local data, err,errno = M.read_json_file(fname)
+    data, err, errno = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
-    
-    lu.assert_equals(data, ZOTXT_SOURCE) 
+
+    lu.assert_equals(data, ZOTXT_SOURCE)
 end
 
-function test_core:test_get_citekeys ()
+function test_core.test_get_citekeys ()
     local invalid = {nil, false, 0, '', {}}
     for _, v in pairs(invalid) do
         lu.assert_error(M.get_citekeys, v)
     end
-    
+
+    -- luacheck: globals DOC
     local data_dir = stringify(DOC.meta['test-data-dir'])
     local empty_fname = data_dir .. PATH_SEP .. 'test-empty.md'
     local empty = read_md_file(empty_fname)
@@ -516,19 +530,19 @@ function test_core:test_get_citekeys ()
     })
 end
 
-function test_core:test_get_db_conncetor ()
+function test_core.test_get_db_conncetor ()
     local invalid = {nil, false, 0, {}, function () end}
     for _, v in pairs(invalid) do
         lu.assert_error(M.get_db_connector, v)
     end
-    
+
     local errors = {'', '<na>', 'M', 'DbConnector'}
     for _, v in pairs(errors) do
         local data, err = M.get_db_connector(v)
         lu.assert_nil(data)
         lu.assert_is_string(err)
     end
-    
+
     local valid = {'Zotxt', 'FakeConnector'}
     for _, v in pairs(valid) do
         lu.assert_equals(M.get_db_connector(v), M[v])
@@ -545,25 +559,25 @@ end
 --     local obj = Prototype:new()
 --     lu.assert_equals(obj.one, 1)
 --     lu.assert_nil(obj.two)
--- 
---     function Prototype._getters.two () 
---         if not self._two then self._two = 2 
+--
+--     function Prototype._getters.two ()
+--         if not self._two then self._two = 2
 --                          else self._two = self._two + 1 end
 --         return self._two
 --     end
 --     lu.assert_equals(obj.two, 2)
 --     lu.assert_equals(obj.two, 2)
 -- end
--- 
--- 
+--
+--
 -- test_citekey = {}
--- 
+--
 -- function test_citekey:test_citekey_parse ()
 --     local invalid = {nil, true, 1, {}, '', '1999', 'doe-1999'}
 --     for _, v in ipairs(invalid) do
 --         lu.assert_error(M.Citekey:parse(v))
 --     end
--- 
+--
 --     local tests = {
 --         doe2000 = {author = 'doe', year = 2000},
 --         doe = {author = 'doe'},
@@ -574,7 +588,7 @@ end
 --         ['díaz-león:2012'] = {author = 'díaz-león', year = 2012},
 --         ['doe:title'] = {author = 'doe', title = 'title'}
 --     }
--- 
+--
 --     for k, v in pairs(tests) do
 --         local obj, err = M.Citekey:parse(k)
 --         lu.assert_nil(err)
@@ -582,7 +596,7 @@ end
 --         lu.assert_equals(obj, v)
 --     end
 -- end
--- 
+--
 -- function test_citekey:test_citekey_matches ()
 --     function make_item (author, year, title)
 --         local ret = {title = title or ''}
@@ -590,13 +604,13 @@ end
 --         ret['author'] = {{family = author}}
 --         return ret
 --     end
--- 
+--
 --     local citation = M.Citekey:parse('doe')
 --     local invalid = {nil, true, 1, 'a', {}}
 --     for _, v in ipairs(invalid) do
 --         lu.assert_error(citation:matches(v))
 --     end
--- 
+--
 --     local tests = {
 --         doe = {
 --             [{'doe'}] = true,
@@ -645,7 +659,7 @@ end
 --             [{'doe', nil, 'xxxtitlexxx'}] = true
 --         }
 --     }
--- 
+--
 --     for citekey, test in pairs(tests) do
 --         obj = M.Citekey:parse(citekey)
 --         for desc, res in pairs(test) do
@@ -654,18 +668,18 @@ end
 --         end
 --     end
 -- end
--- 
+--
 -- test_ordered_table = {}
--- 
+--
 -- function test_ordered_table:setup ()
 --     self.tab = M.OrderedTable:new{a = 1, c = 3, b = 2}
 -- end
--- 
+--
 -- function test_ordered_table:test_ordered_table_new ()
 --     lu.assert_not_nil(self.tab)
 --     lu.assert_equals(self.tab, {a = 1, b = 2, c = 3})
 -- end
--- 
+--
 -- function test_ordered_table:test_ordered_table_ipairs ()
 --     local keys = {}
 --     for k in pairs(self.tab) do keys[#keys + 1] = k end
@@ -673,12 +687,34 @@ end
 --     lu.assert_equals(keys, {'a', 'b', 'c'})
 -- end
 
+-- luacheck: globals test_higher
+test_higher = {}
 
+function test_higher:setup ()
+    -- luacheck: globals DOC
+    local db_connector = M.DEFAULT_CONNECTOR
+    local reference_mgr = stringify(DOC.meta['reference-manager'])
+    if reference_mgr then db_connector = M.get_db_connector(reference_mgr) end
+    assert(db_connector, 'missing DB connector')
+    self.db = db_connector:new(DOC.meta)
+    self.data_dir = stringify(DOC.meta['test-data-dir'])
+
+    -- get TMP_DIR!
+    -- delete
+
+    -- create db connection.
+    -- make sure to delete bibliography files.
+    -- and deleter that does the same.
+end
+
+
+-- luacheck: globals test_zotxt
 test_zotxt = {}
 
 function test_zotxt:setup ()
+    -- luacheck: globals DOC
     local db_connector = M.DEFAULT_CONNECTOR
-    local reference_mgr = DOC.meta['reference-manager']
+    local reference_mgr = stringify(DOC.meta['reference-manager'])
     if reference_mgr then db_connector = M.get_db_connector(reference_mgr) end
     assert(db_connector, 'missing DB connector')
     self.db = db_connector:new(DOC.meta)
@@ -699,61 +735,91 @@ function test_zotxt:test_get_source ()
     better_bibtex.id = 'haslanger2012ResistingRealitySocial'
     local zotero_id = copy(ZOTXT_SOURCE)
     zotero_id.id = 'TPN8FXZV'
-    
+
     local tests = {
         [ZOTXT_SOURCE.id]   = ZOTXT_SOURCE,
         [better_bibtex.id]  = better_bibtex,
         [zotero_id.id]      = zotero_id
     }
-    
+
     for k, v in pairs(tests) do
         lu.assert_equals(self.db:get_source(k), v)
     end
 end
 
 function test_zotxt:test_update_bibliography ()
-    local invalid_fnames = {nil, false, '', {}}
-    local invalid_keys = {nil, false, 0, '', base}
-    for _, fname in ipairs(invalid_fnames) do
-        for _, keys in ipairs(invalid_keys) do
-            lu.assert_error(self.db.update_bibliography, self.db, fname, keys)
-        end
+    local invalid_db = {nil, false, 0, "false", {}, function () end}
+    local invalid_citekeys = {nil, false, 0, "false", function () end}
+    local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
+
+    local db = self.db
+    local citekeys = {'haslanger:2012resisting'}
+    local fname = concat({TMP_DIR, 'test-update_bibliography.json'}, PATH_SEP)
+
+    for i = 1, #invalid_db do
+        lu.assert_error(M.update_bibliography, invalid_db[i], citekeys, fname)
+    end
+    for i = 1, #invalid_citekeys do
+        lu.assert_error(M.update_bibliography, db, invalid_citekeys[i], fname)
+    end
+    for i = 1, #invalid_fnames do
+        lu.assert_error(M.update_bibliography, db, citekeys, invalid_fnames[i])
     end
 
-
-    local fname = concat({TMP_DIR, 'test-update_bibliography.json'}, PATH_SEP)
-    local ok, err, errno = os.remove(fname)
+    -- Remove file, just in case.
+    local data, ok, err, errno
+    ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
-    local ok, err = M.update_bibliography(self.db, {'haslanger:2012resisting'},
-        fname)
+
+    -- Checks whether we do nothing if there's nothing to be done.
+    ok, err = M.update_bibliography(db, {}, fname)
+    if not ok then error(err) end
+    ok, err, errno = os.remove(fname)
+    if ok or errno ~= 2 then error(err) end
+
+    -- Checks adding citations from zero.
+    ok, err = M.update_bibliography(db, {'haslanger:2012resisting'}, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
-    local data, err = M.read_json_file(fname)
+    data, err = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_equals(data, {ZOTXT_SOURCE})
 
-    local citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    local ok, err = M.update_bibliography(self.db, citekeys, fname)
+    -- Checks adding a new citation.
+    local new
+    citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
+    ok, err = M.update_bibliography(db, citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
-    local data, err = M.read_json_file(fname)
+    data, err = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_equals(#data, 2)
 
-    local ok, err = M.update_bibliography(self.db, citekeys, fname)
+    ok, err = M.update_bibliography(db, citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
-    local new, err = M.read_json_file(fname)
+    new, err = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(new)
     lu.assert_equals(new, data)
+
+    -- This should not change the file.
+    local post
+    ok, err = M.update_bibliography(db, citekeys, fname)
+    lu.assert_nil(err)
+    lu.assert_true(ok)
+    post, err = M.read_json_file(fname)
+    lu.assert_nil(err)
+    lu.assert_not_nil(post)
+    lu.assert_equals(new, post)
 end
 
 
 -- # BOILERPLATE
 
+-- luacheck: globals run
 --- Runs the tests
 --
 -- Looks up the `tests` metadata field in the current Pandoc document
@@ -762,8 +828,9 @@ end
 -- @tparam pandoc.Doc doc A Pandoc document.
 function run (doc)
     local meta = doc.meta
-    local tests, err
+    local tests
     if meta.tests then tests = stringify(meta.tests) end
+    -- luacheck: globals DOC
     DOC = doc
     exit(lu.LuaUnit.run(tests))
 end
