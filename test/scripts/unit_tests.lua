@@ -195,6 +195,57 @@ end
 
 -- # TESTS
 
+-- ## List handling
+
+function test_get_position ()
+    local invalid_inputs = {nil, false, 0, 'x', function () end}
+    for _, v in ipairs(invalid_inputs) do
+        lu.assert_error(M.get_position, nil, v)
+    end
+
+    local tests = {
+        [{nil, {}}]         = nil,
+        [{nil, {1, 2, 3}}]  = nil,
+        [{2, {1}}]          = nil,
+        [{1, {1}}]          = 1,
+        [{1, {1, 2, 3}}]    = 1,
+        [{2, {1, 2, 3}}]    = 2,
+        [{3, {1, 2, 3}}]    = 3
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.get_position(unpack(k)), v)
+    end
+end
+
+function test_map ()
+    -- luacheck: no redefined
+    local function base (x) return x end
+    local function successor (x) return x + 1 end
+
+    local func = function (...) return ... end
+    for _, v in ipairs({nil, false, 0, '', {}}) do
+        lu.assert_error(M.map, func, v)
+    end
+    for _, v in ipairs({nil, false, 0, '', base}) do
+        lu.assert_error(M.map, v, {1, 2, 3})
+    end
+
+    local tests = {
+        [base]      = {[{}] = {}, [{1}] = {1}, [{1, 2, 3}] = {1, 2, 3}},
+        [successor] = {[{}] = {}, [{1}] = {2}, [{1, 2, 3}] = {2, 3, 4}},
+    }
+
+    for func, values in ipairs(tests) do
+        for k, v in pairs(values) do
+            lu.assert_equals(M.map(func, k), v)
+        end
+    end
+end
+
+
+-- ## Path Handling
+
 function test_split_path ()
     local invalid_inputs = {nil, false, 0, '', {}, function () end}
 
@@ -244,56 +295,6 @@ function test_split_path ()
     end
 end
 
-function test_map ()
-    -- luacheck: no redefined
-    local function base (x) return x end
-    local function successor (x) return x + 1 end
-
-    local func = function (...) return ... end
-    for _, v in ipairs({nil, false, 0, '', {}}) do
-        lu.assert_error(M.map, func, v)
-    end
-    for _, v in ipairs({nil, false, 0, '', base}) do
-        lu.assert_error(M.map, v, {1, 2, 3})
-    end
-
-    local tests = {
-        [base]      = {[{}] = {}, [{1}] = {1}, [{1, 2, 3}] = {1, 2, 3}},
-        [successor] = {[{}] = {}, [{1}] = {2}, [{1, 2, 3}] = {2, 3, 4}},
-    }
-
-    for func, values in ipairs(tests) do
-        for k, v in pairs(values) do
-            lu.assert_equals(M.map(func, k), v)
-        end
-    end
-end
-
-
-function test_get_position ()
-    local invalid_inputs = {nil, false, 0, 'x', function () end}
-    for _, v in ipairs(invalid_inputs) do
-        lu.assert_error(M.get_position, nil, v)
-    end
-
-    local tests = {
-        [{nil, {}}]         = nil,
-        [{nil, {1, 2, 3}}]  = nil,
-        [{2, {1}}]          = nil,
-        [{1, {1}}]          = 1,
-        [{1, {1, 2, 3}}]    = 1,
-        [{2, {1, 2, 3}}]    = 2,
-        [{3, {1, 2, 3}}]    = 3
-    }
-
-    for k, v in pairs(tests) do
-        lu.assert_equals(M.get_position(unpack(k)), v)
-    end
-end
-
-function test_get_input_directory ()
-    lu.assert_equals(M.get_input_directory(), '.')
-end
 
 function test_is_path_absolute ()
     local original_path_sep = M.PATH_SEP
@@ -336,27 +337,14 @@ function test_is_path_absolute ()
     M.PATH_SEP = original_path_sep
 end
 
-function test_convert_numbers_to_strings ()
-    local a = {}
-    a.a = a
-    lu.assert_error(M.convert_numbers_to_strings, a)
-    lu.assert_nil(M.convert_numbers_to_strings())
 
-    local tests = {
-        [true] = true, [1] = '1', [1.1] = '1', ['a'] = 'a', [{}] = {},
-        [{nil, true, 1, 1.12, 'a', {}}] = {nil, true, '1', '1', 'a', {}},
-        [{a = nil, b = true, c = 1, d = 1.12, e = 'a', f = {}}] =
-            {a = nil, b = true, c = '1', d = '1', e = 'a', f = {}},
-        [{a = nil, b = true, c = 1, d = 1.12, e = 'a',
-            f = {nil, true, 1, 1.12, 'a', {}}}] =
-                {a = nil, b = true, c = '1', d = '1', e = 'a',
-                    f = {nil, true, '1', '1', 'a', {}}}
-    }
-
-    for k, v in pairs(tests) do
-        lu.assert_equals(M.convert_numbers_to_strings(k), v)
-    end
+function test_get_input_directory ()
+    lu.assert_equals(M.get_input_directory(), '.')
 end
+
+
+-- ## JSON files
+
 
 function test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
@@ -405,6 +393,34 @@ function test_write_json_file ()
 
     lu.assert_equals(data, ZOTXT_SOURCE)
 end
+
+
+-- ## Converters
+
+function test_convert_numbers_to_strings ()
+    local a = {}
+    a.a = a
+    lu.assert_error(M.convert_numbers_to_strings, a)
+    lu.assert_nil(M.convert_numbers_to_strings())
+
+    local tests = {
+        [true] = true, [1] = '1', [1.1] = '1', ['a'] = 'a', [{}] = {},
+        [{nil, true, 1, 1.12, 'a', {}}] = {nil, true, '1', '1', 'a', {}},
+        [{a = nil, b = true, c = 1, d = 1.12, e = 'a', f = {}}] =
+            {a = nil, b = true, c = '1', d = '1', e = 'a', f = {}},
+        [{a = nil, b = true, c = 1, d = 1.12, e = 'a',
+            f = {nil, true, 1, 1.12, 'a', {}}}] =
+                {a = nil, b = true, c = '1', d = '1', e = 'a',
+                    f = {nil, true, '1', '1', 'a', {}}}
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.convert_numbers_to_strings(k), v)
+    end
+end
+
+
+-- ## Handling bibliographic data
 
 function test_get_citekeys ()
     local invalid = {nil, false, 0, '', {}}
