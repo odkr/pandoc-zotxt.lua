@@ -82,6 +82,14 @@ test_warn: prepare-tmpdir
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
 	done
 
+manual:
+	pandoc -o man/pandoc-zotxt.lua.1 -t man -s \
+		-M title=pandoc-zotxt.lua  \
+		-M date="$$(date '+%B %d, %Y')" \
+		-M section=1 \
+		man/pandoc-zotxt.lua.md
+
 .PHONY: install-luaunit prepare-tmpdir \
 	test test-unit test_warn \
-	$(UNIT_TESTS) $(GENERATION_TESTS)
+	$(UNIT_TESTS) $(GENERATION_TESTS) \
+	manual
