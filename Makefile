@@ -67,7 +67,7 @@ $(BEHAVIOUR_TESTS): prepare-tmpdir
 	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
 
 manual:
-	pandoc -o man/pandoc-zotxt.lua.1 -t man -s \
+	pandoc -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
