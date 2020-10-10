@@ -386,19 +386,6 @@ do
 end
 
 
--- Make Zotero CSL usable in Pandoc.
---
--- @tparam table item A CSL item.
--- @tparam str citekey The citekey of `item`.
--- @treturn table The item.
--- @todo Add a unit test.
-function convert_zotero_csl_to_pandoc_csl(item, citekey)
-    local source = convert_numbers_to_strings(item)
-    source.id = citekey
-    return source
-end
-
-
 -- ## Handling bibliographic data
 
 --- Collects the citation keys occurring in a document.
@@ -484,7 +471,9 @@ do
         if not reply then return nil, err end
         local ok, data = pcall(decode, reply)
         if not ok then return nil, reply end
-        return convert_zotero_csl_to_pandoc_csl(data[1], citekey)
+        local entry = convert_numbers_to_strings(data[1])
+        entry.id = citekey
+        return entry
     end
 end
 
@@ -509,7 +498,9 @@ do
         if not reply then return nil, err end
         -- THIS IS FOR FUTURE TESTING!
         local csl = read(reply, 'csljson')
-        return convert_zotero_csl_to_pandoc_csl(csl, citekey)
+        local ref = convert_numbers_to_strings(csl)
+        ref.id = citekey
+        return ref
     end
 
     if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
