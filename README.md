@@ -136,7 +136,7 @@ If there's something wrong with **pandoc-zotxt.lua**,
 
 ## License
 
-Copyright 2018, 2019 Odin Kroeger
+Copyright 2018, 2019, 2020 Odin Kroeger
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
