@@ -61,12 +61,12 @@ repository to wherever your operating system searches for manual pages
 (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
 
-## **pandoc-zotxt.lua** vs **pandoc-zotxt**
+## **pandoc-zotxt.lua** vs. **pandoc-zotxt**
 
 **pandoc-zotxt.lua**:
 
-* supports using a bibliography file as cache, so that bibliographic data that
-  was already retrieved from Zotero need not be retrieved again
+* supports using a bibliography file as a cache, so that
+  bibliographic data that only has to be retrieved once.
 * retrieves Better BibTeX citation keys faster (than **pandoc-zotxt**).
 * supports using Zotero item ID as citation keys.
 * doesn't use temporary files.
@@ -84,10 +84,10 @@ Requirements:
 
 1. A POSIX-compliant operating system
 2. [Pandoc](https://www.pandoc.org/) v2.7.2
-3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
+3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3 for Pandoc before v2.11.
 
 The test suite may or may not work with other versions of
-Pandoc and pandoc-citeproc.
+Pandoc and `pandoc-citeproc`.
 
 ### Assumptions
 
@@ -110,7 +110,7 @@ but uses canned responses. You can force the test suite to connect
 to a local Zotero database by:
 
 ```sh
-    make test -e CONNECTOR=Zotxt
+    make test -e CANNED_RESPONSES=
 ```
 
 Note, you will have to adapt the test suite to your database.
