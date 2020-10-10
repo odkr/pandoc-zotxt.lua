@@ -5,12 +5,12 @@
 # ===========
 
 BASE_DIR	:= test
+CAN_DIR		:= $(BASE_DIR)/can
 DATA_DIR	:= $(BASE_DIR)/data
 NORM_DIR	:= $(BASE_DIR)/norms
-UNIT_DIR	:= $(BASE_DIR)/unit
+SCPT_DIR	:= $(BASE_DIR)/scripts
 TMP_DIR		:= $(BASE_DIR)/tmp
-#SCRIPT_DIR	:= $(BASE_DIR)/scripts
-# fixme, the script_dir was for httpd, it's no longer needed!
+
 
 # UTILITY PROGRAMMES
 # ==================
@@ -19,40 +19,27 @@ SHELL		?= sh
 RM		?= rm -f
 
 
-# FILES
-# =====
-
-WARN_TESTS	:= find "$(UNIT_DIR)/warn" -type f -name '*.lua' \
-		        -exec basename \{\} \; | sed 's/.lua$$//' | sort
-
-
 # TARGETS FOR TESTING
 # ===================
 
-UNIT_TESTS		:= test_core test_zotxt
-
-GENERATION_TESTS	:= test-keytype-easy-citekey \
-			   test-keytype-better-bibtex \
-			   test-keytype-zotero-id \
-			   test-bibliography
+BEHAVIOUR_TESTS	:= test-keytype-easy-citekey \
+		   test-keytype-better-bibtex \
+		   test-keytype-zotero-id \
+		   test-bibliography
 
 
-# CONNECTORS 
-# ==========
+# VARIA 
+# =====
 
-CONNECTOR	?= FakeConnector
-FAKE_ZOTXT	:= -M fake-db-connector=Zotxt \
-		   -M fake-data-dir="$(DATA_DIR)/fake/zotxt"
-
-CONNECTOR_ARGS	:= -M reference-manager=$(CONNECTOR) $(FAKE_ZOTXT)
+CANNED_RESPONSES ?= -M pandoc-zotxt-can=$(CAN_DIR)
 
 
 # TESTS
 # =====
 
-test: install-luaunit prepare-tmpdir test-unit $(GENERATION_TESTS)
+test: unit-tests behaviour-tests
 
-test-unit: test_warn $(UNIT_TESTS)
+behaviour-tests: $(BEHAVIOUR_TESTS)
 
 install-luaunit:
 	[ -e "share/lua/5.3/luaunit.lua" ] || \
@@ -63,24 +50,21 @@ prepare-tmpdir:
 	$(RM) "$(TMP_DIR)"/*
 	cd -P "$(TMP_DIR)" || exit
 
-$(UNIT_TESTS): prepare-tmpdir
-	pandoc --lua-filter "$(UNIT_DIR)/test.lua" -o /dev/null \
+unit-tests: install-luaunit prepare-tmpdir
+	pandoc --lua-filter "$(SCPT_DIR)/unit_tests.lua" -f markdown -t plain \
 		-M test-data-dir="$(DATA_DIR)" -M test-tmp-dir="$(TMP_DIR)" \
-		$(CONNECTOR_ARGS) -M tests=$@ </dev/null
+		$(CANNED_RESPONSES) -o /dev/null </dev/null
 
-$(GENERATION_TESTS): prepare-tmpdir
-	pandoc --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
-		$(CONNECTOR_ARGS) -t plain -o "$(TMP_DIR)/$@.txt" \
-		"$(DATA_DIR)/$@.md"
+$(BEHAVIOUR_TESTS): prepare-tmpdir
+	if pandoc --lua-filter $(SCPT_DIR)/gt_v2_11.lua \
+		-f markdown -t plain /dev/null; \
+			then CITEPROC=--citeproc; \
+			else CITEPROC="-F pandoc-citeproc"; \
+	fi; \
+	pandoc --lua-filter ./pandoc-zotxt.lua $$CITEPROC \
+		$(CANNED_RESPONSES) -f markdown -t plain \
+		-o "$(TMP_DIR)/$@.txt" "$(DATA_DIR)/$@.md"
 	cmp "$(TMP_DIR)/$@.txt" "$(NORM_DIR)/$@.txt"
-
-test_warn: prepare-tmpdir
-	for TEST in `$(WARN_TESTS)`; do \
-		pandoc --lua-filter "$(UNIT_DIR)/warn/$$TEST.lua" \
-			-f markdown -t plain \
-			-o /dev/null /dev/null 2>"$(TMP_DIR)/$$TEST.out"; \
-		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
-	done
 
 manual:
 	pandoc -o man/pandoc-zotxt.lua.1 -t man -s \
@@ -90,6 +74,6 @@ manual:
 		man/pandoc-zotxt.lua.md
 
 .PHONY: install-luaunit prepare-tmpdir \
-	test test-unit test_warn \
-	$(UNIT_TESTS) $(GENERATION_TESTS) \
+	test unit-tests behaviour-tests  \
+	$(UNIT_TESTS) $(BEHAVIOUR_TESTS) \
 	manual
