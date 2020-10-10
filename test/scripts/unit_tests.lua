@@ -46,21 +46,21 @@
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
+-- luacheck: allow defined top, no global
 
 
 -- # SHORTHANDS
 
-local open = io.open
-local exit = os.exit
 local concat = table.concat
 local unpack = table.unpack
 
 
 -- # LIBRARIES
 
--- luacheck: globals pandoc
+-- luacheck: push ignore
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 local stringify = pandoc.utils.stringify
+-- luacheck: pop
 
 local text = require 'text'
 local sub = text.sub
@@ -75,7 +75,7 @@ do
     local split = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
     local sanitisers = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
         {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''}}
-    
+
     --- Splits a file's path into a directory and a filename part.
     --
     -- @tparam string path The path to the file.
@@ -171,7 +171,7 @@ function copy (data, s)
     return res
 end
 
--- luacheck: globals read_md_file
+
 --- Reads a Markdown file.
 --
 -- @tparam string fname Name of the file.
@@ -183,7 +183,7 @@ end
 function read_md_file (fname)
     assert(fname ~= '', 'given filename is the empty string')
     local f, md, ok, err, errno
-    f, err, errno = open(fname, 'r')
+    f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
     md, err, errno = f:read('a')
     if not md then return nil, err, errno end
@@ -245,16 +245,16 @@ function test_split_path ()
 end
 
 function test_map ()
+    -- luacheck: no redefined
     local function base (x) return x end
     local function successor (x) return x + 1 end
 
-    -- @fixme: This is a bad test, each false input must be tested indivudally
-    -- correct elsehwere! FIXME FIXME FIXME
-    local invalid_inputs = {nil, false, 0, '', {}}
-    for _, a in ipairs(invalid_inputs) do
-        for _, b in ipairs({nil, false, 0, '', base}) do
-            lu.assert_error(M.map, a, b)
-        end
+    local func = function (...) return ... end
+    for _, v in ipairs({nil, false, 0, '', {}}) do
+        lu.assert_error(M.map, func, v)
+    end
+    for _, v in ipairs({nil, false, 0, '', base}) do
+        lu.assert_error(M.map, v, {1, 2, 3})
     end
 
     local tests = {
@@ -541,11 +541,9 @@ end
 --
 -- @tparam pandoc.Doc doc A Pandoc document.
 function run (doc)
-    local meta = doc.meta
-    local tests
     -- luacheck: globals DOC
     DOC = doc
-    exit(lu.LuaUnit.run(tests))
+    os.exit(lu.LuaUnit.run())
 end
 
 -- 'Pandoc', rather than 'Meta', because there's always a Pandoc document.
