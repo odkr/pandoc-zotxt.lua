@@ -76,8 +76,9 @@ $(GENERATION_TESTS): prepare-tmpdir
 
 test_warn: prepare-tmpdir
 	for TEST in `$(WARN_TESTS)`; do \
-		pandoc --lua-filter "$(UNIT_DIR)/warn/$$TEST.lua" -o /dev/null \
-			/dev/null 2>"$(TMP_DIR)/$$TEST.out"; \
+		pandoc --lua-filter "$(UNIT_DIR)/warn/$$TEST.lua" \
+			-f markdown -t plain \
+			-o /dev/null /dev/null 2>"$(TMP_DIR)/$$TEST.out"; \
 		cmp "$(NORM_DIR)/warn/$$TEST.out" "$(TMP_DIR)/$$TEST.out"; \
 	done
 
