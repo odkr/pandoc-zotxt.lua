@@ -496,9 +496,9 @@ do
     function get_reference (get, citekey)
         local reply, err = get_csl(get, citekey)
         if not reply then return nil, err end
-        -- THIS IS FOR FUTURE TESTING!
-        local csl = read(reply, 'csljson')
-        local ref = convert_numbers_to_strings(csl)
+        -- FIXME: This doesn't currently pass the test suite.
+        -- But this seems to be due to Unicode issues.
+        local ref = read(reply, 'csljson').meta.references[1]
         ref.id = citekey
         return ref
     end
