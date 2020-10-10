@@ -12,8 +12,7 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 # SYNOPSIS
 
-**pandoc** **-lua-filter** *pandoc-zotxt.lua* **-F** *pandoc-citeproc*
-
+**pandoc** **-lua-filter** *pandoc-zotxt.lua*
 
 # DESCRIPTION
 
