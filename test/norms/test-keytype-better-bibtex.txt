@@ -2,7 +2,7 @@ A Better BibTeX citation:
 
 Crenshaw (1989) makes a good case.
 
-Crenshaw, Kimberlé. 1989. “Demarginalizing the Intersection of Race and
-Sex: A Black Feminist Critique of Antidiscrimination Doctrine, Feminist
-Theory and Antiracist Politics.” University of Chicago Legal Forum, no.
-1: 139–67.
+Crenshaw, Kimberlé W. 1989. “Demarginalizing the Intersection of Race
+and Sex: A Black Feminist Critique of Antidiscrimination Doctrine,
+Feminist Theory and Antiracist Politics.” University of Chicago Legal
+Forum, no. 1: 139–67.
