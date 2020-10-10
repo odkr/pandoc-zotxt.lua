@@ -168,7 +168,7 @@ do
         end
         local dir, fname = path:match(split)
         dir = dir:gsub('(.)' .. PATH_SEP .. '$', '%1')
-        if dir   == '' then dir   = '.' end
+        if dir == '' then dir = '.' end
         if fname == '' then fname = '.' end
         return dir, fname
     end
@@ -309,7 +309,7 @@ end
 
 do
     local select = select -- luacheck: ignore
-    local fetch  = pandoc.mediabag.fetch
+    local fetch = pandoc.mediabag.fetch
 
     --- Retrieves data from a URL.
     --
@@ -426,9 +426,9 @@ end
 
 
 do
-    local insert   = table.insert
-    local remove   = table.remove
-    local format   = string.format
+    local insert = table.insert
+    local remove = table.remove
+    local format = string.format
     local base_url = ZOTXT_BASE_URL
     local keytypes = ZOTXT_KEYTYPES
 
@@ -465,8 +465,8 @@ end
 
 
 do
-    local pcall    = pcall --luacheck: ignore
-    local decode   = json.decode
+    local pcall = pcall -- luacheck: ignore
+    local decode = json.decode
 
     ---  Retrieves CSL for a source from zotxt.
     --
