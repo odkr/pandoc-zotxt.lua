@@ -1,7 +1,6 @@
 ---
 title: PANDOC-ZOTXT.LUA
 author: Odin Kroeger
-date: January 10, 2020
 section: 1
 ---
 
@@ -12,7 +11,8 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 # SYNOPSIS
 
-**pandoc** **-lua-filter** *pandoc-zotxt.lua*
+**pandoc** **--lua-filter** *pandoc-zotxt.lua*
+
 
 # DESCRIPTION
 
