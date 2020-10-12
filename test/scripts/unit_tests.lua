@@ -433,7 +433,7 @@ function test_get_citekeys ()
     local empty = read_md_file(empty_fname)
     lu.assert_equals(M.get_citekeys(empty), {})
 
-    local test_fname = DATA_DIR .. PATH_SEP .. 'test-keytype-easy-citekey.md'
+    local test_fname = DATA_DIR .. PATH_SEP .. 'test-easy-citekey.md'
     local test_file = read_md_file(test_fname)
     lu.assert_equals(M.get_citekeys(test_file), {
         'haslanger:2012resisting','díaz-león:2013what',
