@@ -9,6 +9,9 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 .PP
 \f[B]pandoc\f[R] \f[B]--citeproc\f[R] \f[B]--lua-filter\f[R]
 \f[I]pandoc-zotxt.lua\f[R]
+.PP
+\f[B]pandoc\f[R] \f[B]--lua-filter\f[R] \f[I]pandoc-zotxt.lua\f[R]
+\f[B]--filter\f[R] \f[I]pandoc-citeproc\f[R]
 .SH DESCRIPTION
 .PP
 \f[B]pandoc-zotxt.lua\f[R] looks up sources of citations in Zotero and
@@ -23,7 +26,7 @@ That\[aq]s all there is to it.
 (See the documentations of \f[I]zotxt\f[R] and \f[I]Better BibTeX for
 Zotero\f[R] respectively for details.)
 .PP
-If your version of Pandoc is older than v2.11, you have to pass
+If you use a version of Pandoc prior to v2.11, you have to pass
 \f[B]--filter\f[R] \f[I]pandoc-citeproc\f[R] instead of
 \f[B]--citeproc\f[R], and you have to do so \f[I]before\f[R] passing
 \f[B]--lua-filter\f[R] \f[I]pandoc-zotxt.lua\f[R].

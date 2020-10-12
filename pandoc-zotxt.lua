@@ -4,6 +4,8 @@
 --
 -- pandoc --citeproc --lua-filter pandoc-zotxt.lua
 --
+-- pandoc --lua-filter pandoc-zotxt.lua --filter pandoc-citeproc
+--
 -- DESCRIPTION
 --
 -- pandoc-zotxt.lua looks up sources of citations in Zotero and adds them
@@ -16,7 +18,7 @@
 -- pandoc-zotxt.lua. That's all there is to it. (See the documentations of
 -- zotxt and Better BibTeX for Zotero respectively for details.)
 --
--- If your version of Pandoc is older than v2.11, you have to pass --filter
+-- If you use a version of Pandoc prior to v2.11, you have to pass --filter
 -- pandoc-citeproc instead of --citeproc, and you have to do so before
 -- passing --lua-filter pandoc-zotxt.lua.
 --
@@ -68,6 +70,7 @@
 -- SEE ALSO
 --
 -- pandoc(1), pandoc-citeproc(1)
+--
 --
 -- @script pandoc-zotxt.lua
 -- @release 0.3.18b

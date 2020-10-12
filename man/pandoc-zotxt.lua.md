@@ -13,6 +13,8 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 **pandoc** **--citeproc** **--lua-filter** *pandoc-zotxt.lua*
 
+**pandoc** **--lua-filter** *pandoc-zotxt.lua* **--filter** *pandoc-citeproc*
+
 
 # DESCRIPTION
 
@@ -26,7 +28,7 @@ pass the **--citeproc** flag to **pandoc**, and tell it to run
 **pandoc-zotxt.lua**. That's all there is to it. (See the documentations
 of *zotxt* and *Better BibTeX for Zotero* respectively for details.)
 
-If your version of Pandoc is older than v2.11, you have to pass
+If you use a version of Pandoc prior to v2.11, you have to pass
 **--filter** *pandoc-citeproc* instead of **--citeproc**, and you have to
 do so *before* passing **--lua-filter** *pandoc-zotxt.lua*.
 
