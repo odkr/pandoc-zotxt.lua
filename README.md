@@ -3,11 +3,9 @@
 **pandoc-zotxt.lua** looks up sources of citations in
 [Zotero](https://www.zotero.org/) and adds them either to a
 document's `references` metadata field or to a bibliography
-file , where `pandoc-citeproc` can pick them up.
+file, where Pandoc can pick them up.
 
-**pandoc-zotxt.lua** requires [zotxt](https://github.com/egh/zotxt/). It
-supports [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/),
-hereafter "Better BibTeX" for short.
+**pandoc-zotxt.lua** requires [zotxt](https://github.com/egh/zotxt/).
 
 See the [manual page](man/pandoc-zotxt.lua.md) for more details.
 
@@ -33,7 +31,7 @@ which works with Pandoc 1.12 or later (but also requires
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack it.
 3. Move the repository directory to the `filters` sub-directory of your
-   Pandoc data directory (`pandoc --version` will tell you where that is).
+   Pandoc data directory (`pandoc --version` tells you where that is).
 4. Move the file **pandoc-zotxt.lua** from the repository directory
    up into the `filters` directory.
 
@@ -84,7 +82,7 @@ Requirements:
 
 1. A POSIX-compliant operating system
 2. [Pandoc](https://www.pandoc.org/) v2.7.2
-3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3 for Pandoc before v2.11.
+3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3 for Pandoc prior to v2.11.
 
 The test suite may or may not work with other versions of
 Pandoc and `pandoc-citeproc`.
