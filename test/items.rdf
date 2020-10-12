@@ -6,8 +6,8 @@
  xmlns:foaf="http://xmlns.com/foaf/0.1/"
  xmlns:link="http://purl.org/rss/1.0/modules/link/"
  xmlns:dc="http://purl.org/dc/elements/1.1/"
- xmlns:vcard="http://nwalsh.com/rdf/vCard#"
- xmlns:prism="http://prismstandard.org/namespaces/1.2/basic/">
+ xmlns:prism="http://prismstandard.org/namespaces/1.2/basic/"
+ xmlns:vcard="http://nwalsh.com/rdf/vCard#">
     <bib:Article rdf:about="http://onlinelibrary.wiley.com/doi/10.1111/ejop.12033/abstract">
         <z:itemType>journalArticle</z:itemType>
         <dcterms:isPartOf rdf:resource="urn:issn:1468-0378"/>
@@ -16,7 +16,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Díaz-León</foaf:surname>
-                        <foaf:givenname>Esa</foaf:givenname>
+                        <foaf:givenName>Esa</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
@@ -38,6 +38,8 @@
         <dc:title>What Is Social Construction?</dc:title>
     </bib:Article>
     <bib:Journal rdf:about="urn:issn:1468-0378">
+        <prism:volume>23</prism:volume>
+        <prism:number>4</prism:number>
         <dc:title>European Journal of Philosophy</dc:title>
         <dc:identifier>ISSN 1468-0378</dc:identifier>
         <dcterms:alternative>Eur J Philos</dcterms:alternative>
@@ -46,6 +48,37 @@
     <z:Attachment rdf:about="#item_5162">
         <z:itemType>attachment</z:itemType>
         <dc:title>Díaz-León 2013.pdf</dc:title>
+        <link:type>application/pdf</link:type>
+    </z:Attachment>
+    <bib:Article rdf:about="#item_2561">
+        <z:itemType>journalArticle</z:itemType>
+        <dcterms:isPartOf>
+            <bib:Journal>
+                <prism:volume>33</prism:volume>
+                <prism:number>1</prism:number>
+                <dc:title>Frontiers</dc:title>
+            </bib:Journal>
+        </dcterms:isPartOf>
+        <bib:authors>
+            <rdf:Seq>
+                <rdf:li>
+                    <foaf:Person>
+                        <foaf:surname>Dotson</foaf:surname>
+                        <foaf:givenName>Kristie</foaf:givenName>
+                    </foaf:Person>
+                </rdf:li>
+            </rdf:Seq>
+        </bib:authors>
+        <link:link rdf:resource="#item_6896"/>
+        <bib:pages>24–47</bib:pages>
+        <dc:date>2012</dc:date>
+        <z:libraryCatalog>PhilPapers</z:libraryCatalog>
+        <dc:title>A Cautionary Tale: On Limiting Epistemic Oppression</dc:title>
+        <z:shortTitle>A Cautionary Tale</z:shortTitle>
+    </bib:Article>
+    <z:Attachment rdf:about="#item_6896">
+        <z:itemType>attachment</z:itemType>
+        <dc:title>Dotson 2012.pdf</dc:title>
         <link:type>application/pdf</link:type>
     </z:Attachment>
     <bib:Book rdf:about="urn:isbn:978-0-19-989262-4">
@@ -65,7 +98,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Haslanger</foaf:surname>
-                        <foaf:givenname>Sally</foaf:givenname>
+                        <foaf:givenName>Sally</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
@@ -89,7 +122,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Díaz-León</foaf:surname>
-                        <foaf:givenname>Esa</foaf:givenname>
+                        <foaf:givenName>Esa</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
@@ -122,7 +155,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Díaz-León</foaf:surname>
-                        <foaf:givenname>Esa</foaf:givenname>
+                        <foaf:givenName>Esa</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
@@ -140,7 +173,7 @@
         <z:libraryCatalog>Wiley Online Library</z:libraryCatalog>
         <z:language>en</z:language>
         <dcterms:abstract>What does woman mean? According to two competing views, it can be seen as a sex term or as a gender term. Recently, Jennifer Saul has put forward a contextualist view, according to which woman can have different meanings in different contexts. The main motivation for this view seems to involve moral and political considerations, namely, that this view can do justice to the claims of trans women. Unfortunately, Saul argues, on further reflection the contextualist view fails to do justice to those moral and political claims that motivated the view in the first place. In this article I argue that there is a version of the contextualist view that can indeed capture those moral and political aims, and in addition, I use this case to illustrate an important and more general claim, namely, that moral and political considerations can be relevant to the descriptive project of finding out what certain politically significant terms actually mean.</dcterms:abstract>
-        <dc:title>Woman as a Politically Significant Term: A Solution to the Puzzle</dc:title>
+        <dc:title>&lt;i&gt;Woman&lt;/i&gt; as a Politically Significant Term: A Solution to the Puzzle</dc:title>
         <z:shortTitle>Woman as a Politically Significant Term</z:shortTitle>
     </bib:Article>
     <bib:Journal rdf:about="urn:issn:1527-2001">
@@ -162,7 +195,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Dotson</foaf:surname>
-                        <foaf:givenname>Kristie</foaf:givenname>
+                        <foaf:givenName>Kristie</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
@@ -221,7 +254,7 @@
                 <rdf:li>
                     <foaf:Person>
                         <foaf:surname>Crenshaw</foaf:surname>
-                        <foaf:givenname>Kimberlé</foaf:givenname>
+                        <foaf:givenName>Kimberlé W.</foaf:givenName>
                     </foaf:Person>
                 </rdf:li>
             </rdf:Seq>
