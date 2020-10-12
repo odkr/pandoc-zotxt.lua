@@ -11,26 +11,30 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 # SYNOPSIS
 
-**pandoc** **--lua-filter** *pandoc-zotxt.lua*
+**pandoc** **--citeproc** **--lua-filter** *pandoc-zotxt.lua*
 
 
 # DESCRIPTION
 
 **pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
 them either to a document's `references` metadata field or to its
-bibliography, where **pandoc-citeproc** can pick them up.
+bibliography, where **pandoc** can pick them up.
 
-You cite your sources using so-called "easy citekeys" (provided by *zotxt*) or
-"Better BibTeX Citation Keys" (provided by *Better BibTeX for Zotero*) and
-then tell  **pandoc** to run **pandoc-zotxt.lua** before **pandoc-citeproc**.
-That's all all there is to it. (See the documentations of *zotxt* and
-*Better BibTeX for Zotero* respectively for details.)
+You cite your sources using so-called "easy citekeys" (provided by *zotxt*)
+or "Better BibTeX Citation Keys" (provided by *Better BibTeX for Zotero*),
+pass the **--citeproc** flag to **pandoc**, and tell it to run
+**pandoc-zotxt.lua**. That's all there is to it. (See the documentations
+of *zotxt* and *Better BibTeX for Zotero* respectively for details.)
 
-You can also use **pandoc-zotxt.lua** to manage a bibliography file. This is
+If your version of Pandoc is older than v2.11, you have to pass
+**--filter** *pandoc-citeproc* instead of **--citeproc**, and you have to
+do so *before* passing **--lua-filter** *pandoc-zotxt.lua*.
+
+You can also use **pandoc-zotxt.lua** to manage a bibliography file. This
 speeds up subsequent runs of **pandoc-zotxt.lua** for the same document,
-because **pandoc-zotxt.lua** will only fetch those sources from Zotero that
-aren't yet in that file. Simply set the `zotero-bibliography` metadata field
-to a filename. **pandoc-zotxt.lua** will then add sources to that file, rather
+since **pandoc-zotxt.lua** will only fetch sources from Zotero that aren't
+yet in that file. Simply set the `zotero-bibliography` metadata field to a
+filename. **pandoc-zotxt.lua** will then add sources to that file, rather
 than to the `references` metadata field. It will also add that file to the
 document's `bibliography` metadata field, so that **pandoc-citeproc** can pick
 up those sources. The biblography is stored as a JSON file, so the filename
