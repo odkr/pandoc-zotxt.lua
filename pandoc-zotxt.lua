@@ -1,54 +1,54 @@
 --- pandoc-zotxt.lua - Looks up citations in Zotero and adds references.
 --
--- # NAME
+-- SYNOPSIS
 --
--- pandoc-zotxt.lua - Looks up sources in Zotero
+-- pandoc --citeproc --lua-filter pandoc-zotxt.lua
 --
--- # SYNOPSIS
---
--- pandoc --lua-filter pandoc-zotxt.lua
---
--- # DESCRIPTION
+-- DESCRIPTION
 --
 -- pandoc-zotxt.lua looks up sources of citations in Zotero and adds them
--- either to a document’s references metadata field or to its bibliography,
--- where pandoc-citeproc can pick them up.
+-- either to a document's references metadata field or to its bibliography,
+-- where pandoc can pick them up.
 --
 -- You cite your sources using so-called "easy citekeys" (provided by
 -- zotxt) or "Better BibTeX Citation Keys" (provided by Better BibTeX for
--- Zotero) and then tell pandoc to run pandoc-zotxt.lua before
--- pandoc-citeproc. That’s all all there is to it. (See the documentations
--- of zotxt and Better BibTeX for Zotero respectively for details.)
+-- Zotero), pass the --citeproc flag to pandoc, and tell it to run
+-- pandoc-zotxt.lua. That's all there is to it. (See the documentations of
+-- zotxt and Better BibTeX for Zotero respectively for details.)
 --
--- You can also use pandoc-zotxt.lua to manage a bibliography file. This is
+-- If your version of Pandoc is older than v2.11, you have to pass --filter
+-- pandoc-citeproc instead of --citeproc, and you have to do so before
+-- passing --lua-filter pandoc-zotxt.lua.
+--
+-- You can also use pandoc-zotxt.lua to manage a bibliography file. This
 -- speeds up subsequent runs of pandoc-zotxt.lua for the same document,
--- because pandoc-zotxt.lua will only fetch those sources from Zotero that
--- aren’t yet in that file. Simply set the zotero-bibliography metadata
--- field to a filename. pandoc-zotxt.lua will then add sources to that
--- file, rather than to the references metadata field. It will also add
--- that file to the document’s bibliography metadata field, so that
--- pandoc-citeproc can pick up those sources. The biblography is stored as
--- a JSON file, so the filename must end with ".json". You can safely set
--- zotero-bibliography and bibliography at the same time.
+-- since pandoc-zotxt.lua will only fetch sources from Zotero that aren't
+-- yet in that file. Simply set the zotero-bibliography metadata field to a
+-- filename. pandoc-zotxt.lua will then add sources to that file, rather
+-- than to the references metadata field. It will also add that file to the
+-- document's bibliography metadata field, so that pandoc-citeproc can pick
+-- up those sources. The biblography is stored as a JSON file, so the
+-- filename must end with ".json". You can safely set zotero-bibliography
+-- and bibliography at the same time.
 --
 -- pandoc-zotxt.lua interprets relative filenames as relative to the
 -- directory of the first input file that you pass to pandoc or, if you
--- don’t pass any input file, as relative to the current working directory.
+-- don't pass any input file, as relative to the current working directory.
 --
 -- Note, pandoc-zotxt.lua only ever adds sources to bibliography files. It
--- doesn’t update or delete them. If you want to update the sources in your
+-- doesn't update or delete them. If you want to update the sources in your
 -- bibliography file, delete it. pandoc-zotxt.lua will then regenerate it
 -- from scratch.
 --
--- # KNOWN ISSUES
+-- KNOWN ISSUES
 --
--- Zotero, from v5.0.71 onwards, doesn’t allow browsers to access its
+-- Zotero, from v5.0.71 onwards, doesn't allow browsers to access its
 -- interface. It defines "browser" as any user agent that sets the "User
 -- Agent" HTTP header to a string that starts with "Mozilla/".
 --
 -- However, Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from
--- user agents that don’t set the "User Agent" HTTP header. And pandoc
--- doesn’t. As a consequence, pandoc-zotxt.lua cannot retrieve data from
+-- user agents that don't set the "User Agent" HTTP header. And pandoc
+-- doesn't. As a consequence, pandoc-zotxt.lua cannot retrieve data from
 -- these versions of Zotero unless you tell pandoc to set the "User Agent"
 -- HTTP header.
 --
@@ -61,11 +61,11 @@
 -- "Mozilla/", you also have set the HTTP header "Zotero-Allowed-Request".
 -- You can do so by --request-header Zotero-Allowed-Request:X.
 --
--- # CAVEATS
+-- CAVEATS
 --
 -- pandoc-zotxt.lua is partly Unicode-agnostic.
 --
--- # SEE ALSO
+-- SEE ALSO
 --
 -- pandoc(1), pandoc-citeproc(1)
 --
@@ -74,9 +74,11 @@
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
--- luacheck: allow defined top
+
+
 
 -- # INITIALISATION
+-- luacheck: allow defined top
 
 local M = {}
 
@@ -117,11 +119,12 @@ local sub = text.sub
 --
 -- See <https://github.com/egh/zotxt> for details.
 --
--- `get_csl` replaces:
--- the first '%s' with the citation key type (e.g., 'easykey'),
--- the second '%s' with the citation key (e.g., 'doe:2000word').
+-- `get_source_json` replaces:
 --
--- @see get_csl
+-- * the first '%s' with the citation key type (e.g., 'easykey'),
+-- * the second '%s' with the citation key (e.g., 'doe:2000word').
+--
+-- @see get_source_json
 ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?%s=%s'
 
 --- Types of citation keys.
@@ -129,7 +132,7 @@ ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?%s=%s'
 -- See <https://github.com/egh/zotxt> for details.
 --
 -- @table ZOTXT_KEYTYPES
--- @see get_csl
+-- @see get_source_json
 ZOTXT_KEYTYPES = {
 	'easykey',	       -- zotxt easy citekey
 	'betterbibtexkey', -- Better BibTeX citation key
@@ -386,6 +389,109 @@ do
 end
 
 
+-- ## Retrieving sources
+
+do
+    local insert = table.insert
+    local remove = table.remove
+    local format = string.format
+    local base_url = ZOTXT_BASE_URL
+    local keytypes = ZOTXT_KEYTYPES
+
+    ---  Retrieves bibliographic data in CSL JSON for a source.
+    --
+    -- Tries different types of citation keys, starting with the last
+    -- one that a lookup was successful for.
+    --
+    -- @tparam func get A function that takes a URL and returns a JSON string.
+    -- @tparam string citekey The citation key of the source,
+    --  e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] str A CSL JSON string.
+    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+    -- @treturn[2] string An error message.
+    -- @raise An uncatchable error if it cannot retrieve any data and
+    --  a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
+    function get_source_json (get, citekey)
+        assert(type(citekey) == 'string', 'given citekey is not a string')
+        if citekey == '' then return nil, 'citation key is "".' end
+        local reply
+        for i = 1, #keytypes do
+            local query_url = format(base_url, keytypes[i], citekey)
+            reply = get(query_url)
+            if sub(reply, 1, 1) == '[' then
+                local kt = remove(keytypes, i)
+                insert(keytypes, 1, kt)
+                return reply
+            end
+        end
+        return nil, reply
+    end
+end
+
+
+do
+    local pcall = pcall -- luacheck: ignore
+    local decode = json.decode
+
+    ---  Retrieves bibliographic data in CSL for a source.
+    --
+    -- @tparam func get A function that takes a URL and returns a JSON string.
+    -- @tparam string citekey The citation key of the source,
+    --  e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] table A CSL item.
+    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+    -- @treturn[2] string An error message.
+    -- @raise An uncatchable error if it cannot retrieve any data and
+    --  a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
+    function get_source_csl (get, citekey)
+        local reply, err = get_source_json(get, citekey)
+        if not reply then return nil, err end
+        local ok, data = pcall(decode, reply)
+        if not ok then return nil, reply end
+        local entry = convert_numbers_to_strings(data[1])
+        entry.id = citekey
+        return entry
+    end
+end
+
+
+do
+    local read = pandoc.read
+
+    ---  Retrieves bibliographic data for a source.
+    --
+    -- Bibliography entries are different to references,
+    -- because Pandoc, starting with version 2.11,
+    -- parses them differently.
+    --
+    -- @tparam func get A function that takes a URL and returns a JSON string.
+    -- @tparam string citekey The citation key of the source,
+    --  e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] table A CSL item as stored in Zotero.
+    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+    -- @treturn[2] string An error message.
+    -- @raise An uncatchable error if it cannot retrieve any data or cannot
+    --  parse the reply, and a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
+    function get_source (get, citekey)
+        local reply, err = get_source_json(get, citekey)
+        if not reply then return nil, err end
+        -- FIXME: This doesn't currently pass the test suite.
+        -- But this seems to be a Pandoc issue.
+        local ref = read(reply, 'csljson').meta.references[1]
+        ref.id = citekey
+        return ref
+    end
+
+    -- See https://github.com/jgm/pandoc/issues/6722.
+    if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
+        get_source = get_source_csl
+    end
+end
+
+
 -- ## Handling bibliographic data
 
 --- Collects the citation keys occurring in a document.
@@ -409,103 +515,6 @@ function get_citekeys (doc)
         pandoc.walk_block(v, {Cite = collect_citekeys})
     end
     return citekeys
-end
-
-
-do
-    local insert = table.insert
-    local remove = table.remove
-    local format = string.format
-    local base_url = ZOTXT_BASE_URL
-    local keytypes = ZOTXT_KEYTYPES
-
-    ---  Retrieves CSL JSON for a source from zotxt.
-    --
-    -- Tries different types of citation keys, starting with the last
-    -- one that a lookup was successful for.
-    --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
-    -- @tparam string citekey The citation key of the source,
-    --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] str A CSL JSON string.
-    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
-    -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data and
-    --  a catchable error if `citekey` is not a `string`.
-    -- @todo Add a unit test.
-    function get_csl (get, citekey)
-        assert(type(citekey) == 'string', 'given citekey is not a string')
-        if citekey == '' then return nil, 'citation key is "".' end
-        local reply
-        for i = 1, #keytypes do
-            local query_url = format(base_url, keytypes[i], citekey)
-            reply = get(query_url)
-            if sub(reply, 1, 1) == '[' then
-                local kt = remove(keytypes, i)
-                insert(keytypes, 1, kt)
-                return reply
-            end
-        end
-        return nil, reply
-    end
-end
-
-
-do
-    local pcall = pcall -- luacheck: ignore
-    local decode = json.decode
-
-    ---  Retrieves CSL for a source from zotxt.
-    --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
-    -- @tparam string citekey The citation key of the source,
-    --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] table A CSL item.
-    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
-    -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data and
-    --  a catchable error if `citekey` is not a `string`.
-    -- @todo Add a unit test.
-    function get_bibliography_entry (get, citekey)
-        local reply, err = get_csl(get, citekey)
-        if not reply then return nil, err end
-        local ok, data = pcall(decode, reply)
-        if not ok then return nil, reply end
-        local entry = convert_numbers_to_strings(data[1])
-        entry.id = citekey
-        return entry
-    end
-end
-
-
-do
-    local read = pandoc.read
-
-    ---  Retrieves bibliographic data for a source from zotxt.
-    --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
-    -- @tparam string citekey The citation key of the source,
-    --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] table A CSL item as stored in Zotero.
-    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
-    -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data or
-    --  if it cannot parse the reply, and a catchable error if `citekey`
-    --  is not a `string`.
-    -- @todo Add a unit test.
-    function get_reference (get, citekey)
-        local reply, err = get_csl(get, citekey)
-        if not reply then return nil, err end
-        -- FIXME: This doesn't currently pass the test suite.
-        -- But this seems to be due to Unicode issues.
-        local ref = read(reply, 'csljson').meta.references[1]
-        ref.id = citekey
-        return ref
-    end
-
-    if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
-        get_reference = get_bibliography_entry
-    end
 end
 
 
@@ -539,7 +548,7 @@ function update_bibliography (get, citekeys, fname)
     local ids = map(function (ref) return ref.id end, refs)
     for _, citekey in ipairs(citekeys) do
         if not get_position(citekey, ids) then
-            local ref, err = get_bibliography_entry(get, citekey)
+            local ref, err = get_source_csl(get, citekey)
             if ref then
                 table.insert(refs, ref)
             else
@@ -555,8 +564,9 @@ end
 do
     local stringify = pandoc.utils.stringify
 
-    --- Adds sources to bibliography and the bibliography to document's metadata.
+    --- Adds sources to a bibliography.
     --
+    -- Also adds that bibliography to the document's metadata.
     -- Prints an error message to STDERR for every source that cannot be found.
     --
     -- @tparam func get A function that takes a URL and returns a JSON string.
@@ -611,7 +621,7 @@ function add_references (get, citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = {} end
     for _, citekey in ipairs(citekeys) do
-        local ref, err = get_reference(get, citekey)
+        local ref, err = get_source(get, citekey)
         if ref then
             table.insert(meta.references, ref)
         else
