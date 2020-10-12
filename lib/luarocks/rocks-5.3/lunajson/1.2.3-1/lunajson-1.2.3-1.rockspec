@@ -1,8 +1,8 @@
 package = "lunajson"
-version = "1.2.2-1"
+version = "1.2.3-1"
 source = {
 	url = "git://github.com/grafi-tt/lunajson.git",
-	tag = "1.2.2"
+	tag = "1.2.3"
 }
 description = {
 	summary = "A strict and fast JSON parser/decoder/encoder written in pure Lua",

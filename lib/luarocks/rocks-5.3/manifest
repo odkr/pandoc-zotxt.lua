@@ -27,7 +27,7 @@ dependencies = {
       }
    },
    lunajson = {
-      ["1.2.2-1"] = {
+      ["1.2.3-1"] = {
          {
             constraints = {
                {
@@ -47,16 +47,16 @@ modules = {
       "luaunit/3.3-1"
    },
    lunajson = {
-      "lunajson/1.2.2-1"
+      "lunajson/1.2.3-1"
    },
    ["lunajson.decoder"] = {
-      "lunajson/1.2.2-1"
+      "lunajson/1.2.3-1"
    },
    ["lunajson.encoder"] = {
-      "lunajson/1.2.2-1"
+      "lunajson/1.2.3-1"
    },
    ["lunajson.sax"] = {
-      "lunajson/1.2.2-1"
+      "lunajson/1.2.3-1"
    }
 }
 repository = {
@@ -73,7 +73,7 @@ repository = {
       }
    },
    lunajson = {
-      ["1.2.2-1"] = {
+      ["1.2.3-1"] = {
          {
             arch = "installed",
             commands = {},
