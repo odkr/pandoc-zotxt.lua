@@ -81,4 +81,7 @@ header "Zotero-Allowed-Request". You can do so by **--request-header**
 
 # SEE ALSO
 
+* [zotxt](https://github.com/egh/zotxt)
+* [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
+
 pandoc(1), pandoc-citeproc(1)

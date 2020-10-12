@@ -69,6 +69,9 @@
 --
 -- SEE ALSO
 --
+-- - zotxt <https://github.com/egh/zotxt>
+-- - Better BibTeX <https://retorque.re/zotero-better-bibtex/>
+--
 -- pandoc(1), pandoc-citeproc(1)
 --
 --
