@@ -5,7 +5,7 @@
 document's `references` metadata field or to a bibliography
 file, where Pandoc can pick them up.
 
-**pandoc-zotxt.lua** requires [zotxt](https://github.com/egh/zotxt/).
+It requires [zotxt](https://github.com/egh/zotxt/).
 
 See the [manual page](man/pandoc-zotxt.lua.md) for more details.
 
@@ -30,8 +30,8 @@ which works with Pandoc 1.12 or later (but also requires
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack it.
-3. Move the repository directory to the `filters` sub-directory of your
-   Pandoc data directory (`pandoc --version` tells you where that is).
+3. Move the repository to the `filters` sub-directory of your Pandoc
+   data directory (`pandoc --version` tells you where that is).
 4. Move the file **pandoc-zotxt.lua** from the repository directory
    up into the `filters` directory.
 
@@ -65,7 +65,8 @@ repository to wherever your operating system searches for manual pages
 
 * supports using a bibliography file as a cache, so that
   bibliographic data that only has to be retrieved once.
-* retrieves Better BibTeX citation keys faster (than **pandoc-zotxt**).
+* retrieves [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
+  citation keys faster (than **pandoc-zotxt**).
 * supports using Zotero item ID as citation keys.
 * doesn't use temporary files.
 
@@ -82,7 +83,8 @@ Requirements:
 
 1. A POSIX-compliant operating system
 2. [Pandoc](https://www.pandoc.org/) v2.7.2
-3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3 for Pandoc prior to v2.11.
+3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
+   (for Pandoc prior to v2.11).
 
 The test suite may or may not work with other versions of
 Pandoc and `pandoc-citeproc`.
@@ -91,7 +93,6 @@ Pandoc and `pandoc-citeproc`.
 
 You are using the default Citation Style Language stylesheet that ships with
 `pandoc-citeproc`, that is, `chicago-author-date.csl`.
-
 
 ### Running the tests
 
@@ -111,7 +112,8 @@ to a local Zotero database by:
     make test -e CANNED_RESPONSES=
 ```
 
-Note, you will have to adapt the test suite to your database.
+Note, you will have to adapt the test suite to your database (or vice versa;
+you can import the references used in the test suite from `tests/items.rdf`).
 
 Moreover, you will need:
 
