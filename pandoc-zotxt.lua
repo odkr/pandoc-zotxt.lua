@@ -140,9 +140,9 @@ ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?%s=%s'
 -- @table ZOTXT_KEYTYPES
 -- @see get_source_json
 ZOTXT_KEYTYPES = {
-	'easykey',	       -- zotxt easy citekey
+	'easykey',         -- zotxt easy citekey
 	'betterbibtexkey', -- Better BibTeX citation key
-	'key'		       -- Zotero item ID
+	'key'              -- Zotero item ID
 }
 
 --- The name of this script.
@@ -160,9 +160,12 @@ PATH_SEP = sub(package.config, 1, 1)
 do
     -- Expressions for path manipulations.
     local split = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-    local sanitise = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''},
-        {'(.)' .. PATH_SEP .. '$', '%1'}}
+    local sanitise = {
+        {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP}, -- '/./'   -> '/'
+        {PATH_SEP .. '+', PATH_SEP},              -- '/+'    -> '/'
+        {'^%.' .. PATH_SEP, ''},                  -- '^./'   -> ''
+        {'(.)' .. PATH_SEP .. '$', '%1'}          -- '/$'    -> ''
+    }
 
     --- Splits a file's path into a directory and a filename part.
     --
