@@ -151,11 +151,15 @@ NAME = 'pandoc-zotxt.lua'
 --- The version of this script.
 VERSION = '0.3.18'
 
+--- The path seperator of the operating system.
+PATH_SEP = sub(package.config, 1, 1)
+
+--- The end of line sequence of the operating system.
+EOL = '\n'
+if PATH_SEP == '\\' then EOL = '\r\n' end
 
 -- # LIBRARIES
 
---- The path seperator of the operating system.
-PATH_SEP = sub(package.config, 1, 1)
 
 do
     -- Expression to split a path into a directory and a filename part.
@@ -207,20 +211,15 @@ local json = require 'lunajson'
 
 -- ## UI
 
-do
-    local eol = '\n'
-    if PATH_SEP == '\\' then eol = '\r\n' end
-
-    --- Prints warnings to STDERR.
-    --
-    -- Prefixes messages with `NAME` and ": ".
-    -- Also appends an end of line sequence.
-    --
-    -- @tparam string msg A message to write to STDERR.
-    -- @tparam string ... Arguments (think `string.format`) for `msg`.
-    function warn (msg, ...)
-        io.stderr:write(NAME, ': ', msg:format(...), eol)
-    end
+--- Prints warnings to STDERR.
+--
+-- Prefixes messages with `NAME` and ": ".
+-- Also appends `EOL`.
+--
+-- @tparam string msg A message to write to STDERR.
+-- @tparam string ... Arguments (think `string.format`) for `msg`.
+function warn (msg, ...)
+    io.stderr:write(NAME, ': ', msg:format(...), EOL)
 end
 
 
@@ -301,6 +300,8 @@ end
 
 --- Writes data to a file in JSON.
 --
+-- Terminates files with `EOL`.
+--
 -- @param data Data.
 -- @tparam string fname Name of the file.
 -- @treturn bool `true` if the data was written to the file, `nil` otherwise.
@@ -314,7 +315,7 @@ function write_json_file (data, fname)
     if not ok then return nil, 'JSON encoding error', -1 end
     local f, err, errno = io.open(fname, 'w')
     if not f then return nil, err, errno end
-    local ok, err, errno = f:write(str, '\n')
+    local ok, err, errno = f:write(str, EOL)
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
