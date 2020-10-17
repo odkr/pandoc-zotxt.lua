@@ -158,11 +158,9 @@ VERSION = '0.3.18'
 PATH_SEP = sub(package.config, 1, 1)
 
 do
-    -- Expressions for path manipulations.
     local split = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-    local sanitise = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''},
-        {'(.)' .. PATH_SEP .. '$', '%1'}}
+    local sanitisers = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
+        {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''}}
 
     --- Splits a file's path into a directory and a filename part.
     --
@@ -174,8 +172,11 @@ do
     -- It doesn't look at the filesystem. The guess is educated enough though.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
+        for _, s in ipairs(sanitisers) do
+            path = path:gsub(table.unpack(s))
+        end
         local dir, fname = path:match(split)
-        for i = 1, #sanitise do dir = dir:gsub(table.unpack(sanitise[i])) end
+        dir = dir:gsub('(.)' .. PATH_SEP .. '$', '%1')
         if dir == '' then dir = '.' end
         if fname == '' then fname = '.' end
         return dir, fname
@@ -250,7 +251,7 @@ end
 -- @tparam string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
-    if PATH_SEP == '\\' and path:match '^.:\\' then return true end
+    if PATH_SEP == '\\' and path:match('^.:\\') then return true end
     return path:match('^' .. PATH_SEP) ~= nil
 end
 
@@ -261,7 +262,7 @@ end
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
-    return select(1, split_path(file))
+    return split_path(file)
 end
 
 
@@ -324,6 +325,7 @@ do
     -- @tparam string url The URL.
     -- @treturn string The data.
     -- @raise An uncatchable error if it cannot retrieve any data.
+    -- @todo Add a unit test.
     function read_url (url)
         return select(2, fetch(url, '.'))
     end
@@ -342,6 +344,7 @@ end
 -- @tparam string url The URL.
 -- @treturn[1] string The data.
 -- @treturn[2] string An error message (not `nil`) if an error occurred.
+-- @todo Add a unit test.
 function get_canned_response (dir, url)
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     warn('%s -> %s', url, hash)
@@ -414,6 +417,7 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data and
     --  a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
     function get_source_json (get, citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
         if citekey == '' then return nil, 'citation key is "".' end
@@ -446,6 +450,7 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data and
     --  a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
     function get_source_csl (get, citekey)
         local reply, err = get_source_json(get, citekey)
         if not reply then return nil, err end
@@ -475,9 +480,12 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data or cannot
     --  parse the reply, and a catchable error if `citekey` is not a `string`.
+    -- @todo Add a unit test.
     function get_source (get, citekey)
         local reply, err = get_source_json(get, citekey)
         if not reply then return nil, err end
+        -- FIXME: This doesn't currently pass the test suite.
+        -- But this seems to be a Pandoc issue.
         local ref = read(reply, 'csljson').meta.references[1]
         ref.id = citekey
         return ref
@@ -532,6 +540,7 @@ end
 --  a catchable error if `fname` is not a string, `citekeys` is not a table,
 --  `fname` is the empty string.
 function update_bibliography (get, citekeys, fname)
+    -- luacheck: ignore err
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
     assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
@@ -545,7 +554,6 @@ function update_bibliography (get, citekeys, fname)
     local ids = map(function (ref) return ref.id end, refs)
     for _, citekey in ipairs(citekeys) do
         if not get_position(citekey, ids) then
-            -- luacheck: ignore err
             local ref, err = get_source_csl(get, citekey)
             if ref then
                 table.insert(refs, ref)

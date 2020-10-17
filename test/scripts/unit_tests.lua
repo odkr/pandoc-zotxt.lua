@@ -98,7 +98,7 @@ do
 end
 
 -- luacheck: globals PANDOC_SCRIPT_FILE
---- The directory of this script.
+--- The directory of the script.
 local SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
 
 --- The directory of the test suite.
@@ -106,9 +106,6 @@ local TEST_DIR = concat({SCRIPT_DIR, '..'}, PATH_SEP)
 
 --- The test suite's data directory.
 local DATA_DIR = concat({TEST_DIR, 'data'}, PATH_SEP)
-
---- The location of canned resposes.
-local CAN_DIR = concat({TEST_DIR, 'can'}, PATH_SEP)
 
 --- The test suite's temporary directory.
 local TMP_DIR = concat({TEST_DIR, 'tmp'}, PATH_SEP)
@@ -126,24 +123,17 @@ local M = require 'pandoc-zotxt'
 -- # CONSTANTS
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
--- luacheck: globals ZOTXT_CSL
-ZOTXT_CSL = {
+-- luacheck: globals ZOTXT_SOURCE
+ZOTXT_SOURCE = {
     id = 'haslanger:2012resisting', type = 'book',
     author = {{family = 'Haslanger', given = 'Sally'}},
     title = 'Resisting Reality: Social Construction and Social Critique',
     publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
-    ['event-place'] = 'Oxford',
     issued = {['date-parts'] = {{'2012'}}},
     ['title-short'] = 'Resisting Reality',
     ISBN = '978-0-19-989262-4'
 }
 
---- Bibliographic data as JSON string.
-ZOTXT_JSON = [=[
-[
-  {"id":"diaz-leon2015DefenceHistoricalConstructivism","type":"article-journal","title":"In Defence of Historical Constructivism about Races","container-title":"Ergo, an Open Access Journal of Philosophy","volume":"2","URL":"http://hdl.handle.net/2027/spo.12405314.0002.021","DOI":"10.3998/ergo.12405314.0002.021","ISSN":"2330-4014","author":[{"family":"Díaz-León","given":"Esa"}],"issued":{"date-parts":[[2015]]}}
-]
-]=]
 
 -- # FUNCTIONS
 
@@ -200,10 +190,6 @@ function read_md_file (fname)
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
     return pandoc.read(md, 'markdown')
-end
-
-function get_canned_response (url)
-    return M.get_canned_response(CAN_DIR, url)
 end
 
 
@@ -357,22 +343,8 @@ function test_get_input_directory ()
 end
 
 
--- ## Retrieving data from REST APIs.
-
-function test_get_canned_response ()
-    local url = M.ZOTXT_BASE_URL:format('easykey', 'díaz-león:2015defence')
-    local invalid_inputs = {nil, false, '', {}, function () end}
-    for _, invalid in ipairs(invalid_inputs) do
-        lu.assert_error(M.get_canned_response, invalid, url)
-        lu.assert_error(M.get_canned_response, CAN_DIR, invalid)
-    end
-
-    local ret = M.get_canned_response(CAN_DIR, url)
-    lu.assert_equals(ret, ZOTXT_JSON)
-end
-
-
 -- ## JSON files
+
 
 function test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
@@ -391,7 +363,7 @@ function test_read_json_file ()
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
-    lu.assert_equals(data, ZOTXT_CSL)
+    lu.assert_equals(data, ZOTXT_SOURCE)
 end
 
 function test_write_json_file ()
@@ -409,7 +381,7 @@ function test_write_json_file ()
     local fname = concat({TMP_DIR, 'test-write_json_file.json'}, PATH_SEP)
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
-    ok, err, errno = M.write_json_file(ZOTXT_CSL, fname)
+    ok, err, errno = M.write_json_file(ZOTXT_SOURCE, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     lu.assert_nil(errno)
@@ -419,7 +391,7 @@ function test_write_json_file ()
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
 
-    lu.assert_equals(data, ZOTXT_CSL)
+    lu.assert_equals(data, ZOTXT_SOURCE)
 end
 
 
@@ -470,109 +442,108 @@ function test_get_citekeys ()
     })
 end
 
-function test_get_source_json ()
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, get_canned_response, v)
-    end
 
-    invalid = {nil, false, 'a', '', {}}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, v, 'díaz-león:2015defence')
-    end
+-- function test_higher:setup ()
+--     function self.get (citekey)
+--         return M.get_source(M.fake_read_url, citekey)
+--     end
+-- end
 
-    local ret = M.get_source_json(get_canned_response,
-        'díaz-león:2015defence')
-    lu.assert_equals(ret, ZOTXT_JSON)
-end
+-- function test_higher:test_get_source ()
+--     lu.assert_error(self.get, nil, '<none>')
+--     local invalid_input = {nil, false, 0, {}}
+--     for _, invalid in pairs(invalid_input) do
+--         lu.assert_error(self.db.get_source, self.db, invalid)
+--     end
 
-function test_get_source_csl ()
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_csl, get_canned_response, v)
-    end
+--     lu.assert_nil(select(2, pcall(self.db.get_source, self.db, '<none>')))
 
-    invalid = {nil, false, 'a', '', {}}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_csl, v, 'haslanger:2012resisting')
-    end
+--     lu.assert_nil(self.db:get_source(''))
 
-    local ret = M.get_source_csl(get_canned_response,
-        'haslanger:2012resisting')
-    lu.assert_equals(ret, ZOTXT_CSL)
-end
+--     local better_bibtex = copy(ZOTXT_SOURCE)
+--     better_bibtex.id = 'haslanger2012ResistingRealitySocial'
+--     local zotero_id = copy(ZOTXT_SOURCE)
+--     zotero_id.id = 'TPN8FXZV'
 
+--     local tests = {
+--         [ZOTXT_SOURCE.id]   = ZOTXT_SOURCE,
+--         [better_bibtex.id]  = better_bibtex,
+--         [zotero_id.id]      = zotero_id
+--     }
 
-function test_update_bibliography ()
-    local invalid_db = {nil, false, 0, "false", {}}
-    local invalid_citekeys = {nil, false, 0, "false", function () end}
-    local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
+--     for k, v in pairs(tests) do
+--         lu.assert_equals(self.db:get_source(k), v)
+--     end
+-- end
 
-    local citekeys = {'haslanger:2012resisting'}
-    local fname = concat({TMP_DIR, 'test-update_bibliography.json'}, PATH_SEP)
+-- function test_zotxt:test_update_bibliography ()
+--     local invalid_db = {nil, false, 0, "false", {}, function () end}
+--     local invalid_citekeys = {nil, false, 0, "false", function () end}
+--     local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
 
-    for i = 1, #invalid_db do
-        lu.assert_error(M.update_bibliography, invalid_db[i], citekeys, fname)
-    end
-    for i = 1, #invalid_citekeys do
-        lu.assert_error(M.update_bibliography, get_canned_response,
-            invalid_citekeys[i], fname)
-    end
-    for i = 1, #invalid_fnames do
-        lu.assert_error(M.update_bibliography, get_canned_response,
-            citekeys, invalid_fnames[i])
-    end
+--     local db = self.db
+--     local citekeys = {'haslanger:2012resisting'}
+--     local fname = concat({TMP_DIR, 'test-update_bibliography.json'}, PATH_SEP)
 
-    -- Remove file, just in case.
-    local data, ok, err, errno
-    ok, err, errno = os.remove(fname)
-    if not ok and errno ~= 2 then error(err) end
+--     for i = 1, #invalid_db do
+--         lu.assert_error(M.update_bibliography, invalid_db[i], citekeys, fname)
+--     end
+--     for i = 1, #invalid_citekeys do
+--         lu.assert_error(M.update_bibliography, db, invalid_citekeys[i], fname)
+--     end
+--     for i = 1, #invalid_fnames do
+--         lu.assert_error(M.update_bibliography, db, citekeys, invalid_fnames[i])
+--     end
 
-    -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.update_bibliography(get_canned_response, {}, fname)
-    if not ok then error(err) end
-    ok, err, errno = os.remove(fname)
-    if ok or errno ~= 2 then error(err) end
+--     -- Remove file, just in case.
+--     local data, ok, err, errno
+--     ok, err, errno = os.remove(fname)
+--     if not ok and errno ~= 2 then error(err) end
 
-    -- Checks adding citations from zero.
-    ok, err = M.update_bibliography(get_canned_response,
-        {'haslanger:2012resisting'}, fname)
-    lu.assert_nil(err)
-    lu.assert_true(ok)
-    data, err = M.read_json_file(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(data)
-    lu.assert_equals(data, {ZOTXT_CSL})
+--     -- Checks whether we do nothing if there's nothing to be done.
+--     ok, err = M.update_bibliography(db, {}, fname)
+--     if not ok then error(err) end
+--     ok, err, errno = os.remove(fname)
+--     if ok or errno ~= 2 then error(err) end
 
-    -- Checks adding a new citation.
-    local new
-    citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
-    lu.assert_nil(err)
-    lu.assert_true(ok)
-    data, err = M.read_json_file(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(data)
-    lu.assert_equals(#data, 2)
+--     -- Checks adding citations from zero.
+--     ok, err = M.update_bibliography(db, {'haslanger:2012resisting'}, fname)
+--     lu.assert_nil(err)
+--     lu.assert_true(ok)
+--     data, err = M.read_json_file(fname)
+--     lu.assert_nil(err)
+--     lu.assert_not_nil(data)
+--     lu.assert_equals(data, {ZOTXT_SOURCE})
 
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
-    lu.assert_nil(err)
-    lu.assert_true(ok)
-    new, err = M.read_json_file(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(new)
-    lu.assert_equals(new, data)
+--     -- Checks adding a new citation.
+--     local new
+--     citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
+--     ok, err = M.update_bibliography(db, citekeys, fname)
+--     lu.assert_nil(err)
+--     lu.assert_true(ok)
+--     data, err = M.read_json_file(fname)
+--     lu.assert_nil(err)
+--     lu.assert_not_nil(data)
+--     lu.assert_equals(#data, 2)
 
-    -- This should not change the file.
-    local post
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
-    lu.assert_nil(err)
-    lu.assert_true(ok)
-    post, err = M.read_json_file(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(post)
-    lu.assert_equals(new, post)
-end
+--     ok, err = M.update_bibliography(db, citekeys, fname)
+--     lu.assert_nil(err)
+--     lu.assert_true(ok)
+--     new, err = M.read_json_file(fname)
+--     lu.assert_nil(err)
+--     lu.assert_not_nil(new)
+--     lu.assert_equals(new, data)
+
+--     -- This should not change the file.
+--     local post
+--     ok, err = M.update_bibliography(db, citekeys, fname)
+--     lu.assert_nil(err)
+--     lu.assert_true(ok)
+--     post, err = M.read_json_file(fname)
+--     lu.assert_nil(err)
+--     lu.assert_not_nil(post)
+--     lu.assert_equals(new, post)
+-- end
 
 
 -- # BOILERPLATE
