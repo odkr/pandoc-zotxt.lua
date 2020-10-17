@@ -219,7 +219,7 @@ do
     -- @tparam string msg A message to write to STDERR.
     -- @tparam string ... Arguments (think `string.format`) for `msg`.
     function warn (msg, ...)
-        io.stderr:write(NAME, ': ', string.format(msg, ...), eol)
+        io.stderr:write(NAME, ': ', msg:format(...), eol)
     end
 end
 
