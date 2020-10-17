@@ -49,7 +49,7 @@ prepare-tmpdir:
 	cd -P "$(TMP_DIR)" || exit
 
 unit-tests: install-luaunit prepare-tmpdir
-	$(PANDOC) --lua-filter "$(SCPT_DIR)/unit_tests.lua" \
+	$(PANDOC) --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
 		-f markdown -t plain $(CANNED_RESPONSES) -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir

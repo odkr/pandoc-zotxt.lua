@@ -1,8 +1,8 @@
---- test.lua - A fake Pandoc filter that runs units for pandoc-zotxt.lua.
+--- unit-tests.lua - A fake Pandoc filter that runs units for pandoc-zotxt.lua.
 --
 -- # SYNOPSIS
 --
---      pandoc -L test.lua -o /dev/null FILE
+--      pandoc -L unit-tests.lua -o /dev/null FILE
 --
 --
 -- # DESCRIPTION
@@ -42,7 +42,7 @@
 -- FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 -- IN THE SOFTWARE.
 --
--- @script test.lua
+-- @script unit-tests.lua
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
@@ -139,11 +139,20 @@ ZOTXT_CSL = {
 }
 
 --- Bibliographic data as JSON string.
-ZOTXT_JSON = [=[
-[
-  {"id":"diaz-leon2015DefenceHistoricalConstructivism","type":"article-journal","title":"In Defence of Historical Constructivism about Races","container-title":"Ergo, an Open Access Journal of Philosophy","volume":"2","URL":"http://hdl.handle.net/2027/spo.12405314.0002.021","DOI":"10.3998/ergo.12405314.0002.021","ISSN":"2330-4014","author":[{"family":"Díaz-León","given":"Esa"}],"issued":{"date-parts":[[2015]]}}
-]
-]=]
+ZOTXT_JSON = '[\n  ' ..
+  '{"id":"diaz-leon2015DefenceHistoricalConstructivism",' ..
+   '"type":"article-journal",' ..
+   '"title":"In Defence of Historical Constructivism about Races",' ..
+   '"container-title":"Ergo, an Open Access Journal of Philosophy",' ..
+   '"volume":"2",' ..
+   '"URL":"http://hdl.handle.net/2027/spo.12405314.0002.021",' ..
+   '"DOI":"10.3998/ergo.12405314.0002.021",' ..
+   '"ISSN":"2330-4014",' ..
+   '"author":[{"family":"Díaz-León","given":"Esa"}],' ..
+   '"issued":{"date-parts":[[2015]]}}' ..
+'\n]\n'
+
+
 
 -- # FUNCTIONS
 
