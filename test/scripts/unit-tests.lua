@@ -211,6 +211,11 @@ function read_md_file (fname)
     return pandoc.read(md, 'markdown')
 end
 
+
+--- Reads a canned responses for a GET requests.
+---
+--- @tparam string url The URL to 'retrieve'.
+--- @treturn string The reply to the fake GET request.
 function get_canned_response (url)
     return M.get_canned_response(CAN_DIR, url)
 end
