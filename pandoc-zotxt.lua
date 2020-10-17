@@ -158,13 +158,18 @@ VERSION = '0.3.18'
 PATH_SEP = sub(package.config, 1, 1)
 
 do
-    -- Expressions for path manipulations.
+    -- Expression to split a path into a directory and a filename part.
     local split = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-    local sanitise = {
-        {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP}, -- '/./'   -> '/'
-        {PATH_SEP .. '+', PATH_SEP},              -- '/+'    -> '/'
-        {'^%.' .. PATH_SEP, ''},                  -- '^./'   -> ''
-        {'(.)' .. PATH_SEP .. '$', '%1'}          -- '/$'    -> ''
+    -- Expressions that sanitise directory paths.
+    local sanitisers = {
+        -- Replace '/./' with '/'.
+        {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
+        -- Replace multiple '/'s with a single '/'.
+        {PATH_SEP .. '+', PATH_SEP},
+        -- Remove './' at the beginning of paths.
+        {'^%.' .. PATH_SEP, ''},
+        -- Remove trailing '/'s, but not for the root notde.
+        {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
     --- Splits a file's path into a directory and a filename part.
@@ -178,7 +183,9 @@ do
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
         local dir, fname = path:match(split)
-        for i = 1, #sanitise do dir = dir:gsub(table.unpack(sanitise[i])) end
+        for i = 1, #sanitisers do
+            dir = dir:gsub(table.unpack(sanitisers[i]))
+        end
         if dir == '' then dir = '.' end
         if fname == '' then fname = '.' end
         return dir, fname
