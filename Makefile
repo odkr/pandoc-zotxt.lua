@@ -5,7 +5,6 @@
 # ===========
 
 BASE_DIR	:= test
-CAN_DIR		:= $(BASE_DIR)/can
 DATA_DIR	:= $(BASE_DIR)/data
 NORM_DIR	:= $(BASE_DIR)/norms
 SCPT_DIR	:= $(BASE_DIR)/scripts
@@ -26,10 +25,6 @@ BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
 		   test-bibliography
 
 
-# VARIA 
-# =====
-
-CANNED_RESPONSES ?= -M pandoc-zotxt-can=$(CAN_DIR)
 
 
 # TESTS
