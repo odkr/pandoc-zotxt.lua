@@ -1,1 +1,13 @@
+--- pre-v2_11.lua - A fake Pandoc filter that checks Pandoc's version.
+--
+-- # SYNOPSIS
+--
+--      pandoc -L pre-v2_11.lua /dev/null
+--
+-- # EXIT STATUS
+--
+-- 0 If your copy of Pandoc is of version 2.11 or higher.
+-- 1 Otherwise.
+--
+-- luacheck: ignore
 if pandoc.types and PANDOC_VERSION >= pandoc.types.Version '2.11' then os.exit(1) end

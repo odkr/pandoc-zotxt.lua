@@ -82,7 +82,6 @@
 -- @license MIT
 
 
-
 -- # INITIALISATION
 -- luacheck: allow defined top
 
@@ -330,7 +329,10 @@ do
     local select = select -- luacheck: ignore
     local fetch = pandoc.mediabag.fetch
 
-    --- Retrieves data from a URL.
+    --- Retrieves data via an HTTP GET request from a URL.
+    --
+    -- This is a function of its own only in order for the test scripts to
+    -- be able to replace it with a function that redirects those requests.
     --
     -- @tparam string url The URL.
     -- @treturn string The data.
@@ -338,33 +340,6 @@ do
     function read_url (url)
         return select(2, fetch(url, '.'))
     end
-end
-
-
---- Returns canned responses for URL requests.
---
--- Takes the given URL, hashes it using SHA-1, truncates the hash to eight
--- characters, and then returns the content of the file of that name in
--- the given directory.
---
--- Also prints the requested URL and the file it serves to STDERR.
---
--- @tparam string dir The directory to read files from.
--- @tparam string url The URL.
--- @treturn[1] string The data.
--- @treturn[2] string An error message (not `nil`) if an error occurred.
-function get_canned_response (dir, url)
-    local hash = pandoc.utils.sha1(url):sub(1, 8)
-    warn('%s -> %s', url, hash)
-    local fname, f, data, ok, err
-    fname = dir .. PATH_SEP .. hash
-    f, err = io.open(fname, 'r')
-    if not f then return err end
-    data, err = f:read('a')
-    if not data then return err end
-    ok, err = f:close()
-    if not ok then return err end
-    return data
 end
 
 
@@ -417,7 +392,6 @@ do
     -- Tries different types of citation keys, starting with the last
     -- one that a lookup was successful for.
     --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] str A CSL JSON string.
@@ -425,13 +399,13 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data and
     --  a catchable error if `citekey` is not a `string`.
-    function get_source_json (get, citekey)
+    function get_source_json (citekey)
         assert(type(citekey) == 'string', 'given citekey is not a string')
         if citekey == '' then return nil, 'citation key is "".' end
         local reply
         for i = 1, #keytypes do
             local query_url = format(base_url, keytypes[i], citekey)
-            reply = get(query_url)
+            reply = read_url(query_url)
             if sub(reply, 1, 1) == '[' then
                 local kt = remove(keytypes, i)
                 insert(keytypes, 1, kt)
@@ -449,7 +423,6 @@ do
 
     ---  Retrieves bibliographic data in CSL for a source.
     --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
@@ -457,8 +430,8 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data and
     --  a catchable error if `citekey` is not a `string`.
-    function get_source_csl (get, citekey)
-        local reply, err = get_source_json(get, citekey)
+    function get_source_csl (citekey)
+        local reply, err = get_source_json(citekey)
         if not reply then return nil, err end
         local ok, data = pcall(decode, reply)
         if not ok then return nil, reply end
@@ -478,7 +451,6 @@ do
     -- because Pandoc, starting with version 2.11,
     -- parses them differently.
     --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item as stored in Zotero.
@@ -486,8 +458,8 @@ do
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data or cannot
     --  parse the reply, and a catchable error if `citekey` is not a `string`.
-    function get_source (get, citekey)
-        local reply, err = get_source_json(get, citekey)
+    function get_source (citekey)
+        local reply, err = get_source_json(citekey)
         if not reply then return nil, err end
         local ref = read(reply, 'csljson').meta.references[1]
         ref.id = citekey
@@ -531,7 +503,6 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam func get A function that takes a URL and returns a JSON string.
 -- @tparam {string,...} citekeys The citation keys of the sources to add,
 --  e.g., 'name:2019word', 'name2019WordWordWord'.
 -- @tparam string fname The filename of the bibliography.
@@ -542,7 +513,7 @@ end
 -- @raise An uncatchable error if it cannot retrieve any data and
 --  a catchable error if `fname` is not a string, `citekeys` is not a table,
 --  `fname` is the empty string.
-function update_bibliography (get, citekeys, fname)
+function update_bibliography (citekeys, fname)
     assert(type(citekeys) == 'table', 'given list of keys is not a table')
     assert(type(fname) == 'string', 'given filename is not a string')
     assert(fname ~= '', 'given filename is the empty string')
@@ -557,7 +528,7 @@ function update_bibliography (get, citekeys, fname)
     for _, citekey in ipairs(citekeys) do
         if not get_position(citekey, ids) then
             -- luacheck: ignore err
-            local ref, err = get_source_csl(get, citekey)
+            local ref, err = get_source_csl(citekey)
             if ref then
                 table.insert(refs, ref)
             else
@@ -578,7 +549,6 @@ do
     -- Also adds that bibliography to the document's metadata.
     -- Prints an error message to STDERR for every source that cannot be found.
     --
-    -- @tparam func get A function that takes a URL and returns a JSON string.
     -- @tparam {str,...} citekeys The citation keys of the sources to add.
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn[1] pandoc.Meta An updated metadata block, with the field
@@ -587,7 +557,7 @@ do
     --  `zotero-bibliography` is not set, or an error occurred.
     -- @treturn[2] string An error message, if applicable.
     -- @raise An uncatchable error if `zotero-bibliography` isn't a string.
-    function add_bibliography (get, citekeys, meta)
+    function add_bibliography (citekeys, meta)
         if not #citekeys or not meta['zotero-bibliography'] then return end
         local fname = stringify(meta['zotero-bibliography'])
         if fname == '' then
@@ -598,7 +568,7 @@ do
         if not is_path_absolute(fname) then
             fname = get_input_directory() .. PATH_SEP .. fname
         end
-        local ok, err = update_bibliography(get, citekeys, fname)
+        local ok, err = update_bibliography(citekeys, fname)
         if ok then
             if not meta.bibliography then
                 meta.bibliography = fname
@@ -619,18 +589,17 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam func get A function that takes a URL and returns a JSON string.
 -- @tparam {str,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found.
 -- @raise An uncatchable error if it cannot retrieve any data.
-function add_references (get, citekeys, meta)
+function add_references (citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = {} end
     for _, citekey in ipairs(citekeys) do
-        local ref, err = get_source(get, citekey)
+        local ref, err = get_source(citekey)
         if ref then
             table.insert(meta.references, ref)
         else
@@ -658,30 +627,14 @@ end
 function main (doc)
     local meta = doc.meta
 
-    -- This is for the test suite.
-    local get = read_url
-    local dir = meta['pandoc-zotxt-can']
-    if dir then
-        function get (url)
-            return get_canned_response(dir, url)
-        end
-    end
-
     local citekeys = get_citekeys(doc)
     if #citekeys == 0 then return nil end
 
     for i = 1, 2 do
-        local add_source
-        if i == 1 then
-            function add_source(...)
-                return add_bibliography(get, ...)
-            end
-        elseif i == 2 then
-            function add_source(...)
-                return add_references(get, ...)
-            end
-        end
-        local ret, err = add_source(citekeys, meta)
+        local add_sources
+        if     i == 1 then add_sources = add_bibliography
+        elseif i == 2 then add_sources = add_references   end
+        local ret, err = add_sources(citekeys, meta)
         if err then warn(err) end
         if ret then
             doc.meta = ret

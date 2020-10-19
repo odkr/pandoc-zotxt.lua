@@ -53,14 +53,16 @@ unit-tests: install-luaunit prepare-tmpdir
 		-f markdown -t plain $(CANNED_RESPONSES) -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
-	if $(PANDOC) --lua-filter $(SCPT_DIR)/pre-v2_11.lua \
+	if $(PANDOC) --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		-f markdown -t plain /dev/null >/dev/null 2>&1; \
 	then \
-		$(PANDOC) --lua-filter ./pandoc-zotxt.lua -F pandoc-citeproc \
+		$(PANDOC) --lua-filter "$(SCPT_DIR)/debug-wrapper.lua" \
+			--filter pandoc-citeproc \
 			$(CANNED_RESPONSES) -o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
-		$(PANDOC) -L ./pandoc-zotxt.lua --citeproc \
+		$(PANDOC) --lua-filter "$(SCPT_DIR)/debug-wrapper.lua" \
+			--citeproc \
 			$(CANNED_RESPONSES) -o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
@@ -77,4 +79,4 @@ prologue:
 		sed 's/^\(.\)/-- \1/; s/^$$/--/;'
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests  \
-	$(UNIT_TESTS) $(BEHAVIOUR_TESTS) manual prologue
+	$(BEHAVIOUR_TESTS) unit-tests manual prologue

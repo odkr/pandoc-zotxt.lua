@@ -49,12 +49,6 @@
 -- luacheck: allow defined top, no global
 
 
--- # SHORTHANDS
-
-local concat = table.concat
-local unpack = table.unpack
-
-
 -- # LIBRARIES
 
 -- luacheck: push ignore
@@ -63,18 +57,27 @@ local stringify = pandoc.utils.stringify
 -- luacheck: pop
 
 local text = require 'text'
-local sub = text.sub
 
 
 -- # LIBRARIES
 
 --- The path seperator of the operating system.
-PATH_SEP = sub(package.config, 1, 1)
+PATH_SEP = text.sub(package.config, 1, 1)
 
 do
+    -- Expression to split a path into a directory and a filename part.
     local split = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-    local sanitisers = {{PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        {PATH_SEP .. '+', PATH_SEP}, {'^%.' .. PATH_SEP, ''}}
+    -- Expressions that sanitise directory paths.
+    local sanitisers = {
+        -- Replace '/./' with '/'.
+        {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
+        -- Replace multiple '/'s with a single '/'.
+        {PATH_SEP .. '+', PATH_SEP},
+        -- Remove './' at the beginning of paths.
+        {'^%.' .. PATH_SEP, ''},
+        -- Remove trailing '/'s, but not for the root notde.
+        {'(.)' .. PATH_SEP .. '$', '%1'}
+    }
 
     --- Splits a file's path into a directory and a filename part.
     --
@@ -86,12 +89,11 @@ do
     -- It doesn't look at the filesystem. The guess is educated enough though.
     function split_path (path)
         assert(path ~= '', 'path is the empty string')
-        for _, s in ipairs(sanitisers) do
-            path = path:gsub(table.unpack(s))
-        end
         local dir, fname = path:match(split)
-        dir = dir:gsub('(.)' .. PATH_SEP .. '$', '%1')
-        if dir   == '' then dir   = '.' end
+        for i = 1, #sanitisers do
+            dir = dir:gsub(table.unpack(sanitisers[i]))
+        end
+        if dir == '' then dir = '.' end
         if fname == '' then fname = '.' end
         return dir, fname
     end
@@ -102,25 +104,21 @@ end
 local SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
 
 --- The directory of the test suite.
-local TEST_DIR = concat({SCRIPT_DIR, '..'}, PATH_SEP)
+local TEST_DIR = SCRIPT_DIR .. PATH_SEP .. '..'
 
 --- The test suite's data directory.
-local DATA_DIR = concat({TEST_DIR, 'data'}, PATH_SEP)
-
---- The location of canned resposes.
-local CAN_DIR = concat({TEST_DIR, 'can'}, PATH_SEP)
-
---- The test suite's temporary directory.
-local TMP_DIR = concat({TEST_DIR, 'tmp'}, PATH_SEP)
+local DATA_DIR = TEST_DIR .. PATH_SEP .. 'data'
 
 --- The repository directory.
-local REPO_DIR = concat({TEST_DIR, '..'}, PATH_SEP)
+local REPO_DIR = TEST_DIR .. PATH_SEP .. '..'
 
-package.path = package.path .. ';' ..
-    concat({REPO_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
+package.path = package.path ..
+    ';' .. SCRIPT_DIR .. PATH_SEP .. '?.lua' ..
+    ';' .. table.concat({REPO_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
+
 
 local lu = require 'luaunit'
-local M = require 'pandoc-zotxt'
+local M = require 'debug-wrapper'
 
 
 -- # CONSTANTS
@@ -212,15 +210,6 @@ function read_md_file (fname)
 end
 
 
---- Reads a canned responses for a GET requests.
----
---- @tparam string url The URL to 'retrieve'.
---- @treturn string The reply to the fake GET request.
-function get_canned_response (url)
-    return M.get_canned_response(CAN_DIR, url)
-end
-
-
 -- # TESTS
 
 -- ## List handling
@@ -242,7 +231,7 @@ function test_get_position ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(M.get_position(unpack(k)), v)
+        lu.assert_equals(M.get_position(table.unpack(k)), v)
     end
 end
 
@@ -371,21 +360,6 @@ function test_get_input_directory ()
 end
 
 
--- ## Retrieving data from REST APIs.
-
-function test_get_canned_response ()
-    local url = M.ZOTXT_BASE_URL:format('easykey', 'díaz-león:2015defence')
-    local invalid_inputs = {nil, false, '', {}, function () end}
-    for _, invalid in ipairs(invalid_inputs) do
-        lu.assert_error(M.get_canned_response, invalid, url)
-        lu.assert_error(M.get_canned_response, CAN_DIR, invalid)
-    end
-
-    local ret = M.get_canned_response(CAN_DIR, url)
-    lu.assert_equals(ret, ZOTXT_JSON)
-end
-
-
 -- ## JSON files
 
 function test_read_json_file ()
@@ -400,7 +374,7 @@ function test_read_json_file ()
     lu.assert_not_equals(err, '')
     lu.assert_equals(errno, 2)
 
-    local fname = concat({DATA_DIR, 'bibliography.json'}, PATH_SEP)
+    local fname = DATA_DIR .. PATH_SEP .. 'bibliography.json'
     data, err, errno = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
@@ -420,7 +394,7 @@ function test_write_json_file ()
     lu.assert_not_equals(err, '')
     lu.assert_equals(errno, 2)
 
-    local fname = concat({TMP_DIR, 'test-write_json_file.json'}, PATH_SEP)
+    local fname = DATA_DIR .. PATH_SEP .. 'bibliography.json'
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     ok, err, errno = M.write_json_file(ZOTXT_CSL, fname)
@@ -487,54 +461,36 @@ end
 function test_get_source_json ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, get_canned_response, v)
+        lu.assert_error(M.get_source_json, v)
     end
 
-    invalid = {nil, false, 'a', '', {}}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, v, 'díaz-león:2015defence')
-    end
-
-    local ret = M.get_source_json(get_canned_response,
-        'díaz-león:2015defence')
+    local ret = M.get_source_json('díaz-león:2015defence')
     lu.assert_equals(ret, ZOTXT_JSON)
 end
 
 function test_get_source_csl ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_csl, get_canned_response, v)
+        lu.assert_error(M.get_source_csl, v)
     end
 
-    invalid = {nil, false, 'a', '', {}}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_csl, v, 'haslanger:2012resisting')
-    end
-
-    local ret = M.get_source_csl(get_canned_response,
-        'haslanger:2012resisting')
+    local ret = M.get_source_csl('haslanger:2012resisting')
     lu.assert_equals(ret, ZOTXT_CSL)
 end
 
 
 function test_update_bibliography ()
-    local invalid_db = {nil, false, 0, "false", {}}
     local invalid_citekeys = {nil, false, 0, "false", function () end}
     local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
 
     local citekeys = {'haslanger:2012resisting'}
-    local fname = concat({TMP_DIR, 'test-update_bibliography.json'}, PATH_SEP)
+    local fname = DATA_DIR .. PATH_SEP .. 'test-update_bibliography.json'
 
-    for i = 1, #invalid_db do
-        lu.assert_error(M.update_bibliography, invalid_db[i], citekeys, fname)
-    end
     for i = 1, #invalid_citekeys do
-        lu.assert_error(M.update_bibliography, get_canned_response,
-            invalid_citekeys[i], fname)
+        lu.assert_error(M.update_bibliography, invalid_citekeys[i], fname)
     end
     for i = 1, #invalid_fnames do
-        lu.assert_error(M.update_bibliography, get_canned_response,
-            citekeys, invalid_fnames[i])
+        lu.assert_error(M.update_bibliography, citekeys, invalid_fnames[i])
     end
 
     -- Remove file, just in case.
@@ -543,14 +499,13 @@ function test_update_bibliography ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.update_bibliography(get_canned_response, {}, fname)
+    ok, err = M.update_bibliography({}, fname)
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.update_bibliography(get_canned_response,
-        {'haslanger:2012resisting'}, fname)
+    ok, err = M.update_bibliography({'haslanger:2012resisting'}, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = M.read_json_file(fname)
@@ -561,7 +516,7 @@ function test_update_bibliography ()
     -- Checks adding a new citation.
     local new
     citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
+    ok, err = M.update_bibliography(citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = M.read_json_file(fname)
@@ -569,7 +524,7 @@ function test_update_bibliography ()
     lu.assert_not_nil(data)
     lu.assert_equals(#data, 2)
 
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
+    ok, err = M.update_bibliography(citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = M.read_json_file(fname)
@@ -579,7 +534,7 @@ function test_update_bibliography ()
 
     -- This should not change the file.
     local post
-    ok, err = M.update_bibliography(get_canned_response, citekeys, fname)
+    ok, err = M.update_bibliography(citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = M.read_json_file(fname)
