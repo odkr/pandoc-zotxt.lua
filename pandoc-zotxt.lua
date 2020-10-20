@@ -115,7 +115,6 @@ local PANDOC_VERSION = PANDOC_VERSION
 local _ENV = M
 
 local text = require 'text'
-local sub = text.sub
 
 
 -- # CONSTANTS
@@ -151,7 +150,7 @@ NAME = 'pandoc-zotxt.lua'
 VERSION = '0.3.18'
 
 --- The path seperator of the operating system.
-PATH_SEP = sub(package.config, 1, 1)
+PATH_SEP = text.sub(package.config, 1, 1)
 
 --- The end of line sequence of the operating system.
 EOL = '\n'
@@ -406,7 +405,7 @@ do
         for i = 1, #keytypes do
             local query_url = format(base_url, keytypes[i], citekey)
             reply = read_url(query_url)
-            if sub(reply, 1, 1) == '[' then
+            if text.sub(reply, 1, 1) == '[' then
                 local kt = remove(keytypes, i)
                 insert(keytypes, 1, kt)
                 return reply
