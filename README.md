@@ -59,24 +59,6 @@ repository to wherever your operating system searches for manual pages
 (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
 
-## **pandoc-zotxt.lua** vs. **pandoc-zotxt**
-
-**pandoc-zotxt.lua**:
-
-* supports using a bibliography file as a cache, so that
-  bibliographic data that only has to be retrieved once.
-* retrieves [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
-  citation keys faster (than **pandoc-zotxt**).
-* supports using Zotero item ID as citation keys.
-* doesn't use temporary files.
-
-Requirements:
-
-| **pandoc-zotxt.lua** | **pandoc-zotxt**            |
-| ---------------------| --------------------------- |
-| Pandoc 2.0.          | Pandoc 1.12 and Python 2.7. |
-
-
 ## Testing
 
 ### Requirements
