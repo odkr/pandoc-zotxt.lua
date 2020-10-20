@@ -77,7 +77,7 @@
 --
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.18
+-- @release 0.3.19
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
@@ -148,7 +148,7 @@ ZOTXT_KEYTYPES = {
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '0.3.18'
+VERSION = '0.3.19'
 
 --- The path seperator of the operating system.
 PATH_SEP = text.sub(package.config, 1, 1)
