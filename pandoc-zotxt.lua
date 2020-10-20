@@ -383,7 +383,7 @@ end
 do
     local insert = table.insert
     local remove = table.remove
-    local format = string.format
+    local sub = text.sub
     local base_url = ZOTXT_BASE_URL
     local keytypes = ZOTXT_KEYTYPES
 
@@ -404,9 +404,9 @@ do
         if citekey == '' then return nil, 'citation key is "".' end
         local reply
         for i = 1, #keytypes do
-            local query_url = format(base_url, keytypes[i], citekey)
+            local query_url = base_url:format(keytypes[i], citekey)
             reply = read_url(query_url)
-            if text.sub(reply, 1, 1) == '[' then
+            if sub(reply, 1, 1) == '[' then
                 local kt = remove(keytypes, i)
                 insert(keytypes, 1, kt)
                 return reply
