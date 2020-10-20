@@ -11,7 +11,7 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 
 # SYNOPSIS
 
-**pandoc** **--citeproc** **--lua-filter** *pandoc-zotxt.lua*
+**pandoc** **--lua-filter** *pandoc-zotxt.lua* **--citeproc**
 
 **pandoc** **--lua-filter** *pandoc-zotxt.lua* **--filter** *pandoc-citeproc*
 
@@ -22,24 +22,24 @@ pandoc-zotxt.lua - Looks up sources in Zotero
 them either to a document's `references` metadata field or to its
 bibliography, where **pandoc** can pick them up.
 
-You cite your sources using so-called "easy citekeys" (provided by *zotxt*)
-or "Better BibTeX Citation Keys" (provided by *Better BibTeX for Zotero*),
-pass the **--citeproc** flag to **pandoc**, and tell it to run
-**pandoc-zotxt.lua**. That's all there is to it. (See the documentations
-of *zotxt* and *Better BibTeX for Zotero* respectively for details.)
+You cite your sources using so-called "easy citekeys" (provided by zotxt)
+or "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
+Then, when running **pandoc**, you tell it to filter your document through
+**pandoc-zotxt.lua** by passing **--lua-filter** *pandoc-zotxt.lua*. That's
+all there is to it. You also have to tell **pandoc** to process citations,
+of course. (How you do this depends on your version of Pandoc.)
 
-If you use a version of Pandoc prior to v2.11, you have to pass
-**--filter** *pandoc-citeproc* instead of **--citeproc**, and you have to
-do so *before* passing **--lua-filter** *pandoc-zotxt.lua*.
+
+# BIBLIOGRAPHY FILES
 
 You can also use **pandoc-zotxt.lua** to manage a bibliography file. This
 speeds up subsequent runs of **pandoc-zotxt.lua** for the same document,
-since **pandoc-zotxt.lua** will only fetch sources from Zotero that aren't
+because **pandoc-zotxt.lua** will only fetch sources from Zotero that aren't
 yet in that file. Simply set the `zotero-bibliography` metadata field to a
 filename. **pandoc-zotxt.lua** will then add sources to that file, rather
 than to the `references` metadata field. It will also add that file to the
-document's `bibliography` metadata field, so that **pandoc-citeproc** can pick
-up those sources. The biblography is stored as a JSON file, so the filename
+document's `bibliography` metadata field, so that **pandoc** picks up those
+sources. The biblography is stored as a JSON file, so the filename
 must end with ".json". You can safely set `zotero-bibliography` *and*
 `bibliography` at the same time.
 
@@ -64,19 +64,19 @@ that don't set the "User Agent" HTTP header. And **pandoc** doesn't. As a
 consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions of
 Zotero unless you tell **pandoc** to set the "User Agent" HTTP header.
 
-If you cannot (or rather would not) upgrade to a more recent version of Zotero,
-you can make *pandoc* set that header, thereby enabling **pandoc-zotxt.lua** to
+If you cannot upgrade to a more recent version of Zotero, you can make
+*pandoc* set that header, thereby enabling **pandoc-zotxt.lua** to
 connect to your version of Zotero, by passing **--request-header**
-*User-Agent:Pandoc/2*. Note, **--request-header** *User-Agent:Mozilla/5* will
-*not* enable **pandoc-zotxt.lua** to connect. If you must set the "User Agent"
-HTTP header to a string that starts with "Mozilla/", you also have set the HTTP
-header "Zotero-Allowed-Request". You can do so by **--request-header**
-*Zotero-Allowed-Request:X*.
+*User-Agent:Pandoc/2*. Note, **--request-header** *User-Agent:Mozilla/5*
+will *not* enable **pandoc-zotxt.lua** to connect. If you must set the
+"User Agent" HTTP header to a string that starts with "Mozilla/", you also
+have set the HTTP header "Zotero-Allowed-Request". You can do so by
+**--request-header** *Zotero-Allowed-Request:X*.
 
 
 # CAVEATS
 
-**pandoc-zotxt.lua** is partly Unicode-agnostic.
+**pandoc-zotxt.lua** is for the most part Unicode-agnostic.
 
 
 # SEE ALSO
