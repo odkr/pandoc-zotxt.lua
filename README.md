@@ -86,12 +86,12 @@ Simply say:
 
 ### The real-world test suite
 
-The default test suite doesn't try to connect to a Zotero installation,
+By default, the test suite doesn't connect to a Zotero instance,
 but uses canned responses. You can force the test suite to connect
 to a local Zotero database by:
 
 ```sh
-    make test -e CANNED_RESPONSES=
+    make test -e PANDOC_ZOTXT_LUA=./pandoc-zotxt.lua
 ```
 
 Note, you will have to adapt the test suite to your database (or vice versa;
@@ -101,7 +101,7 @@ Moreover, you will need:
 
 * Zotero (v5 or newer)
 * zotxt (v5 or newer)
-* Better BibTex
+* Better BibTex for Zotero
 
 
 ## Documentation

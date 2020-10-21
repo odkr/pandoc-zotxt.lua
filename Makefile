@@ -21,10 +21,10 @@ PANDOC		?= pandoc
 # TARGETS
 # =======
 
-BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
-		   test-bibliography
+BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
+		   test-zotero-id test-bibliography
 
-
+PANDOC_ZOTXT_LUA    ?= $(SCPT_DIR)/debug-wrapper.lua
 
 
 # TESTS
@@ -45,20 +45,20 @@ prepare-tmpdir:
 
 unit-tests: install-luaunit prepare-tmpdir
 	$(PANDOC) --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
-		-f markdown -t plain $(CANNED_RESPONSES) -o /dev/null </dev/null
+		-f markdown -t plain -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
 	if $(PANDOC) --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		-f markdown -t plain /dev/null >/dev/null 2>&1; \
 	then \
-		$(PANDOC) --lua-filter "$(SCPT_DIR)/debug-wrapper.lua" \
+		$(PANDOC) --lua-filter "$(PANDOC_ZOTXT_LUA)" \
 			--filter pandoc-citeproc \
-			$(CANNED_RESPONSES) -o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
-		$(PANDOC) --lua-filter "$(SCPT_DIR)/debug-wrapper.lua" \
+		$(PANDOC) --lua-filter "$(PANDOC_ZOTXT_LUA)" \
 			--citeproc \
-			$(CANNED_RESPONSES) -o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
