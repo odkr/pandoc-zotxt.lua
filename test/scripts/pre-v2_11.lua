@@ -1,19 +1,23 @@
 --- pre-v2_11.lua - A fake Pandoc filter that checks Pandoc's version.
 --
--- # SYNOPSIS
+-- SYNOPSIS
+-- --------
 --
---  pandoc -L pre-v2_11.lua /dev/null
+-- **pandoc** **-L** *pre-v2_11.lua* /dev/null
 --
--- # DESCRIPTION
+-- DESCRIPTION
+-- -----------
 --
 -- Used in the test suite to tailer test to different versions of Pandoc.
 --
--- # EXIT STATUS
+-- EXIT STATUS
+-- -----------
 --
 --  0    If your copy of Pandoc is of version 2.11 or higher.
 --  1    Otherwise.
 --
--- # AUTHOR
+-- AUTHOR
+-- ------
 --
 -- Odin Kroeger
 --

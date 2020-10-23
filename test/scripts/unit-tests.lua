@@ -1,11 +1,13 @@
 --- unit-tests.lua - A fake Pandoc filter that runs units for pandoc-zotxt.lua.
 --
--- # SYNOPSIS
+-- SYNOPSIS
+-- --------
 --
---      pandoc -L unit-tests.lua -o /dev/null FILE
+-- **pandoc** **-L** *unit-tests.lua* -o /dev/null FILE
 --
 --
--- # DESCRIPTION
+-- DESCRIPTION
+-- -----------
 --
 -- A fake Pandoc filter that runs units for for pandoc-zotxt.lua.
 -- Which tests are run is goverend by the `tests` metadata field in FILE.
@@ -13,16 +15,19 @@
 -- runs all tests.
 --
 --
--- # SEE ALSO
+-- SEE ALSO
+-- --------
 --
 -- <https://luaunit.readthedocs.io/>
 --
--- # AUTHOR
+-- AUTHOR
+-- ------
 --
 -- Copyright 2019, 2020 Odin Kroeger
 --
 --
--- # LICENSE
+-- LICENSE
+-- -------
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to
@@ -46,10 +51,12 @@
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
+
+
 -- luacheck: allow defined top, no global
 
-
--- # LIBRARIES
+-- LIBRARIES
+-- =========
 
 -- luacheck: push ignore
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
@@ -59,7 +66,8 @@ local stringify = pandoc.utils.stringify
 local text = require 'text'
 
 
--- # LIBRARIES
+-- LIBRARIES
+-- =========
 
 --- The path seperator of the operating system.
 PATH_SEP = text.sub(package.config, 1, 1)
@@ -124,7 +132,8 @@ local lu = require 'luaunit'
 local M = require 'debug-wrapper'
 
 
--- # CONSTANTS
+-- CONSTANTS
+-- =========
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
@@ -155,7 +164,8 @@ ZOTXT_JSON = '[\n  ' ..
 
 
 
--- # FUNCTIONS
+-- FUNCTIONS
+-- =========
 
 -- luacheck: globals copy
 --- Copies tables recursively.
@@ -213,9 +223,11 @@ function read_md_file (fname)
 end
 
 
--- # TESTS
+-- TESTS
+-- =====
 
--- ## List handling
+-- Lists
+-- -----
 
 function test_get_position ()
     local invalid_inputs = {nil, false, 0, 'x', function () end}
@@ -264,7 +276,8 @@ function test_map ()
 end
 
 
--- ## Path Handling
+-- Paths
+-- -----
 
 function test_split_path ()
     local invalid_inputs = {nil, false, 0, '', {}, function () end}
@@ -363,7 +376,8 @@ function test_get_input_directory ()
 end
 
 
--- ## JSON files
+-- JSON files
+-- ----------
 
 function test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
@@ -414,7 +428,8 @@ function test_write_json_file ()
 end
 
 
--- ## Converters
+-- Converters
+-- ----------
 
 function test_convert_numbers_to_strings ()
     local a = {}
@@ -439,7 +454,33 @@ function test_convert_numbers_to_strings ()
 end
 
 
--- ## Handling bibliographic data
+-- Retrieving bibliographic data
+-- -----------------------------
+
+function test_get_source_json ()
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.get_source_json, v)
+    end
+
+    local ret = M.get_source_json('díaz-león:2015defence')
+    lu.assert_equals(ret, ZOTXT_JSON)
+end
+
+
+function test_get_source_csl ()
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.get_source_csl, v)
+    end
+
+    local ret = M.get_source_csl('haslanger:2012resisting')
+    lu.assert_equals(ret, ZOTXT_CSL)
+end
+
+
+-- Updating the document
+-- ---------------------
 
 function test_get_citekeys ()
     local invalid = {nil, false, 0, '', {}}
@@ -459,26 +500,6 @@ function test_get_citekeys ()
         'díaz-león:2015defence','díaz-león:2016woman',
         'dotson:2016word','nobody:0000nothing'
     })
-end
-
-function test_get_source_json ()
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, v)
-    end
-
-    local ret = M.get_source_json('díaz-león:2015defence')
-    lu.assert_equals(ret, ZOTXT_JSON)
-end
-
-function test_get_source_csl ()
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_csl, v)
-    end
-
-    local ret = M.get_source_csl('haslanger:2012resisting')
-    lu.assert_equals(ret, ZOTXT_CSL)
 end
 
 
@@ -548,7 +569,8 @@ function test_update_bibliography ()
 end
 
 
--- # BOILERPLATE
+-- BOILERPLATE
+-- ===========
 
 -- luacheck: globals run
 --- Runs the tests

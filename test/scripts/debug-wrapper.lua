@@ -1,16 +1,19 @@
 --- debug-wrapper.lua - A fake Pandoc filter that runs pandoc-zotxt.lua.
 --
--- # SYNOPSIS
+-- SYNOPSIS
+-- --------
 --
---      pandoc -L debug-wrapper.lua
+-- **pandoc** **-L** *debug-wrapper.lua* ...
 --
 --
--- # DESCRIPTION
+-- DESCRIPTION
+-- -----------
 --
 -- Runs pandoc-zotxt.lua, but money-patches it so that URL requests are
 -- redirected to canned responses in the filesystem.
 --
--- # AUTHOR
+-- AUTHOR
+-- ------
 --
 -- Odin Kroeger
 --
@@ -19,7 +22,6 @@
 
 -- luacheck: allow defined top
 
--- # LIBRARIES
 
 -- luacheck: push ignore
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end

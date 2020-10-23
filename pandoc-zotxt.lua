@@ -88,7 +88,9 @@
 -- @license MIT
 
 
--- # INITIALISATION
+-- INITIALISATION
+-- ==============
+--
 -- luacheck: allow defined top
 
 local M = {}
@@ -122,7 +124,8 @@ local _ENV = M
 local text = require 'text'
 
 
--- # CONSTANTS
+-- CONSTANTS
+-- =========
 
 --- The URL to lookup citation data.
 --
@@ -162,7 +165,8 @@ EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
 
 
--- # LIBRARIES
+-- LIBRARIES
+-- =========
 
 do
     -- Expression to split a path into a directory and a filename part.
@@ -210,9 +214,11 @@ end
 local json = require 'lunajson'
 
 
--- # FUNCTIONS
+-- FUNCTIONS
+-- =========
 
--- ## UI
+-- UI
+-- --
 
 --- Prints warnings to STDERR.
 --
@@ -226,7 +232,8 @@ function warn (msg, ...)
 end
 
 
--- ## List handling
+-- Lists
+-- -----
 
 --- Returns the position of an element in a list.
 --
@@ -255,7 +262,8 @@ function map (func, list)
 end
 
 
--- ## Path Handling
+-- Paths
+-- -----
 
 --- Checks if a path is absolute.
 --
@@ -277,7 +285,8 @@ function get_input_directory ()
 end
 
 
--- ## JSON files
+-- JSON files
+-- ----------
 
 --- Reads a JSON file.
 --
@@ -330,7 +339,8 @@ end
 
 
 
--- ## Retrieving data from REST APIs.
+-- Retrieving data from REST APIs
+-- ------------------------------
 
 do
     local select = select -- luacheck: ignore
@@ -351,7 +361,8 @@ do
 end
 
 
--- ## Converters
+-- Converters
+-- ----------
 
 do
     local pairs = pairs -- luacheck: ignore
@@ -386,7 +397,8 @@ do
 end
 
 
--- ## Retrieving sources
+-- Retrieving bibliographic data
+-- -----------------------------
 
 do
     local insert = table.insert
@@ -484,7 +496,8 @@ do
 end
 
 
--- ## Handling bibliographic data
+-- Updating the document
+-- ---------------------
 
 --- Collects the citation keys occurring in a document.
 --
@@ -621,7 +634,8 @@ function add_references (citekeys, meta)
 end
 
 
--- ## Main
+-- MAIN
+-- ====
 
 --- Collects sources and adds bibliographic data to document.
 --
@@ -655,7 +669,8 @@ function main (doc)
 end
 
 
--- # BOILERPLATE
+-- BOILERPLATE
+-- ===========
 --
 -- Returning the whole script, rather than only a list of mappings of
 -- Pandoc data types to functions, allows to do unit testing.
