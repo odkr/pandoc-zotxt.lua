@@ -106,8 +106,9 @@ Moreover, you will need:
 
 ## Documentation
 
-See the [manual page](man/pandoc-zotxt.lua.md)
-and the source for details.
+See the [manual page](man/pandoc-zotxt.lua.md), the
+[developer documentation](odkr.github.io/pandoc-zotxt.lua/), and the
+[source](pandoc-zutxt.lua) for details.
 
 
 ## Contact
