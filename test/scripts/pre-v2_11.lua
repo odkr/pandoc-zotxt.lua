@@ -2,12 +2,22 @@
 --
 -- # SYNOPSIS
 --
---      pandoc -L pre-v2_11.lua /dev/null
+--  pandoc -L pre-v2_11.lua /dev/null
+--
+-- # DESCRIPTION
+--
+-- Used in the test suite to tailer test to different versions of Pandoc.
 --
 -- # EXIT STATUS
 --
--- 0 If your copy of Pandoc is of version 2.11 or higher.
--- 1 Otherwise.
+--  0    If your copy of Pandoc is of version 2.11 or higher.
+--  1    Otherwise.
 --
+-- # AUTHOR
+--
+-- Odin Kroeger
+--
+-- @script pre-v2_11.lua
+-- @author Odin Kroeger
 -- luacheck: ignore
 if pandoc.types and PANDOC_VERSION >= pandoc.types.Version '2.11' then os.exit(1) end
