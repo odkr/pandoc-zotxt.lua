@@ -443,6 +443,12 @@ do
 
     ---  Retrieves bibliographic data in CSL for a source.
     --
+    -- Parses JSON to Lua data types, but *not* to Pandoc data types.
+    -- That is, the return value of this function can be passed to
+    -- `write_json_file`, but should *not* be stored in the `references`
+    -- metadata field. (Unless you are using a version of Pandoc
+    -- prior to v2.11.)
+    --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
@@ -467,9 +473,10 @@ do
 
     ---  Retrieves bibliographic data for a source.
     --
-    -- Bibliography entries are different to references,
-    -- because Pandoc, starting with version 2.11,
-    -- parses them differently.
+    -- Bibliography entries are different to references, because Pandoc,
+    -- starting with v2.11, parses them differently. The return value
+    -- of this function can be used in the `references` metadata field.
+    -- (Regardless of what version of Pandoc you use.)
     --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
@@ -487,8 +494,9 @@ do
     end
 
     -- (a) The CSL JSON reader is only available in recent versions of Pandoc.
-    -- (b) pandoc-citeproc had a (rather useful) bug and parses CSL even in
-    --     metadata, so there is no need to treat metadata differently.
+    -- (b) pandoc-citeproc had a (rather useful) bug and parses CSL tags
+    --     in metadata fields, so there is no need to metadata fields
+    --     and bibliography files differently.
     -- See <https://github.com/jgm/pandoc/issues/6722> for details.
     if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
         get_source = get_source_csl
