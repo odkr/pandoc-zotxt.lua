@@ -1,3 +1,21 @@
+--- debug-wrapper.lua - A fake Pandoc filter that runs pandoc-zotxt.lua.
+--
+-- # SYNOPSIS
+--
+--      pandoc -L debug-wrapper.lua
+--
+--
+-- # DESCRIPTION
+--
+-- Runs pandoc-zotxt.lua, but money-patches it so that URL requests are
+-- redirected to canned responses in the filesystem.
+--
+-- # AUTHOR
+--
+-- Odin Kroeger
+--
+-- @script debug-wrapper.lua
+-- @author Odin Kroeger
 
 -- luacheck: allow defined top
 
@@ -20,11 +38,11 @@ do
     local sanitisers = {
         -- Replace '/./' with '/'.
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        -- Replace multiple '/'s with a single '/'.
+        -- Replace a sequence of '/'s with a single '/'.
         {PATH_SEP .. '+', PATH_SEP},
         -- Remove './' at the beginning of paths.
         {'^%.' .. PATH_SEP, ''},
-        -- Remove trailing '/'s, but not for the root notde.
+        -- Remove trailing '/'s, but not for the root node.
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
