@@ -2,9 +2,9 @@
 --
 -- SYNOPSIS
 --
--- pandoc --lua-filter pandoc-zotxt.lua --citeproc
+--  pandoc --lua-filter pandoc-zotxt.lua --citeproc
 --
--- pandoc --lua-filter pandoc-zotxt.lua --filter pandoc-citeproc
+--  pandoc --lua-filter pandoc-zotxt.lua --filter pandoc-citeproc
 --
 -- DESCRIPTION
 --
@@ -51,17 +51,15 @@
 -- However, Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from
 -- user agents that don't set the "User Agent" HTTP header. And pandoc
 -- doesn't. As a consequence, pandoc-zotxt.lua cannot retrieve data from
--- these versions of Zotero unless you tell pandoc to set the "User Agent"
--- HTTP header.
+-- these versions of Zotero, that is, unless you tell pandoc to set that
+-- header.
 --
 -- If you cannot upgrade to a more recent version of Zotero, you can make
--- pandoc set that header, thereby enabling pandoc-zotxt.lua to connect to
--- your version of Zotero, by passing --request-header User-Agent:Pandoc/2.
--- Note, --request-header User-Agent:Mozilla/5 will not enable
--- pandoc-zotxt.lua to connect. If you must set the "User Agent" HTTP
--- header to a string that starts with "Mozilla/", you also have set the
--- HTTP header "Zotero-Allowed-Request". You can do so by --request-header
--- Zotero-Allowed-Request:X.
+-- pandoc set that header by passing, for instance, --request-header
+-- User-Agent:Pandoc/2. If you must set the "User Agent" HTTP header to a
+-- string that starts with "Mozilla/", you can still get pandoc to connect
+-- to Zotero by setting the HTTP header "Zotero-Allowed-Request". You do so
+-- by passing --request-header Zotero-Allowed-Request:X.
 --
 -- CAVEATS
 --
@@ -73,8 +71,6 @@
 -- -   Better BibTeX
 --
 -- pandoc(1), pandoc-citeproc(1)
-
---
 --
 -- @script pandoc-zotxt.lua
 -- @release 0.3.19
@@ -101,7 +97,6 @@ local io = io
 local math = math
 local package = package
 local table = table
-local string = string
 
 -- luacheck: push ignore
 local pandoc = pandoc
@@ -157,8 +152,8 @@ PATH_SEP = text.sub(package.config, 1, 1)
 EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
 
--- # LIBRARIES
 
+-- # LIBRARIES
 
 do
     -- Expression to split a path into a directory and a filename part.
@@ -167,11 +162,11 @@ do
     local sanitisers = {
         -- Replace '/./' with '/'.
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        -- Replace multiple '/'s with a single '/'.
+        -- Replace a sequence of '/'s with a single '/'.
         {PATH_SEP .. '+', PATH_SEP},
         -- Remove './' at the beginning of paths.
         {'^%.' .. PATH_SEP, ''},
-        -- Remove trailing '/'s, but not for the root notde.
+        -- Remove trailing '/'s, but not for the root node.
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
@@ -228,8 +223,8 @@ end
 --
 -- @param elem The element.
 -- @tparam tab list The list.
--- @treturn integer The index of the element,
--- @treturn nil `nil` if the list doesn't contain the element.
+-- @treturn[1] integer The index of the element,
+-- @treturn[2] nil `nil` if the list doesn't contain the element.
 function get_position (elem, list)
     assert(type(list) == 'table', 'given list is not of type "table".')
     for i, v in ipairs(list) do
@@ -265,7 +260,7 @@ end
 
 --- Returns the directory of the first input file or '.'.
 --
--- @treturn string The directory of that file.
+-- @treturn string The directory the first input file is in.
 function get_input_directory ()
     local file = PANDOC_STATE.input_files[1]
     if not file then return '.' end
@@ -278,9 +273,11 @@ end
 --- Reads a JSON file.
 --
 -- @tparam string fname Name of the file.
--- @return The parsed data, `nil` if an error occurred.
--- @treturn string An error message, if applicable.
--- @treturn number An error number. Positive numbers are OS error numbers,
+--
+-- @return[1] The parsed data.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] number An error number. Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
     -- luacheck: no redefined
@@ -299,14 +296,15 @@ end
 
 --- Writes data to a file in JSON.
 --
--- Terminates files with `EOL`.
+-- It terminates files with `EOL`.
 --
 -- @param data Data.
 -- @tparam string fname Name of the file.
--- @treturn bool `true` if the data was written to the file, `nil` otherwise.
--- @treturn string An error message, if applicable.
--- @treturn integer An error number. Positive numbers are OS error numbers,
---  negative numbers indicate a JSON encoding error.
+-- @treturn[1] bool `true` if `data` was written to the file.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] number An error number. Positive numbers are OS error numbers,
+--  negative numbers indicate a JSON decoding error.
 function write_json_file (data, fname)
     -- luacheck: no redefined
     assert(fname ~= '', 'given filename is the empty string')
@@ -332,7 +330,8 @@ do
     --- Retrieves data via an HTTP GET request from a URL.
     --
     -- This is a function of its own only in order for the test scripts to
-    -- be able to replace it with a function that redirects those requests.
+    -- be able to easily replace it with a function that redirects HTTP GET
+    -- requests to canned responses.
     --
     -- @tparam string url The URL.
     -- @treturn string The data.
@@ -394,7 +393,7 @@ do
     --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] str A CSL JSON string.
+    -- @treturn[1] string A CSL JSON string.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data and
@@ -453,7 +452,7 @@ do
     --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] table A CSL item as stored in Zotero.
+    -- @treturn[1] table Bibliographic data for that item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
     -- @raise An uncatchable error if it cannot retrieve any data or cannot
@@ -466,7 +465,10 @@ do
         return ref
     end
 
-    -- See https://github.com/jgm/pandoc/issues/6722.
+    -- (a) The CSL JSON reader is only available in recent versions of Pandoc.
+    -- (b) pandoc-citeproc had a (rather useful) bug and parses CSL even in
+    --     metadata, so there is no need to treat metadata differently.
+    -- See <https://github.com/jgm/pandoc/issues/6722> for details.
     if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
         get_source = get_source_csl
     end
@@ -478,7 +480,7 @@ end
 --- Collects the citation keys occurring in a document.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn {str,...} A list of citation keys.
+-- @treturn {string,...} A list of citation keys.
 function get_citekeys (doc)
     local citekeys = {}
     local seen = {}
@@ -549,7 +551,7 @@ do
     -- Also adds that bibliography to the document's metadata.
     -- Prints an error message to STDERR for every source that cannot be found.
     --
-    -- @tparam {str,...} citekeys The citation keys of the sources to add.
+    -- @tparam {string,...} citekeys The citation keys of the sources to add.
     -- @tparam pandoc.Meta meta A metadata block.
     -- @treturn[1] pandoc.Meta An updated metadata block, with the field
     --  `bibliography` added if needed.
@@ -589,7 +591,7 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam {str,...} citekeys The citation keys of the sources to add.
+-- @tparam {string,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
