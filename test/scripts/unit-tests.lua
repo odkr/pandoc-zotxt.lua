@@ -109,6 +109,9 @@ local TEST_DIR = SCRIPT_DIR .. PATH_SEP .. '..'
 --- The test suite's data directory.
 local DATA_DIR = TEST_DIR .. PATH_SEP .. 'data'
 
+--- The test suite's tempory directory.
+local TMP_DIR = TEST_DIR .. PATH_SEP .. 'tmp'
+
 --- The repository directory.
 local REPO_DIR = TEST_DIR .. PATH_SEP .. '..'
 
@@ -394,7 +397,7 @@ function test_write_json_file ()
     lu.assert_not_equals(err, '')
     lu.assert_equals(errno, 2)
 
-    local fname = DATA_DIR .. PATH_SEP .. 'bibliography.json'
+    local fname = TMP_DIR .. PATH_SEP .. 'bibliography.json'
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     ok, err, errno = M.write_json_file(ZOTXT_CSL, fname)
@@ -484,7 +487,8 @@ function test_update_bibliography ()
     local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
 
     local citekeys = {'haslanger:2012resisting'}
-    local fname = DATA_DIR .. PATH_SEP .. 'test-update_bibliography.json'
+    -- local fname = DATA_DIR .. PATH_SEP .. 'test-update_bibliography.json'
+    local fname = TMP_DIR .. PATH_SEP .. 'update-bibliography.json'
 
     for i = 1, #invalid_citekeys do
         lu.assert_error(M.update_bibliography, invalid_citekeys[i], fname)

@@ -42,6 +42,7 @@ prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
 	$(RM) "$(TMP_DIR)"/*
 	cd -P "$(TMP_DIR)" || exit
+	cp "$(DATA_DIR)/bibliography.json" "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
 	$(PANDOC) --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
