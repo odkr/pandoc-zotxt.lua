@@ -69,9 +69,13 @@ manual:
 		-M section=1 \
 		man/pandoc-zotxt.lua.md
 
+developer-documenation:
+	ldoc .
+
+docs: manual developer-documenation
+
 prologue:
-	@$(PANDOC) -f markdown-smart -t plain man/pandoc-zotxt.lua.md | \
-		sed 's/^\(.\)/-- \1/; s/^$$/--/;'
+	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' man/pandoc-zotxt.lua.md
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests  \
-	$(BEHAVIOUR_TESTS) unit-tests manual prologue
+	$(BEHAVIOUR_TESTS) unit-tests prologue manual developer-documenation docs
