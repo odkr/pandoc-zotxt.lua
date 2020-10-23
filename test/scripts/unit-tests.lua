@@ -71,11 +71,11 @@ do
     local sanitisers = {
         -- Replace '/./' with '/'.
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        -- Replace multiple '/'s with a single '/'.
+        -- Replace a sequence of '/'s with a single '/'.
         {PATH_SEP .. '+', PATH_SEP},
         -- Remove './' at the beginning of paths.
         {'^%.' .. PATH_SEP, ''},
-        -- Remove trailing '/'s, but not for the root notde.
+        -- Remove trailing '/'s, but not for the root node.
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
