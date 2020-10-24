@@ -25,15 +25,14 @@ under Windows, however.
 
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
-2. Unpack it.
-3. Move the repository to the `filters` sub-directory of your Pandoc
-   data directory (`pandoc --version` tells you where that is).
+2. Unpack the repository.
+3. Move it to the `filters` sub-directory of your Pandoc data directory \
+   (`pandoc --version` tells you where that is).
 4. Move the file **pandoc-zotxt.lua** from the repository directory
    up into the `filters` directory.
 
-### POSIX-compliant systems
-
-If you have [curl](https://curl.haxx.se/) or
+If you are using a POSIX-compliant ssystem and have
+[curl](https://curl.haxx.se/) or
 [wget](https://www.gnu.org/software/wget/), you can
 install **pandoc-zotxt.lua** by copy-pasting the
 following commands into a bourne shell:
@@ -59,8 +58,8 @@ repository to wherever your operating system searches for manual pages
 
 ### Requirements
 
-1. A POSIX-compliant operating system
-2. [Pandoc](https://www.pandoc.org/) v2.7.2
+1. A POSIX-compliant operating system.
+2. [Pandoc](https://www.pandoc.org/) v2.7.2.
 3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
    (for Pandoc prior to v2.11).
 
@@ -70,7 +69,7 @@ Pandoc and `pandoc-citeproc`.
 ### Assumptions
 
 You are using the default Citation Style Language stylesheet that ships with
-`pandoc-citeproc`, that is, `chicago-author-date.csl`.
+Pandoc (or `pandoc-citeproc` respectivey), namely, `chicago-author-date.csl`.
 
 ### Running the tests
 
