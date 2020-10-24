@@ -3,25 +3,21 @@
 **pandoc-zotxt.lua** looks up sources of citations in
 [Zotero](https://www.zotero.org/) and adds them either to a
 document's `references` metadata field or to a bibliography
-file, where Pandoc can pick them up.
-
-It requires [zotxt](https://github.com/egh/zotxt/).
-
-See the [manual page](man/pandoc-zotxt.lua.md) for more details.
+file, where Pandoc can pick them up. See the
+[manual](man/pandoc-zotxt.lua.md) for more details.
 
 
-## Installing **pandoc-zotxt.lua**
+## Requirements
+
+**pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later and
+[zotxt](https://github.com/egh/zotxt/). It should work under any POSIX-compliant
+operating system (e.g., Linux, macOS, FreeBSD, OpenBSD, NetBSD) as well as under
+Windows. It has *not* been tested under Windows, however.
+
+
+## Installation
 
 You use **pandoc-zotxt.lua** **at your own risk**. You have been warned.
-
-### Requirements
-
-**pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later.
-It should work under any POSIX-compliant operating system (e.g., macOS, FreeBSD,
-OpenBSD, NetBSD, Linux) as well as under Windows. It has *not* been tested
-under Windows, however.
-
-### Installation
 
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
@@ -52,6 +48,13 @@ following commands into a bourne shell:
 You may also want to copy the manual page from the `man` directory in the
 repository to wherever your operating system searches for manual pages
 (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
+
+
+## Documentation
+
+See the [manual](man/pandoc-zotxt.lua.md), the
+[developer documentation](https://odkr.github.io/pandoc-zotxt.lua/), and the
+[source](pandoc-zotxt.lua) for details.
 
 
 ## Testing
@@ -97,13 +100,6 @@ Moreover, you will need:
 * Zotero (v5 or newer)
 * zotxt (v5 or newer)
 * Better BibTex for Zotero
-
-
-## Documentation
-
-See the [manual page](man/pandoc-zotxt.lua.md), the
-[developer documentation](https://odkr.github.io/pandoc-zotxt.lua/), and the
-[source](pandoc-zotxt.lua) for details.
 
 
 ## Contact
