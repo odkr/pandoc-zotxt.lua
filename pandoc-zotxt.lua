@@ -18,9 +18,12 @@
 -- You cite your sources using so-called "easy citekeys" (provided by zotxt)
 -- or "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
 -- Then, when running **pandoc**, you tell it to filter your document through
--- **pandoc-zotxt.lua** by passing **--lua-filter** *pandoc-zotxt.lua*. That's
--- all there is to it. You also have to tell **pandoc** to process citations,
--- of course. (How you do this depends on your version of Pandoc.)
+-- **pandoc-zotxt.lua** by passing **-L** *pandoc-zotxt.lua*. That's all there
+-- is to it. You also have to tell **pandoc** to process citations, of course.
+-- (How you do so depends on your version of Pandoc. Since Pandoc v2.11, you
+-- do so by passing **-C**. Before Pandoc v2.11 you do so by passing **-F**
+-- *pandoc-citeproc*. Both, **-C** and **-F** *pandoc-citeproc*, go after
+-- **-L** *pandoc-zotxt.lua*.)
 --
 --
 -- BIBLIOGRAPHY FILES

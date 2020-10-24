@@ -21,11 +21,16 @@ You cite your sources using so-called \[dq]easy citekeys\[dq] (provided
 by zotxt) or \[dq]Better BibTeX Citation Keys\[dq] (provided by Better
 BibTeX for Zotero).
 Then, when running \f[B]pandoc\f[R], you tell it to filter your document
-through \f[B]pandoc-zotxt.lua\f[R] by passing \f[B]--lua-filter\f[R]
+through \f[B]pandoc-zotxt.lua\f[R] by passing \f[B]-L\f[R]
 \f[I]pandoc-zotxt.lua\f[R].
 That\[aq]s all there is to it.
 You also have to tell \f[B]pandoc\f[R] to process citations, of course.
-(How you do this depends on your version of Pandoc.)
+(How you do so depends on your version of Pandoc.
+Since Pandoc v2.11, you do so by passing \f[B]-C\f[R].
+Before Pandoc v2.11 you do so by passing \f[B]-F\f[R]
+\f[I]pandoc-citeproc\f[R].
+Both, \f[B]-C\f[R] and \f[B]-F\f[R] \f[I]pandoc-citeproc\f[R], go after
+\f[B]-L\f[R] \f[I]pandoc-zotxt.lua\f[R].)
 .SH BIBLIOGRAPHY FILES
 .PP
 You can also use \f[B]pandoc-zotxt.lua\f[R] to manage a bibliography
