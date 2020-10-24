@@ -3,7 +3,7 @@
 -- SYNOPSIS
 -- --------
 --
--- **pandoc** **-L** *pandoc-zotxt.lua* **--citeproc**
+-- **pandoc** **-L** *pandoc-zotxt.lua* **-C**
 --
 -- **pandoc** **-L** *pandoc-zotxt.lua* **-F** *pandoc-citeproc*
 --
@@ -421,9 +421,9 @@ do
     -- @treturn[1] string A CSL JSON string.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An error if it cannot retrieve data from zotxt or
-    --  if `citekey` is not a string. The data retrieval error can be caught
-    --  only in Pandoc v2.10 or later.  FIXME is this how raise is supposed to work?
+    -- @raise An error if `citekey` is not a string. Also raises an error
+    --  if no data can be received from zotxt and you are *not* using
+    --  Pandoc v2.10 or later. This latter error cannot be caught.
     function get_source_json (citekey)
         assert(type(citekey) == 'string', 'Given citekey is not a string.')
         if citekey == '' then
@@ -558,9 +558,10 @@ end
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
--- @raise An error if it cannot retrieve any data, `fname` is not a string,
---  `citekeys` is not a table, or `fname` is the empty string.
---  The data retrieval error can be caught only in Pandoc v2.10 or later.
+-- @raise An error if `fname` is not a string, `citekeys` is not a table, or
+--  `fname` is the empty string. Also raises an error if no data can be
+--  received from zotxt and you are *not* using Pandoc v2.10 or later.
+--  This latter error cannot be caught.
 function update_bibliography (citekeys, fname)
     assert(type(citekeys) == 'table', 'Given list of keys is not a table.')
     assert(type(fname) == 'string', 'Given filename is not a string.')
@@ -606,6 +607,8 @@ do
     -- @treturn[2] string An error message, if applicable.
     -- @raise An error if `zotero-bibliography` isn't a string.
     --  This error can only be caught in Pandoc v2.10 or later.
+    --  Also raises an error if no data can be received from zotxt and you are
+    --  *not* using Pandoc v2.10 or later. This latter error cannot be caught.
     function add_bibliography (citekeys, meta)
         if not #citekeys or not meta['zotero-bibliography'] then return end
         local fname = stringify(meta['zotero-bibliography'])
@@ -643,7 +646,7 @@ end
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found.
--- @raise See `get_source`.
+-- @raise See `get_source_json`.
 function add_references (citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = pandoc.MetaList({}) end
@@ -671,8 +674,8 @@ end
 -- @tparam pandoc.Pandoc doc A document.
 -- @treturn[1] pandoc.Pandoc `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise If you are using a Pandoc version prior to v2.10, an
---  uncatchable error if it cannot retrieve data from zotxt.
+-- @raise If no data can be received from zotxt and you are *not* using
+--  Pandoc v2.10 or later. This latter error cannot be caught.
 function main (doc)
     local meta = doc.meta
 

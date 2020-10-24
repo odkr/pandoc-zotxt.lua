@@ -29,9 +29,10 @@
 
 <h2>Contents</h2>
 <ul>
-<li><a href="#Installing___pandoc_zotxt_lua__">Installing **pandoc-zotxt.lua** </a></li>
-<li><a href="#Testing">Testing </a></li>
+<li><a href="#Requirements">Requirements </a></li>
+<li><a href="#Installation">Installation </a></li>
 <li><a href="#Documentation">Documentation </a></li>
+<li><a href="#Testing">Testing </a></li>
 <li><a href="#Contact">Contact </a></li>
 <li><a href="#License">License </a></li>
 <li><a href="#Further_Information">Further Information </a></li>
@@ -57,44 +58,36 @@
 <p><strong>pandoc-zotxt.lua</strong> looks up sources of citations in
 <a href="https://www.zotero.org/">Zotero</a> and adds them either to a
 document's <code>references</code> metadata field or to a bibliography
-file, where Pandoc can pick them up.</p>
-
-<p>It requires <a href="https://github.com/egh/zotxt/">zotxt</a>.</p>
-
-<p>See the <a href="man/pandoc-zotxt.lua.md">manual page</a> for more details.</p>
+file, where Pandoc can pick them up. See the
+<a href="man/pandoc-zotxt.lua.md">manual</a> for more details.</p>
 
 
-<p><a name="Installing___pandoc_zotxt_lua__"></a></p>
-<h2>Installing <strong>pandoc-zotxt.lua</strong></h2>
+<p><a name="Requirements"></a></p>
+<h2>Requirements</h2>
+
+<p><strong>pandoc-zotxt.lua</strong> requires <a href="https://www.pandoc.org/">Pandoc</a> v2.0 or later and
+<a href="https://github.com/egh/zotxt/">zotxt</a>. It should work under any POSIX-compliant
+operating system (e.g., Linux, macOS, FreeBSD, OpenBSD, NetBSD) as well as under
+Windows. It has <em>not</em> been tested under Windows, however.</p>
+
+
+<p><a name="Installation"></a></p>
+<h2>Installation</h2>
 
 <p>You use <strong>pandoc-zotxt.lua</strong> <strong>at your own risk</strong>. You have been warned.</p>
-
-<h3>Requirements</h3>
-
-<p><strong>pandoc-zotxt.lua</strong> should run under any POSIX-compliant operating system
-(e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
-<em>not</em> been tested under Windows, however.</p>
-
-<p>You need <a href="https://www.pandoc.org/">Pandoc</a> 2.0 or later. If you are using
-an older version of Pandoc, try <a href="https://github.com/egh/zotxt">pandoc-zotxt</a>,
-which works with Pandoc 1.12 or later (but also requires
-<a href="https://www.python.org/">Python</a> 2.7).</p>
-
-<h3>Installation</h3>
 
 <ol>
     <li>Download the
     <a href="https://github.com/odkr/pandoc-zotxt.lua/releases/latest">latest release</a>.</li>
-    <li>Unpack it.</li>
-    <li>Move the repository to the <code>filters</code> sub-directory of your Pandoc
-    data directory (<code>pandoc --version</code> tells you where that is).</li>
+    <li>Unpack the repository.</li>
+    <li>Move it to the <code>filters</code> sub-directory of your Pandoc data directory \
+    (<code>pandoc --version</code> tells you where that is).</li>
     <li>Move the file <strong>pandoc-zotxt.lua</strong> from the repository directory
     up into the <code>filters</code> directory.</li>
 </ol>
 
-<h3>POSIX-compliant systems</h3>
-
-<p>If you have <a href="https://curl.haxx.se/">curl</a> or
+<p>If you are using a POSIX-compliant ssystem and have
+<a href="https://curl.haxx.se/">curl</a> or
 <a href="https://www.gnu.org/software/wget/">wget</a>, you can
 install <strong>pandoc-zotxt.lua</strong> by copy-pasting the
 following commands into a bourne shell:</p>
@@ -118,14 +111,22 @@ repository to wherever your operating system searches for manual pages
 (e.g., <code>/usr/local/share/man/man1</code>, <code>/usr/share/man/man1</code>).</p>
 
 
+<p><a name="Documentation"></a></p>
+<h2>Documentation</h2>
+
+<p>See the <a href="man/pandoc-zotxt.lua.md">manual</a>, the
+<a href="https://odkr.github.io/pandoc-zotxt.lua/">developer documentation</a>, and the
+<a href="pandoc-zotxt.lua">source</a> for details.</p>
+
+
 <p><a name="Testing"></a></p>
 <h2>Testing</h2>
 
 <h3>Requirements</h3>
 
 <ol>
-    <li>A POSIX-compliant operating system</li>
-    <li><a href="https://www.pandoc.org/">Pandoc</a> v2.7.2</li>
+    <li>A POSIX-compliant operating system.</li>
+    <li><a href="https://www.pandoc.org/">Pandoc</a> v2.7.2.</li>
     <li><a href="https://github.com/jgm/pandoc-citeproc">pandoc-citeproc</a> v0.16.1.3
     (for Pandoc prior to v2.11).</li>
 </ol>
@@ -136,7 +137,7 @@ Pandoc and <code>pandoc-citeproc</code>.</p>
 <h3>Assumptions</h3>
 
 <p>You are using the default Citation Style Language stylesheet that ships with
-<code>pandoc-citeproc</code>, that is, <code>chicago-author-date.csl</code>.</p>
+Pandoc (or <code>pandoc-citeproc</code> respectivey), namely, <code>chicago-author-date.csl</code>.</p>
 
 <h3>Running the tests</h3>
 
@@ -170,14 +171,6 @@ you can import the references used in the test suite from <code>tests/items.rdf<
     <li>zotxt (v5 or newer)</li>
     <li>Better BibTex for Zotero</li>
 </ul>
-
-
-<p><a name="Documentation"></a></p>
-<h2>Documentation</h2>
-
-<p>See the <a href="man/pandoc-zotxt.lua.md">manual page</a>, the
-<a href="https://odkr.github.io/pandoc-zotxt.lua/">developer documentation</a>, and the
-<a href="pandoc-zotxt.lua">source</a> for details.</p>
 
 
 <p><a name="Contact"></a></p>
@@ -221,7 +214,7 @@ SOFTWARE.</p>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2020-10-23 13:42:15 </i>
+<i style="float:right;">Last updated 2020-10-24 17:16:01 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
