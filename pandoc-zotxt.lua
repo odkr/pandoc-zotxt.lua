@@ -192,7 +192,7 @@ do
     -- This function makes an educated guess given the string it's passed.
     -- It doesn't look at the filesystem. The guess is educated enough though.
     function split_path (path)
-        assert(path ~= '', 'path is the empty string')
+        assert(path ~= '', 'Path is the empty string.')
         local dir, fname = path:match(split)
         for i = 1, #sanitisers do
             dir = dir:gsub(table.unpack(sanitisers[i]))
@@ -228,7 +228,9 @@ local json = require 'lunajson'
 -- @tparam string msg A message to write to STDERR.
 -- @tparam string ... Arguments (think `string.format`) for `msg`.
 function warn (msg, ...)
-    io.stderr:write(NAME, ': ', msg:format(...), EOL)
+    local args = {...}
+    if #args > 0 then msg = msg:format(table.unpack(args)) end
+    io.stderr:write(NAME, ': ', msg, EOL)
 end
 
 
@@ -242,7 +244,7 @@ end
 -- @treturn[1] integer The index of the element,
 -- @treturn[2] nil `nil` if the list doesn't contain the element.
 function get_position (elem, list)
-    assert(type(list) == 'table', 'given list is not of type "table".')
+    assert(type(list) == 'table', 'Given list is not of type "table".')
     for i, v in ipairs(list) do
         if v == elem then return i end
     end
@@ -299,7 +301,7 @@ end
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
     -- luacheck: no redefined
-    assert(fname ~= '', 'given filename is the empty string')
+    assert(fname ~= '', 'Given filename is the empty string ("").')
     local f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
     local str, err, errno = f:read('a')
@@ -325,7 +327,7 @@ end
 --  negative numbers indicate a JSON decoding error.
 function write_json_file (data, fname)
     -- luacheck: no redefined
-    assert(fname ~= '', 'given filename is the empty string')
+    assert(fname ~= '', 'Given filename is the empty string ("").')
     local ok, str = pcall(json.encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
     local f, err, errno = io.open(fname, 'w')
@@ -354,7 +356,8 @@ do
     --
     -- @tparam string url The URL.
     -- @treturn string The data.
-    -- @raise An uncatchable error if it cannot retrieve any data.
+    -- @raise An error if it cannot retrieve any data.
+    --  This error can be caught only in Pandoc v2.10 or later.
     function read_url (url)
         return select(2, fetch(url, '.'))
     end
@@ -380,7 +383,7 @@ do
     -- @return The given data, with all numbers converted into strings.
     function convert_numbers_to_strings (data, depth)
         if not depth then depth = 1 end
-        assert(depth < 512, 'too many recursions')
+        assert(depth < 512, 'Too many recursions.')
         local t = type(data)
         if t == 'table' then
             local s = {}
@@ -401,6 +404,7 @@ end
 -- -----------------------------
 
 do
+    local pcall = pcall -- luacheck: ignore
     local insert = table.insert
     local remove = table.remove
     local sub = text.sub
@@ -415,17 +419,24 @@ do
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] string A CSL JSON string.
-    -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
+    -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data and
-    --  a catchable error if `citekey` is not a `string`.
+    -- @raise An error if it cannot retrieve data from zotxt or
+    --  if `citekey` is not a string. The data retrieval error can be caught
+    --  only in Pandoc v2.10 or later.  FIXME is this how raise is supposed to work?
     function get_source_json (citekey)
-        assert(type(citekey) == 'string', 'given citekey is not a string')
-        if citekey == '' then return nil, 'citation key is "".' end
+        assert(type(citekey) == 'string', 'Given citekey is not a string.')
+        if citekey == '' then
+            return nil, 'Citation key is the empty string ("").'
+        end
         local reply
         for i = 1, #keytypes do
-            local query_url = base_url:format(keytypes[i], citekey)
-            reply = read_url(query_url)
+            local ok, query_url
+            query_url = base_url:format(keytypes[i], citekey)
+            ok, reply = pcall(read_url, query_url)
+            if not ok then
+                return nil, 'Cannot read from <' .. query_url .. '>.'
+            end
             if sub(reply, 1, 1) == '[' then
                 local kt = remove(keytypes, i)
                 insert(keytypes, 1, kt)
@@ -454,12 +465,13 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data and
-    --  a catchable error if `citekey` is not a `string`.
+    -- @raise See `get_source_json`.
     function get_source_csl (citekey)
-        local reply, err = get_source_json(citekey)
+        local ok, reply, err, data
+        ok, reply, err = pcall(get_source_json, citekey)
+        if not ok then return nil, reply end
         if not reply then return nil, err end
-        local ok, data = pcall(decode, reply)
+        ok, data = pcall(decode, reply)
         if not ok then return nil, reply end
         local entry = convert_numbers_to_strings(data[1])
         entry.id = citekey
@@ -469,6 +481,7 @@ end
 
 
 do
+    local pcall = pcall -- luacheck: ignore
     local read = pandoc.read
 
     ---  Retrieves bibliographic data for a source.
@@ -483,12 +496,15 @@ do
     -- @treturn[1] table Bibliographic data for that item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An uncatchable error if it cannot retrieve any data or cannot
-    --  parse the reply, and a catchable error if `citekey` is not a `string`.
+    -- @raise See `get_source_json`.
     function get_source (citekey)
-        local reply, err = get_source_json(citekey)
+        local ok, reply, err, data
+        ok, reply, err = pcall(get_source_json, citekey)
+        if not ok then return nil, reply end
         if not reply then return nil, err end
-        local ref = read(reply, 'csljson').meta.references[1]
+        ok, data = pcall(read, reply, 'csljson')
+        if not ok then return nil, data end
+        local ref = data.meta.references[1]
         ref.id = citekey
         return ref
     end
@@ -498,7 +514,7 @@ do
     --     in metadata fields, so there is no need to metadata fields
     --     and bibliography files differently.
     -- See <https://github.com/jgm/pandoc/issues/6722> for details.
-    if not pandoc.types or PANDOC_VERSION < pandoc.types.Version '2.11' then
+    if not pandoc.types or PANDOC_VERSION < {2, 11} then
         get_source = get_source_csl
     end
 end
@@ -542,14 +558,14 @@ end
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
--- @raise An uncatchable error if it cannot retrieve any data and
---  a catchable error if `fname` is not a string, `citekeys` is not a table,
---  `fname` is the empty string.
+-- @raise An error if it cannot retrieve any data, `fname` is not a string,
+--  `citekeys` is not a table, or `fname` is the empty string.
+--  The data retrieval error can be caught only in Pandoc v2.10 or later.
 function update_bibliography (citekeys, fname)
-    assert(type(citekeys) == 'table', 'given list of keys is not a table')
-    assert(type(fname) == 'string', 'given filename is not a string')
-    assert(fname ~= '', 'given filename is the empty string')
-    assert(fname:match '.json$', 'given filename does not end with ".json".')
+    assert(type(citekeys) == 'table', 'Given list of keys is not a table.')
+    assert(type(fname) == 'string', 'Given filename is not a string.')
+    assert(fname ~= '', 'Given filename is the empty string ("").')
+    assert(fname:match '.json$', 'Given filename does not end with ".json".')
     if #citekeys == 0 then return true end
     local refs, err, errno = read_json_file(fname)
     if not refs then
@@ -588,7 +604,8 @@ do
     -- @treturn[2] nil `nil` if no sources were found,
     --  `zotero-bibliography` is not set, or an error occurred.
     -- @treturn[2] string An error message, if applicable.
-    -- @raise An uncatchable error if `zotero-bibliography` isn't a string.
+    -- @raise An error if `zotero-bibliography` isn't a string.
+    --  This error can only be caught in Pandoc v2.10 or later.
     function add_bibliography (citekeys, meta)
         if not #citekeys or not meta['zotero-bibliography'] then return end
         local fname = stringify(meta['zotero-bibliography'])
@@ -626,10 +643,10 @@ end
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found.
--- @raise An uncatchable error if it cannot retrieve any data.
+-- @raise See `get_source`.
 function add_references (citekeys, meta)
     if #citekeys == 0 then return end
-    if not meta.references then meta.references = {} end
+    if not meta.references then meta.references = pandoc.MetaList({}) end
     for _, citekey in ipairs(citekeys) do
         local ref, err = get_source(citekey)
         if ref then
@@ -654,9 +671,8 @@ end
 -- @tparam pandoc.Pandoc doc A document.
 -- @treturn[1] pandoc.Pandoc `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise An uncatchable error if it cannot retrieve any data or,
---  depending on your version of Pandoc, when it cannot parse
---  zotxt's reponse as JSON.
+-- @raise If you are using a Pandoc version prior to v2.10, an
+--  uncatchable error if it cannot retrieve data from zotxt.
 function main (doc)
     local meta = doc.meta
 
@@ -667,7 +683,8 @@ function main (doc)
         local add_sources
         if     i == 1 then add_sources = add_bibliography
         elseif i == 2 then add_sources = add_references   end
-        local ret, err = add_sources(citekeys, meta)
+        local ok, ret, err = pcall(add_sources, citekeys, meta)
+        if not ok then warn(ret) return end
         if err then warn(err) end
         if ret then
             doc.meta = ret
