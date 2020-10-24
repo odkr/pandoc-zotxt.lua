@@ -16,14 +16,10 @@ You use **pandoc-zotxt.lua** **at your own risk**. You have been warned.
 
 ### Requirements
 
-**pandoc-zotxt.lua** should run under any POSIX-compliant operating system
-(e.g., macOS, FreeBSD, OpenBSD, NetBSD, Linux) and under Windows. It has
-*not* been tested under Windows, however.
-
-You need [Pandoc](https://www.pandoc.org/) 2.0 or later. If you are using
-an older version of Pandoc, try [pandoc-zotxt](https://github.com/egh/zotxt),
-which works with Pandoc 1.12 or later (but also requires
-[Python](https://www.python.org/) 2.7).
+**pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later.
+It should work under any POSIX-compliant operating system (e.g., macOS, FreeBSD,
+OpenBSD, NetBSD, Linux) as well as under Windows. It has *not* been tested
+under Windows, however.
 
 ### Installation
 
