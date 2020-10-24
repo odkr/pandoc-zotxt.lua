@@ -300,15 +300,15 @@ end
 -- @treturn[2] number An error number. Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
-    -- luacheck: no redefined
     assert(fname ~= '', 'Given filename is the empty string ("").')
-    local f, err, errno = io.open(fname, 'r')
+    local data, err, errno, f, ok, str
+    f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
-    local str, err, errno = f:read('a')
+    str, err, errno = f:read('a')
     if not str then return nil, err, errno end
-    local ok, err, errno = f:close()
+    ok, err, errno = f:close()
     if not ok then return nil, err, errno end
-    local ok, data = pcall(json.decode, str)
+    ok, data = pcall(json.decode, str)
     if not ok then return nil, 'JSON parse error', -1 end
     return convert_numbers_to_strings(data)
 end
@@ -326,13 +326,13 @@ end
 -- @treturn[2] number An error number. Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function write_json_file (data, fname)
-    -- luacheck: no redefined
     assert(fname ~= '', 'Given filename is the empty string ("").')
-    local ok, str = pcall(json.encode, data)
+    local err, errno, f, ok, str
+    ok, str = pcall(json.encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
-    local f, err, errno = io.open(fname, 'w')
+    f, err, errno = io.open(fname, 'w')
     if not f then return nil, err, errno end
-    local ok, err, errno = f:write(str, EOL)
+    ok, err, errno = f:write(str, EOL)
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
@@ -438,8 +438,8 @@ do
                 return nil, 'Cannot read from <' .. query_url .. '>.'
             end
             if sub(reply, 1, 1) == '[' then
-                local kt = remove(keytypes, i)
-                insert(keytypes, 1, kt)
+                local k = remove(keytypes, i)
+                insert(keytypes, 1, k)
                 return reply
             end
         end
@@ -685,7 +685,7 @@ function main (doc)
         elseif i == 2 then add_sources = add_references   end
         local ok, ret, err = pcall(add_sources, citekeys, meta)
         if not ok then warn(ret) return end
-        if err then warn(err) end
+        if err    then warn(err)        end
         if ret then
             doc.meta = ret
             return doc
