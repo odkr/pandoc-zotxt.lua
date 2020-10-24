@@ -9,10 +9,11 @@ file, where Pandoc can pick them up. See the
 
 ## Requirements
 
-**pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later and
-[zotxt](https://github.com/egh/zotxt/). It should work under any POSIX-compliant
-operating system (e.g., Linux, macOS, FreeBSD, OpenBSD, NetBSD) as well as under
-Windows. It has *not* been tested under Windows, however.
+**pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later,
+[Zotero](https://www.zotero.org/), and [zotxt](https://github.com/egh/zotxt/).
+It should work under any POSIX-compliant operating system (e.g., Linux, macOS,
+FreeBSD, OpenBSD, NetBSD) as well as under Windows. It has *not* been tested
+under Windows, however.
 
 
 ## Installation
@@ -53,8 +54,8 @@ repository to wherever your operating system searches for manual pages
 ## Documentation
 
 See the [manual](man/pandoc-zotxt.lua.md), the
-[developer documentation](https://odkr.github.io/pandoc-zotxt.lua/), and the
-[source](pandoc-zotxt.lua) for details.
+[source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
+and the [source](pandoc-zotxt.lua) for details.
 
 
 ## Testing
