@@ -158,7 +158,7 @@ ZOTXT_KEYTYPES = {
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '0.3.19'
+VERSION = '0.3.20b'
 
 --- The path seperator of the operating system.
 PATH_SEP = text.sub(package.config, 1, 1)
@@ -348,7 +348,7 @@ end
 -- ------------------------------
 
 do
-    local select = select -- luacheck: ignore
+    local pcall = pcall -- luacheck: ignore
     local fetch = pandoc.mediabag.fetch
 
     --- Retrieves data via an HTTP GET request from a URL.
@@ -359,10 +359,12 @@ do
     --
     -- @tparam string url The URL.
     -- @treturn string The data.
-    -- @raise An error if it cannot retrieve any data.
-    --  This error can be caught only in Pandoc v2.10 or later.
+    -- @raise An error if no data can be received. But only if you are *not*
+    --  using Pandoc v2.10 or later. This error cannot be caught.
     function read_url (url)
-        return select(2, fetch(url, '.'))
+        local ok, _, data = pcall(fetch, url, '.')
+        if not ok then return nil, 'Cannot read from <' .. url .. '>.' end
+        return data
     end
 end
 
@@ -434,12 +436,10 @@ do
         end
         local reply
         for i = 1, #keytypes do
-            local ok, query_url
+            local err, query_url
             query_url = base_url:format(keytypes[i], citekey)
-            ok, reply = pcall(read_url, query_url)
-            if not ok then
-                return nil, 'Cannot read from <' .. query_url .. '>.'
-            end
+            reply, err = read_url(query_url)
+            if not reply then return nil, err end
             if sub(reply, 1, 1) == '[' then
                 local k = remove(keytypes, i)
                 insert(keytypes, 1, k)
@@ -470,11 +470,9 @@ do
     -- @treturn[2] string An error message.
     -- @raise See `get_source_json`.
     function get_source_csl (citekey)
-        local ok, reply, err, data
-        ok, reply, err = pcall(get_source_json, citekey)
-        if not ok then return nil, reply end
+        local reply, err = get_source_json(citekey)
         if not reply then return nil, err end
-        ok, data = pcall(decode, reply)
+        local ok, data = pcall(decode, reply)
         if not ok then return nil, reply end
         local entry = convert_numbers_to_strings(data[1])
         entry.id = citekey
@@ -501,11 +499,9 @@ do
     -- @treturn[2] string An error message.
     -- @raise See `get_source_json`.
     function get_source (citekey)
-        local ok, reply, err, data
-        ok, reply, err = pcall(get_source_json, citekey)
-        if not ok then return nil, reply end
+        local reply, err = get_source_json(citekey)
         if not reply then return nil, err end
-        ok, data = pcall(read, reply, 'csljson')
+        local ok, data = pcall(read, reply, 'csljson')
         if not ok then return nil, data end
         local ref = data.meta.references[1]
         ref.id = citekey
@@ -689,9 +685,8 @@ function main (doc)
         local add_sources
         if     i == 1 then add_sources = add_bibliography
         elseif i == 2 then add_sources = add_references   end
-        local ok, ret, err = pcall(add_sources, citekeys, meta)
-        if not ok then warn(ret) return end
-        if err    then warn(err)        end
+        local ret, err = add_sources(citekeys, meta)
+        if err then warn(err) end
         if ret then
             doc.meta = ret
             return doc
