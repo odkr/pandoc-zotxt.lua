@@ -27,11 +27,9 @@
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 -- luacheck: pop
 
-local text = require 'text'
-
 
 --- The path seperator of the operating system.
-PATH_SEP = text.sub(package.config, 1, 1)
+PATH_SEP = package.config:sub(1, 1)
 
 do
     -- Expression to split a path into a directory and a filename part.

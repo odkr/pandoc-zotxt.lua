@@ -63,14 +63,12 @@ if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 local stringify = pandoc.utils.stringify
 -- luacheck: pop
 
-local text = require 'text'
-
 
 -- LIBRARIES
 -- =========
 
 --- The path seperator of the operating system.
-PATH_SEP = text.sub(package.config, 1, 1)
+PATH_SEP = package.config:sub(1, 1)
 
 do
     -- Expression to split a path into a directory and a filename part.
@@ -495,7 +493,7 @@ function test_get_citekeys ()
 
     local test_fname = DATA_DIR .. PATH_SEP .. 'test-easy-citekey.md'
     local test_file = read_md_file(test_fname)
-    lu.assert_equals(M.get_citekeys(test_file), {
+    lu.assert_items_equals(M.get_citekeys(test_file), {
         'haslanger:2012resisting','díaz-león:2013what',
         'díaz-león:2015defence','díaz-león:2016woman',
         'dotson:2016word','nobody:0000nothing'
@@ -504,18 +502,13 @@ end
 
 
 function test_update_bibliography ()
-    local invalid_citekeys = {nil, false, 0, "false", function () end}
-    local invalid_fnames = {nil, false, 0, function () end, '', 'test'}
+    local invalid_citekeys = {nil, false, 0, function () end}
 
-    local citekeys = {'haslanger:2012resisting'}
     -- local fname = DATA_DIR .. PATH_SEP .. 'test-update_bibliography.json'
     local fname = TMP_DIR .. PATH_SEP .. 'update-bibliography.json'
 
     for i = 1, #invalid_citekeys do
         lu.assert_error(M.update_bibliography, invalid_citekeys[i], fname)
-    end
-    for i = 1, #invalid_fnames do
-        lu.assert_error(M.update_bibliography, citekeys, invalid_fnames[i])
     end
 
     -- Remove file, just in case.
