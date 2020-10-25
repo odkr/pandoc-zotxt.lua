@@ -121,7 +121,7 @@
 
 <h2> CAVEATS</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> is for the most part Unicode-agnostic.</p>
+<p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
 
 
 <h2> SEE ALSO</h2>
@@ -136,7 +136,7 @@
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020 Odin Kroeger</li>
-        <li><strong>Release</strong>: 0.3.19</li>
+        <li><strong>Release</strong>: 0.3.20b</li>
         <li><strong>License</strong>: MIT</li>
         <li><strong>Author</strong>: Odin Kroeger</li>
     </ul>
@@ -227,10 +227,6 @@
 <h2><a href="#Fields">Fields</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_BASE_URL">ZOTXT_BASE_URL</a></td>
-	<td class="summary">The URL to lookup citation data.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#NAME">NAME</a></td>
 	<td class="summary">The name of this script.</td>
 	</tr>
@@ -245,6 +241,10 @@
 	<tr>
 	<td class="name" nowrap><a href="#EOL">EOL</a></td>
 	<td class="summary">The end of line sequence of the operating system.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ZOTXT_BASE_URL">ZOTXT_BASE_URL</a></td>
+	<td class="summary">The URL to lookup citation data.</td>
 	</tr>
 </table>
 
@@ -461,7 +461,8 @@
         An error message.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
-        An error number. Positive numbers are OS error numbers,
+         An error number.
+  Positive numbers are OS error numbers,
   negative numbers indicate a JSON decoding error.</li>
     </ol>
 
@@ -506,7 +507,8 @@
         An error message.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
-        An error number. Positive numbers are OS error numbers,
+         An error number.
+  Positive numbers are OS error numbers,
   negative numbers indicate a JSON decoding error.</li>
     </ol>
 
@@ -540,10 +542,23 @@
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
         The data.
     </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if no data could be retrieved. But only if you
+  are using Pandoc v2.10 or later. Otherwise an error is raised.</li>
+        <li>
+           <span class="types"><span class="type">An</span></span>
+        error message.</li>
+        <li>
+           <span class="types"><span class="type">userdata</span></span>
+        A pandoc error value.</li>
+    </ol>
 
     <h3>Raises:</h3>
-    An error if it cannot retrieve any data.
-  This error can be caught only in Pandoc v2.10 or later.
+    An error if no data can be retrieved. But only if you are <em>not</em>
+  using Pandoc v2.10 or later. This error cannot be caught.
 
 
 
@@ -556,7 +571,7 @@
     Converts all numbers in a multi-dimensional table to strings. </p>
 
 <p> Also converts floating point numbers to integers. This is needed
- because all numbers are floating point numbers in JSON, but older
+ because all numbers are floating point numbers in JSON, but some
  versions of Pandoc expect integers.
 
 
@@ -611,12 +626,18 @@
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
         An error message.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+         The type of error that occurred, where
+  <code>read_err</code> means that no data could be read from zotxt, and
+  <code>no_array</code> that zotxt didn't respond with a JSON array, which
+  usually means that no record matches <code>citekey</code>.</li>
     </ol>
 
     <h3>Raises:</h3>
-     An error if <code>citekey</code> is not a string. Also raises an error
-  if no data can be received from zotxt and you are <em>not</em> using
-  Pandoc v2.10 or later. This latter error cannot be caught.
+     An error if <code>citekey</code> is the empty string or
+  if no data can be read from zotxt <em>and</em> you are <em>not</em>
+  using Pandoc v2.10 or later. The latter error cannot be caught.
 
 
 
@@ -658,6 +679,9 @@
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
         An error message.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+        The type of that error. See <a href="index.html#get_source_json">get_source_json</a>.</li>
     </ol>
 
     <h3>Raises:</h3>
@@ -702,6 +726,9 @@
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
         An error message.</li>
+        <li>
+           <span class="types"><span class="type">number</span></span>
+        The type of that error. See <a href="index.html#get_source_json">get_source_json</a>.</li>
     </ol>
 
     <h3>Raises:</h3>
@@ -775,13 +802,15 @@
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
         An error message.</li>
+        <li>
+           <span class="types"><span class="type">number</span></span>
+         An error number.
+  Positive numbers are OS error numbers,
+  a negative number indicates that Zotero is not running.</li>
     </ol>
 
     <h3>Raises:</h3>
-     An error if <code>fname</code> is not a string, <code>citekeys</code> is not a table, or
-  <code>fname</code> is the empty string. Also raises an error if no data can be
-  received from zotxt and you are <em>not</em> using Pandoc v2.10 or later.
-  This latter error cannot be caught.
+    See <a href="index.html#get_source_json">get_source_json</a>.
 
 
 
@@ -824,14 +853,11 @@
   <code>zotero-bibliography</code> is not set, or an error occurred.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
-        An error message, if applicable.</li>
+        An error message.</li>
     </ol>
 
     <h3>Raises:</h3>
-     An error if <code>zotero-bibliography</code> isn't a string.
-  This error can only be caught in Pandoc v2.10 or later.
-  Also raises an error if no data can be received from zotxt and you are
-  <em>not</em> using Pandoc v2.10 or later. This latter error cannot be caught.
+    See <a href="index.html#get_source_json">get_source_json</a>.
 
 
 
@@ -912,8 +938,7 @@
     </ol>
 
     <h3>Raises:</h3>
-    If no data can be received from zotxt and you are <em>not</em> using
-  Pandoc v2.10 or later. This latter error cannot be caught.
+    See <a href="index.html#get_source_json">get_source_json</a>.
 
 
 
@@ -958,36 +983,6 @@
     <h2 class="section-header "><a name="Fields"></a>Fields</h2>
 
     <dl class="function">
-    <dt>
-    <a name = "ZOTXT_BASE_URL"></a>
-    <strong>ZOTXT_BASE_URL</strong>
-    </dt>
-    <dd>
-
-<p>The URL to lookup citation data. </p>
-
-<p> See <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.</p>
-
-<p> <a href="index.html#get_source_json">get_source_json</a> replaces:</p>
-
-<ul>
-    <li>the first '%s' with the citation key type (e.g., 'easykey'),</li>
-    <li>the second '%s' with the citation key (e.g., 'doe:2000word').</li>
-</ul>
-
-
-
-
-
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="index.html#get_source_json">get_source_json</a>
-    </ul>
-
-
-</dd>
     <dt>
     <a name = "NAME"></a>
     <strong>NAME</strong>
@@ -1044,6 +1039,26 @@
 
 
 </dd>
+    <dt>
+    <a name = "ZOTXT_BASE_URL"></a>
+    <strong>ZOTXT_BASE_URL</strong>
+    </dt>
+    <dd>
+    The URL to lookup citation data. </p>
+
+<p> See <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
+
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="index.html#get_source_json">get_source_json</a>
+    </ul>
+
+
+</dd>
 </dl>
 
 
@@ -1051,7 +1066,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2020-10-24 17:27:18 </i>
+<i style="float:right;">Last updated 2020-10-25 16:03:15 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
