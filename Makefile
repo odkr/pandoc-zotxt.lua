@@ -70,10 +70,8 @@ manual:
 		-M section=1 \
 		man/pandoc-zotxt.lua.md
 
-developer-documenation:
-	ldoc .
-
-docs: manual developer-documenation
+docs: manual
+	ldoc . 
 
 prologue:
 	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' man/pandoc-zotxt.lua.md
