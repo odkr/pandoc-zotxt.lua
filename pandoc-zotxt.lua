@@ -154,17 +154,14 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 
 --- The URL to lookup citation data.
 --
--- See <https://github.com/egh/zotxt> for details.
---
--- @see get_source_json
+-- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
 
 --- Types of citation keys.
 --
--- See <https://github.com/egh/zotxt> for details.
+-- See `get_source_json` and <https://github.com/egh/zotxt> for details.
 --
 -- @table ZOTXT_KEYTYPES
--- @see get_source_json
 ZOTXT_KEYTYPES = {
 	'easykey',         -- zotxt easy citekey
 	'betterbibtexkey', -- Better BibTeX citation key
