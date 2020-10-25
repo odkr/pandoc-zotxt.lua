@@ -24,7 +24,7 @@ PANDOC		?= pandoc
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
 		   test-zotero-id test-bibliography
 
-PANDOC_ZOTXT_LUA    ?= $(SCPT_DIR)/debug-wrapper.lua
+SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua
 
 
 # TESTS
@@ -52,12 +52,12 @@ $(BEHAVIOUR_TESTS): prepare-tmpdir
 	if $(PANDOC) --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		-f markdown -t plain /dev/null >/dev/null 2>&1; \
 	then \
-		$(PANDOC) --lua-filter "$(PANDOC_ZOTXT_LUA)" \
+		$(PANDOC) --lua-filter "$(SCRIPT)" \
 			--filter pandoc-citeproc \
 			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
-		$(PANDOC) --lua-filter "$(PANDOC_ZOTXT_LUA)" \
+		$(PANDOC) --lua-filter "$(SCRIPT)" \
 			--citeproc \
 			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \

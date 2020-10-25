@@ -90,7 +90,7 @@ but uses canned responses. You can force the test suite to connect
 to a local Zotero database by:
 
 ```sh
-    make test -e PANDOC_ZOTXT_LUA=./pandoc-zotxt.lua
+    make test -e SCRIPT=./pandoc-zotxt.lua
 ```
 
 Note, you will have to adapt the test suite to your database (or vice versa;
