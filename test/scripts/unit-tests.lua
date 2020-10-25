@@ -227,27 +227,6 @@ end
 -- Lists
 -- -----
 
-function test_get_position ()
-    local invalid_inputs = {nil, false, 0, 'x', function () end}
-    for _, v in ipairs(invalid_inputs) do
-        lu.assert_error(M.get_position, nil, v)
-    end
-
-    local tests = {
-        [{nil, {}}]         = nil,
-        [{nil, {1, 2, 3}}]  = nil,
-        [{2, {1}}]          = nil,
-        [{1, {1}}]          = 1,
-        [{1, {1, 2, 3}}]    = 1,
-        [{2, {1, 2, 3}}]    = 2,
-        [{3, {1, 2, 3}}]    = 3
-    }
-
-    for k, v in pairs(tests) do
-        lu.assert_equals(M.get_position(table.unpack(k)), v)
-    end
-end
-
 function test_map ()
     -- luacheck: no redefined
     local function base (x) return x end

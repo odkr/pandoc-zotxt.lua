@@ -240,20 +240,6 @@ end
 -- Lists
 -- -----
 
---- Returns the position of an element in a list.
---
--- @param elem The element.
--- @tparam tab list The list.
--- @treturn[1] integer The index of the element,
--- @treturn[2] nil `nil` if the list doesn't contain the element.
-function get_position (elem, list)
-    for i, v in ipairs(list) do
-        if v == elem then return i end
-    end
-    return nil
-end
-
-
 --- Applies a function to every element of a list.
 --
 -- @tparam func func The function.
@@ -582,21 +568,28 @@ function update_bibliography (citekeys, fname)
         if err and errno ~= 2 then return nil, err, errno end
         refs = {}
     end
-    local ids = map(function (ref) return ref.id end, refs)
-    for _, citekey in ipairs(citekeys) do
-        if not get_position(citekey, ids) then
+    local ids = {}
+    for i = 1, #refs do
+        ids[refs[i].id] = true
+    end
+    local c = #refs
+    local n = c
+    for i = 1, #citekeys do
+        local citekey = citekeys[i]
+        if not ids[citekey] then
             -- luacheck: ignore err
             local ref, err, errtype = get_source_csl(citekey)
             if ref then
-                table.insert(refs, ref)
+                n = n + 1
+                refs[n] = ref
             elseif errtype == 'read_err' then
-                return nil, 'Could not retrieve data from Zotero.', -2
+                return nil, 'Could not retrieve data from Zotero.', -1
             else
                 warn(err)
             end
         end
     end
-    if (#refs > #ids) then return write_json_file(refs, fname) end
+    if (n > c) then return write_json_file(refs, fname) end
     return true
 end
 
