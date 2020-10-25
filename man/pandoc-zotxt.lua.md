@@ -83,7 +83,7 @@ passing **--request-header** *Zotero-Allowed-Request:X*.
 CAVEATS
 =======
 
-**pandoc-zotxt.lua** is for the most part Unicode-agnostic.
+**pandoc-zotxt.lua** is Unicode-agnostic.
 
 
 SEE ALSO
