@@ -593,7 +593,7 @@ function update_bibliography (citekeys, fname)
             if ref then
                 table.insert(refs, ref)
             elseif errtype == 'read_err' then
-                return nil, 'Zotero appears to not be running.', -2
+                return nil, 'Could not retrieve data from Zotero.', -2
             else
                 warn(err)
             end
@@ -660,7 +660,7 @@ function add_references (citekeys, meta)
         if ref then
             table.insert(meta.references, ref)
         elseif errtype == 'read_err' then
-            return nil, 'Zotero appears to not be running.'
+            return nil, 'Could not retrieve data from Zotero.'
         else
             warn(err)
         end
