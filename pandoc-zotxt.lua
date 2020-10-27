@@ -237,21 +237,6 @@ function warn (msg, ...)
 end
 
 
--- Lists
--- -----
-
---- Applies a function to every element of a list.
---
--- @tparam func func The function.
--- @tparam tab list The list.
--- @treturn tab The return values of `func`.
-function map (func, list)
-    local ret = {}
-    for k, v in pairs(list) do ret[k] = func(v) end
-    return ret
-end
-
-
 -- Paths
 -- -----
 
@@ -329,8 +314,8 @@ end
 
 
 
--- Retrieving data from REST APIs
--- ------------------------------
+-- Retrieving data
+-- ---------------
 
 do
     local pcall = pcall -- luacheck: ignore
@@ -367,8 +352,6 @@ do
     local type = type -- luacheck: ignore
     local floor = math.floor
 
-    local mem = {}
-
     --- Converts all numbers in a multi-dimensional table to strings.
     --
     -- Also converts floating point numbers to integers. This is needed
@@ -388,10 +371,7 @@ do
             end
             return s
         elseif t == 'number' then
-            if mem[data] then return mem[data] end
-            local s = tostring(floor(data))
-            mem[data] = s
-            return s
+            return tostring(floor(data))
         else
             return data
         end
@@ -508,10 +488,10 @@ do
         return ref
     end
 
-    -- (a) The CSL JSON reader is only available in recent versions of Pandoc.
+    -- (a) The CSL JSON reader is only available in Pandoc v2.11 or later.
     -- (b) pandoc-citeproc had a (rather useful) bug and parses CSL tags
-    --     in metadata fields, so there is no need to metadata fields
-    --     and bibliography files differently.
+    --     in metadata fields, so there is no need to treat metadata
+    --     fields and bibliography files differently.
     -- See <https://github.com/jgm/pandoc/issues/6722> for details.
     if not pandoc.types or PANDOC_VERSION < {2, 11} then
         get_source = get_source_csl
@@ -519,8 +499,8 @@ do
 end
 
 
--- Updating the document
--- ---------------------
+-- Document handling
+-- -----------------
 
 --- Collects the citation keys occurring in a document.
 --
@@ -528,13 +508,15 @@ end
 -- @treturn {string,...} A list of citation keys.
 function get_citekeys (doc)
     local citekeys = {}
-    local function collect_citekeys (cite)
-        for i = 1, #cite.citations do
-            citekeys[cite.citations[i].id] = true
+    local filter = {
+        Cite = function (cite)
+            for i = 1, #cite.citations do
+                citekeys[cite.citations[i].id] = true
+            end
         end
-    end
+    }
     for i = 1, #doc.blocks do
-        pandoc.walk_block(doc.blocks[i], {Cite = collect_citekeys})
+        pandoc.walk_block(doc.blocks[i], filter)
     end
     local ret = {}
     local n = 0
@@ -589,8 +571,8 @@ function update_bibliography (citekeys, fname)
             end
         end
     end
-    if (n > c) then return write_json_file(refs, fname) end
-    return true
+    if (n == c) then return true end
+    return write_json_file(refs, fname)
 end
 
 
@@ -677,13 +659,17 @@ function main (doc)
     if #citekeys == 0 then return nil end
     for i = 1, 2 do
         local add_sources
-        if     i == 1 then add_sources = add_bibliography
-        elseif i == 2 then add_sources = add_references   end
+        if i == 1 then
+            add_sources = add_bibliography
+        elseif i == 2 then
+            add_sources = add_references
+        end
         local ret, err = add_sources(citekeys, doc.meta)
-        if err then warn(err) end
         if ret then
             doc.meta = ret
             return doc
+        elseif err then
+            warn(err)
         end
     end
 end
