@@ -85,7 +85,7 @@
 -- pandoc(1), pandoc-citeproc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 0.3.20b
+-- @release 1.0.0
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020 Odin Kroeger
 -- @license MIT
@@ -135,7 +135,7 @@ local _ENV = M
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '0.3.20b'
+VERSION = '1.0.0'
 
 
 -- Operating system
