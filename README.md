@@ -55,7 +55,7 @@ repository to wherever your operating system searches for manual pages
 
 See the [manual](man/pandoc-zotxt.lua.md), the
 [source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
-and the [source](pandoc-zotxt.lua) for details.
+and the [source code](pandoc-zotxt.lua) itself for details.
 
 
 ## Testing

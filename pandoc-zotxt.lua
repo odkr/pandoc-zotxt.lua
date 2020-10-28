@@ -163,9 +163,9 @@ ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
 --
 -- @table ZOTXT_KEYTYPES
 ZOTXT_KEYTYPES = {
-	'easykey',         -- zotxt easy citekey
-	'betterbibtexkey', -- Better BibTeX citation key
-	'key'              -- Zotero item ID
+    'easykey',         -- zotxt easy citekey
+    'betterbibtexkey', -- Better BibTeX citation key
+    'key'              -- Zotero item ID
 }
 
 
@@ -331,7 +331,7 @@ do
     -- @treturn[1] string The data.
     -- @treturn[2] nil `nil` if no data could be retrieved. But only if you
     --  are using Pandoc v2.10 or later. Otherwise an error is raised.
-    -- @treturn[2] An error message.
+    -- @treturn[2] string An error message.
     -- @treturn[2] userdata A pandoc error value.
     -- @raise An error if no data can be retrieved. But only if you are *not*
     --  using Pandoc v2.10 or later. This error cannot be caught.
@@ -532,16 +532,16 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam {string,...} citekeys The citation keys of the sources to add,
---  e.g., 'name:2019word', 'name2019WordWordWord'.
+-- @tparam {string,...} citekeys The list of the citation keys of the sources
+--  that should be added, e.g., `{'name:2019word', 'name2019WordWordWord'}`.
 -- @tparam string fname The filename of the bibliography.
 -- @treturn[1] bool `true` if the bibliography file was updated
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
--- @treturn[2] string An error message.
--- @treturn[2] number An error number.
+-- @treturn[2] string An error message, if applicable.
+-- @treturn[2] number An error number, if applicable.
 --  Positive numbers are OS error numbers,
---  a negative number indicates that Zotero is not running.
+--  a negative number indicates that no data could be retrieved.
 -- @raise See `get_source_json`.
 function update_bibliography (citekeys, fname)
     if #citekeys == 0 then return true end
@@ -587,7 +587,7 @@ end
 --  `bibliography` added if needed.
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
--- @treturn[2] string An error message.
+-- @treturn[2] string An error message, if applicable.
 -- @raise See `get_source_json`.
 function add_bibliography (citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
@@ -644,7 +644,7 @@ end
 -- MAIN
 -- ====
 
---- Collects sources and adds bibliographic data to document.
+--- Collects sources and adds bibliographic data to a document.
 --
 -- Prints messages to STDERR if errors occur.
 --
