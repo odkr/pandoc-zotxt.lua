@@ -622,7 +622,7 @@ end
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `references` added if needed.
--- @treturn[2] nil `nil` if no sources were found.
+-- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
 -- @raise See `get_source_json`.
 function add_references (citekeys, meta)
