@@ -28,7 +28,7 @@ You use **pandoc-zotxt.lua** **at your own risk**. You have been warned.
 4. Move the file **pandoc-zotxt.lua** from the repository directory
    up into the `filters` directory.
 
-If you are using a POSIX-compliant ssystem and have
+If you are using a POSIX-compliant system and have
 [curl](https://curl.haxx.se/) or
 [wget](https://www.gnu.org/software/wget/), you can
 install **pandoc-zotxt.lua** by copy-pasting the
