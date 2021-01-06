@@ -18,8 +18,8 @@ Cite your sources using \[dq]easy citekeys\[dq] (provided by zotxt) or
 \[dq]Better BibTeX Citation Keys\[dq] (provided by Better BibTeX for
 Zotero).
 Then tell \f[B]pandoc\f[R] to filter your document through
-\f[B]pandoc-zotxt.lua\f[R] while Zotero is running and before processing
-citations.
+\f[B]pandoc-zotxt.lua\f[R] before processing citations; Zotero must be
+running.
 That\[aq]s all there is to it.
 .SH BIBLIOGRAPHY FILES
 .PP
@@ -35,8 +35,10 @@ It will also add that file to the document\[aq]s \[dq]bibliography\[dq]
 metadata field, so that \f[B]pandoc\f[R] picks up those sources.
 The biblography is stored as a JSON file, so the filename must end with
 \[dq].json\[dq].
-You can safely set \[dq]zotero-bibliography\[dq] \f[I]and\f[R]
+You can safely set \[dq]zotero-bibliography\[dq] and
 \[dq]bibliography\[dq] at the same time.
+But you will need to make sure that citation keys are unique accross
+files.
 .PP
 \f[B]pandoc-zotxt.lua\f[R] interprets relative filenames as relative to
 the directory of the first input file that you pass to \f[B]pandoc\f[R]
@@ -109,7 +111,12 @@ You do so by passing \f[B]--request-header\f[R]
 \f[I]Zotero-Allowed-Request:X\f[R].
 .SH CAVEATS
 .PP
-\f[B]pandoc-zotxt.lua\f[R] is Unicode-agnostic.
+\f[B]pandoc-zotxt.lua\f[R]
+.IP \[bu] 2
+is Unicode-agnostic.
+.IP \[bu] 2
+cannot check whether you redefine a citation key if you use additional
+bibliography files.
 .SH SEE ALSO
 .IP \[bu] 2
 zotxt (https://github.com/egh/zotxt)

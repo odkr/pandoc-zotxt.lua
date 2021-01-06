@@ -8,6 +8,6 @@ It requires zotxt.
 
 See <https://github.com/odkr/pandoc-zotxt.lua> for details.]]
 file = 'pandoc-zotxt.lua'
+format = 'markdown'
 readme = 'README.md'
-format = 'discount'
 dir = 'docs'

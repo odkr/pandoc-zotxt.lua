@@ -55,39 +55,44 @@
 
 <p> <strong>pandoc</strong> <strong>-L</strong> <em>pandoc-zotxt.lua</em> <strong>-C</strong></p>
 
+
 <h2> DESCRIPTION</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and adds them
- either to a document&rsquo;s &ldquo;references&rdquo; metadata field or to a bibliography file,
+ either to a document's "references" metadata field or to a bibliography file,
  where <strong>pandoc</strong> can pick them up.</p>
-<p> Cite your sources using &ldquo;easy citekeys&rdquo; (provided by zotxt) or &ldquo;Better BibTeX
- Citation Keys&rdquo; (provided by Better BibTeX for Zotero). Then tell <strong>pandoc</strong> to
- filter your document through <strong>pandoc-zotxt.lua</strong> while Zotero is running
- and before processing citations. That&rsquo;s all there is to it.</p>
+<p> Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
+ Citation Keys" (provided by Better BibTeX for Zotero). Then tell <strong>pandoc</strong> to
+ filter your document through <strong>pandoc-zotxt.lua</strong> before processing citations;
+ Zotero must be running. That's all there is to it.</p>
+
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> can also add sources to a bibliography file, rather
- than the &ldquo;references&rdquo; metadata field. This speeds up subsequent runs of
+ than the "references" metadata field. This speeds up subsequent runs of
  <strong>pandoc-zotxt.lua</strong> for the same document, because <strong>pandoc-zotxt.lua</strong>
  will only fetch those sources from Zotero that are not yet in that file.
- Simply set the &ldquo;zotero-bibliography&rdquo; metadata field to a filename.
+ Simply set the "zotero-bibliography" metadata field to a filename.
  <strong>pandoc-zotxt.lua</strong> will then add sources to that file. It will also add
- that file to the document&rsquo;s &ldquo;bibliography&rdquo; metadata field, so that
+ that file to the document's "bibliography" metadata field, so that
  <strong>pandoc</strong> picks up those sources. The biblography is stored as a JSON
- file, so the filename must end with &ldquo;.json&rdquo;. You can safely set
- &ldquo;zotero-bibliography&rdquo; <em>and</em> &ldquo;bibliography&rdquo; at the same time.</p>
+ file, so the filename must end with ".json". You can safely set
+ "zotero-bibliography" and "bibliography" at the same time. But you
+ will need to make sure that citation keys are unique accross files.</p>
 
 <p> <strong>pandoc-zotxt.lua</strong> interprets relative filenames as relative to the
  directory of the first input file that you pass to <strong>pandoc</strong> or, if you
  do not pass any input file, as relative to the current working directory.</p>
 
 <p> Note: <strong>pandoc-zotxt.lua</strong> only ever adds sources to the bibliography file.
- It doesn&rsquo;t update or delete them. If you want to update the sources in your
+ It doesn't update or delete them. If you want to update the sources in your
  bibliography file, delete it. <strong>pandoc-zotxt.lua</strong> will then regenerate
  it from scratch.</p>
 
+
 <h2> EXAMPLES</h2>
+
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
@@ -95,11 +100,11 @@ See @crenshaw1989DemarginalizingIntersectionRace <span class="keyword">for</span
 EOF
 </pre>
 
-
 <p> This instructs Pandoc to filter the input through <strong>pandoc-zotxt.lua</strong>,
  which then looks up the bibligraphic data of the source with the citation
- key &ldquo;crenshaw1989DemarginalizingIntersectionRace&rdquo; in Zotero before Pandoc
+ key "crenshaw1989DemarginalizingIntersectionRace" in Zotero before Pandoc
  processes citations.</p>
+
 
 <pre>
 cat &lt;&lt;EOF &gt;document.md
@@ -111,42 +116,49 @@ EOF
 pandoc -L pandoc-zotxt.lua -C document.md
 </pre>
 
-
 <p> This instructs <strong>pandoc-zotxt.lua</strong> to store bibliographic data in a file
- named &ldquo;bibliography.json&rdquo; and to add that file to the metadata field
- &ldquo;bibliography&rdquo;, so that Pandoc picks it up. &ldquo;bibliography.json&rdquo; is placed in
- the same directory as &ldquo;document.md&rdquo;, since &ldquo;document.md&rdquo; is the first input
- file given. The next time you process &ldquo;document.md&rdquo;, <strong>pandoc-zotxt.lua</strong> will
- <em>not</em> look up  &ldquo;crenshaw1989DemarginalizingIntersectionRace&rdquo; in Zotero, since
- &ldquo;bibliography.json&rdquo; already contains data for that source.</p>
+ named "bibliography.json" and to add that file to the metadata field
+ "bibliography", so that Pandoc picks it up. "bibliography.json" is placed in
+ the same directory as "document.md", since "document.md" is the first input
+ file given. The next time you process "document.md", <strong>pandoc-zotxt.lua</strong> will
+ <em>not</em> look up  "crenshaw1989DemarginalizingIntersectionRace" in Zotero, since
+ "bibliography.json" already contains data for that source.</p>
+
 
 <h2> KNOWN ISSUES</h2>
 
 <p> Zotero, from v5.0.71 onwards, does not allow browsers to access its
- interface. It defines &ldquo;browser&rdquo; as any user agent that sets the &ldquo;User
- Agent&rdquo; HTTP header to a string that starts with &ldquo;Mozilla/&rdquo;. However,
+ interface. It defines "browser" as any user agent that sets the "User
+ Agent" HTTP header to a string that starts with "Mozilla/". However,
  Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user
- agents that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does
+ agents that do not set the "User Agent" HTTP header. And <strong>pandoc</strong> does
  not. As a consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these
  versions of Zotero, that is, unless you tell <strong>pandoc</strong> to set that header.
  If you cannot upgrade to a more recent version of Zotero, you can make
- <strong>pandoc</strong> set that header by passing, for instance, <strong>&ndash;request-header</strong>
- <em>User-Agent:Pandoc/2</em>. If you must set the &ldquo;User Agent&rdquo; HTTP header to a
- string that starts with &ldquo;Mozilla/&rdquo;, you can still get <strong>pandoc</strong> to connect
- to Zotero by setting the HTTP header &ldquo;Zotero-Allowed-Request&rdquo;. You do so by
- passing <strong>&ndash;request-header</strong> <em>Zotero-Allowed-Request:X</em>.</p>
+ <strong>pandoc</strong> set that header by passing, for instance, <strong>--request-header</strong>
+ <em>User-Agent:Pandoc/2</em>. If you must set the "User Agent" HTTP header to a
+ string that starts with "Mozilla/", you can still get <strong>pandoc</strong> to connect
+ to Zotero by setting the HTTP header "Zotero-Allowed-Request". You do so by
+ passing <strong>--request-header</strong> <em>Zotero-Allowed-Request:X</em>.</p>
+
 
 <h2> CAVEATS</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
+<p> <strong>pandoc-zotxt.lua</strong></p>
+
+<ul>
+    <li>is Unicode-agnostic.</li>
+    <li>cannot check whether you redefine a citation key if
+    you use additional bibliography files.</li>
+</ul>
+
 
 <h2> SEE ALSO</h2>
 
 <ul>
-<li><a href="https://github.com/egh/zotxt">zotxt</a></li>
-<li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
+    <li><a href="https://github.com/egh/zotxt">zotxt</a></li>
+    <li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
 </ul>
-
 
 <p> pandoc(1)</p>
     <h3>Info:</h3>
@@ -162,7 +174,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#split_path">split_path (path)</a></td>
-	<td class="summary">Splits a file&rsquo;s path into a directory and a filename part.</td>
+	<td class="summary">Splits a file's path into a directory and a filename part.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#warn">warn (msg, ...)</a></td>
@@ -174,7 +186,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_input_directory">get_input_directory ()</a></td>
-	<td class="summary">Returns the directory of the first input file or &lsquo;.&rsquo;.</td>
+	<td class="summary">Returns the directory of the first input file or '.'.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#read_json_file">read_json_file (fname)</a></td>
@@ -268,7 +280,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>split_path (path)</strong>
     </dt>
     <dd>
-    Splits a file&rsquo;s path into a directory and a filename part.
+    Splits a file's path into a directory and a filename part.
 
 
     <h3>Parameters:</h3>
@@ -283,13 +295,13 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <ol>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The file&rsquo;s path.</li>
+        The file's path.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         The file&rsquo;s name.</p>
+         The file's name.</p>
 
-<p> This function makes an educated guess given the string it&rsquo;s passed.
- It doesn&rsquo;t look at the filesystem. The guess is educated enough though.</li>
+<p> This function makes an educated guess given the string it's passed.
+ It doesn't look at the filesystem. The guess is educated enough though.</li>
     </ol>
 
 
@@ -301,9 +313,9 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>warn (msg, ...)</strong>
     </dt>
     <dd>
-    Prints warnings to STDERR.</p>
+    Prints warnings to STDERR. </p>
 
-<p> Prefixes messages with <a href="../index.html#NAME">NAME</a> and &ldquo;: &rdquo;.
+<p> Prefixes messages with <a href="../index.html#NAME">NAME</a> and ": ".
  Also appends <a href="../index.html#EOL">EOL</a>.
 
 
@@ -356,7 +368,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_input_directory ()</strong>
     </dt>
     <dd>
-    Returns the directory of the first input file or &lsquo;.&rsquo;.
+    Returns the directory of the first input file or '.'.
 
 
 
@@ -416,7 +428,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>write_json_file (data, fname)</strong>
     </dt>
     <dd>
-    Writes data to a file in JSON.</p>
+    Writes data to a file in JSON. </p>
 
 <p> It terminates files with <a href="../index.html#EOL">EOL</a>.
 
@@ -462,7 +474,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>read_url (url)</strong>
     </dt>
     <dd>
-    Retrieves data request from a URL via an HTTP GET request.</p>
+    Retrieves data request from a URL via an HTTP GET request. </p>
 
 <p> This is a function of its own only in order for the test scripts to
  be able to easily replace it with a function that redirects HTTP GET
@@ -509,7 +521,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>convert_numbers_to_strings (data)</strong>
     </dt>
     <dd>
-    Converts all numbers in a multi-dimensional table to strings.</p>
+    Converts all numbers in a multi-dimensional table to strings. </p>
 
 <p> Also converts floating point numbers to integers. This is needed
  because all numbers are floating point numbers in JSON, but some
@@ -538,7 +550,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source_json (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL JSON for a source.</p>
+    Retrieves bibliographic data in CSL JSON for a source. </p>
 
 <p> Tries different types of citation keys, starting with the last
  one that a lookup was successful for.
@@ -549,7 +561,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
         <li><span class="parameter">citekey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+  e.g., 'name:2019word', 'name2019TwoWords'.
         </li>
     </ul>
 
@@ -571,7 +583,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The type of error that occurred, where
   <code>read_err</code> means that no data could be read from zotxt, and
-  <code>no_array</code> that zotxt didn&rsquo;t respond with a JSON array,
+  <code>no_array</code> that zotxt didn't respond with a JSON array,
   which usually means that no record matches <code>citekey</code>.</li>
     </ol>
 
@@ -588,7 +600,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source_csl (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL for a source.</p>
+    Retrieves bibliographic data in CSL for a source. </p>
 
 <p> Parses JSON to Lua data types, but <em>not</em> to Pandoc data types.
  That is, the return value of this function can be passed to
@@ -602,7 +614,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
         <li><span class="parameter">citekey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+  e.g., 'name:2019word', 'name2019TwoWords'.
         </li>
     </ul>
 
@@ -616,7 +628,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the source wasn&rsquo;t found or an error occurred.</li>
+        <code>nil</code> if the source wasn't found or an error occurred.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
@@ -636,7 +648,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source.</p>
+    Retrieves bibliographic data for a source. </p>
 
 <p> Bibliography entries are different to references, because Pandoc,
  starting with v2.11, parses them differently. The return value
@@ -649,7 +661,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
         <li><span class="parameter">citekey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+  e.g., 'name:2019word', 'name2019TwoWords'.
         </li>
     </ul>
 
@@ -663,7 +675,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the source wasn&rsquo;t found or an error occurred.</li>
+        <code>nil</code> if the source wasn't found or an error occurred.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
@@ -710,7 +722,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>update_bibliography (citekeys, fname)</strong>
     </dt>
     <dd>
-    Adds sources to a bibliography file.</p>
+    Adds sources to a bibliography file. </p>
 
 <p> If a source is already in the bibliography file, the data of that source
  will <em>not</em> be updated in the file.</p>
@@ -764,7 +776,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>add_bibliography (citekeys, meta)</strong>
     </dt>
     <dd>
-    Adds sources to a bibliography file and that file to the metadata.</p>
+    Adds sources to a bibliography file and that file to the metadata. </p>
 
 <p> Behaves in the same way as <a href="../index.html#update_bibliography">update_bibliography</a>, but also adds the
  the given bibliography file to the metadata field <code>bibliography</code>.
@@ -813,14 +825,16 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>add_references (citekeys, meta)</strong>
     </dt>
     <dd>
-    <p>Adds sources to the <code>references</code> metadata field.</p>
+
+<p>Adds sources to the <code>references</code> metadata field. </p>
 
 <p> Prints an error message to STDERR for</p>
 
 <ul>
-<li>every source that cannot be found.</li>
-<li>every citation key that is defined more than once.</li>
+    <li>every source that cannot be found.</li>
+    <li>every citation key that is defined more than once.</li>
 </ul>
+
 
 
 
@@ -864,7 +878,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>main (doc)</strong>
     </dt>
     <dd>
-    Collects sources and adds bibliographic data to a document.</p>
+    Collects sources and adds bibliographic data to a document. </p>
 
 <p> Prints messages to STDERR if errors occur.</p>
 
@@ -907,7 +921,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>ZOTXT_KEYTYPES</strong>
     </dt>
     <dd>
-    Types of citation keys.</p>
+    Types of citation keys. </p>
 
 <p> See <a href="../index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
@@ -995,7 +1009,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>ZOTXT_BASE_URL</strong>
     </dt>
     <dd>
-    The URL to lookup citation data.</p>
+    The URL to lookup citation data. </p>
 
 <p> See <a href="../index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
@@ -1013,7 +1027,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-01-06 20:47:19 </i>
+<i style="float:right;">Last updated 2021-01-06 21:10:15 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

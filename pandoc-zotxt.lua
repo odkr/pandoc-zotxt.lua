@@ -15,23 +15,24 @@
 --
 -- Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
 -- Citation Keys" (provided by Better BibTeX for Zotero). Then tell **pandoc** to
--- filter your document through **pandoc-zotxt.lua** while Zotero is running
--- and before processing citations. That's all there is to it.
+-- filter your document through **pandoc-zotxt.lua** before processing citations;
+-- Zotero must be running. That's all there is to it.
 --
 --
 -- BIBLIOGRAPHY FILES
 -- ------------------
 --
--- **pandoc-zotxt.lua** can also add sources to a bibliography file, rather 
--- than the "references" metadata field. This speeds up subsequent runs of 
--- **pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua** 
--- will only fetch those sources from Zotero that are not yet in that file. 
--- Simply set the "zotero-bibliography" metadata field to a filename. 
+-- **pandoc-zotxt.lua** can also add sources to a bibliography file, rather
+-- than the "references" metadata field. This speeds up subsequent runs of
+-- **pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua**
+-- will only fetch those sources from Zotero that are not yet in that file.
+-- Simply set the "zotero-bibliography" metadata field to a filename.
 -- **pandoc-zotxt.lua** will then add sources to that file. It will also add
--- that file to the document's "bibliography" metadata field, so that 
--- **pandoc** picks up those sources. The biblography is stored as a JSON 
--- file, so the filename must end with ".json". You can safely set 
--- "zotero-bibliography" *and* "bibliography" at the same time.
+-- that file to the document's "bibliography" metadata field, so that
+-- **pandoc** picks up those sources. The biblography is stored as a JSON
+-- file, so the filename must end with ".json". You can safely set
+-- "zotero-bibliography" and "bibliography" at the same time. But you
+-- will need to make sure that citation keys are unique accross files.
 --
 -- **pandoc-zotxt.lua** interprets relative filenames as relative to the
 -- directory of the first input file that you pass to **pandoc** or, if you
@@ -46,11 +47,9 @@
 -- EXAMPLES
 -- --------
 --
---
 --      pandoc -L pandoc-zotxt.lua -C <<EOF
 --      See @crenshaw1989DemarginalizingIntersectionRace for details.
 --      EOF
---
 --
 -- This instructs Pandoc to filter the input through **pandoc-zotxt.lua**,
 -- which then looks up the bibligraphic data of the source with the citation
@@ -95,7 +94,11 @@
 -- CAVEATS
 -- -------
 --
--- **pandoc-zotxt.lua** is Unicode-agnostic.
+-- **pandoc-zotxt.lua**
+--
+-- * is Unicode-agnostic.
+-- * cannot check whether you redefine a citation key if
+--   you use additional bibliography files.
 --
 --
 -- SEE ALSO
