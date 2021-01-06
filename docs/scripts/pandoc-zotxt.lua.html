@@ -49,90 +49,106 @@
 <div id="content">
 
 <h1>Script <code>pandoc-zotxt.lua</code></h1>
-<p>pandoc-zotxt.lua - Looks up citations in Zotero and adds references.</p>
-<p>
-
+<p>pandoc-zotxt.lua - Looks up sources of citations in Zotero</p>
 
 <h2> SYNOPSIS</h2>
 
 <p> <strong>pandoc</strong> <strong>-L</strong> <em>pandoc-zotxt.lua</em> <strong>-C</strong></p>
 
-<p> <strong>pandoc</strong> <strong>-L</strong> <em>pandoc-zotxt.lua</em> <strong>-F</strong> <em>pandoc-citeproc</em></p>
-
-
 <h2> DESCRIPTION</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and adds
- them either to a document's <code>references</code> metadata field or to its
- bibliography, where <strong>pandoc</strong> can pick them up.</p>
-
-<p> You cite your sources using so-called "easy citekeys" (provided by zotxt)
- or "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
- Then, when running <strong>pandoc</strong>, you tell it to filter your document through
- <strong>pandoc-zotxt.lua</strong> by passing <strong>-L</strong> <em>pandoc-zotxt.lua</em>. That's all there
- is to it. You also have to tell <strong>pandoc</strong> to process citations, of course.
- (How you do so depends on your version of Pandoc. Since Pandoc v2.11, you
- do so by passing <strong>-C</strong>. Before Pandoc v2.11 you do so by passing <strong>-F</strong>
- <em>pandoc-citeproc</em>. Both, <strong>-C</strong> and <strong>-F</strong> <em>pandoc-citeproc</em>, go after
- <strong>-L</strong> <em>pandoc-zotxt.lua</em>.)</p>
-
+<p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and adds them
+ either to a document&rsquo;s &ldquo;references&rdquo; metadata field or to a bibliography file,
+ where <strong>pandoc</strong> can pick them up.</p>
+<p> Cite your sources using &ldquo;easy citekeys&rdquo; (provided by zotxt) or &ldquo;Better BibTeX
+ Citation Keys&rdquo; (provided by Better BibTeX for Zotero). Then tell <strong>pandoc</strong> to
+ filter your document through <strong>pandoc-zotxt.lua</strong> while Zotero is running
+ and before processing citations. That&rsquo;s all there is to it.</p>
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
-<p> You can also use <strong>pandoc-zotxt.lua</strong> to manage a bibliography file. This
- speeds up subsequent runs of <strong>pandoc-zotxt.lua</strong> for the same document,
- because <strong>pandoc-zotxt.lua</strong> will only fetch sources from Zotero that
- aren't yet in that file. Simply set the <code>zotero-bibliography</code> metadata
- field to a filename. <strong>pandoc-zotxt.lua</strong> will then add sources to that
- file, rather than to the <code>references</code> metadata field. It will also add that
- file to the document's <code>bibliography</code> metadata field, so that <strong>pandoc</strong>
- picks up those sources. The biblography is stored as a JSON file, so the
- filename must end with ".json". You can safely set <code>zotero-bibliography</code>
- <em>and</em> <code>bibliography</code> at the same time.</p>
+<p> <strong>pandoc-zotxt.lua</strong> can also add sources to a bibliography file, rather
+ than the &ldquo;references&rdquo; metadata field. This speeds up subsequent runs of
+ <strong>pandoc-zotxt.lua</strong> for the same document, because <strong>pandoc-zotxt.lua</strong>
+ will only fetch those sources from Zotero that are not yet in that file.
+ Simply set the &ldquo;zotero-bibliography&rdquo; metadata field to a filename.
+ <strong>pandoc-zotxt.lua</strong> will then add sources to that file. It will also add
+ that file to the document&rsquo;s &ldquo;bibliography&rdquo; metadata field, so that
+ <strong>pandoc</strong> picks up those sources. The biblography is stored as a JSON
+ file, so the filename must end with &ldquo;.json&rdquo;. You can safely set
+ &ldquo;zotero-bibliography&rdquo; <em>and</em> &ldquo;bibliography&rdquo; at the same time.</p>
 
 <p> <strong>pandoc-zotxt.lua</strong> interprets relative filenames as relative to the
  directory of the first input file that you pass to <strong>pandoc</strong> or, if you
- don't pass any input file, as relative to the current working directory.</p>
+ do not pass any input file, as relative to the current working directory.</p>
 
-<p> Note, <strong>pandoc-zotxt.lua</strong> only ever <em>adds</em> sources to bibliography files.
- It doesn't update or delete them. If you want to update the sources in your
+<p> Note: <strong>pandoc-zotxt.lua</strong> only ever adds sources to the bibliography file.
+ It doesn&rsquo;t update or delete them. If you want to update the sources in your
  bibliography file, delete it. <strong>pandoc-zotxt.lua</strong> will then regenerate
  it from scratch.</p>
 
+<h2> EXAMPLES</h2>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+See @crenshaw1989DemarginalizingIntersectionRace <span class="keyword">for</span> details.
+EOF
+</pre>
+
+
+<p> This instructs Pandoc to filter the input through <strong>pandoc-zotxt.lua</strong>,
+ which then looks up the bibligraphic data of the source with the citation
+ key &ldquo;crenshaw1989DemarginalizingIntersectionRace&rdquo; in Zotero before Pandoc
+ processes citations.</p>
+
+<pre>
+cat &lt;&lt;EOF &gt;document.md
+<span class="comment">---
+</span>zotero-bibliography: bibliography.json
+<span class="comment">---
+</span>See @crenshaw1989DemarginalizingIntersectionRace <span class="keyword">for</span> details.
+EOF
+pandoc -L pandoc-zotxt.lua -C document.md
+</pre>
+
+
+<p> This instructs <strong>pandoc-zotxt.lua</strong> to store bibliographic data in a file
+ named &ldquo;bibliography.json&rdquo; and to add that file to the metadata field
+ &ldquo;bibliography&rdquo;, so that Pandoc picks it up. &ldquo;bibliography.json&rdquo; is placed in
+ the same directory as &ldquo;document.md&rdquo;, since &ldquo;document.md&rdquo; is the first input
+ file given. The next time you process &ldquo;document.md&rdquo;, <strong>pandoc-zotxt.lua</strong> will
+ <em>not</em> look up  &ldquo;crenshaw1989DemarginalizingIntersectionRace&rdquo; in Zotero, since
+ &ldquo;bibliography.json&rdquo; already contains data for that source.</p>
 
 <h2> KNOWN ISSUES</h2>
 
-<p> Zotero, from v5.0.71 onwards, doesn't allow browsers to access its
- interface. It defines "browser" as any user agent that sets the "User
- Agent" HTTP header to a string that starts with "Mozilla/".</p>
-
-<p> However, Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user
- agents that don't set the "User Agent" HTTP header. And <strong>pandoc</strong> doesn't.
- As a consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these
- versions of Zotero, that is, unless you tell <strong>pandoc</strong> to set that header.</p>
-
-<p> If you cannot upgrade to a more recent version of Zotero, you can make
- <strong>pandoc</strong> set that header by passing, for instance, <strong>--request-header</strong>
- <em>User-Agent:Pandoc/2</em>. If you must set the "User Agent" HTTP header to a
- string that starts with "Mozilla/", you can still get <strong>pandoc</strong> to connect
- to Zotero by setting the HTTP header "Zotero-Allowed-Request". You do so by
- passing <strong>--request-header</strong> <em>Zotero-Allowed-Request:X</em>.</p>
-
+<p> Zotero, from v5.0.71 onwards, does not allow browsers to access its
+ interface. It defines &ldquo;browser&rdquo; as any user agent that sets the &ldquo;User
+ Agent&rdquo; HTTP header to a string that starts with &ldquo;Mozilla/&rdquo;. However,
+ Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user
+ agents that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does
+ not. As a consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these
+ versions of Zotero, that is, unless you tell <strong>pandoc</strong> to set that header.
+ If you cannot upgrade to a more recent version of Zotero, you can make
+ <strong>pandoc</strong> set that header by passing, for instance, <strong>&ndash;request-header</strong>
+ <em>User-Agent:Pandoc/2</em>. If you must set the &ldquo;User Agent&rdquo; HTTP header to a
+ string that starts with &ldquo;Mozilla/&rdquo;, you can still get <strong>pandoc</strong> to connect
+ to Zotero by setting the HTTP header &ldquo;Zotero-Allowed-Request&rdquo;. You do so by
+ passing <strong>&ndash;request-header</strong> <em>Zotero-Allowed-Request:X</em>.</p>
 
 <h2> CAVEATS</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
 
-
 <h2> SEE ALSO</h2>
 
 <ul>
-    <li><a href="https://github.com/egh/zotxt">zotxt</a></li>
-    <li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
+<li><a href="https://github.com/egh/zotxt">zotxt</a></li>
+<li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
 </ul>
 
-<p> pandoc(1), pandoc-citeproc(1)</p>
-</p>
+
+<p> pandoc(1)</p>
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020 Odin Kroeger</li>
@@ -146,7 +162,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#split_path">split_path (path)</a></td>
-	<td class="summary">Splits a file's path into a directory and a filename part.</td>
+	<td class="summary">Splits a file&rsquo;s path into a directory and a filename part.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#warn">warn (msg, ...)</a></td>
@@ -158,7 +174,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_input_directory">get_input_directory ()</a></td>
-	<td class="summary">Returns the directory of the first input file or '.'.</td>
+	<td class="summary">Returns the directory of the first input file or &lsquo;.&rsquo;.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#read_json_file">read_json_file (fname)</a></td>
@@ -170,7 +186,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#read_url">read_url (url)</a></td>
-	<td class="summary">Retrieves data via an HTTP GET request from a URL.</td>
+	<td class="summary">Retrieves data request from a URL via an HTTP GET request.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#convert_numbers_to_strings">convert_numbers_to_strings (data)</a></td>
@@ -194,15 +210,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#update_bibliography">update_bibliography (citekeys, fname)</a></td>
-	<td class="summary">Adds cited sources to a bibliography file.</td>
+	<td class="summary">Adds sources to a bibliography file.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#add_bibliography">add_bibliography (citekeys, meta)</a></td>
-	<td class="summary">Adds sources to a bibliography.</td>
+	<td class="summary">Adds sources to a bibliography file and that file to the metadata.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#add_references">add_references (citekeys, meta)</a></td>
-	<td class="summary">Adds sources to metadata block of a document.</td>
+	<td class="summary">Adds sources to the <code>references</code> metadata field.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#main">main (doc)</a></td>
@@ -252,13 +268,13 @@
     <strong>split_path (path)</strong>
     </dt>
     <dd>
-    Splits a file's path into a directory and a filename part.
+    Splits a file&rsquo;s path into a directory and a filename part.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">path</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The path to the file.
         </li>
     </ul>
@@ -266,14 +282,14 @@
     <h3>Returns:</h3>
     <ol>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
-        The file's path.</li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The file&rsquo;s path.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
-         The file's name.</p>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         The file&rsquo;s name.</p>
 
-<p> This function makes an educated guess given the string it's passed.
- It doesn't look at the filesystem. The guess is educated enough though.</li>
+<p> This function makes an educated guess given the string it&rsquo;s passed.
+ It doesn&rsquo;t look at the filesystem. The guess is educated enough though.</li>
     </ol>
 
 
@@ -285,21 +301,21 @@
     <strong>warn (msg, ...)</strong>
     </dt>
     <dd>
-    Prints warnings to STDERR. </p>
+    Prints warnings to STDERR.</p>
 
-<p> Prefixes messages with <a href="../index.html#NAME">NAME</a> and ": ".
+<p> Prefixes messages with <a href="../index.html#NAME">NAME</a> and &ldquo;: &rdquo;.
  Also appends <a href="../index.html#EOL">EOL</a>.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">msg</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A message to write to STDERR.
         </li>
         <li><span class="parameter">...</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
-         Arguments (think <a href="https://www.lua.org/manual/5.3/manual.html#pdf-string.format">string.format</a>) for <code>msg</code>.
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Arguments (think <a href="https://www.lua.org/manual/5.1/manual.html#pdf-string.format">string.format</a>) for <code>msg</code>.
         </li>
     </ul>
 
@@ -319,7 +335,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">path</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A path.
         </li>
     </ul>
@@ -340,14 +356,14 @@
     <strong>get_input_directory ()</strong>
     </dt>
     <dd>
-    Returns the directory of the first input file or '.'.
+    Returns the directory of the first input file or &lsquo;.&rsquo;.
 
 
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         The directory the first input file is in.
     </ol>
 
@@ -366,7 +382,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">fname</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          Name of the file.
         </li>
     </ul>
@@ -382,7 +398,7 @@
            <span class="types"><span class="type">nil</span></span>
         <code>nil</code> if an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
@@ -400,7 +416,7 @@
     <strong>write_json_file (data, fname)</strong>
     </dt>
     <dd>
-    Writes data to a file in JSON. </p>
+    Writes data to a file in JSON.</p>
 
 <p> It terminates files with <a href="../index.html#EOL">EOL</a>.
 
@@ -411,7 +427,7 @@
          Data.
         </li>
         <li><span class="parameter">fname</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          Name of the file.
         </li>
     </ul>
@@ -428,7 +444,7 @@
            <span class="types"><span class="type">nil</span></span>
         <code>nil</code> if an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
@@ -446,7 +462,7 @@
     <strong>read_url (url)</strong>
     </dt>
     <dd>
-    Retrieves data via an HTTP GET request from a URL. </p>
+    Retrieves data request from a URL via an HTTP GET request.</p>
 
 <p> This is a function of its own only in order for the test scripts to
  be able to easily replace it with a function that redirects HTTP GET
@@ -456,7 +472,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">url</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The URL.
         </li>
     </ul>
@@ -464,7 +480,7 @@
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         The data.
     </ol>
      <h3>Or</h3>
@@ -474,7 +490,7 @@
         <code>nil</code> if no data could be retrieved. But only if you
   are using Pandoc v2.10 or later. Otherwise an error is raised.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
            <span class="types"><span class="type">userdata</span></span>
@@ -493,7 +509,7 @@
     <strong>convert_numbers_to_strings (data)</strong>
     </dt>
     <dd>
-    Converts all numbers in a multi-dimensional table to strings. </p>
+    Converts all numbers in a multi-dimensional table to strings.</p>
 
 <p> Also converts floating point numbers to integers. This is needed
  because all numbers are floating point numbers in JSON, but some
@@ -522,7 +538,7 @@
     <strong>get_source_json (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL JSON for a source. </p>
+    Retrieves bibliographic data in CSL JSON for a source.</p>
 
 <p> Tries different types of citation keys, starting with the last
  one that a lookup was successful for.
@@ -531,16 +547,16 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., 'name:2019word', 'name2019TwoWords'.
+  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         A CSL JSON string.
     </ol>
      <h3>Or</h3>
@@ -549,14 +565,14 @@
            <span class="types"><span class="type">nil</span></span>
         <code>nil</code> if an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The type of error that occurred, where
   <code>read_err</code> means that no data could be read from zotxt, and
-  <code>no_array</code> that zotxt didn't respond with a JSON array, which
-  usually means that no record matches <code>citekey</code>.</li>
+  <code>no_array</code> that zotxt didn&rsquo;t respond with a JSON array,
+  which usually means that no record matches <code>citekey</code>.</li>
     </ol>
 
     <h3>Raises:</h3>
@@ -572,7 +588,7 @@
     <strong>get_source_csl (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL for a source. </p>
+    Retrieves bibliographic data in CSL for a source.</p>
 
 <p> Parses JSON to Lua data types, but <em>not</em> to Pandoc data types.
  That is, the return value of this function can be passed to
@@ -584,28 +600,28 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., 'name:2019word', 'name2019TwoWords'.
+  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.6">table</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
         A CSL item.
     </ol>
      <h3>Or</h3>
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the source wasn't found or an error occurred.</li>
+        <code>nil</code> if the source wasn&rsquo;t found or an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         The type of that error. See <a href="../index.html#get_source_json">get_source_json</a>.</li>
     </ol>
 
@@ -620,7 +636,7 @@
     <strong>get_source (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source. </p>
+    Retrieves bibliographic data for a source.</p>
 
 <p> Bibliography entries are different to references, because Pandoc,
  starting with v2.11, parses them differently. The return value
@@ -631,25 +647,25 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
-  e.g., 'name:2019word', 'name2019TwoWords'.
+  e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.6">table</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
         Bibliographic data for that item.
     </ol>
      <h3>Or</h3>
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the source wasn't found or an error occurred.</li>
+        <code>nil</code> if the source wasn&rsquo;t found or an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
@@ -681,7 +697,7 @@
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">{string,...}</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
         A list of citation keys.
     </ol>
 
@@ -694,7 +710,10 @@
     <strong>update_bibliography (citekeys, fname)</strong>
     </dt>
     <dd>
-    Adds cited sources to a bibliography file. </p>
+    Adds sources to a bibliography file.</p>
+
+<p> If a source is already in the bibliography file, the data of that source
+ will <em>not</em> be updated in the file.</p>
 
 <p> Prints an error message to STDERR for every source that cannot be found.
 
@@ -702,13 +721,13 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">{string,...}</a></span>
-         The list of the citation keys of the sources
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         A list of citation keys of sources
   that should be added, e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
         </li>
         <li><span class="parameter">fname</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
-         The filename of the bibliography.
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         The name of the bibliography file.
         </li>
     </ul>
 
@@ -725,7 +744,7 @@
            <span class="types"><span class="type">nil</span></span>
         <code>nil</code> if an error occurrs.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message, if applicable.</li>
         <li>
            <span class="types"><span class="type">number</span></span>
@@ -745,21 +764,23 @@
     <strong>add_bibliography (citekeys, meta)</strong>
     </dt>
     <dd>
-    Adds sources to a bibliography. </p>
+    Adds sources to a bibliography file and that file to the metadata.</p>
 
-<p> Also adds that bibliography to the document's metadata.
- Prints an error message to STDERR for every source that cannot be found.
+<p> Behaves in the same way as <a href="../index.html#update_bibliography">update_bibliography</a>, but also adds the
+ the given bibliography file to the metadata field <code>bibliography</code>.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">{string,...}</a></span>
-         The citation keys of the sources to add.
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         A list of citation keys of the sources
+  that should be added, e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
         </li>
         <li><span class="parameter">meta</span>
             <span class="types"><span class="type">pandoc.Meta</span></span>
-         A metadata block.
+         A metadata block, with the field
+  <code>zotero-bibliography</code> set to the filename of the bibliography file.
         </li>
     </ul>
 
@@ -777,7 +798,7 @@
         <code>nil</code> if no sources were found,
   <code>zotero-bibliography</code> is not set, or an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message, if applicable.</li>
     </ol>
 
@@ -792,7 +813,7 @@
     <strong>add_references (citekeys, meta)</strong>
     </dt>
     <dd>
-    Adds sources to metadata block of a document. </p>
+    Adds sources to the <code>references</code> metadata field.</p>
 
 <p> Prints an error message to STDERR for every source that cannot be found.
 
@@ -800,7 +821,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">{string,...}</a></span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
          The citation keys of the sources to add.
         </li>
         <li><span class="parameter">meta</span>
@@ -813,8 +834,8 @@
     <ol>
 
            <span class="types"><span class="type">pandoc.Meta</span></span>
-        An updated metadata block, with the field
-  <code>references</code> added if needed.
+        An updated metadata block,
+  with the field <code>references</code> added if needed.
     </ol>
      <h3>Or</h3>
     <ol>
@@ -822,7 +843,7 @@
            <span class="types"><span class="type">nil</span></span>
         <code>nil</code> if no sources were found or an error occurred.</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.3/manual.html#6.4">string</a></span>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message, if applicable.</li>
     </ol>
 
@@ -837,11 +858,11 @@
     <strong>main (doc)</strong>
     </dt>
     <dd>
-    Collects sources and adds bibliographic data to a document. </p>
+    Collects sources and adds bibliographic data to a document.</p>
 
 <p> Prints messages to STDERR if errors occur.</p>
 
-<p> See the manual page for detais.
+<p> See the manual for detais.
 
 
     <h3>Parameters:</h3>
@@ -880,7 +901,7 @@
     <strong>ZOTXT_KEYTYPES</strong>
     </dt>
     <dd>
-    Types of citation keys. </p>
+    Types of citation keys.</p>
 
 <p> See <a href="../index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
@@ -968,7 +989,7 @@
     <strong>ZOTXT_BASE_URL</strong>
     </dt>
     <dd>
-    The URL to lookup citation data. </p>
+    The URL to lookup citation data.</p>
 
 <p> See <a href="../index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
@@ -986,7 +1007,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2020-10-28 23:47:41 </i>
+<i style="float:right;">Last updated 2021-01-06 20:08:08 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

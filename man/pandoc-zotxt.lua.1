@@ -17,9 +17,9 @@ or to a bibliography file, where \f[B]pandoc\f[R] can pick them up.
 Cite your sources using \[dq]easy citekeys\[dq] (provided by zotxt) or
 \[dq]Better BibTeX Citation Keys\[dq] (provided by Better BibTeX for
 Zotero).
-Tell \f[B]pandoc\f[R] to filter your document through
-\f[B]pandoc-zotxt.lua\f[R] before processing citations.
-Zotero must be running.
+Then tell \f[B]pandoc\f[R] to filter your document through
+\f[B]pandoc-zotxt.lua\f[R] while Zotero is running and before processing
+citations.
 That\[aq]s all there is to it.
 .SH BIBLIOGRAPHY FILES
 .PP
@@ -49,46 +49,25 @@ It doesn\[aq]t update or delete them.
 If you want to update the sources in your bibliography file, delete it.
 \f[B]pandoc-zotxt.lua\f[R] will then regenerate it from scratch.
 .SH EXAMPLES
-.SS Simple
 .IP
 .nf
 \f[C]
-pandoc -L pandoc-zotxt.lua -C -t plain <<EOF
----
-reference-section-title: Cited Works
----
+pandoc -L pandoc-zotxt.lua -C <<EOF
 See \[at]crenshaw1989DemarginalizingIntersectionRace for details.
 EOF
 \f[R]
 .fi
 .PP
-This tells Pandoc to filter the input through
+This instructs Pandoc to filter the input through
 \f[B]pandoc-zotxt.lua\f[R], which then looks up the bibligraphic data of
 the source with the citation key
 \[dq]crenshaw1989DemarginalizingIntersectionRace\[dq] in Zotero before
 Pandoc processes citations.
-.PP
-This outputs:
-.RS
-.PP
-See Crenshaw (1989) for details.
-.PP
-Cited Works
-.PP
-Crenshaw, Kimberl\['e] W.
-1989.
-\[lq]Demarginalizing the Intersection of Race and Sex: A Black Feminist
-Critique of Antidiscrimination Doctrine, Feminist Theory and Antiracist
-Politics.\[rq] University of Chicago Legal Forum, no.
-1: 139\[en]67.
-.RE
-.SS Using a bibliography file
 .IP
 .nf
 \f[C]
-cat <<EOF >>document.md
+cat <<EOF >document.md
 ---
-reference-section-title: Cited Works
 zotero-bibliography: bibliography.json
 ---
 See \[at]crenshaw1989DemarginalizingIntersectionRace for details.
@@ -97,17 +76,16 @@ pandoc -L pandoc-zotxt.lua -C document.md
 \f[R]
 .fi
 .PP
-This instructs \f[B]pandoc-zotxt.lua\f[R] to store the bibliographic
-data of Crenshaw\[aq]s paper in a file named \[dq]bibliography.json\[dq]
-and to add that file to the metadata field \[dq]bibliography\[dq], so
-that Pandoc picks it up.
+This instructs \f[B]pandoc-zotxt.lua\f[R] to store bibliographic data in
+a file named \[dq]bibliography.json\[dq] and to add that file to the
+metadata field \[dq]bibliography\[dq], so that Pandoc picks it up.
 \[dq]bibliography.json\[dq] is placed in the same directory as
 \[dq]document.md\[dq], since \[dq]document.md\[dq] is the first input
 file given.
-The next time you invoke this command, \f[B]pandoc-zotxt.lua\f[R] will
-\f[I]not\f[R] look up
+The next time you process \[dq]document.md\[dq],
+\f[B]pandoc-zotxt.lua\f[R] will \f[I]not\f[R] look up
 \[dq]crenshaw1989DemarginalizingIntersectionRace\[dq] in Zotero, since
-\[dq]bibliography.json\[dq] already contains the data for that source.
+\[dq]bibliography.json\[dq] already contains data for that source.
 .SH KNOWN ISSUES
 .PP
 Zotero, from v5.0.71 onwards, does not allow browsers to access its
