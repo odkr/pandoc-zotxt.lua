@@ -22,15 +22,15 @@
 -- BIBLIOGRAPHY FILES
 -- ------------------
 --
--- **pandoc-zotxt.lua** can also add sources to a bibliography file, rather 
--- than the "references" metadata field. This speeds up subsequent runs of 
--- **pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua** 
--- will only fetch those sources from Zotero that are not yet in that file. 
--- Simply set the "zotero-bibliography" metadata field to a filename. 
+-- **pandoc-zotxt.lua** can also add sources to a bibliography file, rather
+-- than the "references" metadata field. This speeds up subsequent runs of
+-- **pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua**
+-- will only fetch those sources from Zotero that are not yet in that file.
+-- Simply set the "zotero-bibliography" metadata field to a filename.
 -- **pandoc-zotxt.lua** will then add sources to that file. It will also add
--- that file to the document's "bibliography" metadata field, so that 
--- **pandoc** picks up those sources. The biblography is stored as a JSON 
--- file, so the filename must end with ".json". You can safely set 
+-- that file to the document's "bibliography" metadata field, so that
+-- **pandoc** picks up those sources. The biblography is stored as a JSON
+-- file, so the filename must end with ".json". You can safely set
 -- "zotero-bibliography" *and* "bibliography" at the same time.
 --
 -- **pandoc-zotxt.lua** interprets relative filenames as relative to the
@@ -66,7 +66,7 @@
 -- This outputs:
 --
 -- > See Crenshaw (1989) for details.
--- > 
+-- >
 -- > Cited Works
 -- >
 -- > Crenshaw, Kimberlé W. 1989. “Demarginalizing the Intersection of Race
@@ -94,7 +94,7 @@
 -- file to the metadata field "bibliography", so that Pandoc picks it up.
 -- "bibliography.json" is placed in the same directory as "document.md",
 -- since "document.md" is the first input file given. The next time you
--- invoke this command, **pandoc-zotxt.lua** will *not* look up 
+-- invoke this command, **pandoc-zotxt.lua** will *not* look up
 -- "crenshaw1989DemarginalizingIntersectionRace" in Zotero, since
 -- "bibliography.json" already contains the data for that source.
 --
@@ -106,7 +106,7 @@
 -- interface. It defines "browser" as any user agent that sets the "User
 -- Agent" HTTP header to a string that starts with "Mozilla/". However,
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user
--- agents that do not set the "User Agent" HTTP header. And **pandoc** does 
+-- agents that do not set the "User Agent" HTTP header. And **pandoc** does
 -- not. As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
 -- versions of Zotero, that is, unless you tell **pandoc** to set that header.
 -- If you cannot upgrade to a more recent version of Zotero, you can make
@@ -449,7 +449,7 @@ do
     -- @treturn[2] string An error message.
     -- @treturn[2] string The type of error that occurred, where
     --  `read_err` means that no data could be read from zotxt, and
-    --  `no_array` that zotxt didn't respond with a JSON array, 
+    --  `no_array` that zotxt didn't respond with a JSON array,
     --             which usually means that no record matches `citekey`.
     -- @raise An error if `citekey` is the empty string or
     --  if no data can be read from zotxt *and* you are *not*
@@ -624,7 +624,7 @@ function update_bibliography (citekeys, fname)
 end
 
 
---- Adds sources to a bibliography file *and* 
+--- Adds sources to a bibliography file *and*
 --  that file to the document's metadata.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
