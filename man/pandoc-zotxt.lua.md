@@ -19,44 +19,94 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-**pandoc-zotxt.lua** looks up sources of citations in Zotero and
-adds them either to a document's `references` metadata field or
-to a bibliography file, where **pandoc** can pick them up.
+**pandoc-zotxt.lua** looks up sources of citations in Zotero and adds them
+either to a document's "references" metadata field or to a bibliography file,
+where **pandoc** can pick them up.
 
-Cite your sources using so-called "easy citekeys" (provided by zotxt) or 
-"Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
-When running **pandoc**, tell it to filter your document through
-**pandoc-zotxt.lua** before processing citations.
-That's all there is to it.
-
-You do so by passing **-L** *pandoc-zotxt.lua* **-C** to **pandoc**
-(or **-L** *pandoc-zotxt.lua* **-F** *pandoc-citeproc* for Pandoc
-before v2.11). Note that **-L** *pandoc-zotxt.lua* goes before **-C**
-(or **-F** *pandoc-citeproc* respectively). 
+Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
+Citation Keys" (provided by Better BibTeX for Zotero). Tell **pandoc** to
+filter your document through **pandoc-zotxt.lua** before processing citations.
+Zotero must be running. That's all there is to it.
 
 
 BIBLIOGRAPHY FILES
 ==================
 
 **pandoc-zotxt.lua** can also add sources to a bibliography file, rather 
-than the `references` metadata field. This speeds up subsequent runs of 
+than the "references" metadata field. This speeds up subsequent runs of 
 **pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua** 
 will only fetch those sources from Zotero that are not yet in that file. 
-Simply set the `zotero-bibliography` metadata field to a filename. 
+Simply set the "zotero-bibliography" metadata field to a filename. 
 **pandoc-zotxt.lua** will then add sources to that file. It will also add
-that file to the document's `bibliography` metadata field, so that 
+that file to the document's "bibliography" metadata field, so that 
 **pandoc** picks up those sources. The biblography is stored as a JSON 
 file, so the filename must end with ".json". You can safely set 
-`zotero-bibliography` *and* `bibliography` at the same time.
+"zotero-bibliography" *and* "bibliography" at the same time.
 
 **pandoc-zotxt.lua** interprets relative filenames as relative to the
 directory of the first input file that you pass to **pandoc** or, if you
 do not pass any input file, as relative to the current working directory.
 
-Note, **pandoc-zotxt.lua** only ever adds sources to the bibliography file.
+Note: **pandoc-zotxt.lua** only ever adds sources to the bibliography file.
 It doesn't update or delete them. If you want to update the sources in your
 bibliography file, delete it. **pandoc-zotxt.lua** will then regenerate
 it from scratch.
+
+
+EXAMPLES
+========
+
+Simple
+------
+
+```
+pandoc -L pandoc-zotxt.lua -C -t plain <<EOF
+---
+reference-section-title: Cited Works
+---
+See @crenshaw1989DemarginalizingIntersectionRace for details.
+EOF
+```
+
+This tells Pandoc to filter the input through **pandoc-zotxt.lua**, which
+then looks up the bibligraphic data of the source with the citation key
+"crenshaw1989DemarginalizingIntersectionRace" in Zotero before Pandoc
+processes citations.
+
+This outputs:
+
+> See Crenshaw (1989) for details.
+> 
+> Cited Works
+>
+> Crenshaw, Kimberlé W. 1989. “Demarginalizing the Intersection of Race
+> and Sex: A Black Feminist Critique of Antidiscrimination Doctrine,
+> Feminist Theory and Antiracist Politics.” University of Chicago Legal
+> Forum, no. 1: 139–67.
+
+
+Using a bibliography file
+--------------------------
+
+```
+cat <<EOF >>document.md
+---
+reference-section-title: Cited Works
+zotero-bibliography: bibliography.json
+---
+See @crenshaw1989DemarginalizingIntersectionRace for details.
+EOF
+pandoc -L pandoc-zotxt.lua -C document.md
+```
+
+This instructs **pandoc-zotxt.lua** to store the bibliographic data of
+Crenshaw's paper in a file named "bibliography.json" and to add that
+file to the metadata field "bibliography", so that Pandoc picks it up.
+"bibliography.json" is placed in the same directory as "document.md",
+since "document.md" is the first input file given. The next time you
+invoke this command, **pandoc-zotxt.lua** will *not* look up 
+"crenshaw1989DemarginalizingIntersectionRace" in Zotero, since
+"bibliography.json" already contains the data for that source.
 
 
 KNOWN ISSUES
@@ -89,4 +139,4 @@ SEE ALSO
 * [zotxt](https://github.com/egh/zotxt)
 * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
 
-pandoc(1), pandoc-citeproc(1)
+pandoc(1)

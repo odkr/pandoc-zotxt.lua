@@ -22,7 +22,8 @@ PANDOC		?= pandoc
 # =======
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography
+		   test-zotero-id test-bibliography \
+		   test-example-simple test-example-bibliography
 
 SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua
 
@@ -41,25 +42,24 @@ install-luaunit:
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
 	$(RM) "$(TMP_DIR)"/*
-	cd -P "$(TMP_DIR)" || exit
 	cp "$(DATA_DIR)/bibliography.json" "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
-	$(PANDOC) --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
-		-f markdown -t plain -o /dev/null </dev/null
+	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
+		--from markdown --to plain -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
-	if $(PANDOC) --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
-		-f markdown -t plain /dev/null >/dev/null 2>&1; \
+	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
+		--from markdown --to plain /dev/null >/dev/null 2>&1; \
 	then \
-		$(PANDOC) --lua-filter "$(SCRIPT)" \
+		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
 			--filter pandoc-citeproc \
-			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
 		$(PANDOC) --lua-filter "$(SCRIPT)" \
 			--citeproc \
-			-o "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
