@@ -89,7 +89,7 @@ Using a bibliography file
 --------------------------
 
 ```sh
-cat <<EOF >>document.md
+cat <<EOF >document.md
 ---
 reference-section-title: Cited Works
 zotero-bibliography: bibliography.json
