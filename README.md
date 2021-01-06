@@ -18,7 +18,7 @@ under Windows, however.
 
 ## Installation
 
-You use **pandoc-zotxt.lua** **at your own risk**. You have been warned.
+You use **pandoc-zotxt.lua** at your own risk.
 
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
