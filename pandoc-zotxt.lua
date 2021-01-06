@@ -656,8 +656,8 @@ end
 function add_references (citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = pandoc.MetaList({}) end
-    for _, citekey in ipairs(citekeys) do
-        local ref, err, errtype = get_source(citekey)
+    for i = 1, #citekeys do
+        local ref, err, errtype = get_source(citekeys[i])
         if ref then
             table.insert(meta.references, ref)
         elseif errtype == 'read_err' then
