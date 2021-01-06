@@ -485,6 +485,8 @@ end
 do
     local pcall = pcall -- luacheck: ignore
     local read = pandoc.read
+    local MetaInlines = pandoc.MetaInlines
+    local Str = pandoc.Str
 
     ---  Retrieves bibliographic data for a source.
     --
@@ -506,7 +508,7 @@ do
         local ok, data = pcall(read, reply, 'csljson')
         if not ok then return nil, data end
         local ref = data.meta.references[1]
-        ref.id = citekey
+        ref.id = MetaInlines{Str(citekey)}
         return ref
     end
 
@@ -644,7 +646,10 @@ end
 
 --- Adds sources to the `references` metadata field.
 --
--- Prints an error message to STDERR for every source that cannot be found.
+-- Prints an error message to STDERR for
+--
+--  - every source that cannot be found.
+--  - every citation key that is defined more than once.
 --
 -- @tparam {string,...} citekeys The citation keys of the sources to add.
 -- @tparam pandoc.Meta meta A metadata block.
