@@ -24,9 +24,9 @@ either to a document's "references" metadata field or to a bibliography file,
 where **pandoc** can pick them up.
 
 Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
-Citation Keys" (provided by Better BibTeX for Zotero). Tell **pandoc** to
-filter your document through **pandoc-zotxt.lua** before processing citations.
-Zotero must be running. That's all there is to it.
+Citation Keys" (provided by Better BibTeX for Zotero). Then tell **pandoc** to
+filter your document through **pandoc-zotxt.lua** while Zotero is running
+and before processing citations. That's all there is to it.
 
 
 BIBLIOGRAPHY FILES
@@ -59,7 +59,7 @@ EXAMPLES
 Simple
 ------
 
-```
+```sh
 pandoc -L pandoc-zotxt.lua -C -t plain <<EOF
 ---
 reference-section-title: Cited Works
@@ -88,7 +88,7 @@ This outputs:
 Using a bibliography file
 --------------------------
 
-```
+```sh
 cat <<EOF >>document.md
 ---
 reference-section-title: Cited Works
