@@ -80,7 +80,7 @@
 -- interface. It defines "browser" as any user agent that sets the "User
 -- Agent" HTTP header to a string that starts with "Mozilla/". However,
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user
--- agents that do not set the "User Agent" HTTP header. And **pandoc** does 
+-- agents that do not set the "User Agent" HTTP header. And **pandoc** does
 -- not. As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
 -- versions of Zotero, that is, unless you tell **pandoc** to set that header.
 -- If you cannot upgrade to a more recent version of Zotero, you can make
@@ -178,12 +178,12 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 
 --- The URL to lookup citation data.
 --
--- See `get_source_json` and <https://github.com/egh/zotxt> for details.
+-- See `get_source_csljson` and <https://github.com/egh/zotxt> for details.
 ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
 
 --- Types of citation keys.
 --
--- See `get_source_json` and <https://github.com/egh/zotxt> for details.
+-- See `get_source_csljson` and <https://github.com/egh/zotxt> for details.
 --
 -- @table ZOTXT_KEYTYPES
 ZOTXT_KEYTYPES = {
@@ -213,7 +213,7 @@ do
 
     --- Splits a file's path into a directory and a filename part.
     --
-    -- @tparam string path The path to the file.
+    -- @string path The path to the file.
     -- @treturn string The file's path.
     -- @treturn string The file's name.
     --
@@ -252,8 +252,8 @@ local json = require 'lunajson'
 -- Prefixes messages with `NAME` and ": ".
 -- Also appends `EOL`.
 --
--- @tparam string msg A message to write to STDERR.
--- @tparam string ... Arguments (think `string.format`) for `msg`.
+-- @string msg A message to write to STDERR.
+-- @string ... Arguments (think `string.format`) for `msg`.
 function warn (msg, ...)
     local args = {...}
     if #args > 0 then msg = msg:format(table.unpack(args)) end
@@ -266,7 +266,7 @@ end
 
 --- Checks if a path is absolute.
 --
--- @tparam string path A path.
+-- @string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
 function is_path_absolute (path)
     if PATH_SEP == '\\' and path:match '^.:\\' then return true end
@@ -289,12 +289,11 @@ end
 
 --- Reads a JSON file.
 --
--- @tparam string fname Name of the file.
---
+-- @string fname Name of the file.
 -- @return[1] The parsed data.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
--- @treturn[2] number An error number.
+-- @treturn[2] int An error number.
 --  Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
@@ -316,11 +315,11 @@ end
 -- It terminates files with `EOL`.
 --
 -- @param data Data.
--- @tparam string fname Name of the file.
+-- @string fname Name of the file.
 -- @treturn[1] bool `true` if `data` was written to the file.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
--- @treturn[2] number An error number.
+-- @treturn[2] int An error number.
 --  Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function write_json_file (data, fname)
@@ -351,7 +350,7 @@ do
     -- be able to easily replace it with a function that redirects HTTP GET
     -- requests to canned responses.
     --
-    -- @tparam string url The URL.
+    -- @string url The URL.
     -- @treturn[1] string The data.
     -- @treturn[2] nil `nil` if no data could be retrieved. But only if you
     --  are using Pandoc v2.10 or later. Otherwise an error is raised.
@@ -419,9 +418,9 @@ do
     -- Tries different types of citation keys, starting with the last
     -- one that a lookup was successful for.
     --
-    -- @tparam string citekey The citation key of the source,
+    -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @tparam func parse A function takes a CSL JSON string and
+    -- @func parse A function takes a CSL JSON string and
     --  returns bibliophic data.
     -- @treturn[1] string A CSL JSON string.
     -- @treturn[2] nil `nil` if an error occurred.
@@ -458,11 +457,15 @@ do
     local pcall = pcall -- luacheck: ignore
     local decode = json.decode
 
+    --- Converts a CSL JSON string to a Lua data structure.
+    --
+    -- @string csljson A CSL JSON string.
+    -- @return A Lua data structure.
     local function parse (csljson)
         return convert_numbers_to_strings(decode(csljson)[1])
     end
 
-    ---  Retrieves bibliographic data for a source in CSL (high-level).
+    ---  Retrieves bibliographic data for a source as Lua data structure.
     --
     -- Parses JSON to Lua data types, but *not* to Pandoc data types.
     -- That is, the return value of this function can be passed to
@@ -470,13 +473,13 @@ do
     -- metadata field. (Unless you are using a version of Pandoc
     -- prior to v2.11.)
     --
-    -- @tparam string citekey The citation key of the source,
+    -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
-    -- @treturn[2] string The type of that error. See `get_source_json`.
-    -- @raise See `get_source_json`.
+    -- @treturn[2] string The type of that error. See `get_source_csljson`.
+    -- @raise See `get_source_csljson`.
     function get_source_csl (citekey)
         local ref, err, errtype = get_source_csljson(citekey, parse)
         if not ref then return nil, err, errtype end
@@ -492,24 +495,28 @@ do
     local MetaInlines = pandoc.MetaInlines
     local Str = pandoc.Str
 
+    --- Converts a CSL JSON string to Pandoc metadata data structure.
+    --
+    -- @string csljson A CSL JSON string.
+    -- @return A Pandoc metadata data structure.
     function parse (csljson)
         return read(csljson, 'csljson').meta.references[1]
     end
 
-    ---  Retrieves bibliographic data for a source (high-level).
+    ---  Retrieves bibliographic data for a source as Pandoc data structure.
     --
     -- Bibliography entries are different to references, because Pandoc,
     -- starting with v2.11, parses them differently. The return value
     -- of this function can be used in the `references` metadata field.
     -- (Regardless of what version of Pandoc you use.)
     --
-    -- @tparam string citekey The citation key of the source,
+    -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table Bibliographic data for that item.
     -- @treturn[2] nil `nil` if the source wasn't found or an error occurred.
     -- @treturn[2] string An error message.
-    -- @treturn[2] number The type of that error. See `get_source_json`.
-    -- @raise See `get_source_json`.
+    -- @treturn[2] string The type of that error. See `get_source_csljson`.
+    -- @raise See `get_source_csljson`.
     function get_source (citekey)
         local ref, err, errtype = get_source_csljson(citekey, parse)
         if not ref then return nil, err, errtype end
@@ -567,15 +574,15 @@ end
 --
 -- @tparam {string,...} citekeys A list of citation keys of sources
 --  that should be added, e.g., `{'name:2019word', 'name2019WordWordWord'}`.
--- @tparam string fname The name of the bibliography file.
+-- @string fname The name of the bibliography file.
 -- @treturn[1] bool `true` if the bibliography file was updated
 --  or no update was needed.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message, if applicable.
--- @treturn[2] number An error number, if applicable.
+-- @treturn[2] int An error number, if applicable.
 --  Positive numbers are OS error numbers,
 --  a negative number indicates that no data could be retrieved.
--- @raise See `get_source_json`.
+-- @raise See `get_source_csljson`.
 function update_bibliography (citekeys, fname)
     if #citekeys == 0 then return true end
     local refs, err, errno = read_json_file(fname)
@@ -623,7 +630,7 @@ end
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `get_source_json`.
+-- @raise See `get_source_csljson`.
 function add_bibliography (citekeys, meta)
     if not #citekeys or not meta['zotero-bibliography'] then return end
     local stringify = pandoc.utils.stringify
@@ -662,7 +669,7 @@ end
 --  with the field `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `get_source_json`.
+-- @raise See `get_source_csljson`.
 function add_references (citekeys, meta)
     if #citekeys == 0 then return end
     if not meta.references then meta.references = pandoc.MetaList({}) end
@@ -708,7 +715,7 @@ end
 -- @tparam pandoc.Pandoc doc A document.
 -- @treturn[1] pandoc.Pandoc `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise See `get_source_json`.
+-- @raise See `get_source_csljson`.
 function main (doc)
     local citekeys = get_citekeys(doc)
     if #citekeys == 0 then return nil end
