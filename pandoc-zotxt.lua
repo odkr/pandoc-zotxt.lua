@@ -124,7 +124,6 @@
 local M = {}
 
 local assert = assert
-local ipairs = ipairs
 local pairs = pairs
 local pcall = pcall
 local require = require
@@ -415,41 +414,42 @@ do
     local base_url = ZOTXT_BASE_URL
     local keytypes = ZOTXT_KEYTYPES
 
-    ---  Retrieves bibliographic data in CSL JSON for a source.
+    ---  Retrieves bibliographic data for a source (low-level).
     --
     -- Tries different types of citation keys, starting with the last
     -- one that a lookup was successful for.
     --
     -- @tparam string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @tparam func parse A function takes a CSL JSON string and
+    --  returns bibliophic data.
     -- @treturn[1] string A CSL JSON string.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] string The type of error that occurred, where
     --  `read_err` means that no data could be read from zotxt, and
-    --  `no_array` that zotxt didn't respond with a JSON array,
-    --  which usually means that no record matches `citekey`.
+    --  `no_match` that no meaningful data could be found for `citekey`.
     -- @raise An error if `citekey` is the empty string or
     --  if no data can be read from zotxt *and* you are *not*
     --  using Pandoc v2.10 or later. The latter error cannot be caught.
-    function get_source_json (citekey)
+    function get_source_csljson (citekey, parse)
         assert(citekey ~= '', 'Citation key: Is the empty string ("").')
-        local reply
         for i = 1, #keytypes do
-            local err, query_url, keytype
+            local query_url, keytype
             keytype = keytypes[i]
             query_url = concat({base_url, keytype, '=', citekey})
-            reply, err = read_url(query_url)
-            if not reply then return nil, err, 'read_err' end
-            if reply:match '^%s*%[' then
+            local response, err = read_url(query_url)
+            if not response then return nil, err, 'read_err' end
+            local ok, entry = pcall(parse, response)
+            if ok then
                 if i ~= 1 then
                     remove(keytypes, i)
                     insert(keytypes, 1, keytype)
                 end
-                return reply
+                return entry
             end
         end
-        return nil, reply, 'no_array'
+        return nil, citekey .. ': Not found.', 'no_match'
     end
 end
 
@@ -458,7 +458,11 @@ do
     local pcall = pcall -- luacheck: ignore
     local decode = json.decode
 
-    ---  Retrieves bibliographic data in CSL for a source.
+    local function parse (csljson)
+        return convert_numbers_to_strings(decode(csljson)[1])
+    end
+
+    ---  Retrieves bibliographic data for a source in CSL (high-level).
     --
     -- Parses JSON to Lua data types, but *not* to Pandoc data types.
     -- That is, the return value of this function can be passed to
@@ -474,13 +478,10 @@ do
     -- @treturn[2] string The type of that error. See `get_source_json`.
     -- @raise See `get_source_json`.
     function get_source_csl (citekey)
-        local reply, err, errtype = get_source_json(citekey)
-        if not reply then return nil, err, errtype end
-        local ok, data = pcall(decode, reply)
-        if not ok then return nil, reply end
-        local entry = convert_numbers_to_strings(data[1])
-        entry.id = citekey
-        return entry
+        local ref, err, errtype = get_source_csljson(citekey, parse)
+        if not ref then return nil, err, errtype end
+        ref.id = citekey
+        return ref
     end
 end
 
@@ -491,7 +492,11 @@ do
     local MetaInlines = pandoc.MetaInlines
     local Str = pandoc.Str
 
-    ---  Retrieves bibliographic data for a source.
+    function parse (csljson)
+        return read(csljson, 'csljson').meta.references[1]
+    end
+
+    ---  Retrieves bibliographic data for a source (high-level).
     --
     -- Bibliography entries are different to references, because Pandoc,
     -- starting with v2.11, parses them differently. The return value
@@ -506,11 +511,8 @@ do
     -- @treturn[2] number The type of that error. See `get_source_json`.
     -- @raise See `get_source_json`.
     function get_source (citekey)
-        local reply, err, errtype = get_source_json(citekey)
-        if not reply then return nil, err, errtype end
-        local ok, data = pcall(read, reply, 'csljson')
-        if not ok then return nil, data end
-        local ref = data.meta.references[1]
+        local ref, err, errtype = get_source_csljson(citekey, parse)
+        if not ref then return nil, err, errtype end
         ref.id = MetaInlines{Str(citekey)}
         return ref
     end
