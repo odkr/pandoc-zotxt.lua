@@ -124,6 +124,7 @@
 local M = {}
 
 local assert = assert
+local next = next
 local pairs = pairs
 local pcall = pcall
 local require = require
@@ -255,9 +256,7 @@ local json = require 'lunajson'
 -- @string msg A message to write to STDERR.
 -- @string ... Arguments (think `string.format`) for `msg`.
 function warn (msg, ...)
-    local args = {...}
-    if #args > 0 then msg = msg:format(table.unpack(args)) end
-    io.stderr:write(NAME, ': ', msg, EOL)
+    io.stderr:write(NAME, ': ', msg:format(...), EOL)
 end
 
 
@@ -505,7 +504,7 @@ do
     --
     -- @string csljson A CSL JSON string.
     -- @return A Pandoc metadata data structure.
-    function parse (csljson)
+    local function parse (csljson)
         return read(csljson, 'csljson').meta.references[1]
     end
 
@@ -546,28 +545,40 @@ end
 --- Collects the citation keys occurring in a document.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn {string,...} A list of citation keys.
+-- @treturn table A list of citation keys.
 function get_citekeys (doc)
-    local citekeys = {}
+    local ret = {}
     local filter = {
         Cite = function (cite)
             local citations = cite.citations
             for i = 1, #citations do
-                citekeys[citations[i].id] = true
+                local id = citations[i].id
+                ret[id] = true
             end
         end
     }
     for i = 1, #doc.blocks do
         pandoc.walk_block(doc.blocks[i], filter)
     end
+    return ret
+end
+
+function get_refs_citekeys (doc)
     local ret = {}
-    local n = 0
-    for k in pairs(citekeys) do
-        n = n + 1
-        ret[n] = k
+    if doc.meta then
+        local stringify = pandoc.utils.stringify
+        local references = doc.meta.references
+        if references then
+            for i = 1, #references do
+                local ref = references[i]
+                local id = stringify(ref.id)
+                ret[id] = true
+            end
+        end
     end
     return ret
 end
+-- TODO: Handle bibliographyfiles
 
 
 --- Adds sources to a bibliography file.
@@ -577,8 +588,8 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam {string,...} citekeys A list of citation keys of sources
---  that should be added, e.g., `{'name:2019word', 'name2019WordWordWord'}`.
+-- @tparam table citekeys Set of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @string fname The name of the bibliography file.
 -- @treturn[1] bool `true` if the bibliography file was updated
 --  or no update was needed.
@@ -589,7 +600,7 @@ end
 --  a negative number indicates that no data could be retrieved.
 -- @raise See `get_source_csljson`.
 function update_bibliography (citekeys, fname)
-    if #citekeys == 0 then return true end
+    if next(citekeys) == nil then return true end
     local refs, err, errno = read_json_file(fname)
     if not refs then
         if err and errno ~= 2 then return nil, err, errno end
@@ -597,12 +608,12 @@ function update_bibliography (citekeys, fname)
     end
     local ids = {}
     for i = 1, #refs do
-        ids[refs[i].id] = true
+        local ref = refs[i]
+        ids[ref.id] = true
     end
     local c = #refs
     local n = c
-    for i = 1, #citekeys do
-        local citekey = citekeys[i]
+    for citekey in pairs(citekeys) do
         if not ids[citekey] then
             -- luacheck: ignore err
             local ref, err, errtype = get_source_csl(citekey)
@@ -626,8 +637,8 @@ end
 -- Behaves in the same way as `update_bibliography`, but also adds the
 -- the given bibliography file to the metadata field `bibliography`.
 --
--- @tparam {string,...} citekeys A list of citation keys of the sources
---  that should be added, e.g., `{'name:2019word', 'name2019WordWordWord'}`.
+-- @tparam table citekeys Set of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @tparam pandoc.Meta meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
@@ -637,7 +648,9 @@ end
 -- @treturn[2] string An error message, if applicable.
 -- @raise See `get_source_csljson`.
 function add_bibliography (citekeys, meta)
-    if not #citekeys or not meta['zotero-bibliography'] then return end
+    if not meta['zotero-bibliography'] or next(citekeys) == nil then
+        return
+    end
     local stringify = pandoc.utils.stringify
     local fname = stringify(meta['zotero-bibliography'])
     if fname == '' then
@@ -668,7 +681,8 @@ end
 --  - every source that cannot be found.
 --  - every citation key that is defined more than once.
 --
--- @tparam {string,...} citekeys The citation keys of the sources to add.
+-- @tparam table citekeys Set of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block,
 --  with the field `references` added if needed.
@@ -676,10 +690,10 @@ end
 -- @treturn[2] string An error message, if applicable.
 -- @raise See `get_source_csljson`.
 function add_references (citekeys, meta)
-    if #citekeys == 0 then return end
+    if next(citekeys) == nil then return end
     if not meta.references then meta.references = pandoc.MetaList({}) end
-    for i = 1, #citekeys do
-        local ref, err, errtype = get_source(citekeys[i])
+    for citekey in pairs(citekeys) do
+        local ref, err, errtype = get_source(citekey)
         if ref then
             table.insert(meta.references, ref)
         elseif errtype == 'read_err' then
@@ -723,7 +737,10 @@ end
 -- @raise See `get_source_csljson`.
 function main (doc)
     local citekeys = get_citekeys(doc)
-    if #citekeys == 0 then return nil end
+    -- FIXME: this breaks duplicates test suite
+    -- local predefind = get_refs_citekeys(doc)
+    -- for k in pairs(predefind) do citekeys[k] = nil end
+    if next(citekeys) == nil then return end
     for i = 1, 2 do
         local add_sources
         if i == 1 then
