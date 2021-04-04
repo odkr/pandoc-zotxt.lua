@@ -25,30 +25,34 @@ where **pandoc** can pick them up.
 
 Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
 Citation Keys" (provided by Better BibTeX for Zotero). Then tell **pandoc** to
-filter your document through **pandoc-zotxt.lua** before processing citations;
-Zotero must be running. That's all there is to it.
+filter your document through **pandoc-zotxt.lua** before processing citations.
+Zotero must be running, of course. That's all there is to it.
 
 
 BIBLIOGRAPHY FILES
 ==================
 
 **pandoc-zotxt.lua** can also add sources to a bibliography file, rather 
-than the "references" metadata field. This speeds up subsequent runs of 
-**pandoc-zotxt.lua** for the same document, because **pandoc-zotxt.lua** 
-will only fetch those sources from Zotero that are not yet in that file. 
+than the "references" metadata field. This speeds up subsequent processing
+of the same document, because **pandoc-zotxt.lua** will only fetch those
+sources from Zotero that are not yet in that file.
+
 Simply set the "zotero-bibliography" metadata field to a filename. 
-**pandoc-zotxt.lua** will then add sources to that file. It will also add
-that file to the document's "bibliography" metadata field, so that 
-**pandoc** picks up those sources. The biblography is stored as a JSON 
-file, so the filename must end with ".json". You can safely set 
-"zotero-bibliography" and "bibliography" at the same time. But you
-will need to make sure that citation keys are unique accross files.
+**pandoc-zotxt.lua** will then add sources to that file, instead of adding
+them to the "references" metadata field. It will also add the path of that
+file to the document's "bibliography" metadata field, so that **pandoc**
+picks up those sources.
+
+The biblography is stored as a JSON file, so the filename must end with
+".json". You can safely set "zotero-bibliography" and "bibliography" at
+the same time. But you will need to make sure that citation keys are
+unique accross all bibliography files.
 
 **pandoc-zotxt.lua** interprets relative filenames as relative to the
 directory of the first input file that you pass to **pandoc** or, if you
 do not pass any input file, as relative to the current working directory.
 
-Note: **pandoc-zotxt.lua** only ever adds sources to the bibliography file.
+**pandoc-zotxt.lua** only ever adds sources to the bibliography file.
 It doesn't update or delete them. If you want to update the sources in your
 bibliography file, delete it. **pandoc-zotxt.lua** will then regenerate
 it from scratch.
@@ -108,11 +112,10 @@ passing **--request-header** *Zotero-Allowed-Request:X*.
 CAVEATS
 =======
 
-**pandoc-zotxt.lua**
+**pandoc-zotxt.lua** is Unicode-agnostic.
 
-* is Unicode-agnostic.
-* cannot check whether you redefine a citation key if
-  you use additional bibliography files.
+Also, it cannot check whether you redefine a citation key if
+you use additional bibliography files.
 
 
 SEE ALSO
