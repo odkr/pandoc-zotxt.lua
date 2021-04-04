@@ -205,16 +205,20 @@ pandoc -L pandoc-zotxt.lua -C document.md
 	<td class="summary">Converts all numbers in a multi-dimensional table to strings.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#get_source_json">get_source_json (citekey)</a></td>
-	<td class="summary">Retrieves bibliographic data in CSL JSON for a source.</td>
+	<td class="name" nowrap><a href="#get_source_csljson">get_source_csljson (citekey, parse)</a></td>
+	<td class="summary">Retrieves bibliographic data for a source (low-level).</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_source_csl">get_source_csl (citekey)</a></td>
-	<td class="summary">Retrieves bibliographic data in CSL for a source.</td>
+	<td class="summary">Retrieves bibliographic data for a source (for JSON files).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#parse">parse (csljson)</a></td>
+	<td class="summary">Converts a CSL JSON string to Pandoc metadata data structure.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_source">get_source (citekey)</a></td>
-	<td class="summary">Retrieves bibliographic data for a source.</td>
+	<td class="summary">Retrieves bibliographic data for a source (for Citeproc).</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_citekeys">get_citekeys (doc)</a></td>
@@ -413,7 +417,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><span class="type">number</span></span>
+           <span class="types"><span class="type">int</span></span>
          An error number.
   Positive numbers are OS error numbers,
   negative numbers indicate a JSON decoding error.</li>
@@ -459,7 +463,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><span class="type">number</span></span>
+           <span class="types"><span class="type">int</span></span>
          An error number.
   Positive numbers are OS error numbers,
   negative numbers indicate a JSON decoding error.</li>
@@ -546,14 +550,20 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
-    <a name = "get_source_json"></a>
-    <strong>get_source_json (citekey)</strong>
+    <a name = "get_source_csljson"></a>
+    <strong>get_source_csljson (citekey, parse)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL JSON for a source. </p>
+    Retrieves bibliographic data for a source (low-level). </p>
 
-<p> Tries different types of citation keys, starting with the last
- one that a lookup was successful for.
+<p> Takes a citation key and a parsing function, queries zotxt for that
+ citation key, passes whatever zotxt returns to the parsing function,
+ and then returns whatever that parsing function returns. Tries again
+ if the parsing function raises an exception, but assumes that the
+ citation key is of a different type.</p>
+
+<p> This is a low-level function and should not be called directly.
+ Use <a href="index.html#get_source">get_source</a> and <a href="index.html#get_source_csl">get_source_csl</a> instead.
 
 
     <h3>Parameters:</h3>
@@ -562,6 +572,11 @@ pandoc -L pandoc-zotxt.lua -C document.md
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The citation key of the source,
   e.g., 'name:2019word', 'name2019TwoWords'.
+        </li>
+        <li><span class="parameter">parse</span>
+            <span class="types"><span class="type">func</span></span>
+         A function takes a CSL JSON string and
+  returns bibliophic data.
         </li>
     </ul>
 
@@ -583,8 +598,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The type of error that occurred, where
   <code>read_err</code> means that no data could be read from zotxt, and
-  <code>no_array</code> that zotxt didn't respond with a JSON array,
-  which usually means that no record matches <code>citekey</code>.</li>
+  <code>no_match</code> that no meaningful data could be found for <code>citekey</code>.</li>
     </ol>
 
     <h3>Raises:</h3>
@@ -600,13 +614,13 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source_csl (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data in CSL for a source. </p>
+    Retrieves bibliographic data for a source (for JSON files). </p>
 
-<p> Parses JSON to Lua data types, but <em>not</em> to Pandoc data types.
- That is, the return value of this function can be passed to
- <a href="index.html#write_json_file">write_json_file</a>, but should <em>not</em> be stored in the <code>references</code>
- metadata field. (Unless you are using a version of Pandoc
- prior to v2.11.)
+<p> Returns bibliographic data as Lua data structure, <em>not</em> as a Pandoc
+ data structure. That is, the return value of this function can be
+ passed to <a href="index.html#write_json_file">write_json_file</a>, but should <em>not</em> be stored in the
+ <code>references</code> metadata field. (Unless you are using a version of
+ Pandoc prior to v2.11.)
 
 
     <h3>Parameters:</h3>
@@ -634,11 +648,37 @@ pandoc -L pandoc-zotxt.lua -C document.md
         An error message.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The type of that error. See <a href="index.html#get_source_json">get_source_json</a>.</li>
+        The type of that error. See <a href="index.html#get_source_csljson">get_source_csljson</a>.</li>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
+
+
+
+</dd>
+    <dt>
+    <a name = "parse"></a>
+    <strong>parse (csljson)</strong>
+    </dt>
+    <dd>
+    Converts a CSL JSON string to Pandoc metadata data structure.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">csljson</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A CSL JSON string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        A Pandoc metadata data structure.
+    </ol>
+
 
 
 
@@ -648,12 +688,11 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source. </p>
+    Retrieves bibliographic data for a source (for Citeproc). </p>
 
-<p> Bibliography entries are different to references, because Pandoc,
- starting with v2.11, parses them differently. The return value
- of this function can be used in the <code>references</code> metadata field.
- (Regardless of what version of Pandoc you use.)
+<p> Returns data as a Pandoc data structure, which can be used in the
+ <code>references</code> metadata field. (Regardless of what version of Pandoc
+ you use.)
 
 
     <h3>Parameters:</h3>
@@ -680,12 +719,12 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><span class="type">number</span></span>
-        The type of that error. See <a href="index.html#get_source_json">get_source_json</a>.</li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The type of that error. See <a href="index.html#get_source_csljson">get_source_csljson</a>.</li>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
 
 
 
@@ -759,14 +798,14 @@ pandoc -L pandoc-zotxt.lua -C document.md
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message, if applicable.</li>
         <li>
-           <span class="types"><span class="type">number</span></span>
+           <span class="types"><span class="type">int</span></span>
          An error number, if applicable.
   Positive numbers are OS error numbers,
   a negative number indicates that no data could be retrieved.</li>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
 
 
 
@@ -815,7 +854,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
 
 
 
@@ -868,7 +907,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
 
 
 
@@ -907,7 +946,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#get_source_json">get_source_json</a>.
+    See <a href="index.html#get_source_csljson">get_source_csljson</a>.
 
 
 
@@ -923,16 +962,16 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <dd>
     Types of citation keys. </p>
 
-<p> See <a href="index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
+<p> See <a href="index.html#get_source_csljson">get_source_csljson</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
 
     <h3>Fields:</h3>
     <ul>
-        <li><span class="parameter">easykey</span>
-        zotxt easy citekey
-        </li>
         <li><span class="parameter">betterbibtexkey</span>
         Better BibTeX citation key
+        </li>
+        <li><span class="parameter">easykey</span>
+        zotxt easy citekey
         </li>
         <li><span class="parameter">key</span>
         Zotero item ID
@@ -1011,7 +1050,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <dd>
     The URL to lookup citation data. </p>
 
-<p> See <a href="index.html#get_source_json">get_source_json</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
+<p> See <a href="index.html#get_source_csljson">get_source_csljson</a> and <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
 
 
 
@@ -1027,7 +1066,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-01-06 21:10:15 </i>
+<i style="float:right;">Last updated 2021-04-04 17:39:49 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

@@ -187,8 +187,8 @@ ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
 --
 -- @table ZOTXT_KEYTYPES
 ZOTXT_KEYTYPES = {
-    'easykey',         -- zotxt easy citekey
     'betterbibtexkey', -- Better BibTeX citation key
+    'easykey',         -- zotxt easy citekey
     'key'              -- Zotero item ID
 }
 
@@ -415,8 +415,14 @@ do
 
     ---  Retrieves bibliographic data for a source (low-level).
     --
-    -- Tries different types of citation keys, starting with the last
-    -- one that a lookup was successful for.
+    -- Takes a citation key and a parsing function, queries zotxt for that
+    -- citation key, passes whatever zotxt returns to the parsing function,
+    -- and then returns whatever that parsing function returns. Tries again
+    -- if the parsing function raises an exception, but assumes that the
+    -- citation key is of a different type.
+    --
+    -- This is a low-level function and should not be called directly.
+    -- Use `get_source` and `get_source_csl` instead.
     --
     -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
@@ -465,13 +471,13 @@ do
         return convert_numbers_to_strings(decode(csljson)[1])
     end
 
-    ---  Retrieves bibliographic data for a source as Lua data structure.
+    ---  Retrieves bibliographic data for a source (for JSON files).
     --
-    -- Parses JSON to Lua data types, but *not* to Pandoc data types.
-    -- That is, the return value of this function can be passed to
-    -- `write_json_file`, but should *not* be stored in the `references`
-    -- metadata field. (Unless you are using a version of Pandoc
-    -- prior to v2.11.)
+    -- Returns bibliographic data as Lua data structure, *not* as a Pandoc
+    -- data structure. That is, the return value of this function can be
+    -- passed to `write_json_file`, but should *not* be stored in the
+    -- `references` metadata field. (Unless you are using a version of
+    -- Pandoc prior to v2.11.)
     --
     -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
@@ -503,12 +509,11 @@ do
         return read(csljson, 'csljson').meta.references[1]
     end
 
-    ---  Retrieves bibliographic data for a source as Pandoc data structure.
+    ---  Retrieves bibliographic data for a source (for Citeproc).
     --
-    -- Bibliography entries are different to references, because Pandoc,
-    -- starting with v2.11, parses them differently. The return value
-    -- of this function can be used in the `references` metadata field.
-    -- (Regardless of what version of Pandoc you use.)
+    -- Returns data as a Pandoc data structure, which can be used in the
+    -- `references` metadata field. (Regardless of what version of Pandoc
+    -- you use.)
     --
     -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
