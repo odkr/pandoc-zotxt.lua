@@ -136,7 +136,8 @@ local M = require 'debug-wrapper'
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
 ZOTXT_CSL = {
-    id = 'haslanger:2012resisting', type = 'book',
+    id = 'haslanger:2012resisting',
+    type = 'book',
     author = {{family = 'Haslanger', given = 'Sally'}},
     title = 'Resisting Reality: Social Construction and Social Critique',
     publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
@@ -405,16 +406,19 @@ end
 -- Retrieving bibliographic data
 -- -----------------------------
 
-function test_get_source_json ()
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.get_source_json, v)
+function test_get_source_csljson ()
+    local function id (...)
+        return ...
     end
 
-    local ret = M.get_source_json('díaz-león:2015defence')
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.get_source_csljson, v, id)
+    end
+
+    local ret = M.get_source_csljson('díaz-león:2015defence', id)
     lu.assert_equals(ret, ZOTXT_JSON)
 end
-
 
 function test_get_source_csl ()
     local invalid = {nil, false, '', {}, function () end}
