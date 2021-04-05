@@ -136,30 +136,20 @@ local M = require 'debug-wrapper'
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
 ZOTXT_CSL = {
-    id = 'haslanger:2012resisting',
+    id = 'haslanger2012ResistingRealitySocial',
     type = 'book',
     author = {{family = 'Haslanger', given = 'Sally'}},
     title = 'Resisting Reality: Social Construction and Social Critique',
-    publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
-    ['event-place'] = 'Oxford',
-    issued = {['date-parts'] = {{'2012'}}},
     ['title-short'] = 'Resisting Reality',
+    publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
+    issued = {['date-parts'] = {{'2012'}}},
     ISBN = '978-0-19-989262-4'
 }
 
 --- Bibliographic data as JSON string.
 ZOTXT_JSON = '[\n  ' ..
-  '{"id":"diaz-leon2015DefenceHistoricalConstructivism",' ..
-   '"type":"article-journal",' ..
-   '"title":"In Defence of Historical Constructivism about Races",' ..
-   '"container-title":"Ergo, an Open Access Journal of Philosophy",' ..
-   '"volume":"2",' ..
-   '"URL":"http://hdl.handle.net/2027/spo.12405314.0002.021",' ..
-   '"DOI":"10.3998/ergo.12405314.0002.021",' ..
-   '"ISSN":"2330-4014",' ..
-   '"author":[{"family":"Díaz-León","given":"Esa"}],' ..
-   '"issued":{"date-parts":[[2015]]}}' ..
-'\n]\n'
+    '{"id":"haslanger2012ResistingRealitySocial","author":[{"family":"Haslanger","given":"Sally"}],"ISBN":"978-0-19-989262-4","issued":{"date-parts":[[2012]]},"publisher":"Oxford University Press","publisher-place":"Oxford","title":"Resisting Reality: Social Construction and Social Critique","title-short":"Resisting Reality","type":"book"}' ..
+    '\n]\n'
 
 
 
@@ -328,6 +318,26 @@ end
 -- JSON files
 -- ----------
 
+function test_read_file ()
+    local invalid_inputs = {nil, false, '', {}}
+    for _, invalid in ipairs(invalid_inputs) do
+        lu.assert_error(M.read_json_file, invalid)
+    end
+
+    local str, ok, err, errno
+    ok, err, errno = M.read_file('<does not exist>')
+    lu.assert_nil(ok)
+    lu.assert_not_equals(err, '')
+    lu.assert_equals(errno, 2)
+
+    local fname = DATA_DIR .. PATH_SEP .. 'bibliography.json'
+    str, err, errno = M.read_file(fname)
+    lu.assert_nil(err)
+    lu.assert_not_nil(str)
+    lu.assert_nil(errno)
+    lu.assert_equals(str, ZOTXT_JSON)
+end
+
 function test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
     for _, invalid in ipairs(invalid_inputs) do
@@ -345,7 +355,7 @@ function test_read_json_file ()
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
-    lu.assert_equals(data, ZOTXT_CSL)
+    lu.assert_equals(data, {ZOTXT_CSL})
 end
 
 function test_write_json_file ()
@@ -416,7 +426,7 @@ function test_get_source_csljson ()
         lu.assert_error(M.get_source_csljson, v, id)
     end
 
-    local ret = M.get_source_csljson('díaz-león:2015defence', id)
+    local ret = M.get_source_csljson('haslanger2012ResistingRealitySocial', id)
     lu.assert_equals(ret, ZOTXT_JSON)
 end
 
@@ -426,7 +436,7 @@ function test_get_source_csl ()
         lu.assert_error(M.get_source_csl, v)
     end
 
-    local ret = M.get_source_csl('haslanger:2012resisting')
+    local ret = M.get_source_csl('haslanger2012ResistingRealitySocial')
     lu.assert_equals(ret, ZOTXT_CSL)
 end
 
@@ -486,7 +496,9 @@ function test_update_bibliography ()
     data, err = M.read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
-    lu.assert_equals(data, {ZOTXT_CSL})
+    local csl = copy(ZOTXT_CSL)
+    csl.id = 'haslanger:2012resisting'
+    lu.assert_equals(data, {csl})
 
     -- Checks adding a new citation.
     local new
