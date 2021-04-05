@@ -23,7 +23,7 @@ PANDOC		?= pandoc
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
 		   test-zotero-id test-bibliography \
-		   test-merge test-duplicate \
+		   test-merge test-duplicate test-duplicate-bibliography \
 		   test-example-simple test-example-bibliography
 
 SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua

@@ -135,6 +135,7 @@ local type = type
 local io = io
 local math = math
 local package = package
+local string = string
 local table = table
 
 -- luacheck: push ignore
@@ -283,6 +284,17 @@ function get_input_directory ()
 end
 
 
+function read_file (fname)
+    local str, err, errno, f, str
+    f, err, errno = io.open(fname, 'r')
+    if not f then return nil, err, errno end
+    str, err, errno = f:read('a')
+    if not str then return nil, err, errno end
+    ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    return str
+end
+
 -- JSON files
 -- ----------
 
@@ -296,14 +308,9 @@ end
 --  Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function read_json_file (fname)
-    local data, err, errno, f, ok, str
-    f, err, errno = io.open(fname, 'r')
-    if not f then return nil, err, errno end
-    str, err, errno = f:read('a')
+    local str, err, errno = read_file(fname)
     if not str then return nil, err, errno end
-    ok, err, errno = f:close()
-    if not ok then return nil, err, errno end
-    ok, data = pcall(json.decode, str)
+    local ok, data = pcall(json.decode, str)
     if not ok then return nil, 'JSON decoding error', -1 end
     return convert_numbers_to_strings(data)
 end
@@ -583,6 +590,7 @@ end
 function get_biblio_citekeys (doc)
     local ret = {}
     if doc.meta then
+        local read = pandoc.read
         local stringify = pandoc.utils.stringify
         local biblio = doc.meta.bibliography
         if biblio then
@@ -596,13 +604,20 @@ function get_biblio_citekeys (doc)
             end
             for i = 1, #fnames do
                 local fname = fnames[i]
-                if fname:match '.json$' then
+                if fname:match '.[Jj][Ss][Oo][Nn]$' then
                     local sources = read_json_file(fname)
                     for j = 1, #sources do
                         local source = sources[j]
                         ret[source.id] = true
                     end
-                -- TODO: Check if YAML can also be parsed.
+                elseif fname:match '.[Yy][Aa][Mm][Ll]$' then
+                    local cslyaml = read_file(fname)
+                    local sources = read(string.format('---\n%s\n---', cslyaml), 'markdown').meta.references
+                    for j = 1, #sources do
+                        local source = sources[j]
+                        local id = stringify(source.id)
+                        ret[id] = true
+                    end
                 else
                     warn('%s: Cannot parse non-JSON bibliographies.', fname)
                 end
