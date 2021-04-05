@@ -579,7 +579,7 @@ function get_refs_citekeys (doc)
     return ret
 end
 
--- TODO bibliographies
+
 function get_biblio_citekeys (doc)
     local ret = {}
     if doc.meta then
@@ -602,6 +602,9 @@ function get_biblio_citekeys (doc)
                         local source = sources[j]
                         ret[source.id] = true
                     end
+                -- TODO: Check if YAML can also be parsed.
+                else
+                    warn('%s: Cannot parse non-JSON bibliographies.', fname)
                 end
             end
         end
@@ -609,7 +612,20 @@ function get_biblio_citekeys (doc)
     return ret
 end
 
+do
+    local get_defined_citekeys = {get_refs_citekeys, get_biblio_citekeys}
 
+    function get_undef_citekeys (doc)
+        local ret = get_used_citekeys(doc)
+        for i = 1, #get_defined_citekeys do
+            local def_citekeys = get_defined_citekeys[i](doc)
+            for citekey in pairs(def_citekeys) do
+                ret[citekey] = nil
+            end
+        end
+        return ret
+    end
+end
 
 
 
@@ -768,10 +784,7 @@ end
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @raise See `get_source_csljson`.
 function main (doc)
-    local citekeys = get_used_citekeys(doc)
-    -- FIXME: this breaks duplicates test suite
-    -- local predefind = get_refs_citekeys(doc)
-    -- for k in pairs(predefind) do citekeys[k] = nil end
+    local citekeys = get_undef_citekeys(doc)
     if next(citekeys) == nil then return end
     for i = 1, 2 do
         local add_sources
