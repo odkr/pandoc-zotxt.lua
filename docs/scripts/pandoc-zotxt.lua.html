@@ -189,40 +189,56 @@ pandoc -L pandoc-zotxt.lua -C document.md
 	<td class="summary">Returns the directory of the first input file or '.'.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#read_file">read_file (fname)</a></td>
+	<td class="summary">Returns the content of a file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#write_file">write_file (str, fname)</a></td>
+	<td class="summary">Writes data to a file.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#read_json_file">read_json_file (fname)</a></td>
 	<td class="summary">Reads a JSON file.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#write_json_file">write_json_file (data, fname)</a></td>
-	<td class="summary">Writes data to a file in JSON.</td>
+	<td class="summary">Writes JSON data to a file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#read_yaml_file">read_yaml_file (fname)</a></td>
+	<td class="summary">Reads a CSL YAML file.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#read_url">read_url (url)</a></td>
-	<td class="summary">Retrieves data request from a URL via an HTTP GET request.</td>
+	<td class="summary">Retrieves data from a URL via an HTTP GET request.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#convert_numbers_to_strings">convert_numbers_to_strings (data)</a></td>
+	<td class="name" nowrap><a href="#conv_nums_to_strs">conv_nums_to_strs (data)</a></td>
 	<td class="summary">Converts all numbers in a multi-dimensional table to strings.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_source_csljson">get_source_csljson (citekey, parse)</a></td>
-	<td class="summary">Retrieves bibliographic data for a source (low-level).</td>
+	<td class="summary">Retrieves bibliographic data (low-level).</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_source_csl">get_source_csl (citekey)</a></td>
-	<td class="summary">Retrieves bibliographic data for a source (for JSON files).</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#parse">parse (csljson)</a></td>
-	<td class="summary">Converts a CSL JSON string to Pandoc metadata data structure.</td>
+	<td class="summary">Retrieves bibliographic data (for use in JSON files).</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_source">get_source (citekey)</a></td>
-	<td class="summary">Retrieves bibliographic data for a source (for Citeproc).</td>
+	<td class="summary">Retrieves bibliographic data (for <code>references</code> metadata field).</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#get_citekeys">get_citekeys (doc)</a></td>
-	<td class="summary">Collects the citation keys occurring in a document.</td>
+	<td class="name" nowrap><a href="#get_used_citekeys">get_used_citekeys (doc)</a></td>
+	<td class="summary">Collects citation keys used in document.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_refs_citekeys">get_refs_citekeys (doc)</a></td>
+	<td class="summary">Returns citation keys in <code>references</code> metadata field.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_biblio_citekeys">get_biblio_citekeys (doc)</a></td>
+	<td class="summary">Returns the citation keys in bibliography files.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#update_bibliography">update_bibliography (citekeys, fname)</a></td>
@@ -234,7 +250,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#add_references">add_references (citekeys, meta)</a></td>
-	<td class="summary">Adds sources to the <code>references</code> metadata field.</td>
+	<td class="summary">Adds sources to <code>references</code> metadata field.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#main">main (doc)</a></td>
@@ -330,7 +346,6 @@ pandoc -L pandoc-zotxt.lua -C document.md
          A message to write to STDERR.
         </li>
         <li><span class="parameter">...</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          Arguments (think <a href="https://www.lua.org/manual/5.1/manual.html#pdf-string.format">string.format</a>) for <code>msg</code>.
         </li>
     </ul>
@@ -388,6 +403,88 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
+    <a name = "read_file"></a>
+    <strong>read_file (fname)</strong>
+    </dt>
+    <dd>
+    Returns the content of a file.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Name of the file.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The content of the file.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if an error occurred.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        The error number.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "write_file"></a>
+    <strong>write_file (str, fname)</strong>
+    </dt>
+    <dd>
+    Writes data to a file.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">str</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Data.
+        </li>
+        <li><span class="parameter">fname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Name of the file.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">bool</span></span>
+        <code>true</code> if <code>data</code> was written to the file.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if an error occurred.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        The error number.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "read_json_file"></a>
     <strong>read_json_file (fname)</strong>
     </dt>
@@ -432,9 +529,9 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>write_json_file (data, fname)</strong>
     </dt>
     <dd>
-    Writes data to a file in JSON. </p>
+    Writes JSON data to a file. </p>
 
-<p> It terminates files with <a href="../index.html#EOL">EOL</a>.
+<p> Terminates files with <a href="../index.html#EOL">EOL</a>.
 
 
     <h3>Parameters:</h3>
@@ -474,11 +571,55 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
+    <a name = "read_yaml_file"></a>
+    <strong>read_yaml_file (fname)</strong>
+    </dt>
+    <dd>
+    Reads a CSL YAML file.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">fname</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Name of the file.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        The parsed data.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the file could not be read.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+         An error number.
+  Positive numbers are OS error numbers,
+  negative numbers indicate a YAML decoding error.</li>
+    </ol>
+
+    <h3>Raises:</h3>
+     An error if the given YAML code cannot be decoded.
+  But only if you are <em>not</em> using Pandoc v2.10 or later.
+  This error cannot be caught.
+
+
+
+</dd>
+    <dt>
     <a name = "read_url"></a>
     <strong>read_url (url)</strong>
     </dt>
     <dd>
-    Retrieves data request from a URL via an HTTP GET request. </p>
+    Retrieves data from a URL via an HTTP GET request. </p>
 
 <p> This is a function of its own only in order for the test scripts to
  be able to easily replace it with a function that redirects HTTP GET
@@ -521,8 +662,8 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
-    <a name = "convert_numbers_to_strings"></a>
-    <strong>convert_numbers_to_strings (data)</strong>
+    <a name = "conv_nums_to_strs"></a>
+    <strong>conv_nums_to_strs (data)</strong>
     </dt>
     <dd>
     Converts all numbers in a multi-dimensional table to strings. </p>
@@ -554,16 +695,19 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source_csljson (citekey, parse)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source (low-level). </p>
+    Retrieves bibliographic data (low-level). </p>
 
-<p> Takes a citation key and a parsing function, queries zotxt for that
- citation key, passes whatever zotxt returns to the parsing function,
- and then returns whatever that parsing function returns. Tries again
- if the parsing function raises an exception, but assumes that the
- citation key is of a different type.</p>
+<p> Takes a citation key and a parsing function, queries <em>zotxt</em> for that
+ citation key, passes whatever <em>zotxt</em> returns to the parsing function,
+ and then returns whatever the parsing function returns.</p>
+
+<p> Tries every citation key type defined in <a href="../index.html#ZOTXT_KEYTYPES">ZOTXT_KEYTYPES</a>, until
+ the query is successful, that is, the parsing function does <em>not</em>
+ raise an error. If the parsing function raises an error, the
+ next citation key type is tried.</p>
 
 <p> This is a low-level function and should not be called directly.
- Use <a href="../index.html#get_source">get_source</a> and <a href="../index.html#get_source_csl">get_source_csl</a> instead.
+ Use <a href="../index.html#get_source">get_source</a> or <a href="../index.html#get_source_csl">get_source_csl</a>.
 
 
     <h3>Parameters:</h3>
@@ -614,7 +758,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <strong>get_source_csl (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source (for JSON files). </p>
+    Retrieves bibliographic data (for use in JSON files). </p>
 
 <p> Returns bibliographic data as Lua data structure, <em>not</em> as a Pandoc
  data structure. That is, the return value of this function can be
@@ -658,37 +802,11 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
-    <a name = "parse"></a>
-    <strong>parse (csljson)</strong>
-    </dt>
-    <dd>
-    Converts a CSL JSON string to Pandoc metadata data structure.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">csljson</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A CSL JSON string.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        A Pandoc metadata data structure.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
     <a name = "get_source"></a>
     <strong>get_source (citekey)</strong>
     </dt>
     <dd>
-    Retrieves bibliographic data for a source (for Citeproc). </p>
+    Retrieves bibliographic data (for <code>references</code> metadata field). </p>
 
 <p> Returns data as a Pandoc data structure, which can be used in the
  <code>references</code> metadata field. (Regardless of what version of Pandoc
@@ -730,11 +848,11 @@ pandoc -L pandoc-zotxt.lua -C document.md
 
 </dd>
     <dt>
-    <a name = "get_citekeys"></a>
-    <strong>get_citekeys (doc)</strong>
+    <a name = "get_used_citekeys"></a>
+    <strong>get_used_citekeys (doc)</strong>
     </dt>
     <dd>
-    Collects the citation keys occurring in a document.
+    Collects citation keys used in document.
 
 
     <h3>Parameters:</h3>
@@ -748,8 +866,62 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        A list of citation keys.
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        A <a href="https://www.lua.org/pil/11.5.html">Set</a> of citation keys.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_refs_citekeys"></a>
+    <strong>get_refs_citekeys (doc)</strong>
+    </dt>
+    <dd>
+    Returns citation keys in <code>references</code> metadata field.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">doc</span>
+            <span class="types"><span class="type">pandoc.Doc</span></span>
+         A document.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        A <a href="https://www.lua.org/pil/11.5.html">Set</a> of citation keys.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_biblio_citekeys"></a>
+    <strong>get_biblio_citekeys (doc)</strong>
+    </dt>
+    <dd>
+    Returns the citation keys in bibliography files.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">doc</span>
+            <span class="types"><span class="type">pandoc.Doc</span></span>
+         A document.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        A <a href="https://www.lua.org/pil/11.5.html">Set</a> of citation keys.
     </ol>
 
 
@@ -772,9 +944,10 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         A list of citation keys of sources
-  that should be added, e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
+            <span class="types"><span class="type">tab</span></span>
+         <a href="https://www.lua.org/pil/11.5.html">Set</a>
+  of citation keys that should be added, e.g.,
+  <code>{[&apos;name:2019word&apos;]=true, &apos;name2019WordWordWord&apos;=true}</code>.
         </li>
         <li><span class="parameter">fname</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -818,15 +991,17 @@ pandoc -L pandoc-zotxt.lua -C document.md
     Adds sources to a bibliography file and that file to the metadata. </p>
 
 <p> Behaves in the same way as <a href="../index.html#update_bibliography">update_bibliography</a>, but also adds the
- the given bibliography file to the metadata field <code>bibliography</code>.
+ the given bibliography file to the metadata field <code>bibliography</code>
+ (existing bibliography files are kept).
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         A list of citation keys of the sources
-  that should be added, e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
+            <span class="types"><span class="type">tab</span></span>
+         <a href="https://www.lua.org/pil/11.5.html">Set</a>
+  of citation keys that should be added, e.g.,
+  <code>{[&apos;name:2019word&apos;]=true, &apos;name2019WordWordWord&apos;=true}</code>.
         </li>
         <li><span class="parameter">meta</span>
             <span class="types"><span class="type">pandoc.Meta</span></span>
@@ -865,7 +1040,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     </dt>
     <dd>
 
-<p>Adds sources to the <code>references</code> metadata field. </p>
+<p>Adds sources to <code>references</code> metadata field. </p>
 
 <p> Prints an error message to STDERR for</p>
 
@@ -880,8 +1055,10 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">citekeys</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         The citation keys of the sources to add.
+            <span class="types"><span class="type">tab</span></span>
+         <a href="https://www.lua.org/pil/11.5.html">Set</a>
+  of citation keys that should be added, e.g.,
+  <code>{[&apos;name:2019word&apos;]=true, &apos;name2019WordWordWord&apos;=true}</code>.
         </li>
         <li><span class="parameter">meta</span>
             <span class="types"><span class="type">pandoc.Meta</span></span>
@@ -1066,7 +1243,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-04-04 17:39:49 </i>
+<i style="float:right;">Last updated 2021-04-05 18:36:14 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
