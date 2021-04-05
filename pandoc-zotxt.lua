@@ -284,6 +284,9 @@ function get_input_directory ()
 end
 
 
+-- File handling
+-- -------------
+
 function read_file (fname)
     local str, err, errno, f, str
     f, err, errno = io.open(fname, 'r')
@@ -295,8 +298,17 @@ function read_file (fname)
     return str
 end
 
--- JSON files
--- ----------
+function write_file (str, fname)
+    local err, errno, f, ok
+    f, err, errno = io.open(fname, 'w')
+    if not f then return nil, err, errno end
+    ok, err, errno = f:write(str, EOL)
+    if not ok then return nil, err, errno end
+    ok, err, errno = f:close()
+    if not ok then return nil, err, errno end
+    return true
+end
+
 
 --- Reads a JSON file.
 --
@@ -329,18 +341,23 @@ end
 --  Positive numbers are OS error numbers,
 --  negative numbers indicate a JSON decoding error.
 function write_json_file (data, fname)
-    local err, errno, f, ok, str
-    ok, str = pcall(json.encode, data)
+    local ok, str = pcall(json.encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
-    f, err, errno = io.open(fname, 'w')
-    if not f then return nil, err, errno end
-    ok, err, errno = f:write(str, EOL)
-    if not ok then return nil, err, errno end
-    ok, err, errno = f:close()
-    if not ok then return nil, err, errno end
-    return true
+    return write_file(str, fname)
 end
 
+
+do
+    local read = pandoc.read
+    local header = '---\n%s\n---'
+
+    function read_yaml_file (fname)
+        local str, err, errno = read_file(fname)
+        if not str then return nil, err, errno end
+        local data = read(header:format(str), 'markdown')
+        return data.meta.references
+    end
+end
 
 
 -- Retrieving data
@@ -590,7 +607,6 @@ end
 function get_biblio_citekeys (doc)
     local ret = {}
     if doc.meta then
-        local read = pandoc.read
         local stringify = pandoc.utils.stringify
         local biblio = doc.meta.bibliography
         if biblio then
@@ -611,15 +627,13 @@ function get_biblio_citekeys (doc)
                         ret[source.id] = true
                     end
                 elseif fname:match '.[Yy][Aa][Mm][Ll]$' then
-                    local cslyaml = read_file(fname)
-                    local sources = read(string.format('---\n%s\n---', cslyaml), 'markdown').meta.references
+                    local sources = read_yaml_file(fname)
                     for j = 1, #sources do
                         local source = sources[j]
-                        local id = stringify(source.id)
-                        ret[id] = true
+                        ret[stringify(source.id)] = true
                     end
                 else
-                    warn('%s: Cannot parse non-JSON bibliographies.', fname)
+                    warn('%s: Unknown bibliography format.', fname)
                 end
             end
         end
@@ -627,13 +641,15 @@ function get_biblio_citekeys (doc)
     return ret
 end
 
+
 do
-    local get_defined_citekeys = {get_refs_citekeys, get_biblio_citekeys}
+    local get_def_citekeys_funcs = {get_refs_citekeys, get_biblio_citekeys}
 
     function get_undef_citekeys (doc)
         local ret = get_used_citekeys(doc)
-        for i = 1, #get_defined_citekeys do
-            local def_citekeys = get_defined_citekeys[i](doc)
+        for i = 1, #get_def_citekeys_funcs do
+            local get_def_citekeys = get_def_citekeys_funcs[i]
+            local def_citekeys = get_def_citekeys(doc)
             for citekey in pairs(def_citekeys) do
                 ret[citekey] = nil
             end
