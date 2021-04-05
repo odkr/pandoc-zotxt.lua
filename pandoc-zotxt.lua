@@ -375,8 +375,8 @@ do
     -- @treturn[2] int An error number.
     --  Positive numbers are OS error numbers,
     --  negative numbers indicate a YAML decoding error.
-    -- @raise If you are running a version of Pandoc prior to v2.10,
-    --  an error if the given YAML code cannot be decoded.
+    -- @raise An error if the given YAML code cannot be decoded.
+    --  But only if you are *not* using Pandoc v2.10 or later.
     --  This error cannot be caught.
     function read_yaml_file (fname)
         local str, err, errno = read_file(fname)
@@ -466,14 +466,17 @@ do
 
     ---  Retrieves bibliographic data (low-level).
     --
-    -- Takes a citation key and a parsing function, queries zotxt for that
-    -- citation key, passes whatever zotxt returns to the parsing function,
-    -- and then returns whatever that parsing function returns. Tries again
-    -- if the parsing function raises an exception, but assumes that the
-    -- citation key is of a different type.
+    -- Takes a citation key and a parsing function, queries *zotxt* for that
+    -- citation key, passes whatever *zotxt* returns to the parsing function,
+    -- and then returns whatever the parsing function returns.
+    --
+    -- Tries every citation key type defined in `ZOTXT_KEYTYPES`, until
+    -- the query is successful, that is, the parsing function does *not*
+    -- raise an error. If the parsing function raises an error, the
+    -- next citation key type is tried.
     --
     -- This is a low-level function and should not be called directly.
-    -- Use `get_source` and `get_source_csl` instead.
+    -- Use `get_source` or `get_source_csl`.
     --
     -- @string citekey The citation key of the source,
     --  e.g., 'name:2019word', 'name2019TwoWords'.
@@ -597,7 +600,7 @@ end
 --- Collects citation keys used in document.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn table A set of citation keys.
+-- @treturn table A [Set](https://www.lua.org/pil/11.5.html) of citation keys.
 function get_used_citekeys (doc)
     local ret = {}
     local filter = {
@@ -619,7 +622,7 @@ end
 --- Returns citation keys in `references` metadata field.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn table A set of citation keys.
+-- @treturn table A [Set](https://www.lua.org/pil/11.5.html) of citation keys.
 function get_refs_citekeys (doc)
     assert(doc.blocks, 'Not a Pandoc document.')
     local ret = {}
@@ -641,7 +644,7 @@ end
 --- Returns the citation keys in bibliography files.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn table A set of citation keys.
+-- @treturn table A [Set](https://www.lua.org/pil/11.5.html) of citation keys.
 function get_biblio_citekeys (doc)
     assert(doc.blocks, 'Not a Pandoc document.')
     local ret = {}
@@ -710,8 +713,9 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tab citekeys Set of citation keys that should be added, e.g.,
---  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
+-- @tab citekeys [Set](https://www.lua.org/pil/11.5.html)
+--  of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, 'name2019WordWordWord'=true}`.
 -- @string fname The name of the bibliography file.
 -- @treturn[1] bool `true` if the bibliography file was updated
 --  or no update was needed.
@@ -757,10 +761,12 @@ end
 --- Adds sources to a bibliography file and that file to the metadata.
 --
 -- Behaves in the same way as `update_bibliography`, but also adds the
--- the given bibliography file to the metadata field `bibliography`.
+-- the given bibliography file to the metadata field `bibliography`
+-- (existing bibliography files are kept).
 --
--- @tab citekeys Set of citation keys that should be added, e.g.,
---  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
+-- @tab citekeys [Set](https://www.lua.org/pil/11.5.html)
+--  of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, 'name2019WordWordWord'=true}`.
 -- @tparam pandoc.Meta meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
@@ -803,8 +809,9 @@ end
 --  - every source that cannot be found.
 --  - every citation key that is defined more than once.
 --
--- @tab citekeys Set of citation keys that should be added, e.g.,
---  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
+-- @tab citekeys [Set](https://www.lua.org/pil/11.5.html)
+--  of citation keys that should be added, e.g.,
+--  `{['name:2019word']=true, 'name2019WordWordWord'=true}`.
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block,
 --  with the field `references` added if needed.
