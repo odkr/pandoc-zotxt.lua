@@ -49,9 +49,8 @@
 <div id="content">
 
 <h1>Script <code>pandoc-zotxt.lua</code></h1>
-<p>pandoc-zotxt.lua - Looks up sources of citations in Zotero</p>
-
-<h2> SYNOPSIS</h2>
+<p>
+<h2>SYNOPSIS</h2>
 
 <p> <strong>pandoc</strong> <strong>-L</strong> <em>pandoc-zotxt.lua</em> <strong>-C</strong></p>
 
@@ -61,31 +60,39 @@
 <p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and adds them
  either to a document's "references" metadata field or to a bibliography file,
  where <strong>pandoc</strong> can pick them up.</p>
-<p> Cite your sources using "easy citekeys" (provided by zotxt) or "Better BibTeX
+</p>
+<p> Cite your sources using "easy citekeys" (provided by <em>zotxt</em>) or "Better BibTeX
  Citation Keys" (provided by Better BibTeX for Zotero). Then tell <strong>pandoc</strong> to
- filter your document through <strong>pandoc-zotxt.lua</strong> before processing citations;
- Zotero must be running. That's all there is to it.</p>
+ filter your document through <strong>pandoc-zotxt.lua</strong> before processing citations.
+ Zotero must be running, of course. That's all there is to it.</p>
+
+<p> <strong>pandoc-zotxt.lua</strong> only queries Zotero for sources that are defined neither
+ in the "references" metadata field nor in any bibliography file.</p>
 
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> can also add sources to a bibliography file, rather
- than the "references" metadata field. This speeds up subsequent runs of
- <strong>pandoc-zotxt.lua</strong> for the same document, because <strong>pandoc-zotxt.lua</strong>
- will only fetch those sources from Zotero that are not yet in that file.
- Simply set the "zotero-bibliography" metadata field to a filename.
- <strong>pandoc-zotxt.lua</strong> will then add sources to that file. It will also add
- that file to the document's "bibliography" metadata field, so that
- <strong>pandoc</strong> picks up those sources. The biblography is stored as a JSON
- file, so the filename must end with ".json". You can safely set
- "zotero-bibliography" and "bibliography" at the same time. But you
- will need to make sure that citation keys are unique accross files.</p>
+<p> If you set the "zotero-bibliography" metadata field to a filename, then
+ <strong>pandoc-zotxt.lua</strong> adds sources to that file, rather than to the
+ "references" metadata field. This speeds up subsequent processing
+ of the same document, because <strong>pandoc-zotxt.lua</strong> will only fetch those
+ sources from Zotero that are not yet in that file. It will also add the
+ path of that file to the document's "bibliography" metadata field, so that
+ <strong>pandoc</strong> picks up those sources (if you have already set another
+ bibliography file, it neither changes that file nor removes it from the
+ document's metadata; Pandoc will process both files).</p>
+
+<p> The biblography is stored as a JSON file, so the filename must end with
+ ".json". You can safely set "zotero-bibliography" and "bibliography" at
+ the same time.</p>
 
 <p> <strong>pandoc-zotxt.lua</strong> interprets relative filenames as relative to the
  directory of the first input file that you pass to <strong>pandoc</strong> or, if you
- do not pass any input file, as relative to the current working directory.</p>
+ do not pass any input file, as relative to the current working directory.
+ However, you may want to use a single bibliography file for all of your
+ documents.</p>
 
-<p> Note: <strong>pandoc-zotxt.lua</strong> only ever adds sources to the bibliography file.
+<p> <strong>pandoc-zotxt.lua</strong> only ever adds sources to the bibliography file.
  It doesn't update or delete them. If you want to update the sources in your
  bibliography file, delete it. <strong>pandoc-zotxt.lua</strong> will then regenerate
  it from scratch.</p>
@@ -96,24 +103,22 @@
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
-See @crenshaw1989DemarginalizingIntersectionRace <span class="keyword">for</span> details.
+See @doe2020Title <span class="keyword">for</span> details.
 EOF
 </pre>
 
 <p> This instructs Pandoc to filter the input through <strong>pandoc-zotxt.lua</strong>,
  which then looks up the bibligraphic data of the source with the citation
- key "crenshaw1989DemarginalizingIntersectionRace" in Zotero before Pandoc
- processes citations.</p>
+ key "doe2020Title" in Zotero before Pandoc processes citations.</p>
 
 
 <pre>
-cat &lt;&lt;EOF &gt;document.md
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-bibliography: bibliography.json
 <span class="comment">---
-</span>See @crenshaw1989DemarginalizingIntersectionRace <span class="keyword">for</span> details.
+</span>See @doe2020Title <span class="keyword">for</span> details.
 EOF
-pandoc -L pandoc-zotxt.lua -C document.md
 </pre>
 
 <p> This instructs <strong>pandoc-zotxt.lua</strong> to store bibliographic data in a file
@@ -121,8 +126,8 @@ pandoc -L pandoc-zotxt.lua -C document.md
  "bibliography", so that Pandoc picks it up. "bibliography.json" is placed in
  the same directory as "document.md", since "document.md" is the first input
  file given. The next time you process "document.md", <strong>pandoc-zotxt.lua</strong> will
- <em>not</em> look up  "crenshaw1989DemarginalizingIntersectionRace" in Zotero, since
- "bibliography.json" already contains data for that source.</p>
+ <em>not</em> look up "doe2020Title" in Zotero, since "bibliography.json" already
+ contains data for that source.</p>
 
 
 <h2> KNOWN ISSUES</h2>
@@ -142,15 +147,14 @@ pandoc -L pandoc-zotxt.lua -C document.md
  passing <strong>--request-header</strong> <em>Zotero-Allowed-Request:X</em>.</p>
 
 
+<h2> KNOWN ISSUES</h2>
+
+<p> <strong>pandoc-zotxt.lua</strong> ignores Pandoc's <strong>--resource-path</strong> option.</p>
+
+
 <h2> CAVEATS</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong></p>
-
-<ul>
-    <li>is Unicode-agnostic.</li>
-    <li>cannot check whether you redefine a citation key if
-    you use additional bibliography files.</li>
-</ul>
+<p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
 
 
 <h2> SEE ALSO</h2>
@@ -164,7 +168,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020 Odin Kroeger</li>
-        <li><strong>Release</strong>: 1.0.0</li>
+        <li><strong>Release</strong>: 1.0.1b</li>
         <li><strong>License</strong>: MIT</li>
         <li><strong>Author</strong>: Odin Kroeger</li>
     </ul>
@@ -1243,7 +1247,7 @@ pandoc -L pandoc-zotxt.lua -C document.md
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-04-05 18:36:14 </i>
+<i style="float:right;">Last updated 2021-04-05 19:01:49 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
