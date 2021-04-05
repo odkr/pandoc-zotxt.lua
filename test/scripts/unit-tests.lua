@@ -338,6 +338,34 @@ function test_read_file ()
     lu.assert_equals(str, ZOTXT_JSON)
 end
 
+function test_write_file ()
+    local invalid_inputs = {nil, false, '', {}}
+    for _, invalid in ipairs(invalid_inputs) do
+        lu.assert_error(M.read_file, nil, invalid)
+    end
+
+    local data, ok, err, errno
+    ok, err, errno = M.read_file('<does not exist>')
+    lu.assert_nil(ok)
+    lu.assert_not_equals(err, '')
+    lu.assert_equals(errno, 2)
+
+    local fname = TMP_DIR .. PATH_SEP .. 'file'
+    ok, err, errno = os.remove(fname)
+    if not ok and errno ~= 2 then error(err) end
+    ok, err, errno = M.write_file(ZOTXT_JSON, fname)
+    lu.assert_nil(err)
+    lu.assert_true(ok)
+    lu.assert_nil(errno)
+
+    data, err, errno = M.read_file(fname)
+    lu.assert_nil(err)
+    lu.assert_not_nil(data)
+    lu.assert_nil(errno)
+
+    lu.assert_equals(data:gsub('%s+$', ''), ZOTXT_JSON:gsub('%s+$', ''))
+end
+
 function test_read_json_file ()
     local invalid_inputs = {nil, false, '', {}}
     for _, invalid in ipairs(invalid_inputs) do
