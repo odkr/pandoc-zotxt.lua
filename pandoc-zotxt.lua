@@ -135,7 +135,6 @@ local type = type
 local io = io
 local math = math
 local package = package
-local string = string
 local table = table
 
 -- luacheck: push ignore
@@ -288,7 +287,7 @@ end
 -- -------------
 
 function read_file (fname)
-    local str, err, errno, f, str
+    local str, ok, err, errno, f
     f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
     str, err, errno = f:read('a')
