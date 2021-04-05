@@ -286,10 +286,10 @@ end
 -- File handling
 -- -------------
 
---- Reads a file.
+--- Returns the content of a file.
 --
 -- @string fname Name of the file.
--- @treturn[1] string The content of thee file.
+-- @treturn[1] string The content of the file.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] int The error number.
@@ -307,14 +307,12 @@ end
 
 --- Writes data to a file.
 --
--- @param data Data.
+-- @string str Data.
 -- @string fname Name of the file.
 -- @treturn[1] bool `true` if `data` was written to the file.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
--- @treturn[2] int An error number.
---  Positive numbers are OS error numbers,
---  negative numbers indicate a JSON decoding error.
+-- @treturn[2] int The error number.
 function write_file (str, fname)
     local err, errno, f, ok
     f, err, errno = io.open(fname, 'w')
@@ -374,14 +372,17 @@ do
     -- @return[1] The parsed data.
     -- @treturn[2] nil `nil` if the file could not be read.
     -- @treturn[2] string An error message.
-    -- @treturn[2] int The OS error number.
-    -- @raise An error if the file cannot be parsed.
-    --  If you are running a version of Pandoc prior to v2.10,
-    --  this error cannot be caught.
+    -- @treturn[2] int An error number.
+    --  Positive numbers are OS error numbers,
+    --  negative numbers indicate a YAML decoding error.
+    -- @raise If you are running a version of Pandoc prior to v2.10,
+    --  an error if the given YAML code cannot be decoded.
+    --  This error cannot be caught.
     function read_yaml_file (fname)
         local str, err, errno = read_file(fname)
         if not str then return nil, err, errno end
-        local data = read(header:format(str), 'markdown')
+        local ok, data = pcall(read, header:format(str), 'markdown')
+        if not ok then return nil, 'YAML decoding error', -1 end
         return data.meta.references
     end
 end
@@ -394,7 +395,7 @@ do
     local pcall = pcall -- luacheck: ignore
     local fetch = pandoc.mediabag.fetch
 
-    --- Retrieves data request from a URL via an HTTP GET request.
+    --- Retrieves data from a URL via an HTTP GET request.
     --
     -- This is a function of its own only in order for the test scripts to
     -- be able to easily replace it with a function that redirects HTTP GET
@@ -463,7 +464,7 @@ do
     local base_url = ZOTXT_BASE_URL
     local keytypes = ZOTXT_KEYTYPES
 
-    ---  Retrieves bibliographic data for a source (low-level).
+    ---  Retrieves bibliographic data (low-level).
     --
     -- Takes a citation key and a parsing function, queries zotxt for that
     -- citation key, passes whatever zotxt returns to the parsing function,
@@ -521,7 +522,7 @@ do
         return conv_nums_to_strs(decode(csljson)[1])
     end
 
-    ---  Retrieves bibliographic data for a source (for JSON files).
+    ---  Retrieves bibliographic data (for use in JSON files).
     --
     -- Returns bibliographic data as Lua data structure, *not* as a Pandoc
     -- data structure. That is, the return value of this function can be
@@ -559,7 +560,7 @@ do
         return read(csljson, 'csljson').meta.references[1]
     end
 
-    ---  Retrieves bibliographic data for a source (for Citeproc).
+    ---  Retrieves bibliographic data (for `references` metadata field).
     --
     -- Returns data as a Pandoc data structure, which can be used in the
     -- `references` metadata field. (Regardless of what version of Pandoc
@@ -593,7 +594,7 @@ end
 -- Document handling
 -- -----------------
 
---- Collects the citation keys occurring in a document.
+--- Collects citation keys used in document.
 --
 -- @tparam pandoc.Doc doc A document.
 -- @treturn table A set of citation keys.
@@ -615,7 +616,7 @@ function get_used_citekeys (doc)
 end
 
 
---- Returns the citation keys of sources in the `references` metadata field.
+--- Returns citation keys in `references` metadata field.
 --
 -- @tparam pandoc.Doc doc A document.
 -- @treturn table A set of citation keys.
@@ -637,6 +638,10 @@ function get_refs_citekeys (doc)
 end
 
 
+--- Returns the citation keys in bibliography files.
+--
+-- @tparam pandoc.Doc doc A document.
+-- @treturn table A set of citation keys.
 function get_biblio_citekeys (doc)
     assert(doc.blocks, 'Not a Pandoc document.')
     local ret = {}
@@ -791,7 +796,7 @@ function add_bibliography (citekeys, meta)
 end
 
 
---- Adds sources to the `references` metadata field.
+--- Adds sources to `references` metadata field.
 --
 -- Prints an error message to STDERR for
 --
