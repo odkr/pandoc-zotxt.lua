@@ -838,22 +838,6 @@ function add_references (citekeys, meta)
             warn(err)
         end
     end
-    local stringify = pandoc.utils.stringify
-    local cnt = {}
-    for i = 1, #meta.references do
-        local id = meta.references[i].id
-        if type(id) == 'table' then id = stringify(id) end
-        if not cnt[id] then
-            cnt[id] = 1
-        else
-            cnt[id] = cnt[id] + 1
-        end
-    end
-    for citekey, c in pairs(cnt) do
-        if c > 1 then
-            warn('Citation key "%s": Defined %d times!', citekey, c)
-        end
-    end
     return meta
 end
 
