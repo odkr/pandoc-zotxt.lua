@@ -380,11 +380,11 @@ end
 -- Converters
 -- ----------
 
-function test_convert_numbers_to_strings ()
+function test_conv_nums_to_strs ()
     local a = {}
     a.a = a
-    lu.assert_error(M.convert_numbers_to_strings, a)
-    lu.assert_nil(M.convert_numbers_to_strings())
+    lu.assert_error(M.conv_nums_to_strs, a)
+    lu.assert_nil(M.conv_nums_to_strs())
 
     local tests = {
         [true] = true, [1] = '1', [1.1] = '1', ['a'] = 'a', [{}] = {},
@@ -398,7 +398,7 @@ function test_convert_numbers_to_strings ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(M.convert_numbers_to_strings(k), v)
+        lu.assert_equals(M.conv_nums_to_strs(k), v)
     end
 end
 

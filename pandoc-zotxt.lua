@@ -349,7 +349,7 @@ end
 
 do
     local read = pandoc.read
-    local header = '---\n%s\n---'
+    local header = '---\n%s\n...'
 
     function read_yaml_file (fname)
         local str, err, errno = read_file(fname)
