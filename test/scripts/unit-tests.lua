@@ -146,6 +146,29 @@ ZOTXT_CSL = {
     ISBN = '978-0-19-989262-4'
 }
 
+--- Bibliographic data as returned from a YAML file.
+ZOTXT_YAML = {
+    author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
+    id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
+    issued={["date-parts"]={{{{text="1989"}}}}},
+    title={
+        {text="Demarginalizing"},
+        {},
+        {text="the"},
+        {},
+        {text="intersection"},
+        {},
+        {text="of"},
+        {},
+        {text="race"},
+        {},
+        {text="and"},
+        {},
+        {text="sex"}
+    },
+    type={{text="paper"}}
+}
+
 --- Bibliographic data as JSON string.
 ZOTXT_JSON = '[\n  ' ..
     '{"id":"haslanger2012ResistingRealitySocial","author":[{"family":"Haslanger","given":"Sally"}],"ISBN":"978-0-19-989262-4","issued":{"date-parts":[[2012]]},"publisher":"Oxford University Press","publisher-place":"Oxford","title":"Resisting Reality: Social Construction and Social Critique","title-short":"Resisting Reality","type":"book"}' ..
@@ -385,6 +408,27 @@ function test_read_json_file ()
     lu.assert_nil(errno)
     lu.assert_equals(data, {ZOTXT_CSL})
 end
+
+function test_read_yaml_file ()
+    local invalid_inputs = {nil, false, '', {}}
+    for _, invalid in ipairs(invalid_inputs) do
+        lu.assert_error(M.read_yaml_file, invalid)
+    end
+
+    local data, ok, err, errno
+    ok, err, errno = M.read_yaml_file('<does not exist>')
+    lu.assert_nil(ok)
+    lu.assert_not_equals(err, '')
+    lu.assert_equals(errno, 2)
+
+    local fname = DATA_DIR .. PATH_SEP .. 'bibliography.yaml'
+    data, err, errno = M.read_yaml_file(fname)
+    lu.assert_nil(err)
+    lu.assert_not_nil(data)
+    lu.assert_nil(errno)
+    lu.assert_equals(data, {ZOTXT_YAML})
+end
+
 
 function test_write_json_file ()
     local invalid_inputs = {nil, false, '', {}}
