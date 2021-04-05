@@ -596,7 +596,7 @@ end
 --- Collects the citation keys occurring in a document.
 --
 -- @tparam pandoc.Doc doc A document.
--- @treturn table A list of citation keys.
+-- @treturn table A set of citation keys.
 function get_used_citekeys (doc)
     local ret = {}
     local filter = {
@@ -615,7 +615,12 @@ function get_used_citekeys (doc)
 end
 
 
+--- Returns the citation keys of sources in the `references` metadata field.
+--
+-- @tparam pandoc.Doc doc A document.
+-- @treturn table A set of citation keys.
 function get_refs_citekeys (doc)
+    assert(doc.blocks, 'Not a Pandoc document.')
     local ret = {}
     if doc.meta then
         local stringify = pandoc.utils.stringify
