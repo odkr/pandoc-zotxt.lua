@@ -286,6 +286,13 @@ end
 -- File handling
 -- -------------
 
+--- Reads a file.
+--
+-- @string fname Name of the file.
+-- @treturn[1] string The content of thee file.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] int The error number.
 function read_file (fname)
     local str, err, errno, f, ok
     f, err, errno = io.open(fname, 'r')
@@ -298,11 +305,21 @@ function read_file (fname)
 end
 
 
+--- Writes data to a text file.
+--
+-- @param data Data.
+-- @string fname Name of the file.
+-- @treturn[1] bool `true` if `data` was written to the file.
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[2] int An error number.
+--  Positive numbers are OS error numbers,
+--  negative numbers indicate a JSON decoding error.
 function write_file (str, fname)
     local err, errno, f, ok
     f, err, errno = io.open(fname, 'w')
     if not f then return nil, err, errno end
-    ok, err, errno = f:write(str, EOL)
+    ok, err, errno = f:write(str)
     if not ok then return nil, err, errno end
     ok, err, errno = f:close()
     if not ok then return nil, err, errno end
@@ -328,9 +345,9 @@ function read_json_file (fname)
 end
 
 
---- Writes data to a file in JSON.
+--- Writes JSON data to a file.
 --
--- It terminates files with `EOL`.
+-- Terminates files with `EOL`.
 --
 -- @param data Data.
 -- @string fname Name of the file.
@@ -343,7 +360,7 @@ end
 function write_json_file (data, fname)
     local ok, str = pcall(json.encode, data)
     if not ok then return nil, 'JSON encoding error', -1 end
-    return write_file(str, fname)
+    return write_file(str .. EOL, fname)
 end
 
 
