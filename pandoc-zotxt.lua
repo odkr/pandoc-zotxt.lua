@@ -287,7 +287,7 @@ end
 -- -------------
 
 function read_file (fname)
-    local str, ok, err, errno, f
+    local str, err, errno, f, ok
     f, err, errno = io.open(fname, 'r')
     if not f then return nil, err, errno end
     str, err, errno = f:read('a')
@@ -296,6 +296,7 @@ function read_file (fname)
     if not ok then return nil, err, errno end
     return str
 end
+
 
 function write_file (str, fname)
     local err, errno, f, ok
@@ -323,7 +324,7 @@ function read_json_file (fname)
     if not str then return nil, err, errno end
     local ok, data = pcall(json.decode, str)
     if not ok then return nil, 'JSON decoding error', -1 end
-    return convert_numbers_to_strings(data)
+    return conv_nums_to_strs(data)
 end
 
 
@@ -405,14 +406,14 @@ do
     --
     -- @param data Data of any type.
     -- @return The given data, with all numbers converted into strings.
-    function convert_numbers_to_strings (data, depth)
+    function conv_nums_to_strs (data, depth)
         if not depth then depth = 1 end
         assert(depth < 512, 'Reached recursion limit.')
         local t = type(data)
         if t == 'table' then
             local s = {}
             for k, v in pairs(data) do
-                s[k] = convert_numbers_to_strings(v, depth + 1)
+                s[k] = conv_nums_to_strs(v, depth + 1)
             end
             return s
         elseif t == 'number' then
@@ -490,7 +491,7 @@ do
     -- @string csljson A CSL JSON string.
     -- @return A Lua data structure.
     local function parse (csljson)
-        return convert_numbers_to_strings(decode(csljson)[1])
+        return conv_nums_to_strs(decode(csljson)[1])
     end
 
     ---  Retrieves bibliographic data for a source (for JSON files).
@@ -585,6 +586,7 @@ function get_used_citekeys (doc)
     end
     return ret
 end
+
 
 function get_refs_citekeys (doc)
     local ret = {}
