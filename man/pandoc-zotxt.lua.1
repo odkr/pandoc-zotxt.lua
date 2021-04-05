@@ -73,12 +73,13 @@ Pandoc processes citations.
 .IP
 .nf
 \f[C]
-pandoc -L pandoc-zotxt.lua -C <<EOF
+cat <<EOF >document.md
 ---
 zotero-bibliography: bibliography.json
 ---
 See \[at]doe2020Title for details.
 EOF
+pandoc -L pandoc-zotxt.lua -C document.md
 \f[R]
 .fi
 .PP
@@ -89,9 +90,9 @@ metadata field \[dq]bibliography\[dq], so that Pandoc picks it up.
 \[dq]document.md\[dq], since \[dq]document.md\[dq] is the first input
 file given.
 The next time you process \[dq]document.md\[dq],
-\f[B]pandoc-zotxt.lua\f[R] will \f[I]not\f[R] look up
-\[dq]doe2020Title\[dq] in Zotero, since \[dq]bibliography.json\[dq]
-already contains data for that source.
+\f[B]pandoc-zotxt.lua\f[R] will \f[I]not\f[R] look up the source
+\[dq]doe2020Title\[dq] in Zotero, because the file
+\[dq]bibliography.json\[dq] already contains its bibliographic data.
 .SH KNOWN ISSUES
 .PP
 Zotero, from v5.0.71 onwards, does not allow browsers to access its

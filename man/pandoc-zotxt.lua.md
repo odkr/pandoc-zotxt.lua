@@ -75,12 +75,13 @@ which then looks up the bibligraphic data of the source with the citation
 key "doe2020Title" in Zotero before Pandoc processes citations.
 
 ```sh
-pandoc -L pandoc-zotxt.lua -C <<EOF
+cat <<EOF >document.md
 ---
 zotero-bibliography: bibliography.json
 ---
 See @doe2020Title for details.
 EOF
+pandoc -L pandoc-zotxt.lua -C document.md
 ```
 
 This instructs **pandoc-zotxt.lua** to store bibliographic data in a file
@@ -88,8 +89,8 @@ named "bibliography.json" and to add that file to the metadata field
 "bibliography", so that Pandoc picks it up. "bibliography.json" is placed in
 the same directory as "document.md", since "document.md" is the first input
 file given. The next time you process "document.md", **pandoc-zotxt.lua** will
-*not* look up "doe2020Title" in Zotero, since "bibliography.json" already
-contains data for that source.
+*not* look up the source "doe2020Title" in Zotero, because the file
+"bibliography.json" already contains its bibliographic data.
 
 
 KNOWN ISSUES
