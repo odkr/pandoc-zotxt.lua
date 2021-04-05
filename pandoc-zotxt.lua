@@ -305,7 +305,7 @@ function read_file (fname)
 end
 
 
---- Writes data to a text file.
+--- Writes data to a file.
 --
 -- @param data Data.
 -- @string fname Name of the file.
@@ -368,6 +368,16 @@ do
     local read = pandoc.read
     local header = '---\n%s\n...'
 
+    --- Reads a CSL YAML file.
+    --
+    -- @string fname Name of the file.
+    -- @return[1] The parsed data.
+    -- @treturn[2] nil `nil` if the file could not be read.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int The OS error number.
+    -- @raise An error if the file cannot be parsed.
+    --  If you are running a version of Pandoc prior to v2.10,
+    --  this error cannot be caught.
     function read_yaml_file (fname)
         local str, err, errno = read_file(fname)
         if not str then return nil, err, errno end
@@ -645,10 +655,14 @@ function get_biblio_citekeys (doc)
                         ret[source.id] = true
                     end
                 elseif fname:match '.[Yy][Aa][Mm][Ll]$' then
-                    local sources = read_yaml_file(fname)
-                    for j = 1, #sources do
-                        local source = sources[j]
-                        ret[stringify(source.id)] = true
+                    local ok, sources = pcall(read_yaml_file, fname)
+                    if ok then
+                        for j = 1, #sources do
+                            local source = sources[j]
+                            ret[stringify(source.id)] = true
+                        end
+                    else
+                        warn('%s: Could not parse.', fname)
                     end
                 else
                     warn('%s: Unknown bibliography format.', fname)
