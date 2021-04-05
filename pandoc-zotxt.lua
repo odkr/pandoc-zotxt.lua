@@ -638,6 +638,7 @@ end
 
 
 function get_biblio_citekeys (doc)
+    assert(doc.blocks, 'Not a Pandoc document.')
     local ret = {}
     if doc.meta then
         local stringify = pandoc.utils.stringify
