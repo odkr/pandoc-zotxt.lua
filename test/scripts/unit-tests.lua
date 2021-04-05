@@ -363,7 +363,7 @@ function test_write_file ()
     lu.assert_not_nil(data)
     lu.assert_nil(errno)
 
-    lu.assert_equals(data:gsub('%s+$', ''), ZOTXT_JSON:gsub('%s+$', ''))
+    lu.assert_equals(data, ZOTXT_JSON)
 end
 
 function test_read_json_file ()
