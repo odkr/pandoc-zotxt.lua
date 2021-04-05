@@ -254,7 +254,7 @@ local json = require 'lunajson'
 -- Also appends `EOL`.
 --
 -- @string msg A message to write to STDERR.
--- @string ... Arguments (think `string.format`) for `msg`.
+-- @param ... Arguments (think `string.format`) for `msg`.
 function warn (msg, ...)
     io.stderr:write(NAME, ': ', msg:format(...), EOL)
 end
@@ -546,7 +546,7 @@ end
 --
 -- @tparam pandoc.Doc doc A document.
 -- @treturn table A list of citation keys.
-function get_citekeys (doc)
+function get_used_citekeys (doc)
     local ret = {}
     local filter = {
         Cite = function (cite)
@@ -578,7 +578,39 @@ function get_refs_citekeys (doc)
     end
     return ret
 end
--- TODO: Handle bibliographyfiles
+
+-- TODO bibliographies
+function get_biblio_citekeys (doc)
+    local ret = {}
+    if doc.meta then
+        local stringify = pandoc.utils.stringify
+        local biblio = doc.meta.bibliography
+        if biblio then
+            local fnames
+            if biblio.tag == 'MetaInlines' then
+                fnames = {stringify(biblio)}
+            elseif biblio.tag == 'MetaList' then
+                fnames = biblio:map(stringify)
+            else
+                warn 'Cannot parse metadata field "bibliography".'
+            end
+            for i = 1, #fnames do
+                local fname = fnames[i]
+                if fname:match '.json$' then
+                    local sources = read_json_file(fname)
+                    for j = 1, #sources do
+                        local source = sources[j]
+                        ret[source.id] = true
+                    end
+                end
+            end
+        end
+    end
+    return ret
+end
+
+
+
 
 
 --- Adds sources to a bibliography file.
@@ -588,7 +620,7 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
--- @tparam table citekeys Set of citation keys that should be added, e.g.,
+-- @tab citekeys Set of citation keys that should be added, e.g.,
 --  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @string fname The name of the bibliography file.
 -- @treturn[1] bool `true` if the bibliography file was updated
@@ -637,7 +669,7 @@ end
 -- Behaves in the same way as `update_bibliography`, but also adds the
 -- the given bibliography file to the metadata field `bibliography`.
 --
--- @tparam table citekeys Set of citation keys that should be added, e.g.,
+-- @tab citekeys Set of citation keys that should be added, e.g.,
 --  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @tparam pandoc.Meta meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
@@ -681,7 +713,7 @@ end
 --  - every source that cannot be found.
 --  - every citation key that is defined more than once.
 --
--- @tparam table citekeys Set of citation keys that should be added, e.g.,
+-- @tab citekeys Set of citation keys that should be added, e.g.,
 --  `{['name:2019word']=true, ['name2019WordWordWord']=true}`.
 -- @tparam pandoc.Meta meta A metadata block.
 -- @treturn[1] pandoc.Meta An updated metadata block,
@@ -736,7 +768,7 @@ end
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @raise See `get_source_csljson`.
 function main (doc)
-    local citekeys = get_citekeys(doc)
+    local citekeys = get_used_citekeys(doc)
     -- FIXME: this breaks duplicates test suite
     -- local predefind = get_refs_citekeys(doc)
     -- for k in pairs(predefind) do citekeys[k] = nil end

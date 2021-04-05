@@ -434,23 +434,26 @@ end
 -- Updating the document
 -- ---------------------
 
-function test_get_citekeys ()
+function test_get_used_citekeys ()
     local invalid = {nil, false, 0, '', {}}
     for _, v in pairs(invalid) do
-        lu.assert_error(M.get_citekeys, v)
+        lu.assert_error(M.get_used_citekeys, v)
     end
 
     -- luacheck: globals DOC
     local empty_fname = DATA_DIR .. PATH_SEP .. 'test-empty.md'
     local empty = read_md_file(empty_fname)
-    lu.assert_equals(M.get_citekeys(empty), {})
+    lu.assert_equals(M.get_used_citekeys(empty), {})
 
     local test_fname = DATA_DIR .. PATH_SEP .. 'test-easy-citekey.md'
     local test_file = read_md_file(test_fname)
-    lu.assert_items_equals(M.get_citekeys(test_file), {
-        'haslanger:2012resisting','díaz-león:2013what',
-        'díaz-león:2015defence','díaz-león:2016woman',
-        'dotson:2016word','nobody:0000nothing'
+    lu.assert_items_equals(M.get_used_citekeys(test_file), {
+        ['dotson:2016word']=true,
+        ['díaz-león:2013what']=true,
+        ['díaz-león:2015defence']=true,
+        ['díaz-león:2016woman']=true,
+        ['haslanger:2012resisting']=true,
+        ['nobody:0000nothing']=true
     })
 end
 
@@ -477,7 +480,7 @@ function test_update_bibliography ()
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.update_bibliography({'haslanger:2012resisting'}, fname)
+    ok, err = M.update_bibliography({['haslanger:2012resisting']=true}, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = M.read_json_file(fname)
@@ -487,7 +490,7 @@ function test_update_bibliography ()
 
     -- Checks adding a new citation.
     local new
-    citekeys = {'haslanger:2012resisting', 'dotson:2016word'}
+    citekeys = {['haslanger:2012resisting']=true, ['dotson:2016word']=true}
     ok, err = M.update_bibliography(citekeys, fname)
     lu.assert_nil(err)
     lu.assert_true(ok)
