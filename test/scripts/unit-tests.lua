@@ -540,6 +540,25 @@ function test_get_used_citekeys ()
 end
 
 
+
+function test_get_refs_citekeys ()
+    local invalid = {nil, false, 0, '', {}}
+    for _, v in pairs(invalid) do
+        lu.assert_error(M.get_refs_citekeys, v)
+    end
+
+    -- luacheck: globals DOC
+    local empty_fname = DATA_DIR .. PATH_SEP .. 'test-empty.md'
+    local empty = read_md_file(empty_fname)
+    lu.assert_equals(M.get_refs_citekeys(empty), {})
+
+    local test_fname = DATA_DIR .. PATH_SEP .. 'test-duplicate.md'
+    local test_file = read_md_file(test_fname)
+    lu.assert_items_equals(M.get_refs_citekeys(test_file),
+        {crenshaw1989DemarginalizingIntersectionRace=true})
+end
+
+
 function test_update_bibliography ()
     local invalid_citekeys = {nil, false, 0, function () end}
 
