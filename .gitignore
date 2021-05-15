@@ -2,3 +2,7 @@
 test/biblio.json
 test/tmp/*
 .vscode
+/luarocks
+/lua
+/lua_modules
+/.luarocks
