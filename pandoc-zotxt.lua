@@ -1188,7 +1188,6 @@ end
 function meta_get_sources (meta)
     local ret = List()
     if not meta then return ret end
-    -- do the error handling here? would be better!
     if meta.references then ret:extend(meta.references) end
     if meta.bibliography then
         local fnames
@@ -1220,16 +1219,17 @@ end
 
 --- Collect the citation keys used in a document.
 --
---FIXME: prints errors
+-- Prints errors to STDERR if it cannot parse a bibliography file.
 --
 -- @tab doc A document.
 -- @string[opt] flags If the flag 'u' is given, collects only citation keys
 --  of sources that are neither defined in the `references` metadata field
 --  nor in any bibliography file.
 -- @treturn {string,...} A list of citation keys.
+-- @raise An error if an item ID is of an illegal data type.
 -- @within Document parsing
 function doc_get_ckeys (doc, flags)
-    -- @fixme flag is untested.
+    -- @fixme `flags` is untested.
     local ids = {}
     if flags == 'u' and doc.meta then
         local items = meta_get_sources(doc.meta)
@@ -1260,10 +1260,9 @@ end
 --- Add sources to a bibliography file and the file to the document's metadata.
 --
 -- Updates the bibliography file as needed and adds it to the `bibliography`
--- metadata field. Interpretes relative filenames as relative to the directory
--- of the first input file passed to **pandoc**, *not* as relative to the
--- current working directory (unless no input files are given).
--- FIXME: this only true for zotero-bibliography.
+-- metadata field. Interpretes a relative filename as relative to the
+-- directory of the first input file passed to **pandoc**, *not* as relative
+-- to the current working directory (unless no input files are given).
 --
 -- @tab meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
