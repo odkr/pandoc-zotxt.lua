@@ -2,9 +2,8 @@
 #
 # Installs pandoc-zotxt.lua.
 #
-# FIXME: You should run this scripts via `make install`.
-# FIXME: This makes it more likely that you run it with a POSIX-compliant shell.
-
+# You should run this scripts via `make install`.
+# This makes it more likely that you run it with a POSIX-compliant shell.
 
 # GLOBALS
 # =======
@@ -14,7 +13,6 @@ readonly FILTER
 
 NAME="$(basename "$0")"
 readonly NAME
-
 
 
 # FUNCTIONS
@@ -111,7 +109,7 @@ trapsig() {
 }
 
 
-# warn - Prints a message to STDERR.
+# warn - Print a message to STDERR.
 #
 # Synopsis:
 #   warn MESSAGE [ARG [ARG [...]]]
@@ -138,7 +136,7 @@ warn() (
 )
 
 
-# panic - Exits the script with an error message.
+# panic - Exit the script with an error message.
 #
 # Synopsis:
 #   panic [STATUS [MESSAGE [ARG [ARG [...]]]]]
@@ -161,11 +159,27 @@ panic() {
     exit "${1:-69}"
 }
 
+# pprint_home - Replace $HOME with a ~.
+#
+# Synopsis:
+#   pprint_home FNAME
+#
+# Description:
+#   If FNAME starts with $HOME, replaces $HOME with "~" and
+#   prints the resulting string. Otherwise prints FNAME as is.
+#
+# Arguments:
+#   FNAME   A filename.
+pprint_home() {
+    awk -v home="$HOME" '{gsub("^" home, "~"); print}' <<EOF
+${1:?}
+EOF
+}
 
 # PRELUDE
 # =======
 
-# shellcheck disable=2039
+# shellcheck disable=2039,3040
 [ "$BASH_VERSION" ] && set -o posix
 [ "$ZSH_VERSION"  ] && emulate sh 2>/dev/null
 # shellcheck disable=2034
@@ -182,6 +196,16 @@ export PATH
 VERSION="$(sed -n 's/--[[:space:]*]@release[[:space:]]*//p' <"$FILTER")"
 [ "$VERSION" ] || panic 69 'Could not guess version from LDoc comments.'
 
+B='' R=''
+case $TERM in (xterm-color|*-256color) 
+    B='\033[1m' R='\033[0m'
+esac
+
+if ! SCPT_DIR="$(dirname "$0")" || ! [ "$SCPT_DIR" ]; then
+    panic 69 '%s: Could not locate.' "$0"
+fi
+cd -P "$SCPT_DIR" || exit 69
+
 
 # MOVE FILES
 # ==========
@@ -193,56 +217,58 @@ PANDOC_DATA_DIR="$XDG_DATA_HOME/pandoc" OTHER_PANDOC_DATA_DIR="$HOME/.pandoc"
 ! [ -d "$PANDOC_DATA_DIR" ] && [ -d "$OTHER_PANDOC_DATA_DIR" ] && 
     PANDOC_DATA_DIR="$OTHER_PANDOC_DATA_DIR"
 unset OTHER_PANDOC_DATA_DIR
+PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 
-cd -P . || exit
+cd -P .. || exit
 if ! PWD="$(pwd)" || ! [ "$PWD" ]; then
-    pannic 'Cannot figure out working directory.'
+    panic 69 'Cannot locate working directory.'
 fi
+
+readonly REPO="$FILTER-$VERSION"
+[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
+	panic 69 "$B$REPO$R: Already installed."
+[ -d "$REPO" ] || panic 69 "$B$REPO$R: No such directory."
 
 if ! DIRNAME="$(basename "$PWD")" || ! [ "$DIRNAME" ]; then
-    panic 69 '%s: Cannot figure out name.' "$PWD"
+    panic 69 '%s: Cannot figure out filename.' "$PWD"
 fi
 
-B="" R=""
-case $TERM in (xterm-color|*-256color) 
-    B='\033[1m' R='\033[0m'
-esac
-
-warn_cleanup() { warn 'Aborted, cleaning up.'; }
 trapsig onexit 0 1 2 3 15
 
-# Create Pandoc data directory if it does not exist yet. 
-if [ -d "$PANDOC_DATA_DIR" ]; then
-    readonly PANDOC_DATA_DIR
-    remove_pandoc_data_dir() {
-        if [ "$PANDOC_DATA_DIR" ] && [ -d "$PANDOC_DATA_DIR" ]; then
-            warn "Removing $B$PANDOC_DATA_DIR$S." 
-            rmdir "$PANDOC_DATA_DIR"
-        fi
-    }
-    EX='warn_cleanup; remove_pandoc_data_dir'
-    warn "Making $B$PANDOC_DATA_DIR$R."
-    mkdir -p "$PANDOC_DATA_DIR" || exit
+# Create Pandoc filter directory if it does not exist yet. 
+if ! [ -e "$PANDOC_FILTER_DIR" ]; then
+    IFS=/ N=0 DIR=
+    for SEG in $PANDOC_FILTER_DIR; do
+        DIR="${DIR%/}/$SEG"
+        [ -e "$DIR" ] && continue
+        N=$((N+1))
+        eval "readonly DIR_$N=\"\$DIR\""
+        EX="[ -e \"\$DIR_$N\" ] && rmdir \"\$DIR_$N\"; ${EX-}"
+        warn "Making directory $B%s$R." "$(pprint_home "$DIR")"
+        mkdir "$DIR" || exit 69
+    done
+    unset IFS
 fi
 
 # Move repository to filter directory.
-readonly REPO="$FILTER-$VERSION"
-[ -d "$REPO" ] || panic 69 "$B$REPO$R: No such directory."
-
 move_repo_back() (
-    readonly from="$PANDOC_DATA_DIR/$REPO"
+    readonly from="$PANDOC_FILTER_DIR/$REPO"
     if [ "$from" != / ] && [ -d "$from" ]; then
-        warn "Moving $B$from$R to $B$PWD$R."
+        warn "Moving $B%s$R back to $B%s$R." \
+            "$(pprint_home "$from")" "$(pprint_home "$PWD")"
         mv "$from" "$PWD"
     fi
 )
 
-EX="warn_cleanup; move_repo_back; ${EX#warn_cleanup;}"
-warn "Moving $B$REPO$R to $B$PANDOC_DATA_DIR$R."
-mv "$REPO" "$PANDOC_DATA_DIR"
+EX="move_repo_back; ${EX-}"
+warn "Copying $B%s$R to $B%s$R." \
+    "$(pprint_home "$REPO")" "$(pprint_home "$PANDOC_FILTER_DIR")"
+cp -r "$REPO" "$PANDOC_FILTER_DIR"
 
-# Move pandoc-zotxt.lua one level up.
-cd -P "$PANDOC_DATA_DIR" || exit
-mv "$REPO/$FILTER" .
+# Create a symlink for the actual script.
+cd -P "$PANDOC_FILTER_DIR" || exit 69
+warn "Symlinking $B%s$R into $B%s$R." \
+    "$(pprint_home "$FILTER")" "$(pprint_home "$PANDOC_FILTER_DIR")"
+ln -fs "$REPO/$FILTER" .
 
 unset EX
