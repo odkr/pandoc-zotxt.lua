@@ -1,0 +1,39 @@
+rock_manifest = {
+   doc = {
+      _sources = {
+         ["index.rst.txt"] = "313e4a4c84eec25fae6270b40a1684a8"
+      },
+      _static = {
+         ["basic.css"] = "f2f1b6d8ee7ad6c58dc3e3840b189929",
+         ["classic.css"] = "a0b06f65b84d29b7ba5e914c9ca9e68d",
+         ["default.css"] = "0000e4ea89f1c9f5739b7f36d88477da",
+         ["doctools.js"] = "1d62eaf84c1475c3d59b853e8a6218d0",
+         ["documentation_options.js"] = "ab7603e9cfea46f6cbf166e503abc249",
+         ["file.png"] = "ba0c95766a77a6c598a7ca542f1db738",
+         ["jquery-3.5.1.js"] = "23c7c5d2d1317508e807a6c7f777d6ed",
+         ["jquery.js"] = "dc5e7f18c8d36ac1d3d4753a87c98d0a",
+         ["language_data.js"] = "25bb0e25909e393ebcb1bcb70558584d",
+         ["minus.png"] = "36b1a4b05451c7acde7ced60b2f6bc21",
+         ["plus.png"] = "0d7849fd4d4148b7f78cab60a087633a",
+         ["pygments.css"] = "1c3af458765bfa4786608257963fa9f8",
+         ["searchtools.js"] = "242e77ca7d6a07d0ada652f1e874adc9",
+         ["sidebar.js"] = "1c90c4247e3c0278c9b3f2b605c39043",
+         ["underscore-1.3.1.js"] = "4eb64db36175fefa3e36b9e57606512c",
+         ["underscore.js"] = "b538b8a3ed2c5519b19409eace25c38b"
+      },
+      ["genindex.html"] = "6164621d23d56846676d272717dbd8c2",
+      ["index.html"] = "9639f15af6af4eaf2502e7934ca02b10",
+      ["my_test_suite.lua"] = "f699cc6e1fd032e0e9299c05fa416e31",
+      ["objects.inv"] = "fc563ef8c30f33d67347cf18428c873c",
+      ["search.html"] = "513089f3ff3baf2162966780f5877d67",
+      ["searchindex.js"] = "5693870feab9fa82b16074f7de97d619"
+   },
+   lua = {
+      ["luaunit.lua"] = "68cedd25dc066e69823d9471660e8780"
+   },
+   ["luaunit-3.4-1.rockspec"] = "76cd0a4573387d1880e731d4fc4e1994",
+   test = {
+      ["run_unit_tests.lua"] = "11fcee640a6781d193908a140bba4a05",
+      ["test_luaunit.lua"] = "eb5f22e71030e8b3f449f6014995b443"
+   }
+}
