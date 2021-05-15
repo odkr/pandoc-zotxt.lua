@@ -8,7 +8,7 @@
 -- DESCRIPTION
 -- -----------
 --
--- Used in the test suite to tailer test to different versions of Pandoc.
+-- Used in the test suite to tailor tests to different versions of Pandoc.
 --
 -- EXIT STATUS
 -- -----------
@@ -24,4 +24,4 @@
 -- @script pre-v2_11.lua
 -- @author Odin Kroeger
 -- luacheck: ignore
-if pandoc.types and PANDOC_VERSION >= pandoc.types.Version '2.11' then os.exit(1) end
+if pandoc.types and PANDOC_VERSION >= {2, 11} then os.exit(1) end

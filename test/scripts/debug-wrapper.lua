@@ -54,7 +54,7 @@ do
     --
     -- This function makes an educated guess given the string it's passed.
     -- It doesn't look at the filesystem. The guess is educated enough though.
-    function split_path (path)
+    function path_split (path)
         assert(path ~= '', 'path is the empty string')
         local dir, fname = path:match(split)
         for i = 1, #sanitisers do
@@ -68,7 +68,7 @@ end
 
 -- luacheck: globals PANDOC_SCRIPT_FILE
 --- The directory of this script.
-local SCRIPT_DIR = split_path(PANDOC_SCRIPT_FILE)
+local SCRIPT_DIR = path_split(PANDOC_SCRIPT_FILE)
 
 --- The directory of the test suite.
 local TEST_DIR = table.concat({SCRIPT_DIR, '..'}, PATH_SEP)
@@ -79,8 +79,15 @@ local CAN_DIR = table.concat({TEST_DIR, 'can'}, PATH_SEP)
 --- The repository directory.
 local REPO_DIR = table.concat({TEST_DIR, '..'}, PATH_SEP)
 
-package.path = package.path .. ';' ..
-    table.concat({REPO_DIR, 'share', 'lua', '5.3', '?.lua'}, PATH_SEP)
+do
+    local concat = table.concat
+    local versions = {'5.3', '5.4'}
+    for i = 1, #versions do
+        local vers = versions[i]
+        package.path = package.path ..
+            ';' .. concat({REPO_DIR, 'share', 'lua', vers, '?.lua'}, PATH_SEP)
+    end
+end
 
 local M = require 'pandoc-zotxt'
 
@@ -93,20 +100,17 @@ local M = require 'pandoc-zotxt'
 --
 -- @tparam string url The URL.
 -- @treturn[1] string The data.
--- @treturn[2] string An error message (not `nil`) if an error occurred.
-function M.read_url (url)
+-- @treturn[2] nil `nil` if an error occurred.
+-- @treturn[2] string An error message.
+-- @treturn[3] int An error number.
+function M.url_read (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
-    M.warn('%s -> %s', url, hash)
-    local fname, f, data, ok, err
-    fname = CAN_DIR .. PATH_SEP .. hash
-    f, err = io.open(fname, 'r')
-    if not f then return err end
-    data, err = f:read('a')
-    if not data then return err end
-    ok, err = f:close()
-    if not ok then return err end
-    return data
+    M.warnf('%s -> %s', url, hash)
+    local path = M.path_join(CAN_DIR, hash)
+    local data, err, errno = M.file_read(path)
+    if not data then return nil, err, errno end
+    return 'text/plain; charset=UTF-8', data
 end
 
 return M

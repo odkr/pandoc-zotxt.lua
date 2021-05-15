@@ -18,13 +18,23 @@ SHELL		?= sh
 RM		?= rm -f
 PANDOC		?= pandoc
 
+# The shells to try. Used for installation.
+# Must be filenames. Order by preference, from best to worst.
+# Change PATH to use different versions of the same shell.
+SHELLS		= dash oksh bash yash zsh mksh ksh sh
+
 # TARGETS
 # =======
 
+ISSUE_TESTS	:= test-issue-4
+
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography \
-		   test-merge test-duplicate test-duplicate-bibliography \
-		   test-example-simple test-example-bibliography
+		   test-zotero-id test-bibliography-json test-bibliography-yaml test-merge \
+		   test-duplicate-bibliography-bib test-duplicate-bibliography-yaml \
+		   test-example-simple test-example-bibliography \
+		   $(ISSUE_TESTS)
+
+OTHER_TESTS := test-resource-path
 
 SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua
 
@@ -32,12 +42,12 @@ SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua
 # TESTS
 # =====
 
-test: unit-tests behaviour-tests
+test: unit-tests behaviour-tests $(OTHER_TESTS)
 
 behaviour-tests: $(BEHAVIOUR_TESTS)
 
 install-luaunit:
-	[ -e "share/lua/5.3/luaunit.lua" ] || \
+	[ -e share/lua/*/luaunit.lua ] || \
 		luarocks install --tree=. luaunit
 
 prepare-tmpdir:
@@ -64,6 +74,24 @@ $(BEHAVIOUR_TESTS): prepare-tmpdir
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
+test-resource-path:
+	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
+		--from markdown --to plain /dev/null >/dev/null 2>&1; \
+	then \
+		"$(PANDOC)" --lua-filter "$(SCRIPT)" --resource-path "$(DATA_DIR)" \
+			--filter pandoc-citeproc \
+			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
+	else \
+		$(PANDOC) --lua-filter "$(SCRIPT)" --resource-path "$(DATA_DIR)" \
+			--citeproc \
+			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
+	fi
+
+prologue:
+	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' man/pandoc-zotxt.lua.md
+
 manual:
 	$(PANDOC) -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
@@ -74,8 +102,13 @@ manual:
 docs: manual
 	ldoc . 
 
-prologue:
-	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' man/pandoc-zotxt.lua.md
+install:
+	@PATH="`getconf PATH`:$$PATH"; \
+	for SHELL in $(SHELLS); do \
+		"$$SHELL" </dev/null && break; \
+	done; \
+	"$$SHELL" install.sh
 
-.PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests  \
-	$(BEHAVIOUR_TESTS) unit-tests prologue manual developer-documenation docs
+.PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
+	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
+	prologue manual developer-documenation docs
