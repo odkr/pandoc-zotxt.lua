@@ -100,7 +100,7 @@ Moreover, you will need:
 
 * Zotero (v5 or newer)
 * zotxt (v5 or newer)
-* Better BibTex for Zotero
+* Better BibTeX for Zotero
 
 
 ## Contact
