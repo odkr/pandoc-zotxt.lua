@@ -948,7 +948,7 @@ do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
-            -- (for Better BibTex citation keys).
+            -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
             local _, data = url_read(query_url)
             if data then
