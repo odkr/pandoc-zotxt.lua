@@ -298,14 +298,15 @@ end
 -- Tables
 -- ------
 
---- Recursively applies a function to every value of a tree.
+--- Recursively apply a function to every value of a tree.
 --
--- @func func A function that takes a value and returns a new value.
---  The function receives the name of the key as second argument,
---  if applicable.
+-- @func func A function that takes a value and returns a new one.
+--  Called for every node in the data tree, including `table` nodes.
+--  Receives the value's key as second argument, if applicable.
 -- @param data A data tree.
 -- @return `data` with `func` applied.
--- @raise An error if if the data is nested too deeply.
+-- @raise An error if the data is nested too deeply.
+-- @within Table manipulation.
 -- @fixme Untested.
 function rmap (func, data, _rd)
     if type(data) ~= 'table' then return func(data) end
@@ -349,7 +350,7 @@ do
     --
     -- @tab tab The table.
     -- @return A copy of `tab` with keys in lowercase.
-    -- @raise An error if if the data is nested too deeply.
+    -- @raise An error if the data is nested too deeply.
     -- @within Table manipulation
     function lower_keys (tab, _rd)
         if not _rd then _rd = 0
@@ -837,7 +838,7 @@ do
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
     -- @treturn[2] An error message.
-    -- @raise An error if if the data is nested too deeply.
+    -- @raise An error if the data is nested too deeply.
     -- @within Converters
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
