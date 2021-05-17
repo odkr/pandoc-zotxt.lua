@@ -838,15 +838,18 @@ do
     end
 
     local function conv (val, key)
-        if not keys_formattable[key] or
-           type(val) ~= 'string'     then return val end
+        if not keys_formattable[key] or type(val) ~= 'string' then
+            return val
+        end
         return conv_html_to_md(val)
     end
 
     --- Recursively convert pseudo-HTML to Markdown.
     --
-    -- @tab item A data tree, e.g., a CSL item.
-    -- @treturn tab The data, with pseudo-HTML replaced with Markdown.
+    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
     -- @see conv_html_to_md
     -- @within Converters
     -- @fixme Untested
