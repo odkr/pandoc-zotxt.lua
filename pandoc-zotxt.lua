@@ -298,8 +298,17 @@ end
 -- Tables
 -- ------
 
+--- Recursively maps a function on every value of a tree.
+--
+-- @func func A function that takes a value and returns a new value.
+--  The function receives the name of the key as second argument,
+--  if applicable.
+-- @param data A data tree.
+-- @return `data` with `func` applied.
+-- @raise An error if if the data is nested too deeply.
+-- @fixme Untested.
 function rmap (func, data, _rd)
-    if type(data) ~= 'table' then return func(nil, data) end
+    if type(data) ~= 'table' then return func(data) end
     if not _rd then _rd = 0 end
     assert(_rd < 512, 'Too much recursion.')
     local ret = {}
@@ -307,7 +316,7 @@ function rmap (func, data, _rd)
     while k do
         local v = data[k]
         if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
-        ret[k] = func(k, v)
+        ret[k] = func(v, k)
         k = next(data, k)
     end
     return ret
@@ -340,6 +349,7 @@ do
     --
     -- @tab tab The table.
     -- @return A copy of `tab` with keys in lowercase.
+    -- @raise An error if if the data is nested too deeply.
     -- @within Table manipulation
     function lower_keys (tab, _rd)
         if not _rd then _rd = 0
@@ -774,7 +784,7 @@ do
         keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
     end
 
-    local function conv (key, val)
+    local function conv (val, key)
         if not keys_formattable[key] or
            type(val) ~= 'string'     then return val end
         return conv_html_to_md(val)
@@ -789,7 +799,7 @@ end
 
 
 do
-    function conv (_, data)
+    function conv (data)
         if type(data) ~= 'number' then return data end
         return tostring(math.floor(data))
     end
@@ -804,22 +814,6 @@ do
     -- @return A copy of `data` with numbers converted to strings.
     -- @raise An error if the data is nested too deeply.
     -- @within Converters
-    -- function rconv_nums_to_strs (data, _rd)
-    --     if not _rd then _rd = 0 end
-    --     assert(_rd < 1024, 'Too much recursion.')
-    --     local t = type(data)
-    --     if t == 'table' then
-    --         local ret = {}
-    --         for k, v in pairs(data) do
-    --             ret[k] = rconv_nums_to_strs(v, _rd + 1)
-    --         end
-    --         return ret
-    --     elseif t == 'number' then
-    --         return tostring(math.floor(data))
-    --     else
-    --         return data
-    --     end
-    -- end
     function rconv_nums_to_strs (data)
         return rmap(conv, data)
     end
@@ -847,7 +841,7 @@ do
     -- @within Converters
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
-        assert(_rd < 1024, 'Too much recusion.')
+        assert(_rd < 1024, 'Too much recursion.')
         if not ind then ind = 4 end
         local t = type(data)
         if t == 'number' then
