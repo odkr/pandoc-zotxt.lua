@@ -50,6 +50,9 @@ You may also want to copy the manual page from the `man` directory in the
 repository to wherever your operating system searches for manual pages
 (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
+You also need to install [zotxt](https://github.com/egh/zotxt/) *and*
+[Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
+
 
 ## Documentation
 
