@@ -843,14 +843,13 @@ do
         return conv_html_to_md(val)
     end
 
-    --- Convert Zotero pseudo-HTML formatting to Pandoc Markdown.
+    --- Recursively convert pseudo-HTML to Markdown.
     --
-    -- @tab item A CSL item.
-    -- @treturn tab The CSL item, with formatting adapted.
+    -- @tab item A data tree, e.g., a CSL item.
+    -- @treturn tab The data, with pseudo-HTML replaced with Markdown.
     -- @see conv_html_to_md
     -- @within Converters
     -- @fixme Untested
-    -- @fixme Documentation needs work.
     function rconv_html_to_md (item)
         return rmap(conv, item)
     end
