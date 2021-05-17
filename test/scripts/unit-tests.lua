@@ -711,6 +711,8 @@ function test_esc_md ()
         ['[]{}'] = '\\[]{}',
         ['[text](link)'] = '\\[text](link)',
         ['[text]{.class}'] = '\\[text]{.class}',
+        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\**E**[\\*x*\\~\\*i*~]]{.class}',
+        ['[***My*Name**]{style="small-caps"}'] = 'FIXME'
     }
 
     for i, o in pairs(tests) do
