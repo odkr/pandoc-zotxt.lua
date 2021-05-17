@@ -298,7 +298,7 @@ end
 -- Tables
 -- ------
 
---- Recursively maps a function on every value of a tree.
+--- Recursively applies a function to every value of a tree.
 --
 -- @func func A function that takes a value and returns a new value.
 --  The function receives the name of the key as second argument,
