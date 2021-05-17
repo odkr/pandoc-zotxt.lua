@@ -624,10 +624,10 @@ end
 -- Converters
 -- ----------
 
-function test_esc_inline_md ()
+function test_esc_md ()
     local invalid = {nil, 0, false, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_inline_md(v))
+        lu.assert_error(M.esc_md(v))
     end
 
     local tests = {
@@ -714,7 +714,7 @@ function test_esc_inline_md ()
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.esc_inline_md(i), o)
+        lu.assert_equals(M.esc_md(i), o)
     end
 end
 
