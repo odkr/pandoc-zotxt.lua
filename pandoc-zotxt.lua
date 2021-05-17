@@ -133,6 +133,7 @@ local _ENV = M
 
 
 -- Shorthands.
+local concat = table.concat
 local unpack = table.unpack
 
 local stringify = pandoc.utils.stringify
@@ -141,6 +142,7 @@ local List = pandoc.List
 local MetaInlines = pandoc.MetaInlines
 local MetaList = pandoc.MetaList
 local Str = pandoc.Str
+local Span = pandoc.Span
 
 
 -- Metadata
@@ -221,7 +223,7 @@ do
         for i = 1, n do
             assert(segs[i] ~= '', 'Path segment is the empty string ("").')
         end
-        local path = table.concat(segs, PATH_SEP)
+        local path = concat(segs, PATH_SEP)
         for i = 1, #san_es do path = path:gsub(unpack(san_es[i])) end
         return path
     end
@@ -246,7 +248,7 @@ do
     local vers = {'5.4', '5.3'}
     for i = 1, #vers do
         local sub_dir = path_join('share', 'lua', vers[i], '?.lua')
-        package.path = table.concat({package.path,
+        package.path = concat({package.path,
             path_join(SCPT_DIR, sub_dir),
             path_join(SCPT_DIR, repo, sub_dir)
         }, ';')
@@ -295,6 +297,22 @@ end
 
 -- Tables
 -- ------
+
+function rmap (func, data, _rd)
+    if type(data) ~= 'table' then return func(nil, data) end
+    if not _rd then _rd = 0 end
+    assert(_rd < 512, 'Too much recursion.')
+    local ret = {}
+    local k = next(data, nil)
+    while k do
+        local v = data[k]
+        if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
+        ret[k] = func(k, v)
+        k = next(data, k)
+    end
+    return ret
+end
+
 
 --- Return the keys and the length of a table.
 --
@@ -641,32 +659,172 @@ end
 -- Converters
 -- ----------
 
---- Convert numbers to strings recursively.
---
--- Also converts floating point numbers to integers. This is needed
--- because all numbers are floating point numbers in JSON, but some
--- versions of Pandoc expect integers.
---
--- @tab data The data.
--- @return A copy of `data` with numbers converted to strings.
--- @raise An error if the data is nested too deeply.
--- @within Converters
-function rconv_nums_to_strs (data, _rd)
-    if not _rd then _rd = 0 end
-    assert(_rd < 1024, 'Too much recursion.')
-    local t = type(data)
-    if t == 'table' then
-        local ret = {}
-        for k, v in pairs(data) do
-            ret[k] = rconv_nums_to_strs(v, _rd + 1)
-        end
-        return ret
-    elseif t == 'number' then
-        return tostring(math.floor(data))
-    else
-        return data
+CSL_KEYS_FORMATTABLE = {
+    'abstract',                 -- The abstract.
+    'collection-title',         -- E.g., a series.
+    'collection-title-short',   -- A short version of the title.
+    'container-title',          -- Publication the item was published in.
+    'container-title-short',    -- A short version of that title.
+    'original-publisher',       -- Original publisher.
+    'original-publisher-place', -- Place the item was originally published in.
+    'original-title',           -- Original title.
+    'publisher',                -- Publisher.
+    'publisher-place',          -- The city/cities the item was published in.
+    'reviewed-title',           -- Title reviewed in the item.
+    'title',                    -- The title.
+    'title-short',              -- A short version of the title.
+    'short-title',              -- A short version of the title.
+}
+
+
+do
+    local function esc_bold_and_italics (op, tx, cl)
+        if #op > 3 or #op ~= #cl then return nil end
+        if #op == 3 then return op:gsub('.', '\\%1') .. tx .. cl end
+        return '\\' .. op .. tx .. cl
+    end
+
+    local esc_es = {
+        {'(\\+)', '\\%1'},
+        {'(%*+)([^%*%s][^*]*)(%*+)', esc_bold_and_italics},
+        {'(_+)([^_%s][^_]*)(_+)', esc_bold_and_italics},
+        {'%^([^%^%s]+)%^', '\\^%1^'},
+        {'~([^~%s]+)~', '\\~%1~'},
+        {'(%b[][%({])', '\\%1'}
+    }
+
+    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
+    -- other markdown is not supported. see also pandoc.
+    function esc_inline_md (str)
+        for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
+        return str
     end
 end
+
+do
+    local filter = {}
+
+    local function mk_elem_conv_f (char)
+        return function (elem)
+            local str = stringify(pandoc.walk_inline(elem, filter))
+            return Str(char .. str .. char)
+        end
+    end
+
+    filter.Emph = mk_elem_conv_f '*'
+    filter.Strong = mk_elem_conv_f '**'
+    filter.Subscript = mk_elem_conv_f '~'
+    filter.Superscript = mk_elem_conv_f '^'
+
+    function filter.Span (span)
+        local str = stringify(pandoc.walk_inline(span, filter))
+        local attrs = ''
+
+        if span.identifier then
+            local id = stringify(span.identifier)
+            if id ~= '' then attrs = '#' .. id end
+        end
+
+        if span.classes then
+            for i = 1, #span.classes do
+                if attrs ~= '' then attrs = attrs .. ' ' end
+                attrs = attrs .. '.' .. span.classes[i]
+            end
+        end
+
+        if span.attributes then
+            for k, v in pairs(span.attributes) do
+                if attrs ~= '' then attrs = attrs .. ' ' end
+                attrs = attrs .. k .. '="' .. v .. '"'
+            end
+        end
+
+        if attrs ~= '' then str = '[' .. str .. ']{' .. attrs .. '}' end
+        return Str(str)
+    end
+
+    function filter.SmallCaps (sc)
+        local span = Span(sc.content)
+        span.attributes.style = 'font-variant: small-caps'
+        return filter.Span(span)
+    end
+
+    local function conv_sc_to_span (str)
+        local tmp, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
+        if n == 0 then return str end
+        local ret, m = tmp:gsub('</sc>', '</span>')
+        if m == 0 then return str end
+        return ret
+    end
+
+    function conv_html_to_md (str)
+        local md_escaped = esc_inline_md(str)
+        local sc_replaced = conv_sc_to_span(md_escaped)
+        local doc = pandoc.read(sc_replaced, 'html')
+        for i = 1, #doc.blocks do
+            doc.blocks[i] = pandoc.walk_block(doc.blocks[i], filter)
+        end
+        return stringify(doc)
+    end
+end
+
+do
+    local keys_formattable = {}
+    for i = 1, #CSL_KEYS_FORMATTABLE do
+        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
+    end
+
+    local function conv (key, val)
+        if not keys_formattable[key] or
+           type(val) ~= 'string'     then return val end
+        return conv_html_to_md(val)
+    end
+
+    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
+    -- https://pandoc.org/MANUAL.html#specifying-bibliographic-data
+    function conv_zotfmt_to_pdfmt (item)
+        return rmap(conv, item)
+    end
+end
+
+
+do
+    function conv (_, data)
+        if type(data) ~= 'number' then return data end
+        return tostring(math.floor(data))
+    end
+
+    --- Convert numbers to strings recursively.
+    --
+    -- Also converts floating point numbers to integers. This is needed
+    -- because all numbers are floating point numbers in JSON, but some
+    -- versions of Pandoc expect integers.
+    --
+    -- @tab data The data.
+    -- @return A copy of `data` with numbers converted to strings.
+    -- @raise An error if the data is nested too deeply.
+    -- @within Converters
+    -- function rconv_nums_to_strs (data, _rd)
+    --     if not _rd then _rd = 0 end
+    --     assert(_rd < 1024, 'Too much recursion.')
+    --     local t = type(data)
+    --     if t == 'table' then
+    --         local ret = {}
+    --         for k, v in pairs(data) do
+    --             ret[k] = rconv_nums_to_strs(v, _rd + 1)
+    --         end
+    --         return ret
+    --     elseif t == 'number' then
+    --         return tostring(math.floor(data))
+    --     else
+    --         return data
+    --     end
+    -- end
+    function rconv_nums_to_strs (data)
+        return rmap(conv, data)
+    end
+end
+
 
 do
     local function spaces (n)
@@ -759,7 +917,6 @@ ZOTXT_KEYTYPES = {
 
 do
     local read = pandoc.read
-    local concat = table.concat
     local decode = json.decode
 
     local base_url = ZOTXT_BASE_URL
@@ -843,7 +1000,7 @@ do
     --
     -- @string str A CSL JSON string.
     -- @return Pandoc metadata.
-    local function conv_json_to_pandoc (str)
+    local function conv_json_to_meta (str)
         assert(str ~= '')
         return read(str, 'csljson').meta.references[1]
     end
@@ -863,7 +1020,7 @@ do
     -- @within zotxt
     function zotxt_get_item (id)
         assert(id ~= '', 'ID is the empty string ("").')
-        local ref, err, errtype = get(conv_json_to_pandoc, id)
+        local ref, err, errtype = get(conv_json_to_meta, id)
         if not ref then return nil, err, errtype end
         ref.id = MetaInlines{Str(id)}
         return ref
@@ -897,19 +1054,25 @@ CSL_KEY_ORDER = {
     'status',                   -- Publication status (e.g., 'forthcoming').
     'issued',                   -- When the item was published.
     'title',                    -- The title.
+    'title-short',              -- A short version of the title.
     'short-title',              -- A short version of the title.
-    'abstract',                 -- The abstract.
+    'original-title',           -- Original title.
     'translator',               -- Translator(s).
-    'collection-editor',        -- Editor(s).
+    'editor',                   -- Editor(s).
     'container-title',          -- Publication the item was published in.
     'container-title-short',    -- A short version of that title.
+    'collection-editor',        -- E.g., series editor(s).
+    'collection-title',         -- E.g., a series.
+    'collection-title-short',   -- A short version of the title.
     'edition',                  -- Container's edition.
     'volume',                   -- Volume no.
     'issue',                    -- Issue no.
     'page-first',               -- First page.
     'page',                     -- Pages or page range *or* number of pages.
     'publisher',                -- Publisher.
-    'publisher-place',          -- The city/cities the item was published in.
+    'publisher-place',          -- City/cities the item was published in.
+    'original-publisher',       -- Original publisher.
+    'original-publisher-place', -- Place the item was originally published in.
     'doi',                      -- The DOI.
     'pmcid',                    -- PubMed Central reference number.
     'pmid',                     -- PubMed reference number.
@@ -918,7 +1081,8 @@ CSL_KEY_ORDER = {
     'isbn',                     -- The ISBN of the item.
     'issn',                     -- The ISSN of the container.
     'call-number',              -- Call number (of a library).
-    'language'                  -- Language the item is in.
+    'language',                 -- Language the item is in.
+    'abstract',                 -- The abstract.
 }
 
 
@@ -1136,10 +1300,10 @@ function biblio_update (fname, ids)
     if #ids == 0 then return true end
     local fmt, err = biblio_write(fname)
     if not fmt then return nil, err end
+    -- @todo Remove this once the test suite is complete,
+    -- the script has been dogfed, and was out in the open for a while.
     if fmt == 'yaml' or fmt == 'yml' then
-        warnf 'YAML bibliography file support is INCOMPLETE and EXPERIMENTAL!'
-        warnf 'Markdown is NOT escaped!'
-        warnf 'Formatting is NOT supported.'
+        warnf 'YAML bibliography file support is EXPERIMENTAL!'
     end
     local items, err, errno = biblio_read(fname)
     if not items then
@@ -1156,8 +1320,9 @@ function biblio_update (fname, ids)
             if not ok then
                 return nil, 'Could not retrieve data from Zotero.'
             elseif item then
-                -- @todo Escape Markdown if fmt == 'yaml'.
-                -- @todo Convert HTML to Markdown if fmt == 'yaml'.
+                if fmt == 'yaml' or fmt == 'yml' then
+                    item = conv_zotfmt_to_pdfmt(item)
+                end
                 n = n + 1
                 items[n] = lower_keys(item)
             else

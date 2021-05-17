@@ -624,6 +624,131 @@ end
 -- Converters
 -- ----------
 
+function test_esc_inline_md ()
+    local invalid = {nil, 0, false, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.esc_inline_md(v))
+    end
+
+    local tests = {
+        [''] = '',
+        ['\\'] = '\\\\',
+        ['\\\\'] = '\\\\\\',
+        ['*'] = '*',
+        ['**'] = '**',
+        ['*text'] = '*text',
+        ['**text'] = '**text',
+        ['***text'] = '***text',
+        ['****text'] = '****text',
+        ['** text'] = '** text',
+        ['*** text'] = '*** text',
+        ['**** text'] = '**** text',
+        ['*text*'] = '\\*text*',
+        ['**text**'] = '\\**text**',
+        ['***text***'] = '\\*\\*\\*text***',
+        ['****text****'] = '****text****',
+        ['*text *'] = '\\*text *',
+        ['**text **'] = '\\**text **',
+        ['***text ***'] = '\\*\\*\\*text ***',
+        ['****text ****'] = '****text ****',
+        ['**text*'] = '**text*',
+        ['*text**'] = '*text**',
+        ['**text *'] = '**text *',
+        ['*text **'] = '*text **',
+        ['_'] = '_',
+        ['__'] = '__',
+        ['_text'] = '_text',
+        ['__text'] = '__text',
+        ['___text'] = '___text',
+        ['____text'] = '____text',
+        ['__ text'] = '__ text',
+        ['___ text'] = '___ text',
+        ['____ text'] = '____ text',
+        ['_text_'] = '\\_text_',
+        ['__text__'] = '\\__text__',
+        ['___text___'] = '\\_\\_\\_text___',
+        ['____text____'] = '____text____',
+        ['_text _'] = '\\_text _',
+        ['__text __'] = '\\__text __',
+        ['___text ___'] = '\\_\\_\\_text ___',
+        ['____text ____'] = '____text ____',
+        ['__text_'] = '__text_',
+        ['_text__'] = '_text__',
+        ['__text _'] = '__text _',
+        ['_text __'] = '_text __',
+        ['^'] = '^',
+        ['^^'] = '^^',
+        ['^^^'] = '^^^',
+        ['^x'] = '^x',
+        ['x^'] = 'x^',
+        ['^x^'] = '\\^x^',
+        ['^x#x^'] = '\\^x#x^',
+        ['^^x^'] = '^\\^x^',
+        ['^^^x^'] = '^^\\^x^',
+        ['^x^^^'] = '\\^x^^^',
+        ['^x x^'] = '^x x^',
+        ['~'] = '~',
+        ['~~'] = '~~',
+        ['~~~'] = '~~~',
+        ['~x'] = '~x',
+        ['x~'] = 'x~',
+        ['~x~'] = '\\~x~',
+        ['~x#x~'] = '\\~x#x~',
+        ['~~x~'] = '~\\~x~',
+        ['~~~x~'] = '~~\\~x~',
+        ['~x~~~'] = '\\~x~~~',
+        ['~x x~'] = '~x x~',
+        ['['] = '[',
+        ['[['] = '[[',
+        ['[[['] = '[[[',
+        [']'] = ']',
+        [']]'] = ']]',
+        [']]]'] = ']]]',
+        ['[]'] = '[]',
+        ['[text]'] = '[text]',
+        ['[text]-'] = '[text]-',
+        ['[]()'] = '\\[]()',
+        ['[]{}'] = '\\[]{}',
+        ['[text](link)'] = '\\[text](link)',
+        ['[text]{.class}'] = '\\[text]{.class}',
+    }
+
+    for i, o in pairs(tests) do
+        lu.assert_equals(M.esc_inline_md(i), o)
+    end
+end
+
+function test_conv_html_to_md ()
+    -- invalid?
+
+    -- test interactions!
+    local tests = {
+        [''] = '',
+        ['test'] = 'test',
+        ['<i>test</i>'] = '*test*',
+        ['<b>test</b>'] = '**test**',
+        ['<b><i>test</i></b>'] = '***test***',
+        ['<i><b>test</b></i>'] = '***test***',
+        ['<sc>test</sc>'] = '[test]{style="font-variant: small-caps"}',
+        ['<span style="font-variant: small-caps">test</span>'] =
+            '[test]{style="font-variant: small-caps"}',
+        ['<sub>x</sub>'] = '~x~',
+        ['<sup>x</sup>'] = '^x^',
+        ['<span>test</span>'] = 'test',
+        ['<span id="test">test</span>'] = '[test]{#test}',
+        ['<span class="nocase">test</span>'] = '[test]{.nocase}',
+        ['<span class="test">test</span>'] = '[test]{.test}',
+        ['<span class="a b c">test</span>'] = '[test]{.a .b .c}',
+        ['<span style="test">test</span>'] = '[test]{style="test"}',
+        ['<span style="test" data-test="test">test</span>'] = 
+            '[test]{style="test" test="test"}'
+    }
+
+    for i, o in pairs(tests) do
+        lu.assert_equals(M.conv_html_to_md(i), o)
+    end
+end
+
 function test_rconv_nums_to_strs ()
     local a = {}
     a.a = a
