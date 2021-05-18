@@ -728,6 +728,7 @@ do
     -- @string str A string.
     -- @treturn string `str` with Markdown escaped.
     -- @within Converters
+    -- @todo Add more tests for interactions of markup.
     function esc_md (str)
         for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
         return str
@@ -820,6 +821,8 @@ do
     -- @treturn string Text formatted in Markdown.
     -- @within Converters
     -- @fixme Tests need work.
+    -- @fixme Interaction tests fail. The functions work to spec,
+    --  but Pandoc has different escaping rules for those cases.
     function conv_html_to_md (html)
         local md_escaped = esc_md(html)
         local sc_replaced = conv_sc_to_span(md_escaped)
@@ -1054,7 +1057,7 @@ do
     --- Convert a CSL JSON string to Pandoc metadata.
     --
     -- @string str A CSL JSON string.
-    -- @return Pandoc metadata.
+    -- @treturn pandoc.MetaMap Pandoc metadata.
     local function conv_json_to_meta (str)
         assert(str ~= '')
         return read(str, 'csljson').meta.references[1]
