@@ -729,12 +729,12 @@ function test_esc_md ()
         ['[]'] = '[]',
         ['[text]'] = '[text]',
         ['[text]-'] = '[text]-',
-        ['[]()'] = '\\[]()',
-        ['[]{}'] = '\\[]{}',
-        ['[text](link)'] = '\\[text](link)',
-        ['[text]{.class}'] = '\\[text]{.class}',
-        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]]{.class}',
-        ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*]{style="small-caps"}',
+        ['[]()'] = '\\[\\]()',
+        ['[]{}'] = '\\[\\]{}',
+        ['[text](link)'] = '\\[text\\](link)',
+        ['[text]{.class}'] = '\\[text\\]{.class}',
+        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]\\]{.class}',
+        ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*\\]{style="small-caps"}',
     }
 
     for i, o in pairs(tests) do
@@ -771,10 +771,8 @@ function test_conv_html_to_md ()
         ['<i><sc>test</sc></i>'] = '*[test]{style="font-variant: small-caps"}*',
         ['<b><sc>test</sc><sub>2</sub></b>'] =
             '**[test]{style="font-variant: small-caps"}~2~**',
-        -- FIXME: Technically correct, but Pandoc doesn't read this as escaped.
-        -- That may be because the closing brackets, too, have to be escaped!
         ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
-            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]]{.class}**^x^]{style="font-variant: small-caps"}'
+            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]\\]{.class}**^x^]{style="font-variant: small-caps"}'
         -- @fixme Test more interactions with markdown escaping.
     }
 

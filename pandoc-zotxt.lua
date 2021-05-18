@@ -704,6 +704,10 @@ do
         return char:gsub('(.)', '\\%1') .. tail
     end
 
+    local function esc_brackets (char, tail)
+        return '\\[' .. char:sub(2, -2) .. '\\]' .. tail
+    end
+
     -- Pairs of expressions and replacements to escape Markdown.
     local esc_es = {
         -- Backslashes.
@@ -716,7 +720,7 @@ do
         {'%^([^%^%s]+)%^', '\\^%1^'},
         {'~([^~%s]+)~', '\\~%1~'},
         -- Brackets (spans and links).
-        {'(%b[][%({])', '\\%1'}
+        {'(%b[])([%({])', esc_brackets}
     }
 
     --- Escape Markdown.
@@ -821,8 +825,6 @@ do
     -- @treturn string Text formatted in Markdown.
     -- @within Converters
     -- @fixme Tests need work.
-    -- @fixme Interaction tests fail. The functions work to spec,
-    --  but Pandoc has different escaping rules for those cases.
     function conv_html_to_md (html)
         local md_escaped = esc_md(html)
         local sc_replaced = conv_sc_to_span(md_escaped)
