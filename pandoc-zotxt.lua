@@ -347,7 +347,7 @@ end
 do
     local lower = text.lower
 
-    --- Convert table keys to lowercase recursively.
+    --- Recursively convert table keys to lowercase.
     --
     -- @tab tab The table.
     -- @return A copy of `tab` with keys in lowercase.
@@ -447,7 +447,7 @@ do
     -- @string fname A filename.
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the file could not be found.
-    -- @treturn[2] An error message.
+    -- @treturn[2] string An error message.
     -- @within File I/O
     function file_locate (fname)
         if  not rsrc_path or file_exists(fname) then return fname end
@@ -900,9 +900,10 @@ do
     --  Defaults to sorting them lexically.
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
-    -- @treturn[2] An error message.
+    -- @treturn[2] string An error message.
     -- @raise An error if the data is nested too deeply.
     -- @within Converters
+    -- @fixme Doesn't normalise line breaks within strings.
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
         assert(_rd < 1024, 'Too much recursion.')
@@ -1375,15 +1376,15 @@ function biblio_update (fname, ids)
     for i = 1, #ids do
         local id = ids[i]
         if not item_ids[id] then
-            local ok, item, err = pcall(zotxt_get_item_csl, id)
+            local ok, ret, err = pcall(zotxt_get_item_csl, id)
             if not ok then
-                return nil, 'Could not retrieve data from Zotero.'
-            elseif item then
+                return nil, ret
+            elseif ret then
                 if fmt == 'yaml' or fmt == 'yml' then
-                    item = rconv_html_to_md(item)
+                    ret = rconv_html_to_md(ret)
                 end
                 n = n + 1
-                items[n] = lower_keys(item)
+                items[n] = lower_keys(ret)
             else
                 printf(err)
             end
@@ -1493,7 +1494,7 @@ end
 -- @tab ckeys The citaton keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
 --  Citation keys are just item IDs.
--- @treturn[1] table An updated metadata block, with the field
+-- @treturn[1] tab An updated metadata block, with the field
 --  `bibliography` added if needed.
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
@@ -1543,10 +1544,10 @@ function add_refs (meta, ckeys)
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ref, err = pcall(zotxt_get_item, ckeys[i])
-        if not ok  then return nil, 'Could not retrieve data from Zotero.'
-        elseif ref then n = n + 1
-                        meta.references[n] = ref
+        local ok, ret, err = pcall(zotxt_get_item, ckeys[i])
+        if not ok  then return nil, ret
+        elseif ret then n = n + 1
+                        meta.references[n] = ret
                    else printf(err)
         end
     end
