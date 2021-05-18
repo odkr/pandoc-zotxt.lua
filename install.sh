@@ -219,56 +219,71 @@ PANDOC_DATA_DIR="$XDG_DATA_HOME/pandoc" OTHER_PANDOC_DATA_DIR="$HOME/.pandoc"
 unset OTHER_PANDOC_DATA_DIR
 PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 
+readonly REPO="$FILTER-$VERSION"
+[ "$REPO" = "$(basename "$(pwd)")" ] || \
+    panic 69 'Cannot locate repository.'
+
 cd -P .. || exit
 if ! PWD="$(pwd)" || ! [ "$PWD" ]; then
     panic 69 'Cannot locate working directory.'
 fi
 
-readonly REPO="$FILTER-$VERSION"
-[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
-	panic 69 "$B$REPO$R: Already installed."
-[ -d "$REPO" ] || panic 69 "$B$REPO$R: No such directory."
+if [ "$PANDOC_FILTER_DIR" != "$REPO" ]; then
+    rmdir_ () {
+        : "${1:?}"
+        [ -e "$1" ] || return 0
+        warn "Removing $B%s$R." "$(pprint_home "$1")"
+        rmdir "$1"
+    }
 
-if ! DIRNAME="$(basename "$PWD")" || ! [ "$DIRNAME" ]; then
-    panic 69 '%s: Cannot figure out filename.' "$PWD"
-fi
-
-trapsig onexit 0 1 2 3 15
-
-# Create Pandoc filter directory if it does not exist yet. 
-if ! [ -e "$PANDOC_FILTER_DIR" ]; then
-    IFS=/ N=0 DIR=
-    for SEG in $PANDOC_FILTER_DIR; do
-        DIR="${DIR%/}/$SEG"
-        [ -e "$DIR" ] && continue
-        N=$((N+1))
-        eval "readonly DIR_$N=\"\$DIR\""
-        EX="[ -e \"\$DIR_$N\" ] && rmdir \"\$DIR_$N\"; ${EX-}"
-        warn "Making directory $B%s$R." "$(pprint_home "$DIR")"
-        mkdir "$DIR" || exit 69
-    done
-    unset IFS
-fi
-
-# Move repository to filter directory.
-move_repo_back() (
-    readonly from="$PANDOC_FILTER_DIR/$REPO"
-    if [ "$from" != / ] && [ -d "$from" ]; then
-        warn "Moving $B%s$R back to $B%s$R." \
-            "$(pprint_home "$from")" "$(pprint_home "$PWD")"
-        mv "$from" "$PWD"
+    [ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
+    	panic 69 "$B$REPO$R: Already installed."
+    [ -d "$REPO" ] || panic 69 "$B$REPO$R: No such directory."
+    
+    if ! DIRNAME="$(basename "$PWD")" || ! [ "$DIRNAME" ]; then
+        panic 69 '%s: Cannot figure out filename.' "$PWD"
     fi
-)
-
-EX="move_repo_back; ${EX-}"
-warn "Copying $B%s$R to $B%s$R." \
-    "$(pprint_home "$REPO")" "$(pprint_home "$PANDOC_FILTER_DIR")"
-cp -r "$REPO" "$PANDOC_FILTER_DIR"
+    
+    trapsig onexit 0 1 2 3 15
+    
+    # Create Pandoc filter directory if it does not exist yet. 
+    if ! [ -e "$PANDOC_FILTER_DIR" ]; then
+        IFS=/ N=0 DIR=
+        for SEG in $PANDOC_FILTER_DIR; do
+            DIR="${DIR%/}/$SEG"
+            [ -e "$DIR" ] && continue
+            N=$((N+1))
+            eval "readonly DIR_$N=\"\$DIR\""
+            EX="rmdir_ \"\$DIR_$N\"; ${EX-}"
+            warn "Making directory $B%s$R." "$(pprint_home "$DIR")"
+            mkdir "$DIR" || exit 69
+        done
+        unset IFS
+    fi
+    
+    # Move repository to filter directory.
+    move_repo_back() (
+        readonly from="$PANDOC_FILTER_DIR/$REPO"
+        if [ "$from" != / ] && [ -d "$from" ]; then
+            warn "Moving $B%s$R back to $B%s$R." \
+                "$(pprint_home "$from")" "$(pprint_home "$PWD")"
+            mv "$from" "$PWD"
+        fi
+    )
+    
+    EX="move_repo_back; ${EX-}"
+    warn "Copying $B%s$R to $B%s$R." \
+        "$(pprint_home "$REPO")" "$(pprint_home "$PANDOC_FILTER_DIR")"
+    cp -r "$REPO" "$PANDOC_FILTER_DIR"
+fi
 
 # Create a symlink for the actual script.
 cd -P "$PANDOC_FILTER_DIR" || exit 69
 warn "Symlinking $B%s$R into $B%s$R." \
     "$(pprint_home "$FILTER")" "$(pprint_home "$PANDOC_FILTER_DIR")"
 ln -fs "$REPO/$FILTER" .
+
+# add FILTER_DIR/*/man to manpath! TODO
+# but that doesn't really work, do I need a man1/ subdir?
 
 unset EX
