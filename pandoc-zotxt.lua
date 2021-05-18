@@ -700,21 +700,22 @@ CSL_KEYS_FORMATTABLE = {
 
 
 do
-    -- A replacement function for bold and italics Markdown markup.
-    -- Can handle balanced formatting only.
-    local function esc_bold_and_italics (op, tx, cl)
-        if #op > 3 or #op ~= #cl then return nil end
-        if #op == 3 then return op:gsub('.', '\\%1') .. tx .. cl end
-        return '\\' .. op .. tx .. cl
+    function esc_bold_italics (char, tail)
+        return char:gsub('(.)', '\\%1') .. tail
     end
 
     -- Pairs of expressions and replacements to escape Markdown.
     local esc_es = {
+        -- Backslashes.
         {'(\\+)', '\\%1'},
-        {'(%*+)([^%*%s][^*]*)(%*+)', esc_bold_and_italics},
-        {'(_+)([^_%s][^_]*)(_+)', esc_bold_and_italics},
+        -- Bold and italics.
+        -- This escapes liberally, but it is the only way to cover edge cases.
+        {'(%*+)([^%s%*])', esc_bold_italics},
+        {'(_+)([^%s_])', esc_bold_italics},
+        -- Superscript and subscript.
         {'%^([^%^%s]+)%^', '\\^%1^'},
         {'~([^~%s]+)~', '\\~%1~'},
+        -- Brackets (spans and links).
         {'(%b[][%({])', '\\%1'}
     }
 
@@ -727,8 +728,6 @@ do
     -- @string str A string.
     -- @treturn string `str` with Markdown escaped.
     -- @within Converters
-    -- @fixme Tests need work.
-    -- @fixme Fails for `***Bold italic*Bold only**`.
     function esc_md (str)
         for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
         return str
