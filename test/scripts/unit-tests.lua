@@ -624,10 +624,10 @@ end
 -- Converters
 -- ----------
 
-function test_esc_inline_md ()
+function test_esc_md ()
     local invalid = {nil, 0, false, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_inline_md(v))
+        lu.assert_error(M.esc_md(v))
     end
 
     local tests = {
@@ -635,47 +635,69 @@ function test_esc_inline_md ()
         ['\\'] = '\\\\',
         ['\\\\'] = '\\\\\\',
         ['*'] = '*',
+        [' *'] = ' *',
+        ['* '] = '* ',
+        [' * '] = ' * ',
         ['**'] = '**',
-        ['*text'] = '*text',
-        ['**text'] = '**text',
-        ['***text'] = '***text',
-        ['****text'] = '****text',
+        ['*text'] = '\\*text',
+        ['**text'] = '\\*\\*text',
+        ['***text'] = '\\*\\*\\*text',
+        ['****text'] = '\\*\\*\\*\\*text',
+        ['* text'] = '* text',
         ['** text'] = '** text',
         ['*** text'] = '*** text',
         ['**** text'] = '**** text',
         ['*text*'] = '\\*text*',
-        ['**text**'] = '\\**text**',
+        ['**text**'] = '\\*\\*text**',
         ['***text***'] = '\\*\\*\\*text***',
-        ['****text****'] = '****text****',
+        ['****text****'] = '\\*\\*\\*\\*text****',
         ['*text *'] = '\\*text *',
-        ['**text **'] = '\\**text **',
+        ['**text **'] = '\\*\\*text **',
         ['***text ***'] = '\\*\\*\\*text ***',
-        ['****text ****'] = '****text ****',
-        ['**text*'] = '**text*',
-        ['*text**'] = '*text**',
-        ['**text *'] = '**text *',
-        ['*text **'] = '*text **',
+        ['****text ****'] = '\\*\\*\\*\\*text ****',
+        ['**text*'] = '\\*\\*text*',
+        ['*text**'] = '\\*text**',
+        ['**text *'] = '\\*\\*text *',
+        ['*text **'] = '\\*text **',
+        ['a*b*c'] = 'a\\*b\\*c',
+        ['***a*****b**'] = '\\*\\*\\*a\\*\\*\\*\\*\\*b**',
+        ['*a**b*'] = '\\*a\\*\\*b*',
+        ['***my**text*'] = '\\*\\*\\*my\\*\\*text*',
+        ['***my*text**'] = '\\*\\*\\*my\\*text**',
+        ['*my**text***'] = '\\*my\\*\\*text***',
+        ['**my*text***'] = '\\*\\*my\\*text***',
         ['_'] = '_',
+        [' _'] = ' _',
+        ['_ '] = '_ ',
+        [' _ '] = ' _ ',
         ['__'] = '__',
-        ['_text'] = '_text',
-        ['__text'] = '__text',
-        ['___text'] = '___text',
-        ['____text'] = '____text',
+        ['_text'] = '\\_text',
+        ['__text'] = '\\_\\_text',
+        ['___text'] = '\\_\\_\\_text',
+        ['____text'] = '\\_\\_\\_\\_text',
+        ['_ text'] = '_ text',
         ['__ text'] = '__ text',
         ['___ text'] = '___ text',
         ['____ text'] = '____ text',
         ['_text_'] = '\\_text_',
-        ['__text__'] = '\\__text__',
+        ['__text__'] = '\\_\\_text__',
         ['___text___'] = '\\_\\_\\_text___',
-        ['____text____'] = '____text____',
+        ['____text____'] = '\\_\\_\\_\\_text____',
         ['_text _'] = '\\_text _',
-        ['__text __'] = '\\__text __',
+        ['__text __'] = '\\_\\_text __',
         ['___text ___'] = '\\_\\_\\_text ___',
-        ['____text ____'] = '____text ____',
-        ['__text_'] = '__text_',
-        ['_text__'] = '_text__',
-        ['__text _'] = '__text _',
-        ['_text __'] = '_text __',
+        ['____text ____'] = '\\_\\_\\_\\_text ____',
+        ['__text_'] = '\\_\\_text_',
+        ['_text__'] = '\\_text__',
+        ['__text _'] = '\\_\\_text _',
+        ['_text __'] = '\\_text __',
+        ['___my__text_'] = '\\_\\_\\_my\\_\\_text_',
+        ['___my_text__'] = '\\_\\_\\_my\\_text__',
+        ['_my__text___'] = '\\_my\\_\\_text___',
+        ['__my_text___'] = '\\_\\_my\\_text___',
+        ['a_b_c'] = 'a\\_b\\_c',
+        ['___a_____b__'] = '\\_\\_\\_a\\_\\_\\_\\_\\_b__',
+        ['_a__b_'] = '\\_a\\_\\_b_',
         ['^'] = '^',
         ['^^'] = '^^',
         ['^^^'] = '^^^',
@@ -711,17 +733,21 @@ function test_esc_inline_md ()
         ['[]{}'] = '\\[]{}',
         ['[text](link)'] = '\\[text](link)',
         ['[text]{.class}'] = '\\[text]{.class}',
+        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]]{.class}',
+        ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*]{style="small-caps"}',
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.esc_inline_md(i), o)
+        lu.assert_equals(M.esc_md(i), o)
     end
 end
 
 function test_conv_html_to_md ()
-    -- invalid?
+    local invalid = {nil, 0, false, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.esc_md(v))
+    end
 
-    -- test interactions!
     local tests = {
         [''] = '',
         ['test'] = 'test',
@@ -740,8 +766,16 @@ function test_conv_html_to_md ()
         ['<span class="test">test</span>'] = '[test]{.test}',
         ['<span class="a b c">test</span>'] = '[test]{.a .b .c}',
         ['<span style="test">test</span>'] = '[test]{style="test"}',
-        ['<span style="test" data-test="test">test</span>'] = 
-            '[test]{style="test" test="test"}'
+        ['<span style="test" data-test="test">test</span>'] =
+            '[test]{style="test" test="test"}',
+        ['<i><sc>test</sc></i>'] = '*[test]{style="font-variant: small-caps"}*',
+        ['<b><sc>test</sc><sub>2</sub></b>'] =
+            '**[test]{style="font-variant: small-caps"}~2~**',
+        -- FIXME: Technically correct, but Pandoc doesn't read this as escaped.
+        -- That may be because the closing brackets, too, have to be escaped!
+        ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
+            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]]{.class}**^x^]{style="font-variant: small-caps"}'
+        -- @fixme Test more interactions with markdown escaping.
     }
 
     for i, o in pairs(tests) do

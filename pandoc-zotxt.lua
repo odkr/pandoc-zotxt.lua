@@ -271,7 +271,7 @@ local PRINTF_PREFIX = SCPT_NAME .. ': '
 
 --- Print a message to STDERR.
 --
--- Prefixes the message with `PRINTF_PREFIX' and appends `EOL`.
+-- Prefixes the message with `PRINTF_PREFIX` and appends `EOL`.
 --
 -- @string[opt] msg The message.
 -- @param ... Arguments to that message (think `string.format`).
@@ -287,8 +287,7 @@ end
 -- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
 -- Otherwise the same as `printf`.
 --
--- @string[opt] msg The message.
--- @param ... Arguments to that message (think `string.format`).
+-- @param ... Takes the same arguments as `printf`.
 -- @within Warnings
 function warnf (...)
     if PANDOC_STATE.verbosity ~= 'ERROR' then printf(...) end
@@ -298,8 +297,20 @@ end
 -- Tables
 -- ------
 
+--- Recursively apply a function to every value of a tree.
+--
+-- The function is applied to *every* node of the data tree.
+-- If a node is a `table`, the function is applied *after* recursion.
+--
+-- @func func A function that takes a value and returns a new one.
+--  Receives the value's key as second argument, if applicable.
+-- @param data A data tree.
+-- @return `data` with `func` applied.
+-- @raise An error if the data is nested too deeply.
+-- @within Table manipulation
+-- @fixme Untested.
 function rmap (func, data, _rd)
-    if type(data) ~= 'table' then return func(nil, data) end
+    if type(data) ~= 'table' then return func(data) end
     if not _rd then _rd = 0 end
     assert(_rd < 512, 'Too much recursion.')
     local ret = {}
@@ -307,7 +318,7 @@ function rmap (func, data, _rd)
     while k do
         local v = data[k]
         if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
-        ret[k] = func(k, v)
+        ret[k] = func(v, k)
         k = next(data, k)
     end
     return ret
@@ -340,6 +351,7 @@ do
     --
     -- @tab tab The table.
     -- @return A copy of `tab` with keys in lowercase.
+    -- @raise An error if the data is nested too deeply.
     -- @within Table manipulation
     function lower_keys (tab, _rd)
         if not _rd then _rd = 0
@@ -659,6 +671,16 @@ end
 -- Converters
 -- ----------
 
+--- The list of CSL fields that can be formatted.
+--
+-- This list is a guess!
+--
+-- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
+-- of the CSL specification lists all field names.
+--
+-- @see rconv_html_to_md
+-- @within Bibliography files
+-- @todo Lookup in Citeproc source code.
 CSL_KEYS_FORMATTABLE = {
     'abstract',                 -- The abstract.
     'collection-title',         -- E.g., a series.
@@ -673,29 +695,41 @@ CSL_KEYS_FORMATTABLE = {
     'reviewed-title',           -- Title reviewed in the item.
     'title',                    -- The title.
     'title-short',              -- A short version of the title.
-    'short-title',              -- A short version of the title.
+    'short-title',              -- Ditto.
 }
 
 
 do
-    local function esc_bold_and_italics (op, tx, cl)
-        if #op > 3 or #op ~= #cl then return nil end
-        if #op == 3 then return op:gsub('.', '\\%1') .. tx .. cl end
-        return '\\' .. op .. tx .. cl
+    local function esc_bold_italics (char, tail)
+        return char:gsub('(.)', '\\%1') .. tail
     end
 
+    -- Pairs of expressions and replacements to escape Markdown.
     local esc_es = {
+        -- Backslashes.
         {'(\\+)', '\\%1'},
-        {'(%*+)([^%*%s][^*]*)(%*+)', esc_bold_and_italics},
-        {'(_+)([^_%s][^_]*)(_+)', esc_bold_and_italics},
+        -- Bold and italics.
+        -- This escapes liberally, but it is the only way to cover edge cases.
+        {'(%*+)([^%s%*])', esc_bold_italics},
+        {'(_+)([^%s_])', esc_bold_italics},
+        -- Superscript and subscript.
         {'%^([^%^%s]+)%^', '\\^%1^'},
         {'~([^~%s]+)~', '\\~%1~'},
+        -- Brackets (spans and links).
         {'(%b[][%({])', '\\%1'}
     }
 
-    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
-    -- other markdown is not supported. see also pandoc.
-    function esc_inline_md (str)
+    --- Escape Markdown.
+    --
+    -- Only escapes Markdown that Pandoc recognises in citations.
+    --
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    --
+    -- @string str A string.
+    -- @treturn string `str` with Markdown escaped.
+    -- @within Converters
+    -- @todo Add more tests for interactions of markup.
+    function esc_md (str)
         for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
         return str
     end
@@ -704,6 +738,10 @@ end
 do
     local filter = {}
 
+    -- Make a function that converts an element to Markdown.
+    --
+    -- @string char The Markdown markup character for that element.
+    -- @treturn func The conversion function.
     local function mk_elem_conv_f (char)
         return function (elem)
             local str = stringify(pandoc.walk_inline(elem, filter))
@@ -716,6 +754,10 @@ do
     filter.Subscript = mk_elem_conv_f '~'
     filter.Superscript = mk_elem_conv_f '^'
 
+    -- Convert <span> elements to Markdown text.
+    --
+    -- @tparam pandoc.Span A <span> element.
+    -- @treturn pandoc.Str The element as Markdown.
     function filter.Span (span)
         local str = stringify(pandoc.walk_inline(span, filter))
         local attrs = ''
@@ -743,12 +785,23 @@ do
         return Str(str)
     end
 
+    -- Convert SmallCaps elements to Markdown text.
+    --
+    -- @tparam pandoc.SmallCaps A SmallCaps element.
+    -- @treturn pandoc.Str The element as Markdown.
     function filter.SmallCaps (sc)
         local span = Span(sc.content)
         span.attributes.style = 'font-variant: small-caps'
         return filter.Span(span)
     end
 
+    -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
+    --
+    -- Zotero supports using '<sc>...</sc>' to set text in small caps.
+    -- Pandoc throws those tags out.
+    --
+    -- @string str A string.
+    -- @treturn string `str` with `<sc>...</sc>` replaced with <span> tags.
     local function conv_sc_to_span (str)
         local tmp, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
         if n == 0 then return str end
@@ -757,8 +810,21 @@ do
         return ret
     end
 
-    function conv_html_to_md (str)
-        local md_escaped = esc_inline_md(str)
+    --- Convert pseudo-HTML to Markdown.
+    --
+    -- Only supports the HTML tags that Zotero *and* Pandoc support.
+    --
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>
+    -- and <https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields>.
+    --
+    -- @string html Text that contains pseudo-HTML tags.
+    -- @treturn string Text formatted in Markdown.
+    -- @within Converters
+    -- @fixme Tests need work.
+    -- @fixme Interaction tests fail. The functions work to spec,
+    --  but Pandoc has different escaping rules for those cases.
+    function conv_html_to_md (html)
+        local md_escaped = esc_md(html)
         local sc_replaced = conv_sc_to_span(md_escaped)
         local doc = pandoc.read(sc_replaced, 'html')
         for i = 1, #doc.blocks do
@@ -774,22 +840,30 @@ do
         keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
     end
 
-    local function conv (key, val)
-        if not keys_formattable[key] or
-           type(val) ~= 'string'     then return val end
+    local function conv (val, key)
+        if not keys_formattable[key] or type(val) ~= 'string' then
+            return val
+        end
         return conv_html_to_md(val)
     end
 
-    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
-    -- https://pandoc.org/MANUAL.html#specifying-bibliographic-data
-    function conv_zotfmt_to_pdfmt (item)
+    --- Recursively convert pseudo-HTML to Markdown.
+    --
+    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
+    -- @see conv_html_to_md
+    -- @within Converters
+    -- @fixme Untested
+    function rconv_html_to_md (item)
         return rmap(conv, item)
     end
 end
 
 
 do
-    function conv (_, data)
+    function conv (data)
         if type(data) ~= 'number' then return data end
         return tostring(math.floor(data))
     end
@@ -804,22 +878,6 @@ do
     -- @return A copy of `data` with numbers converted to strings.
     -- @raise An error if the data is nested too deeply.
     -- @within Converters
-    -- function rconv_nums_to_strs (data, _rd)
-    --     if not _rd then _rd = 0 end
-    --     assert(_rd < 1024, 'Too much recursion.')
-    --     local t = type(data)
-    --     if t == 'table' then
-    --         local ret = {}
-    --         for k, v in pairs(data) do
-    --             ret[k] = rconv_nums_to_strs(v, _rd + 1)
-    --         end
-    --         return ret
-    --     elseif t == 'number' then
-    --         return tostring(math.floor(data))
-    --     else
-    --         return data
-    --     end
-    -- end
     function rconv_nums_to_strs (data)
         return rmap(conv, data)
     end
@@ -843,11 +901,11 @@ do
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
     -- @treturn[2] An error message.
-    -- @raise An error if if the data is nested too deeply.
+    -- @raise An error if the data is nested too deeply.
     -- @within Converters
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
-        assert(_rd < 1024, 'Too much recusion.')
+        assert(_rd < 1024, 'Too much recursion.')
         if not ind then ind = 4 end
         local t = type(data)
         if t == 'number' then
@@ -999,7 +1057,7 @@ do
     --- Convert a CSL JSON string to Pandoc metadata.
     --
     -- @string str A CSL JSON string.
-    -- @return Pandoc metadata.
+    -- @treturn pandoc.MetaMap Pandoc metadata.
     local function conv_json_to_meta (str)
         assert(str ~= '')
         return read(str, 'csljson').meta.references[1]
@@ -1042,9 +1100,10 @@ end
 
 --- The preferred order of keys in YAML bibliography files.
 --
--- See [appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
--- of the CSL specification and `csl_keys_sort` for details.
+-- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
+-- of the CSL specification lists all field names.
 --
+-- @see csl_keys_sort
 -- @within Bibliography files
 CSL_KEY_ORDER = {
     'id',                       -- Item ID.
@@ -1055,7 +1114,7 @@ CSL_KEY_ORDER = {
     'issued',                   -- When the item was published.
     'title',                    -- The title.
     'title-short',              -- A short version of the title.
-    'short-title',              -- A short version of the title.
+    'short-title',              -- Ditto.
     'original-title',           -- Original title.
     'translator',               -- Translator(s).
     'editor',                   -- Editor(s).
@@ -1321,7 +1380,7 @@ function biblio_update (fname, ids)
                 return nil, 'Could not retrieve data from Zotero.'
             elseif item then
                 if fmt == 'yaml' or fmt == 'yml' then
-                    item = conv_zotfmt_to_pdfmt(item)
+                    item = rconv_html_to_md(item)
                 end
                 n = n + 1
                 items[n] = lower_keys(item)
