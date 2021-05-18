@@ -743,9 +743,11 @@ function test_esc_md ()
 end
 
 function test_conv_html_to_md ()
-    -- invalid?
+    local invalid = {nil, 0, false, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.esc_md(v))
+    end
 
-    -- test interactions!
     local tests = {
         [''] = '',
         ['test'] = 'test',
@@ -764,8 +766,16 @@ function test_conv_html_to_md ()
         ['<span class="test">test</span>'] = '[test]{.test}',
         ['<span class="a b c">test</span>'] = '[test]{.a .b .c}',
         ['<span style="test">test</span>'] = '[test]{style="test"}',
-        ['<span style="test" data-test="test">test</span>'] = 
-            '[test]{style="test" test="test"}'
+        ['<span style="test" data-test="test">test</span>'] =
+            '[test]{style="test" test="test"}',
+        ['<i><sc>test</sc></i>'] = '*[test]{style="font-variant: small-caps"}*',
+        ['<b><sc>test</sc><sub>2</sub></b>'] =
+            '**[test]{style="font-variant: small-caps"}~2~**',
+        -- FIXME: Technically correct, but Pandoc doesn't read this as escaped.
+        -- That may be because the closing brackets, too, have to be escaped!
+        ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
+            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]]{.class}**^x^]{style="font-variant: small-caps"}'
+        -- @fixme Test more interactions with markdown escaping.
     }
 
     for i, o in pairs(tests) do
