@@ -700,7 +700,7 @@ CSL_KEYS_FORMATTABLE = {
 
 
 do
-    function esc_bold_italics (char, tail)
+    local function esc_bold_italics (char, tail)
         return char:gsub('(.)', '\\%1') .. tail
     end
 
