@@ -173,7 +173,7 @@ panic() {
 pprint_home() {
 	: "${HOME:?}"
 	case "$1" in
-		("$HOME"*) printf '%s%s\n' "${1#${HOME%/}}" "${2:-~}" ;;
+		("$HOME"*) printf '%s%s\n' "${2:-~}" "${1#${HOME%/}}";;
 		(*)        printf '%s\n' "$1" 	
 	esac
 }
@@ -200,22 +200,22 @@ export PATH
 : "${HOME:?}"
 : "${XDG_DATA_HOME:="$HOME/.local/share"}"
 
-[ -e "$FILTER" ] || panic 69 '%s: No such file.' "$FILTER"
+[ -e "$FILTER" ] || panic 69 "$B$FILTER$R: ${RD}No such file$R."
 VERSION="$(sed -n 's/--[[:space:]*]@release[[:space:]]*//p' <"$FILTER")"
-[ "$VERSION" ] || panic 69 'Could not read version from LDoc comments.'
+[ "$VERSION" ] || panic 69 "${RD}Could not read version from LDoc comments.$R"
 
 case $TERM in
-	(xterm-color|*-256color) B='\033[1m' R='\033[0m' ;;
-	(*)                      B='' R=''
+	(xterm-color|*-256color) B='\033[1m' R='\033[0m' RD='\033[31m';;
+	(*)                      B='' R='' RD=''
 esac
 
 if ! SCPT_DIR="$(dirname "$0")" || ! [ "$SCPT_DIR" ]; then
-	panic 69 "$B$0$R: Could not locate."
+	panic 69 "$B$0$R: ${RD}Could not locate$R."
 fi
 cd -P "$SCPT_DIR" || exit 69
 
 if ! REPO_DIR="$(pwd)" || ! [ "$REPO_DIR" ]; then
-	panic 69 'Could not locate repository.'
+	panic 69 "${RD}Could not locate repository$R."
 fi
 readonly REPO_DIR
 
@@ -229,15 +229,17 @@ PANDOC_DATA_DIR="$XDG_DATA_HOME/pandoc" OTHER_PANDOC_DATA_DIR="$HOME/.pandoc"
 unset OTHER_PANDOC_DATA_DIR
 readonly PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 
-readonly REPO="$FILTER-$VERSION"
-[ "$REPO" = "$(basename "$REPO_DIR")" ] || \
-	panic 69 "$B$REPO_DIR$R: Wrong name."
+#readonly REPO="$FILTER-$VERSION"
+readonly REPO="$(basename "$(pwd)")" # DEBUG
+# DEBUG
+# [ "$REPO" = "$(basename "$REPO_DIR")" ] || \
+# 	panic 69 "$B$REPO_DIR$R: ${RD}Wrong name$R."
 
 readonly INSTALL_DIR="$PANDOC_FILTER_DIR/$REPO"
 
 cd -P .. || exit
 if ! PWD="$(pwd)" || ! [ "$PWD" ]; then
-	panic 69 'Could not locate parent directory.'
+	panic 69 "${RD}Could not locate parent directory.$R"
 fi
 
 if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
@@ -263,10 +265,10 @@ if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 
 	[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
 		panic 69 "$B$REPO$R: Already installed."
-	[ -d "$REPO" ] || panic 69 "$B$REPO$R: No such directory."
+	[ -d "$REPO" ] || panic 69 "$B$REPO$R: ${RD}No such directory$R."
 	
 	if ! DIRNAME="$(basename "$PWD")" || ! [ "$DIRNAME" ]; then
-		panic 69 "$B$PWD$R: Cannot figure out filename."
+		panic 69 "$B$PWD$R: ${RD}Cannot figure out filename$R."
 	fi
 	
 	# Create Pandoc filter directory if it does not exist yet. 
@@ -275,7 +277,7 @@ if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 		for SEG in $PANDOC_FILTER_DIR; do
 			DIR="${DIR%/}/$SEG"
 			[ -e "$DIR" ] && continue
-			N=$((N+1))
+			N=$((N + 1))
 			eval "readonly DIR_$N=\"\$DIR\""
 			EX="rmdir_noisily \"\$DIR_$N\"; ${EX-}"
 			warn "Making directory $B%s$R." "$(pprint_home "$DIR")"
@@ -291,13 +293,20 @@ if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 fi
 
 # Create a symlink for the actual script.
-# REQUIRES A BACKUP FIXME
 cd -P "$PANDOC_FILTER_DIR" || exit 69
+readonly FILTER_BACKUP="$FILTER.orig"
+if [ -e "$FILTER" ]; then
+	warn "Moving current $B$FILTER$R out of the way."
+	mv "$FILTER" "$FILTER_BACKUP"
+	EX="mv \"\$FILTER_BACKUP\" \"\$FILTER\"; $EX"
+fi
+
 warn "Symlinking $B%s$R into $B%s$R." \
 	"$(pprint_home "$FILTER")" "$(pprint_home "$PANDOC_FILTER_DIR")"
 ln -fs "$REPO/$FILTER" .
 
-# add FILTER_DIR/*/man to manpath! TODO
-# but that doesn't really work, do I need a man1/ subdir?
+# Add $INSTALL_DIR/man to MANPATH.
+
+# inform the user about our success
 
 unset EX
