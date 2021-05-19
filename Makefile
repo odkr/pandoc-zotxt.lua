@@ -27,7 +27,7 @@ PANDOC		?= pandoc
 # The shells to try to run the installer with.
 # Must be filenames. Order by preference, from best to worst.
 # Change PATH to use different versions of the same shell.
-SHELLS		= dash oksh bash yash zsh mksh ksh $(SHELL)
+SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
 
 
 # TARGETS
