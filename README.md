@@ -26,8 +26,11 @@ You use **pandoc-zotxt.lua** at your own risk.
 2. Unpack the repository.
 3. Move it to the `filters` sub-directory of your Pandoc data directory \
    (`pandoc --version` tells you where that is).
-4. Move the file **pandoc-zotxt.lua** from the repository directory
+4. Symlink or move the file `pandoc-zotxt.lua` from the repository directory
    up into the `filters` directory.
+5. You may also want to copy the manual page from the `man` directory in
+   the repository to wherever your operating system searches for manual pages
+   (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
 If you are using a POSIX-compliant system (e.g., Linux or macOS) and have
 [curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
@@ -46,10 +49,6 @@ into a Bourne-compatible shell:
   mv "$NAME-$VERS/pandoc-zotxt.lua" .; )
 ```
 
-You may also want to copy the manual page from the `man` directory in the
-repository to wherever your operating system searches for manual pages
-(e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
-
 You also need to install [zotxt](https://github.com/egh/zotxt/) *and*
 [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
 
@@ -66,7 +65,7 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [Pandoc](https://www.pandoc.org/) v2.7.2.
+2. [Pandoc](https://www.pandoc.org/) v2.7.2 or later.
 3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
    (for Pandoc prior to v2.11).
 
