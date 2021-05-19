@@ -97,7 +97,7 @@ manual:
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
-		man/pandoc-zotxt.lua.md
+		man/man1/pandoc-zotxt.lua.md
 
 docs: manual
 	ldoc . 
