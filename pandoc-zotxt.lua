@@ -501,6 +501,8 @@ function file_write (fname, ...)
     if not tmp then return nil, err, errno end
     ok, err, errno = tmp.file:write(...)
     if not ok then return nil, err, errno end
+    ok, err, errno = tmp.file:flush()
+    if not ok then return nil, err, errno end
     ok, err, errno = tmp.file:close()
     if not ok then return nil, err, errno end
     if file_exists(fname) then warnf('Updating %s.', fname) end
