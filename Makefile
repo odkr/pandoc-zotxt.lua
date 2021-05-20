@@ -60,7 +60,8 @@ install-luaunit:
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
 	$(RM) "$(TMP_DIR)"/*
-	cp "$(DATA_DIR)/bibliography.json" "$(TMP_DIR)/update-bibliography.json"
+	cp "$(DATA_DIR)/bibliography.json" \
+	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
 	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
@@ -118,7 +119,6 @@ install:
 		"$$SHELL" install.sh; \
 		[ "$$?" -eq 127 ] || break; \
 	done
-
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
