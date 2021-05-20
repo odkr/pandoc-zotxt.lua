@@ -238,8 +238,8 @@ pphome() {
 #	1	FILE is *not* safe to be removed.
 #
 # Caveates:
-#	This function must *not* be define its own sub-environment.
-#	dash fails ot update $? for sub-shells called from a trap action.
+#	This function must *not* define its own sub-environment.
+#	dash fails to update $? for sub-shells called from a trap action.
 issafe() {
 	: "${1:?}"
 	: "${2:?}"
@@ -256,11 +256,11 @@ issafe() {
 		(*)    return 1
 	esac
 
-	__issafe_FNAME="$(basename "$1")"
+	__ISSAFE_FNAME="$(basename "$1")"
 	shift 2
-	for __issafe_PATTERN; do
-		case $__issafe_FNAME in
-			(*$__issafe_PATTERN*) : ;;
+	for __ISSAFE_PATTERN; do
+		case $__ISSAFE_FNAME in
+			(*$__ISSAFE_PATTERN*) : ;;
 			(*)                    return 1
 		esac
 	done
@@ -300,6 +300,7 @@ rrm() {
 	warn "Removing $B%s$R." "$(pphome "$1")"
 	rm -rf "$1"
 }
+
 
 # srmdir - Safely remove a directory.
 #
@@ -473,10 +474,8 @@ set -Cefu
 if [ -t 1 ]; then
 	case $TERM in
 		(xterm-color|*-256color) B='\033[1m' R='\033[0m'
-					 RD='\033[31m' GR='\033[32m'
-					 BL='\033[34m' ;;
-		(*)                      B='' R=''
-					 RD='' GR='' BL=''
+			RD='\033[31m' GR='\033[32m' BL='\033[34m' ;;
+		(*)     B='' R='' RD='' GR='' BL=''
 	esac
 fi
 
@@ -493,10 +492,10 @@ fi
 cd -P "$SCPT_DIR" || exit 69
 
 [ -e installrc ] || panic 78 "installrc: ${RD}No such file$R."
+unset FILTER
 # shellcheck disable=1091
 . ./installrc
-[ "${FILTER-}" ] || \
-	panic 78 "installrc: ${RD}No ${B}FILTER${R}${RD} given$R."
+[ "${FILTER-}" ] || panic 78 "installrc: ${RD}No ${B}FILTER${R}${RD} given$R."
 readonly FILTER
 
 [ -e "$FILTER" ] || panic 69 "$B$FILTER$R: ${RD}No such file$R."
@@ -551,6 +550,7 @@ if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 		unset IFS
 	fi
 	
+	# Copy the files.
 	EX="rrm \"\$INSTALL_DIR\"; ${EX-}"
 	warn "Copying $B%s$R to $B%s$R." \
 	     "$(pphome "$REPO")" "$(pphome "$PANDOC_FILTER_DIR")"
@@ -586,28 +586,28 @@ else
 fi
 ln -fs "$REPO/$FILTER" .
 
-# Add a pointer to the current version.
-warn "Symlinking $B$REPO$R to $B$FILTER-current$R."
-readonly CURR_DIR="$PANDOC_FILTER_DIR/$FILTER-current"
-if [ -e "$CURR_DIR" ] || [ -L "$CURR_DIR" ]; then
-	readonly CURR_DIR_BACKUP="$CURR_DIR-backup-pid$$"
-
-	if [ -e "$CURR_DIR_BACKUP" ] && ! [ -L "$CURR_DIR_BACKUP" ]; then
-		panic 69 "$B%s$R: ${RD}Not a symlink${R}." \
-			"$(pphome "$CURR_DIR_BACKUP")"
+if [ "${MODIFY_MANPATH-}" ]; then
+	# Add a pointer to the current version.
+	warn "Symlinking $B$REPO$R to $B$FILTER-current$R."
+	readonly CURR_DIR="$PANDOC_FILTER_DIR/$FILTER-current"
+	if [ -e "$CURR_DIR" ] || [ -L "$CURR_DIR" ]; then
+		readonly CURR_DIR_BACKUP="$CURR_DIR-backup-pid$$"
+		if   [ -e "$CURR_DIR_BACKUP" ] && 
+		   ! [ -L "$CURR_DIR_BACKUP" ]
+		then
+			panic 69 "$B%s$R: ${RD}Not a symlink${R}." \
+				"$(pphome "$CURR_DIR_BACKUP")"
+		fi
+		cp -PR "$CURR_DIR" "$CURR_DIR_BACKUP"
+		mv "$CURR_DIR" "$CURR_DIR_BACKUP"
+		EX="restore \"\$CURR_DIR_BACKUP\" \"\$CURR_DIR\"; ${EX-}"
+		CLEANUP="srmlink \"\$CURR_DIR_BACKUP\"; ${CLEANUP-}"
+	else
+		EX="srmlink \"\$CURR_DIR\"; ${EX-}"
 	fi
+	ln -fs "$REPO" "$CURR_DIR"
 
-	cp -PR "$CURR_DIR" "$CURR_DIR_BACKUP"
-	mv "$CURR_DIR" "$CURR_DIR_BACKUP"
-	EX="restore \"\$CURR_DIR_BACKUP\" \"\$CURR_DIR\"; ${EX-}"
-	CLEANUP="srmlink \"\$CURR_DIR_BACKUP\"; ${CLEANUP-}"
-else
-	EX="srmlink \"\$CURR_DIR\"; ${EX-}"
-fi
-ln -fs "$REPO" "$CURR_DIR"
-
-# Add $INSTALL_DIR/man to MANPATH.
-if ! man -w "$FILTER" >/dev/null 2>&1; then
+	# Add $INSTALL_DIR/man to MANPATH.
 	MAN_DIR="$CURR_DIR/man"
 	# man -w is not mandated by POSIX.
 	IFS=: FOUND=
@@ -617,8 +617,9 @@ if ! man -w "$FILTER" >/dev/null 2>&1; then
 			break
 		fi
 	done
+	unset IFS
 
-	if ! [ "$FOUND" ]; then
+	if ! man -w "$FILTER" >/dev/null 2>&1 || ! [ "$FOUND" ]; then
 		NOW="$(date +%Y-%d-%mT%H-%M-%S)"
 		# shellcheck disable=2016
 		REL_MAN_DIR="$(pphome "$MAN_DIR" '$HOME')"
@@ -629,7 +630,7 @@ if ! man -w "$FILTER" >/dev/null 2>&1; then
 			[ -e "$RC" ] || continue
 			grep -q "$CODE" "$RC" && continue
 			warn "Adding manual to MANPATH in $B%s$R." \
-			     "$(pphome "$RC")"
+			"$(pphome "$RC")"
 			N=$((N + 1))
 			BACKUP="$RC.backup-pit$NOW-pid$$"
 			eval "readonly RC_$N=\"\$RC\""
@@ -637,8 +638,9 @@ if ! man -w "$FILTER" >/dev/null 2>&1; then
 			cp "$RC" "$BACKUP"
 			EX="restore \"\$RC_BACKUP_$N\" \"\$RC_$N\"; ${EX-}"
 			CLEANUP="srmfile \"\$RC_BACKUP_$N\" \
-				 \"\$HOME\" \"\$(basename \"\$RC_$N\")\"; ${CLEANUP-}"
-			printf 	'\n\n# Added by %s installer on %s.\n%s\n\n' \
+				\"\$HOME\" \"\$(basename \"\$RC_$N\")\"; \
+				${CLEANUP-}"
+			printf '\n\n# Added by %s installer on %s.\n%s\n\n' \
 				"$FILTER" "${NOW%T*}" "$CODE" >>"$RC"
 		done
 	fi
@@ -647,4 +649,3 @@ fi
 # Cleanup.
 warn "${GR}Installation complete.$R"
 EX="${CLEANUP-}"
-
