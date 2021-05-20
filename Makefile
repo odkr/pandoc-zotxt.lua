@@ -29,8 +29,10 @@ SHELLS		= dash oksh bash yash zsh mksh ksh sh
 ISSUE_TESTS	:= test-issue-4
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography-json test-bibliography-yaml test-merge \
-		   test-duplicate-bibliography-bib test-duplicate-bibliography-yaml \
+		   test-zotero-id test-bibliography-json \
+		   test-bibliography-yaml test-merge \
+		   test-duplicate-bibliography-bib \
+		   test-duplicate-bibliography-yaml \
 		   test-example-simple test-example-bibliography \
 		   $(ISSUE_TESTS)
 
@@ -53,7 +55,8 @@ install-luaunit:
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
 	$(RM) "$(TMP_DIR)"/*
-	cp "$(DATA_DIR)/bibliography.json" "$(TMP_DIR)/update-bibliography.json"
+	cp "$(DATA_DIR)/bibliography.json" \
+	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
 	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
@@ -78,19 +81,22 @@ test-resource-path:
 	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		--from markdown --to plain /dev/null >/dev/null 2>&1; \
 	then \
-		"$(PANDOC)" --lua-filter "$(SCRIPT)" --resource-path "$(DATA_DIR)" \
+		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
+			--resource-path "$(DATA_DIR)" \
 			--filter pandoc-citeproc \
 			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
-		$(PANDOC) --lua-filter "$(SCRIPT)" --resource-path "$(DATA_DIR)" \
+		$(PANDOC) --lua-filter "$(SCRIPT)" \
+			--resource-path "$(DATA_DIR)" \
 			--citeproc \
 			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
 prologue:
-	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' man/pandoc-zotxt.lua.md
+	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
+		man/pandoc-zotxt.lua.md
 
 manual:
 	$(PANDOC) -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
@@ -105,9 +111,9 @@ docs: manual
 install:
 	@PATH="`getconf PATH`:$$PATH"; \
 	for SHELL in $(SHELLS); do \
-		"$$SHELL" </dev/null && break; \
-	done; \
-	"$$SHELL" install.sh
+		"$$SHELL" instahll.sh || ERR="$$?"; \
+	        [ "$${ERR-0}" -eq 127 ] || break \
+	done; 
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
