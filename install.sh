@@ -82,6 +82,7 @@ panic() {
 #	1	No STRAW equals NEEDLE.
 inlist() (
 	needle="${1:?}"
+	shift
 	for straw; do
 		[ "$needle" = "$straw" ] && return
 	done
@@ -117,16 +118,22 @@ onexit() {
 	# shellcheck disable=2086
 	trap '' EXIT ${TRAPS-INT TERM} || :
 	set +e
+	# shellcheck disable=2059
+	[ "${R-}" ] && printf "$R"
 	if [ "${1-0}" -gt 0 ]; then
-		warn "${BL}Caught $B%s$R." "$(signame "$1")"
+		warn "${BL-}Caught ${B-}%s.${R-}" "$(signame "$1")"
 	elif [ "$__ONEXIT_STATUS" -gt 0 ]; then
-		warn "${RD}An error occurred$R."
+		warn "${RD-}Aborting.${R-}"
+	elif [ "${EX-}" ]; then
+		warn 'Cleaning up.'
 	fi
 	if [ "${EX-}" ]; then
-		warn 'Cleaning up.'
-		eval "$EX" || \
-			warn "${RD}An error occurred during clean-up$R."
+		eval "$EX" || __ONEXIT_ERR="$?"
 		unset EX
+		# shellcheck disable=2059
+		[ "${R-}" ] && printf "$R"
+		[ "${__ONEXIT_ERR-0}" -ne 0 ] && \
+			warn "${RD-}Errors during clean-up.${R-}"
 	fi
 	if [ "${1-0}" -gt 0 ]; then
 		__ONEXIT_STATUS=$((128+$1))
@@ -181,11 +188,92 @@ trapsig() {
 		# shellcheck disable=2064
 		trap "$__TRAPSIG_FUNC $__TRAPSIG_SIGNO" "$__TRAPSIG_SIGNAME"
 		# shellcheck disable=2086
-		inlist __TRAPSIG_TRAPPED EXIT ${TRAPS-} && continue
+		inlist "$__TRAPSIG_SIGNAME" EXIT ${TRAPS-} && continue
 		TRAPS="${TRAPS-} $__TRAPSIG_SIGNAME"
 	done
 	unset __TRAPSIG_FUNC __TRAPSIG_SIGNO __TRAPSIG_SIGNAME
 }
+
+# clrstdin - Clears the buffer of STDIN.
+#
+# Synopsis:
+#	clrstdin
+#
+# https://superuser.com/a/1268886/1247619
+clrstdin() (
+	stty_cf="$(stty -g)" || return
+	# $stty_cf is unquoted on purpose.
+	trap 'stty $stty_cf >/dev/null 2>&1' EXIT HUP INT QUIT TERM
+	stty -icanon -echo min 0 time 0
+	while read -r _; do :; done
+)
+
+
+# readc - Read a singly byte from STDIN.
+#
+# Synopsis:
+#	BYTE=$(readc)
+readc() (
+	trap 'stty -raw >/dev/null 2>&1' EXIT HUP INT QUIT TERM
+	stty raw
+	dd bs=1 count=1 2>/dev/null
+)
+
+
+# yesno - Ask the user a yes/no question.
+#
+# Synopsis:
+#	yesno PROMPT
+#
+# Arguments:
+#	PROMPT	The question.
+#
+# Returns:
+#	0	"Yes".
+#	1	"No".
+#	2	"Abort".
+#	64	Too many wrong answers.
+#	69	An error occurred.
+#	70	A bug occurred.
+yesno() (
+	set -Cefu
+	[ "${1-}" ] || return 70
+	[ -t 0 ]    || return 69
+	l="${B:-[}" r="${R:-]}"
+	exec 1>&2
+
+	i=0
+	# shellcheck disable=2059
+	printf -- "$NAME: $1\n"
+	while [ "$i" -lt 5 ]; do
+		i=$((i + 1)) err=0
+		# shellcheck disable=2059
+		printf -- "$NAME: ${l}Y${r}es, ${l}n${r}o, or ${l}a${r}bort: "
+		clrstdin         || return 69
+		rep="$(readc)"   || err=$?
+		clrstdin         || return 69
+		[ "$err" -eq 0 ] || return 69
+
+		# shellcheck disable=2059
+		case $rep in
+			([Yy]) printf "${GR-}Yes.${R}\n";   return 0 ;;
+			([Nn]) printf "${RD-}No.${R}\n";    return 1 ;;
+			([Aa]) printf "${BL-}Abort!${R}\n"; return 2 ;;
+			# Space is the first character in ASCII, ~ the last.
+			([\ -~]) printf "${YL-}%s?${R}\n" "$rep" ;;
+			(*)	ord="$(printf '%d\n' "'$rep")"
+				# The TTY was in raw mode, so if <Ctrl>+<C>
+				# was pressed, it only sent ETX.
+				if [ "$ord" -eq 3 ]; then
+					echo 'Interrupted.'
+					kill -2 "-$$"
+				fi
+				printf "${YL-}<ASCII 0x%02x>?${R}\n" "$ord"
+		esac
+	done
+	warn "${RD}Too many failures.${R}"
+	return 64
+)
 
 
 # pphome - Replace $HOME with other text.
@@ -261,7 +349,7 @@ issafe() {
 	for __ISSAFE_PATTERN; do
 		case $__ISSAFE_FNAME in
 			(*$__ISSAFE_PATTERN*) : ;;
-			(*)                    return 1
+			(*)                   return 1
 		esac
 	done
 
@@ -472,10 +560,12 @@ export BIN_SH POSIXLY_CORRECT
 set -Cefu
 
 if [ -t 1 ]; then
-	case $TERM in
-		(xterm-color|*-256color) B='\033[1m' R='\033[0m'
-			RD='\033[31m' GR='\033[32m' BL='\033[34m' ;;
-		(*)     B='' R='' RD='' GR='' BL=''
+	case ${TERM-} in
+		(xterm-color|*-256color)
+			B='\033[1m' R='\033[0m'
+			RD='\033[31m' GR='\033[32m'
+			YL='\033[33m' BL='\033[34m' ;;
+		(*)     B='' R='' RD='' GR='' YL='' BL=''
 	esac
 fi
 
@@ -502,16 +592,14 @@ readonly FILTER
 VERSION="$(sed -n 's/--[[:space:]*]@release[[:space:]]*//p' <"$FILTER")"
 [ "$VERSION" ] || panic 65 "${RD}Could not read version from LDoc comments.$R"
 
-if ! REPO_DIR="$(pwd)" || ! [ "$REPO_DIR" ]; then
-	panic 69 "${RD}Could not locate repository$R."
-fi
-readonly REPO_DIR
-
 
 # MOVE FILES
 # ==========
 
-trapsig onexit 0 1 2 3 15
+if ! REPO_DIR="$(pwd)" || ! [ "$REPO_DIR" ]; then
+	panic 69 "${RD}Could not locate repository$R."
+fi
+readonly REPO_DIR
 
 PANDOC_DATA_DIR="$XDG_DATA_HOME/pandoc" OTHER_PANDOC_DATA_DIR="$HOME/.pandoc"
 ! [ -d "$PANDOC_DATA_DIR" ] && [ -d "$OTHER_PANDOC_DATA_DIR" ] && 
@@ -520,8 +608,10 @@ unset OTHER_PANDOC_DATA_DIR
 readonly PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 
 readonly REPO="$FILTER-$VERSION"
-[ "$REPO" = "$(basename "$REPO_DIR")" ] || \
-	panic 69 "$B$REPO_DIR$R: ${RD}Wrong name$R."
+REPO_NAME="$(basename "$REPO_DIR")"
+[ "$REPO" = "$REPO_NAME" ] || \
+	panic 69 "$B$REPO_NAME$R: ${RD}Wrong name$R."
+unset REPO_NAME
 
 readonly INSTALL_DIR="$PANDOC_FILTER_DIR/$REPO"
 
@@ -530,9 +620,11 @@ if ! PWD="$(pwd)" || ! [ "$PWD" ]; then
 	panic 69 "${RD}Could not locate parent directory.$R"
 fi
 
+trapsig onexit 0 1 2 3 15
+
 if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 	[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
-		panic 0 "$B$REPO$R: ${BL}Already installed${R}."
+		panic 0 "$B$REPO$R: Already installed."
 	[ -d "$REPO" ] || panic 69 "$B$REPO$R: ${RD}No such directory$R."
 
 	# Create Pandoc filter directory if it does not exist yet. 
@@ -566,11 +658,11 @@ warn "Symlinking $B%s$R into $B%s$R." \
 readonly FILTER_BACKUP="$PANDOC_FILTER_DIR/$FILTER.orig"
 if [ -e "$FILTER" ] || [ -L "$FILTER" ]; then
 	if [ -f "$FILTER_BACKUP" ] && ! [ -L "$FILTER_BACKUP" ]; then
-		panic 69 "$B%s$R: ${RD}Refusing to overwrite${R}." \
+		panic 69 "$B%s$R: ${RD}Refusing to overwrite.${R}" \
 			"$(pphome "$FILTER_BACKUP")"
 	fi
 	[ -d "$FILTER_BACKUP" ] &&
-		panic 69 "$B%s$R: ${RD}Is a directory.${R}." \
+		panic 69 "$B%s$R: ${RD}Is a directory.${R}" \
 			"$(pphome "$FILTER_BACKUP")"
 
 	warn "Making a backup of the current $B$FILTER$R."
@@ -586,66 +678,99 @@ else
 fi
 ln -fs "$REPO/$FILTER" .
 
+# Take care of the manual.
+readonly LATEST_DIR="$PANDOC_FILTER_DIR/$FILTER-latest"
+
+MAN_DIR="$LATEST_DIR/man"
+# man -w is not mandated by POSIX.
+IFS=: MAN_FOUND=
+for DIR in ${MANPATH-}; do
+	if [ "$DIR" = "$MAN_DIR" ]; then
+		IFS=: MAN_FOUND=x
+		break
+	fi
+done
+unset IFS
+
+if [ "${MODIFY_MANPATH-x}" = x ] &&
+   [ "${MODIFY_MANPATH-}" != x ] &&
+   ! [ "$MAN_FOUND" ]            &&
+   [ -t 0 ] && [ -t 2 ]		 &&
+   ! man -w "$FILTER" >/dev/null 2>&1
+then
+	YN=0
+	yesno "${YL}Modify ${B}MANPATH${R}${YL} in shell RC file(s)?$R" || \
+	      YN=$?
+	case $YN in
+		(0) MODIFY_MANPATH=x ;;
+		(1) MODIFY_MANPATH=  ;;
+		(*) exit "$YN"
+	esac
+fi
+
 if [ "${MODIFY_MANPATH-}" ]; then
-	# Add a pointer to the current version.
-	warn "Symlinking $B$REPO$R to $B$FILTER-current$R."
-	readonly CURR_DIR="$PANDOC_FILTER_DIR/$FILTER-current"
-	if [ -e "$CURR_DIR" ] || [ -L "$CURR_DIR" ]; then
-		readonly CURR_DIR_BACKUP="$CURR_DIR-backup-pid$$"
-		if   [ -e "$CURR_DIR_BACKUP" ] && 
-		   ! [ -L "$CURR_DIR_BACKUP" ]
-		then
-			panic 69 "$B%s$R: ${RD}Not a symlink${R}." \
-				"$(pphome "$CURR_DIR_BACKUP")"
-		fi
-		cp -PR "$CURR_DIR" "$CURR_DIR_BACKUP"
-		mv "$CURR_DIR" "$CURR_DIR_BACKUP"
-		EX="restore \"\$CURR_DIR_BACKUP\" \"\$CURR_DIR\"; ${EX-}"
-		CLEANUP="srmlink \"\$CURR_DIR_BACKUP\"; ${CLEANUP-}"
-	else
-		EX="srmlink \"\$CURR_DIR\"; ${EX-}"
-	fi
-	ln -fs "$REPO" "$CURR_DIR"
-
-	# Add $INSTALL_DIR/man to MANPATH.
-	MAN_DIR="$CURR_DIR/man"
-	# man -w is not mandated by POSIX.
-	IFS=: FOUND=
-	for DIR in ${MANPATH-}; do
-		if [ "$DIR" = "$MAN_DIR" ]; then
-			FOUND=y
-			break
-		fi
+	NOW="$(date +%Y-%d-%mT%H-%M-%S)"
+	# shellcheck disable=2016
+	REL_MAN_DIR="$(pphome "$MAN_DIR" '$HOME')"
+	CODE="export MANPATH=\"\$MANPATH:$REL_MAN_DIR\""
+	N=0 RC_FOUND=
+	for RC in .bashrc .kshrc .yashrc .zshrc; do
+		RC="$HOME/$RC"
+		[ -e "$RC" ] || continue
+		RC_FOUND=x
+		grep -q "$CODE" "$RC" && continue
+		warn "Adding $B%s$R to MANPATH in $B%s$R." \
+		     "$(pphome "$MAN_DIR")" "$(pphome "$RC")"
+		N=$((N + 1))
+		BACKUP="$RC.backup-pit$NOW-pid$$"
+		eval "readonly RC_$N=\"\$RC\""
+		eval "readonly RC_BACKUP_$N=\"\$BACKUP\""
+		cp "$RC" "$BACKUP"
+		EX="restore \"\$RC_BACKUP_$N\" \"\$RC_$N\"; ${EX-}"
+		CLEANUP="srmfile \"\$RC_BACKUP_$N\" \
+			\"\$HOME\" \"\$(basename \"\$RC_$N\")\"; ${CLEANUP-}"
+		printf '\n\n# Added by %s installer on %s.\n%s\n\n' \
+			"$FILTER" "${NOW%T*}" "$CODE" >>"$RC"
 	done
-	unset IFS
-
-	if ! man -w "$FILTER" >/dev/null 2>&1 || ! [ "$FOUND" ]; then
-		NOW="$(date +%Y-%d-%mT%H-%M-%S)"
-		# shellcheck disable=2016
-		REL_MAN_DIR="$(pphome "$MAN_DIR" '$HOME')"
-		CODE="export MANPATH=\"\$MANPATH:$REL_MAN_DIR\""
-		N=0
-		for RC in .bashrc .kshrc .yashrc .zshrc; do
-			RC="$HOME/$RC"
-			[ -e "$RC" ] || continue
-			grep -q "$CODE" "$RC" && continue
-			warn "Adding manual to MANPATH in $B%s$R." \
-			"$(pphome "$RC")"
-			N=$((N + 1))
-			BACKUP="$RC.backup-pit$NOW-pid$$"
-			eval "readonly RC_$N=\"\$RC\""
-			eval "readonly RC_BACKUP_$N=\"\$BACKUP\""
-			cp "$RC" "$BACKUP"
-			EX="restore \"\$RC_BACKUP_$N\" \"\$RC_$N\"; ${EX-}"
-			CLEANUP="srmfile \"\$RC_BACKUP_$N\" \
-				\"\$HOME\" \"\$(basename \"\$RC_$N\")\"; \
-				${CLEANUP-}"
-			printf '\n\n# Added by %s installer on %s.\n%s\n\n' \
-				"$FILTER" "${NOW%T*}" "$CODE" >>"$RC"
-		done
+	if [ "$N" -eq 0 ]; then
+		if [ "$RC_FOUND" ]
+			then warn 'No changes needed.'
+			else warn 'No shell RC file found.'
+		fi
 	fi
+fi
+
+# Add a pointer to the latest version.
+if [ ${RC_FOUND-} ] || [ -e "$LATEST_DIR" ]; then
+	warn "Symlinking $B$REPO$R to $B$FILTER-latest$R."
+	if [ -e "$LATEST_DIR" ] || [ -L "$LATEST_DIR" ]; then
+		readonly LATEST_DIR_BACKUP="$LATEST_DIR-backup-pid$$"
+		[ -e "$LATEST_DIR_BACKUP" ] && ! [ -L "$LATEST_DIR_BACKUP" ] \
+			&& panic 69 "$B%s$R: ${RD}Not a symlink.${R}" \
+			            "$(pphome "$LATEST_DIR_BACKUP")"
+		cp -PR "$LATEST_DIR" "$LATEST_DIR_BACKUP"
+		mv "$LATEST_DIR" "$LATEST_DIR_BACKUP"
+		EX="restore \"\$LATEST_DIR_BACKUP\" \"\$LATEST_DIR\"; ${EX-}"
+		CLEANUP="srmlink \"\$LATEST_DIR_BACKUP\"; ${CLEANUP-}"
+	else
+		EX="srmlink \"\$LATEST_DIR\"; ${EX-}"
+	fi
+	ln -fs "$REPO" "$LATEST_DIR"
 fi
 
 # Cleanup.
 warn "${GR}Installation complete.$R"
 EX="${CLEANUP-}"
+
+# Ask to delete the repository.
+YN=0 PRETTY_REPO_DIR="$(pphome "$REPO_DIR")" || exit
+if [ -t 0 ] && [ -t 2 ]; then
+	yesno "${YL}Remove $B$PRETTY_REPO_DIR$R$YL?$R" || YN=$?
+fi
+
+case $YN in
+	(0)	warn "Removing $B%s$R." "$PRETTY_REPO_DIR"
+		rm -rf "$REPO_DIR" ;;
+	(1|2)	: ;;
+	(*)	warn "Did ${B}not${R} remove $B%s$R." "$PRETTY_REPO_DIR"
+esac
