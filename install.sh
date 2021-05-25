@@ -194,7 +194,7 @@ trapsig() {
 	unset __TRAPSIG_FUNC __TRAPSIG_SIGNO __TRAPSIG_SIGNAME
 }
 
-# clrstdin - Clears the buffer of STDIN.
+# clrstdin - Clear the buffer of STDIN.
 #
 # Synopsis:
 #	clrstdin
@@ -239,7 +239,7 @@ yesno() (
 	set -Cefu
 	[ "${1-}" ] || return 70
 	[ -t 0 ]    || return 69
-	l="${B:-[}" r="${R:-]}"
+	l="${B:-<}" r="${R:->}"
 	exec 1>&2
 
 	i=0
