@@ -119,21 +119,20 @@ onexit() {
 	trap '' EXIT ${TRAPS-INT TERM} || :
 	set +e
 	# shellcheck disable=2059
-	[ "${R-}" ] && printf "$R"
+	printf "${R-}\\033[K\\r"
 	if [ "${1-0}" -gt 0 ]; then
-		warn "${BL-}Caught ${B-}%s.${R-}" "$(signame "$1")"
+		warn "${BL-}Caught ${B-}%s.${R-}\\033[K" "$(signame "$1")"
 	elif [ "$__ONEXIT_STATUS" -gt 0 ]; then
-		warn "${RD-}Aborting.${R-}"
-	elif [ "${EX-}" ]; then
-		warn 'Cleaning up.'
+		warn "${RD-}Something went wrong.${R-}\\033[K"
 	fi
 	if [ "${EX-}" ]; then
+		warn 'Cleaning up.\033[K'
 		eval "$EX" || __ONEXIT_ERR="$?"
 		unset EX
 		# shellcheck disable=2059
 		[ "${R-}" ] && printf "$R"
 		[ "${__ONEXIT_ERR-0}" -ne 0 ] && \
-			warn "${RD-}Errors during clean-up.${R-}"
+			warn "${RD-}Clean-up failed.${R-}"
 	fi
 	if [ "${1-0}" -gt 0 ]; then
 		__ONEXIT_STATUS=$((128+$1))
@@ -194,31 +193,6 @@ trapsig() {
 	unset __TRAPSIG_FUNC __TRAPSIG_SIGNO __TRAPSIG_SIGNAME
 }
 
-# clrstdin - Clear the buffer of STDIN.
-#
-# Synopsis:
-#	clrstdin
-#
-# https://superuser.com/a/1268886/1247619
-clrstdin() (
-	stty_cf="$(stty -g)" || return
-	# $stty_cf is unquoted on purpose.
-	trap 'stty $stty_cf >/dev/null 2>&1' EXIT HUP INT QUIT TERM
-	stty -icanon -echo min 0 time 0
-	while read -r _; do :; done
-)
-
-
-# readc - Read a singly byte from STDIN.
-#
-# Synopsis:
-#	BYTE=$(readc)
-readc() (
-	trap 'stty -raw >/dev/null 2>&1' EXIT HUP INT QUIT TERM
-	stty raw
-	dd bs=1 count=1 2>/dev/null
-)
-
 
 # yesno - Ask the user a yes/no question.
 #
@@ -235,43 +209,37 @@ readc() (
 #	64	Too many wrong answers.
 #	69	An error occurred.
 #	70	A bug occurred.
+# shellcheck disable=2059
 yesno() (
 	set -Cefu
 	[ "${1-}" ] || return 70
-	[ -t 0 ]    || return 69
-	l="${B:-<}" r="${R:->}"
+	if ! [ -t 0 ] || ! [ -t 2 ]; then return 69; fi
+
+	prompt="\"${B}yes$R\" or \"${B}no$R\""
+	help="(Press ${B}Enter$R to confirm or ${B}Ctrl$R-${B}c$R to abort.)"
+	cs=39
+	[ "${2-}" ] && cs=$((26 - ${#2}))
+
 	exec 1>&2
+	printf -- "$NAME: $1\n"
 
 	i=0
-	# shellcheck disable=2059
-	printf -- "$NAME: $1\n"
 	while [ "$i" -lt 5 ]; do
-		i=$((i + 1)) err=0
-		# shellcheck disable=2059
-		printf -- "$NAME: ${l}Y${r}es, ${l}n${r}o, or ${l}a${r}bort: "
-		clrstdin         || return 69
-		rep="$(readc)"   || err=$?
-		clrstdin         || return 69
-		[ "$err" -eq 0 ] || return 69
-
-		# shellcheck disable=2059
+		i=$((i + 1))
+		printf -- "$NAME: $prompt"
+		[ "${2-}" ] && printf " [$B$2$R]"
+		printf -- ": \\n$NAME: $help\\033[1A\\033[${cs}D"
+		read -r rep || return 69
+		printf '\033[K\r'
+		: "${rep:="${2-}"}"
 		case $rep in
-			([Yy]) printf "${GR-}Yes.${R}\n";   return 0 ;;
-			([Nn]) printf "${RD-}No.${R}\n";    return 1 ;;
-			([Aa]) printf "${BL-}Abort!${R}\n"; return 2 ;;
-			# Space is the first character in ASCII, ~ the last.
-			([\ -~]) printf "${YL-}%s?${R}\n" "$rep" ;;
-			(*)	ord="$(printf '%d\n' "'$rep")"
-				# The TTY was in raw mode, so if <Ctrl>+<C>
-				# was pressed, it only sent ETX.
-				if [ "$ord" -eq 3 ]; then
-					echo 'Interrupted.'
-					kill -2 "-$$"
-				fi
-				printf "${YL-}<ASCII 0x%02x>?${R}\n" "$ord"
+			([Yy]|[Yy][Ee][Ss]) return 0 ;;
+			([Nn]|[Nn][Oo])     return 1 ;;
+			('') warn "${YL}Please answer.$R" ;;
+			(*)  warn "$YL\"$B%s$R$YL\" makes no sense.$R" "$rep"
 		esac
 	done
-	warn "${RD}Too many failures.${R}"
+	warn "${RD}Too many wrong entries.${R}"
 	return 64
 )
 
@@ -563,9 +531,9 @@ if [ -t 1 ]; then
 	case ${TERM-} in
 		(xterm-color|*-256color)
 			B='\033[1m' R='\033[0m'
-			RD='\033[31m' GR='\033[32m'
-			YL='\033[33m' BL='\033[34m' ;;
-		(*)     B='' R='' RD='' GR='' YL='' BL=''
+			RD='\033[31m' GR='\033[32m' YL='\033[33m'
+			BL='\033[34m' CY='\033[36m' ;;
+		(*)     B='' R='' RD='' GR='' YL='' BL='' CY=''
 	esac
 fi
 
@@ -610,7 +578,7 @@ readonly PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 readonly REPO="$FILTER-$VERSION"
 REPO_NAME="$(basename "$REPO_DIR")"
 [ "$REPO" = "$REPO_NAME" ] || \
-	panic 69 "$B$REPO_NAME$R: ${RD}Wrong name$R."
+	panic 69 "$B$REPO_NAME$R: ${RD}Wrong name.$R"
 unset REPO_NAME
 
 readonly INSTALL_DIR="$PANDOC_FILTER_DIR/$REPO"
@@ -625,7 +593,7 @@ trapsig onexit 0 1 2 3 15
 if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
 	[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
 		panic 0 "$B$REPO$R: Already installed."
-	[ -d "$REPO" ] || panic 69 "$B$REPO$R: ${RD}No such directory$R."
+	[ -d "$REPO" ] || panic 69 "$B$REPO$R: ${RD}No such directory.$R"
 
 	# Create Pandoc filter directory if it does not exist yet. 
 	if ! [ -e "$PANDOC_FILTER_DIR" ]; then
@@ -699,7 +667,7 @@ if [ "${MODIFY_MANPATH-x}" = x ] &&
    ! man -w "$FILTER" >/dev/null 2>&1
 then
 	YN=0
-	yesno "${YL}Modify ${B}MANPATH${R}${YL} in shell RC file(s)?$R" || \
+	yesno "${CY}Modify ${B}MANPATH${R}${CY} in shell RC file(s)?$R" no || \
 	      YN=$?
 	case $YN in
 		(0) MODIFY_MANPATH=x ;;
@@ -719,8 +687,8 @@ if [ "${MODIFY_MANPATH-}" ]; then
 		[ -e "$RC" ] || continue
 		RC_FOUND=x
 		grep -q "$CODE" "$RC" && continue
-		warn "Adding $B%s$R to MANPATH in $B%s$R." \
-		     "$(pphome "$MAN_DIR")" "$(pphome "$RC")"
+		warn "Adding ${B}[...]/%s/man$R to MANPATH in $B%s$R." \
+		     "$(basename "$LATEST_DIR")" "$(pphome "$RC")"
 		N=$((N + 1))
 		BACKUP="$RC.backup-pit$NOW-pid$$"
 		eval "readonly RC_$N=\"\$RC\""
@@ -763,9 +731,9 @@ warn "${GR}Installation complete.$R"
 EX="${CLEANUP-}"
 
 # Ask to delete the repository.
-YN=0 PRETTY_REPO_DIR="$(pphome "$REPO_DIR")" || exit
+YN=1 PRETTY_REPO_DIR="$(pphome "$REPO_DIR")" || exit
 if [ -t 0 ] && [ -t 2 ]; then
-	yesno "${YL}Remove $B$PRETTY_REPO_DIR$R$YL?$R" || YN=$?
+	yesno "${CY}Remove $B$PRETTY_REPO_DIR$R$CY?$R" yes || YN=$?
 fi
 
 case $YN in
