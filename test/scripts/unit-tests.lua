@@ -553,6 +553,24 @@ end
 -- Table manipulation
 -- ------------------
 
+function test_rmap ()
+    local invalid = {nil, true, 0, 'string', {}}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.rmap(v, 0))
+    end
+
+    local function id (...) return ... end
+
+    local tests = {
+        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
+        false, {['false']=1}, {{{[false]=true}, 0}}, 'string'
+    }
+
+    for _, v in ipairs(tests) do
+        lu.assert_equals(M.rmap(id, v), v)
+    end
+end
+
 function test_keys ()
     local invalid = {nil, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
@@ -699,26 +717,26 @@ function test_esc_md ()
         ['___a_____b__'] = '\\_\\_\\_a\\_\\_\\_\\_\\_b__',
         ['_a__b_'] = '\\_a\\_\\_b_',
         ['^'] = '^',
-        ['^^'] = '^^',
-        ['^^^'] = '^^^',
+        ['^^'] = '\\^\\^',
+        ['^^^'] = '\\^\\^\\^',
         ['^x'] = '^x',
         ['x^'] = 'x^',
-        ['^x^'] = '\\^x^',
-        ['^x#x^'] = '\\^x#x^',
-        ['^^x^'] = '^\\^x^',
-        ['^^^x^'] = '^^\\^x^',
-        ['^x^^^'] = '\\^x^^^',
+        ['^x^'] = '\\^x\\^',
+        ['^x#x^'] = '\\^x#x\\^',
+        ['^^x^'] = '\\^\\^x\\^',
+        ['^^^x^'] = '\\^\\^\\^x\\^',
+        ['^x^^^'] = '\\^x\\^\\^\\^',
         ['^x x^'] = '^x x^',
         ['~'] = '~',
         ['~~'] = '~~',
         ['~~~'] = '~~~',
         ['~x'] = '~x',
         ['x~'] = 'x~',
-        ['~x~'] = '\\~x~',
-        ['~x#x~'] = '\\~x#x~',
-        ['~~x~'] = '~\\~x~',
-        ['~~~x~'] = '~~\\~x~',
-        ['~x~~~'] = '\\~x~~~',
+        ['~x~'] = '\\~x\\~',
+        ['~x#x~'] = '\\~x#x\\~',
+        ['~~x~'] = '\\~\\~x\\~',
+        ['~~~x~'] = '\\~\\~\\~x\\~',
+        ['~x~~~'] = '\\~x\\~\\~\\~',
         ['~x x~'] = '~x x~',
         ['['] = '[',
         ['[['] = '[[',
@@ -733,12 +751,26 @@ function test_esc_md ()
         ['[]{}'] = '\\[\\]{}',
         ['[text](link)'] = '\\[text\\](link)',
         ['[text]{.class}'] = '\\[text\\]{.class}',
-        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]\\]{.class}',
+        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}',
         ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*\\]{style="small-caps"}',
+        ['*my*~i~ is [more]{.complex}^'] = '\\*my\\*\\~i\\~ is \\[more\\]{.complex}^',
+        ['yet **another**~*test*~^a^ [b]{.c}'] = 'yet \\*\\*another\\*\\*\\~\\*test\\*\\~\\^a\\^ \\[b\\]{.c}'
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.esc_md(i), o)
+        local ret = M.esc_md(i)
+        lu.assert_equals(ret, o)
+        -- luacheck: ignore ret
+        local doc = pandoc.read(ret, 'markdown-smart')
+        lu.assert_not_nil(doc)
+        if  doc.blocks[1]        and
+            not i:match '^%s'    and
+            not i:match '%s$'    and
+            not i:match '^%s*%*' and
+            not i:match '\\'
+        then
+            lu.assert_equals(i, stringify(doc.blocks[1].content))
+        end
     end
 end
 
@@ -772,12 +804,27 @@ function test_conv_html_to_md ()
         ['<b><sc>test</sc><sub>2</sub></b>'] =
             '**[test]{style="font-variant: small-caps"}~2~**',
         ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
-            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*~]\\]{.class}**^x^]{style="font-variant: small-caps"}'
-        -- @fixme Test more interactions with markdown escaping.
+            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}**^x^]{style="font-variant: small-caps"}',
+        ['<i>**test**</i>'] = '*\\*\\*test\\*\\**',
+        ['<b>**test**</b>'] = '**\\*\\*test\\*\\***',
+        ['<span class="test">*test*~2~</span>'] = '[\\*test\\*\\~2\\~]{.test}',
+        ['<span style="font-variant: small-caps">test~x~*!*</span>'] =
+            '[test\\~x\\~\\*!\\*]{style="font-variant: small-caps"}',
+        ['<span class="nocase"><i>*test*</i><sc>**X**</sc></span>'] =
+            '[*\\*test\\**[\\*\\*X\\*\\*]{style="font-variant: small-caps"}]{.nocase}',
     }
 
     for i, o in pairs(tests) do
         lu.assert_equals(M.conv_html_to_md(i), o)
+
+        -- Spans are translated differently for HTML and Markdown,
+        -- so they cannot be tested.
+        if not i:match '<sc>' and not i:match '<span>' then
+            local idoc = pandoc.read(i, 'html')
+            local odoc = pandoc.read(o, 'markdown-smart')
+            -- pandoc.utils.equals reports them as different.
+            lu.assert_items_equals(idoc, odoc)
+        end
     end
 end
 
