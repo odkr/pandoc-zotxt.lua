@@ -96,6 +96,7 @@
 -- Built-in functions.
 local assert = assert
 local error = error
+local getmetatable = getmetatable
 local next = next
 local pairs = pairs
 local pcall = pcall
@@ -103,6 +104,7 @@ local rawget = rawget
 local require = require
 local select = select
 local setmetatable = setmetatable
+local tonumber = tonumber
 local tostring = tostring
 local type = type
 
@@ -742,7 +744,14 @@ do
 end
 
 do
-    local filter = {}
+    local esc = {}
+
+    function esc.Str (str)
+        str.text = esc_md(str.text)
+        return str
+    end
+
+    local md = {}
 
     -- Make a function that converts an element to Markdown.
     --
@@ -750,22 +759,22 @@ do
     -- @treturn func The conversion function.
     local function mk_elem_conv_f (char)
         return function (elem)
-            local str = stringify(pandoc.walk_inline(elem, filter))
+            local str = stringify(pandoc.walk_inline(elem, md))
             return Str(char .. str .. char)
         end
     end
 
-    filter.Emph = mk_elem_conv_f '*'
-    filter.Strong = mk_elem_conv_f '**'
-    filter.Subscript = mk_elem_conv_f '~'
-    filter.Superscript = mk_elem_conv_f '^'
+    md.Emph = mk_elem_conv_f '*'
+    md.Strong = mk_elem_conv_f '**'
+    md.Subscript = mk_elem_conv_f '~'
+    md.Superscript = mk_elem_conv_f '^'
 
     -- Convert <span> elements to Markdown text.
     --
     -- @tparam pandoc.Span A <span> element.
     -- @treturn pandoc.Str The element as Markdown.
-    function filter.Span (span)
-        local str = stringify(pandoc.walk_inline(span, filter))
+    function md.Span (span)
+        local str = stringify(pandoc.walk_inline(span, md))
         local attrs = ''
 
         if span.identifier then
@@ -795,12 +804,18 @@ do
     --
     -- @tparam pandoc.SmallCaps A SmallCaps element.
     -- @treturn pandoc.Str The element as Markdown.
-    function filter.SmallCaps (sc)
+    function md.SmallCaps (sc)
         local span = Span(sc.content)
         span.attributes.style = 'font-variant: small-caps'
-        return filter.Span(span)
+        return md.Span(span)
     end
 
+    function markdownify (elem)
+        return stringify(walk(walk(elem, esc), md))
+    end
+end
+
+do
     -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
     --
     -- Zotero supports using '<sc>...</sc>' to set text in small caps.
@@ -828,13 +843,9 @@ do
     -- @within Converters
     -- @fixme Tests need work.
     function conv_html_to_md (html)
-        local md_escaped = esc_md(html)
-        local sc_replaced = conv_sc_to_span(md_escaped)
+        local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')
-        for i = 1, #doc.blocks do
-            doc.blocks[i] = pandoc.walk_block(doc.blocks[i], filter)
-        end
-        return stringify(doc)
+        return markdownify(doc)
     end
 end
 
@@ -893,7 +904,6 @@ do
         return string.rep(' ', n)
     end
 
-
     --- Generate a YAML representation of some data.
     --
     -- Uses `EOL` to end lines.
@@ -916,6 +926,7 @@ do
         if t == 'number' then
             return tostring(data)
         elseif t == 'string' then
+            if tonumber(data) then return data end
             return '"' .. data:gsub('(\\)+', '%1\\'):gsub('"', '\\"') .. '"'
         elseif t == 'table' then
             if not _col then _col = 0 end
@@ -1165,29 +1176,46 @@ do
 end
 
 
---- Read BibTeX/BibLaTeX files.
+--- Read BibLaTeX files.
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
+
 
 --- Collect item IDs from the content of a BibTeX/BibLaTeX file.
 --
 -- @string str The content of a BibTeX/BibLaTeX file.
 -- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
-function BIBLIO_TYPES.bib.decode (str)
-    local ret = {}
-    local n = 0
-    for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
-        n = n + 1
-        ret[n] = {id=id}
+if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    function BIBLIO_TYPES.bib.decode (str)
+        local ret = {}
+        local n = 0
+        for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
+            n = n + 1
+            ret[n] = {id=id}
+        end
+        return ret
     end
-    return ret
+else
+    function BIBLIO_TYPES.bib.decode (str)
+        local doc = pandoc.read(str, 'biblatex')
+        if not doc.meta.references then return {} end
+        return walk(doc.meta.references, {MetaInlines = markdownify})
+    end
 end
 
 
---- Alternative suffix for BibTeX/BibLaTeX files.
+--- Read BibTeX files.
 -- @within Bibliography files
-BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
+if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
+else
+    function BIBLIO_TYPES.bib.decode (str)
+        local doc = pandoc.read(str, 'bibtex')
+        if not doc.meta.references then return {} end
+        return walk(doc.meta.references, {MetaInlines = markdownify})
+    end
+end
 
 
 --- De-/Encode CSL items in JSON.
@@ -1205,8 +1233,30 @@ BIBLIO_TYPES.yaml = {}
 -- @string str A CSL YAML string.
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
-function BIBLIO_TYPES.yaml.decode (str)
-    return yaml.parse(str).references
+if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    function BIBLIO_TYPES.yaml.decode (str)
+        local lns = ''
+        for ln in str:gmatch '(.-)\r?\n' do
+            if     ln == '...' then break
+            elseif ln ~= '---' then lns = lns .. ln .. EOL
+            end
+        end
+        return rconv_nums_to_strs(yaml.parse(lns).references)
+    end
+else
+    function BIBLIO_TYPES.yaml.decode (str)
+        local ds = false
+        for ln in str:gmatch '(.-)\r?\n' do
+            if ln == '---' then
+                ds = true
+                break
+            end
+        end
+        if not ds then str = concat{'---', EOL, str, EOL, '...', EOL} end
+        local doc = pandoc.read(str, 'markdown')
+        if not doc.meta.references then return {} end
+        return walk(doc.meta.references, {MetaInlines = markdownify})
+    end
 end
 
 
@@ -1403,6 +1453,92 @@ end
 
 -- PANDOC
 -- ======
+
+do
+    local ts = {}
+    for k, v in sorted_pairs(pandoc) do
+        if type(v) == 'table' and not ts[v] then
+            local t = {k}
+            local mt = getmetatable(v)
+            n = 1
+            while mt and n < 16 do
+                if not mt.name or mt.name == 'Type' then break end
+                n = n + 1
+                t[n] = mt.name
+                mt = getmetatable(mt)
+            end
+            if t[n] == 'AstElement' then ts[v] = t end
+        end
+    end
+
+    function elem_type (elem)
+        if type(elem) ~= 'table' then return end
+        local mt = getmetatable(elem)
+        if not mt or not mt.__type then return end
+        return unpack(ts[mt.__type])
+    end
+end
+
+do
+    local function w_map (tab, ...)
+        for k, v in pairs(tab) do
+            tab[k] = walk(v, ...)
+        end
+    end
+
+    local function w_seq (tab, ...)
+        for i = 1, #tab do
+            tab[i] = walk(tab[i], ...)
+        end
+    end
+
+    local function w_list (elem, ...)
+        local content = elem.content
+        for i = 1, #content do
+            content[i] = w_seq(content[i], ...)
+        end
+    end
+
+    local walker_fs = {
+        Meta = w_map,
+        MetaBlocks = w_seq,
+        MetaList = w_seq,
+        MetaInlines = w_seq,
+        MetaMap = w_map,
+        BulletList = w_list,
+        OrderedList = w_list
+    }
+
+    function walker_fs.Doc (doc, ...)
+        doc.meta = walk(doc.meta, ...)
+        local blocks = doc.blocks
+        for i = 1, #blocks do
+            blocks[i] = walk(blocks[i], ...)
+        end
+    end
+
+    function walk (elem, filter, _rd)
+        if not _rd then _rd = 0
+                   else _rd = _rd + 1
+        end
+        assert(_rd < 512, 'Too much recursion.')
+        local ts = table.pack(elem_type(elem))
+        if ts.n == 0 then return elem end
+        local walker_f = walker_fs[ts[1]]
+        if     walker_f     then walker_f(elem, filter, _rd)
+        elseif elem.content then w_seq(elem.content, filter, _rd)
+                            end
+        for i = 1, ts.n do
+            local func = filter[ts[i]]
+            if func then
+                local new = func(elem:clone())
+                if new ~= nil then elem = new end
+            end
+        end
+        return elem
+    end
+end
+
 
 --- Collect sources from the document's metadata block.
 --

@@ -163,7 +163,7 @@ ZOTXT_YAML = {
     {
         author={{family="Crenshaw", given="Kimberlé"}},
         id="crenshaw1989DemarginalizingIntersectionRace",
-        issued={["date-parts"]={{1989}}},
+        issued={["date-parts"]={{'1989'}}},
         title="Demarginalizing the intersection of race and sex",
         type="paper"
     }
@@ -962,9 +962,10 @@ function test_biblio_codecs_bib_decode ()
     local fname = M.path_join(DATA_DIR, 'bibliography.bib')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    lu.assert_items_equals(bib.decode(str), {
-        {id='crenshaw1989DemarginalizingIntersectionRace'},
-        {id='diaz-leon2015WhatSocialConstruction'}
+    local ids = M.csl_items_get_ids(bib.decode(str))
+    lu.assert_items_equals(ids, {
+        ['crenshaw1989DemarginalizingIntersectionRace'] = true,
+        ['diaz-leon2015WhatSocialConstruction'] = true
     })
 end
 
@@ -1101,9 +1102,11 @@ function test_meta_get_sources ()
         'test-duplicate-bibliography-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.meta_get_sources(test_file.meta),
-        {{id="crenshaw1989DemarginalizingIntersectionRace"},
-        {id="diaz-leon2015WhatSocialConstruction"}})
+    local ids = M.csl_items_get_ids(M.meta_get_sources(test_file.meta))
+    lu.assert_items_equals(ids, {
+        ["crenshaw1989DemarginalizingIntersectionRace"] = true,
+        ["diaz-leon2015WhatSocialConstruction"] = true
+    })
 end
 
 function test_doc_get_ckeys ()
