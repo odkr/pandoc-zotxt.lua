@@ -310,14 +310,14 @@ end
 -- @return `data` with `func` applied.
 -- @raise An error if the data is nested too deeply.
 -- @within Table manipulation
--- @fixme Untested.
+-- @fixme Mostly untested.
 function rmap (func, data, _rd)
     if type(data) ~= 'table' then return func(data) end
     if not _rd then _rd = 0 end
     assert(_rd < 512, 'Too much recursion.')
     local ret = {}
     local k = next(data, nil)
-    while k do
+    while k ~= nil do
         local v = data[k]
         if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
         ret[k] = func(v, k)
@@ -337,7 +337,7 @@ function keys (tab)
     local ks = {}
     local n = 0
     local k = next(tab, nil)
-    while k do
+    while k ~= nil do
         n = n + 1
         ks[n] = k
         k = next(tab, k)
@@ -356,14 +356,12 @@ do
     -- @raise An error if the data is nested too deeply.
     -- @within Table manipulation
     function lower_keys (tab, _rd)
-        if not _rd then _rd = 0
-                   else _rd = _rd + 1
-        end
+        if not _rd then _rd = 0 end
         assert(_rd < 512, 'Too much recursion.')
         local ret = {}
         for k, v in pairs(tab) do
-            if type(k) == 'string' then k = lower(k)           end
-            if type(v) == 'table'  then v = lower_keys(v, _rd) end
+            if type(k) == 'string' then k = lower(k)               end
+            if type(v) == 'table'  then v = lower_keys(v, _rd + 1) end
             ret[k] = v
         end
         return ret
@@ -708,6 +706,10 @@ do
         return char:gsub('(.)', '\\%1') .. tail
     end
 
+    local function esc_sup_sub (head, body, tail)
+        return head:gsub('(.)', '\\%1') .. body .. tail:gsub('(.)', '\\%1')
+    end
+
     local function esc_brackets (char, tail)
         return '\\[' .. char:sub(2, -2) .. '\\]' .. tail
     end
@@ -721,8 +723,8 @@ do
         {'(%*+)([^%s%*])', esc_bold_italics},
         {'(_+)([^%s_])', esc_bold_italics},
         -- Superscript and subscript.
-        {'%^([^%^%s]+)%^', '\\^%1^'},
-        {'~([^~%s]+)~', '\\~%1~'},
+        {'(%^+)([^%^%s]*)(%^+)', esc_sup_sub},
+        {'(~+)([^~%s]+)(~+)', esc_sup_sub},
         -- Brackets (spans and links).
         {'(%b[])([%({])', esc_brackets}
     }
@@ -736,7 +738,6 @@ do
     -- @string str A string.
     -- @treturn string `str` with Markdown escaped.
     -- @within Converters
-    -- @todo Add more tests for interactions of markup.
     function esc_md (str)
         for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
         return str
@@ -841,7 +842,6 @@ do
     -- @string html Text that contains pseudo-HTML tags.
     -- @treturn string Text formatted in Markdown.
     -- @within Converters
-    -- @fixme Tests need work.
     function conv_html_to_md (html)
         local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')

@@ -11,6 +11,12 @@ SCPT_DIR	:= $(BASE_DIR)/scripts
 TMP_DIR		:= $(BASE_DIR)/tmp
 
 
+# FILES
+# =====
+
+SCRIPT		?= $(SCPT_DIR)/debug-wrapper.lua
+
+
 # PROGRAMMES
 # ==========
 
@@ -18,10 +24,11 @@ SHELL		?= sh
 RM		?= rm -f
 PANDOC		?= pandoc
 
-# The shells to try. Used for installation.
+# The shells to try to run the installer with.
 # Must be filenames. Order by preference, from best to worst.
 # Change PATH to use different versions of the same shell.
-SHELLS		= dash oksh bash yash zsh mksh ksh sh
+SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
+
 
 # TARGETS
 # =======
@@ -36,9 +43,7 @@ BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
 		   test-example-simple test-example-bibliography \
 		   $(ISSUE_TESTS)
 
-OTHER_TESTS := test-resource-path
-
-SCRIPT    ?= $(SCPT_DIR)/debug-wrapper.lua
+OTHER_TESTS	:= test-resource-path
 
 
 # TESTS
@@ -111,9 +116,9 @@ docs: manual
 install:
 	@PATH="`getconf PATH`:$$PATH"; \
 	for SHELL in $(SHELLS); do \
-		"$$SHELL" instahll.sh || ERR="$$?"; \
-	        [ "$${ERR-0}" -eq 127 ] || break \
-	done; 
+		"$$SHELL" install.sh; \
+		[ "$$?" -eq 127 ] || break; \
+	done
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
