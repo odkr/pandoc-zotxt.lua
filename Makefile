@@ -103,11 +103,11 @@ prologue:
 		man/pandoc-zotxt.lua.md
 
 manual:
-	$(PANDOC) -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
+	$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
-		man/man1/pandoc-zotxt.lua.md
+		man/pandoc-zotxt.lua.md
 
 docs: manual
 	ldoc . 
