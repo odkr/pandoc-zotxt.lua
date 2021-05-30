@@ -686,7 +686,7 @@ end
 -- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
 -- of the CSL specification lists all field names.
 --
--- @see rconv_html_to_md
+-- @see zotfmt_to_pdfmt
 -- @within Bibliography files
 -- @todo Lookup in Citeproc source code.
 CSL_KEYS_FORMATTABLE = {
@@ -922,7 +922,7 @@ do
         return ret
     end
 
-    --- Convert pseudo-HTML to Markdown.
+    --- Convert Zotero pseudo-HTML to Markdown.
     --
     -- Only supports the HTML tags that Zotero *and* Pandoc support.
     --
@@ -932,59 +932,10 @@ do
     -- @string html Text that contains pseudo-HTML tags.
     -- @treturn string Text formatted in Markdown.
     -- @within Converters
-    function conv_html_to_md (html)
+    function html_to_md (html)
         local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')
         return markdownify(doc)
-    end
-end
-
-do
-    local keys_formattable = {}
-    for i = 1, #CSL_KEYS_FORMATTABLE do
-        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
-    end
-
-    local function conv (val, key)
-        if not keys_formattable[key] or type(val) ~= 'string' then
-            return val
-        end
-        return conv_html_to_md(val)
-    end
-
-    --- Recursively convert pseudo-HTML to Markdown.
-    --
-    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
-    --
-    -- @tab item A CSL item.
-    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
-    -- @see conv_html_to_md
-    -- @within Converters
-    -- @fixme Untested
-    function rconv_html_to_md (item)
-        return rmap(conv, item)
-    end
-end
-
-
-do
-    function conv (data)
-        if type(data) ~= 'number' then return data end
-        return tostring(math.floor(data))
-    end
-
-    --- Recursively convert numbers to strings.
-    --
-    -- Also converts floating point numbers to integers. This is needed
-    -- because all numbers are floating point numbers in JSON, but some
-    -- versions of Pandoc expect integers.
-    --
-    -- @tab data The data.
-    -- @return A copy of `data` with numbers converted to strings.
-    -- @raise An error if the data is nested too deeply.
-    -- @within Converters
-    function rconv_nums_to_strs (data)
-        return rmap(conv, data)
     end
 end
 
@@ -1020,7 +971,7 @@ do
     local base_url = ZOTXT_BASE_URL
     local key_ts = ZOTXT_KEYTYPES
 
-    -- Retrieve a CSL item (low-level).
+    -- Retrieve a source from Zotero (low-level).
     --
     -- Takes an item ID and a parsing function, queries *zotxt* for that ID,
     -- passes whatever *zotxt* returns to the parsing function, and then
@@ -1033,7 +984,7 @@ do
     --
     -- @func parse_f A function that takes a CSL JSON string,
     --  returns a CSL item, and raises an error if, and only if,
-    --  it cannot interpret the JSON string as a CSL item.
+    --  it cannot interpret the JSON string as CSL item.
     -- @string id An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
@@ -1063,17 +1014,33 @@ do
     end
 
 
+    -- Convert numbers to strings.
+    --
+    -- Also converts floating point numbers to integers. This is needed
+    -- because all numbers are floating point numbers in JSON, but some
+    -- versions of Pandoc expect integers.
+    --
+    -- @tab data The data.
+    -- @return A copy of `data` with numbers converted to strings.
+    -- @raise An error if the data is nested too deeply.
+    -- @within Converters
+    local function num_to_str (data)
+        if type(data) ~= 'number' then return data end
+        return tostring(math.floor(data))
+    end
+
+
     --- Convert a CSL JSON string to a Lua data structure.
     --
     -- @string str A CSL JSON string.
     -- @return A Lua data structure.
-    local function conv_json_to_lua (str)
+    local function json_to_lua (str)
         assert(str ~= '')
-        return rconv_nums_to_strs(decode(str)[1])
+        return rmap(num_to_str, decode(str)[1])
     end
 
 
-    --- Retrieve a CSL item (for use in bibliography files).
+    --- Retrieve a source from Zotero as CSL item.
     --
     -- Returns bibliographic data as a Lua table. The retrieved item can be
     -- passed to `biblio_write`; it should *not* be used in the `references`
@@ -1083,11 +1050,11 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `zotxt_get_item`.
+    -- @raise See `zotxt_source`.
     -- @within zotxt
-    function zotxt_get_item_csl (id)
+    function zotxt_csl_item (id)
         assert(id ~= '', 'ID is the empty string ("").')
-        local ref, err = get(conv_json_to_lua, id)
+        local ref, err = get(json_to_lua, id)
         if not ref then return nil, err end
         ref.id = id
         return ref
@@ -1098,27 +1065,27 @@ do
     --
     -- @string str A CSL JSON string.
     -- @treturn pandoc.MetaMap Pandoc metadata.
-    local function conv_json_to_meta (str)
+    local function json_to_meta (str)
         assert(str ~= '')
         return read(str, 'csljson').meta.references[1]
     end
 
 
-    --- Retrieve a CSL item (for use in the `references` metadata field).
+    --- Retrieve a source from Zotero as Pandoc metadata.
     --
     -- Returns bibliographic data as Pandoc metadata. That retrieved item
     -- can be used in the `references` metadata field; it should *not* be
     -- passed to `biblio_write`.
     --
     -- @string id An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] pandoc.MetaMap A CSL item.
+    -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `zotxt_get_item`.
+    -- @raise See `zotxt_source`.
     -- @within zotxt
-    function zotxt_get_item (id)
+    function zotxt_source (id)
         assert(id ~= '', 'ID is the empty string ("").')
-        local ref, err, errtype = get(conv_json_to_meta, id)
+        local ref, err, errtype = get(json_to_meta, id)
         if not ref then return nil, err, errtype end
         ref.id = MetaInlines{Str(id)}
         return ref
@@ -1130,7 +1097,7 @@ do
     --     fields and bibliography files differently before Pandoc v2.11.
     -- See <https://github.com/jgm/pandoc/issues/6722> for details.
     if not pandoc.types or PANDOC_VERSION < {2, 11} then
-        zotxt_get_item = zotxt_get_item_csl
+        zotxt_source = zotxt_csl_item
     end
 end
 
@@ -1200,7 +1167,7 @@ do
 end
 
 
---- Parse BibLaTeX.
+--- Decode BibLaTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
 
@@ -1232,12 +1199,12 @@ if not pandoc.types or PANDOC_VERSION < {2, 11} then
 end
 
 
---- Parse BibTeX.
+--- Decode BibTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bibtex = {}
 
 
---- Parse the content of a BibTeX file
+--- Parse the content of a BibTeX file.
 --
 -- @string str The content of a BibTeX file.
 -- @treturn[1] {table,...} A list of CSL items
@@ -1344,7 +1311,7 @@ end
 --  of item IDs.
 -- @raise An error if an item has an ID that cannot be coerced to a string.
 -- @within Bibliography files
-function csl_items_get_ids (items)
+function csl_items_ids (items)
     local ids = {}
     for i = 1, #items do
         local id = items[i].id
@@ -1420,60 +1387,87 @@ function biblio_write (fname, items)
 end
 
 
---- Add items from Zotero to a bibliography file.
---
--- If an item is already in the bibliography file, it won't be added again.
--- Prints a warning to STDERR if it overwrites an existing file.
--- Also prints an error to STDERR for every item that cannot be found.
---
--- @string fname The name of the bibliography file.
--- @tab ids The IDs of the items that should be added,
---  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
--- @treturn[1] bool `true` if the file was updated or no update was required.
--- @treturn[2] nil `nil` if an error occurrs.
--- @treturn[2] string An error message.
--- @treturn[2] ?int An error number if the error is a file I/O error.
--- @raise See `zotxt_get_item`.
--- @within Bibliography files
-function biblio_update (fname, ids)
-    -- luacheck: ignore ok fmt err errno
-    if #ids == 0 then return true end
-    local fmt, err = biblio_write(fname)
-    if not fmt then return nil, err end
-    -- @todo Remove this once the test suite is complete,
-    -- the script has been dogfed, and was out in the open for a while.
-    if fmt == 'yaml' or fmt == 'yml' then
-        warnf 'YAML bibliography file support is EXPERIMENTAL!'
+
+do
+    local keys_formattable = {}
+    for i = 1, #CSL_KEYS_FORMATTABLE do
+        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
     end
-    local items, err, errno = biblio_read(fname)
-    if not items then
-        if errno ~= 2 then return nil, err, errno end
-        items = {}
+
+    local function conv (val, key)
+        if not keys_formattable[key] then return val end
+        assert(type(val) == 'string', 'Value is not a string.')
+        return html_to_md(val)
     end
-    local item_ids = csl_items_get_ids(items)
-    local nitems = #items
-    local n = nitems
-    for i = 1, #ids do
-        local id = ids[i]
-        if not item_ids[id] then
-            local ok, ret, err = pcall(zotxt_get_item_csl, id)
-            if not ok then
-                return nil, ret
-            elseif ret then
-                if fmt == 'yaml' or fmt == 'yml' then
-                    ret = rconv_html_to_md(ret)
+
+    -- Recursively convert Zotero pseudo-HTML to Pandoc Markdown.
+    --
+    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
+    -- @see html_to_md
+    -- @within Converters
+    -- @fixme Untested
+    local function zotfmt_to_pdfmt (item)
+        return rmap(conv, item)
+    end
+
+    --- Add items from Zotero to a bibliography file.
+    --
+    -- If an item is already in the bibliography file, it won't be added again.
+    -- Prints a warning to STDERR if it overwrites an existing file.
+    -- Also prints an error to STDERR for every item that cannot be found.
+    --
+    -- @string fname The name of the bibliography file.
+    -- @tab ids The IDs of the items that should be added,
+    --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
+    -- @treturn[1] bool `true` if the file was updated or no update was required.
+    -- @treturn[2] nil `nil` if an error occurrs.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] ?int An error number if the error is a file I/O error.
+    -- @raise See `zotxt_source`.
+    -- @within Bibliography files
+    function biblio_update (fname, ids)
+        -- luacheck: ignore ok fmt err errno
+        if #ids == 0 then return true end
+        local fmt, err = biblio_write(fname)
+        if not fmt then return nil, err end
+        -- @todo Remove this once the test suite is complete,
+        -- the script has been dogfed, and was out in the open for a while.
+        if fmt == 'yaml' or fmt == 'yml' then
+            warnf 'YAML bibliography file support is EXPERIMENTAL!'
+        end
+        local items, err, errno = biblio_read(fname)
+        if not items then
+            if errno ~= 2 then return nil, err, errno end
+            items = {}
+        end
+        local item_ids = csl_items_ids(items)
+        local nitems = #items
+        local n = nitems
+        for i = 1, #ids do
+            local id = ids[i]
+            if not item_ids[id] then
+                local ok, ret, err = pcall(zotxt_csl_item, id)
+                if not ok then
+                    return nil, ret
+                elseif ret then
+                    if fmt == 'yaml' or fmt == 'yml' then
+                        ret = zotfmt_to_pdfmt(ret)
+                    end
+                    n = n + 1
+                    items[n] = lower_keys(ret)
+                else
+                    printf(err)
                 end
-                n = n + 1
-                items[n] = lower_keys(ret)
-            else
-                printf(err)
             end
         end
+        if (n == nitems) then return true end
+        fmt, err, errno = biblio_write(fname, items)
+        if not fmt then return nil, err, errno end
+        return true
     end
-    if (n == nitems) then return true end
-    fmt, err, errno = biblio_write(fname, items)
-    if not fmt then return nil, err, errno end
-    return true
 end
 
 
@@ -1502,9 +1496,9 @@ do
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn[1] string The type
     --  (e.g., 'MetaMap', 'Plain').
-    -- @treturn[1] string The high-order kind
+    -- @treturn[1] string The higher-order type
     --  (i.e., 'Block', 'Inline', or 'MetaValue').
-    -- @treturn[1] string The literal 'AstElement'.
+    -- @treturn[1] string 'AstElement'.
     -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
     -- @within Document parsing
     function elem_type (elem)
@@ -1602,7 +1596,7 @@ end
 -- @tab meta A metadata block.
 -- @treturn pandoc.List A list of CSL items.
 -- @within Document parsing
-function meta_get_sources (meta)
+function meta_sources (meta)
     local ret = List()
     if not meta then return ret end
     if meta.references then ret:extend(meta.references) end
@@ -1645,12 +1639,12 @@ end
 -- @treturn {string,...} A list of citation keys.
 -- @raise An error if an item ID is of an illegal data type.
 -- @within Document parsing
-function doc_get_ckeys (doc, flags)
+function doc_ckeys (doc, flags)
     -- @fixme `flags` is untested.
     local ids = {}
     if flags == 'u' and doc.meta then
-        local items = meta_get_sources(doc.meta)
-        ids = csl_items_get_ids(items)
+        local items = meta_sources(doc.meta)
+        ids = csl_items_ids(items)
     end
     local n = 0
     local ckeys = {}
@@ -1691,7 +1685,7 @@ end
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `zotxt_get_item`.
+-- @raise See `zotxt_source`.
 -- @within Main
 function add_biblio (meta, ckeys)
     -- luacheck: ignore ok
@@ -1729,14 +1723,14 @@ end
 --  with the field `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `zotxt_get_item`.
+-- @raise See `zotxt_source`.
 -- @within Main
 function add_refs (meta, ckeys)
     if #ckeys == 0 then return end
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ret, err = pcall(zotxt_get_item, ckeys[i])
+        local ok, ret, err = pcall(zotxt_source, ckeys[i])
         if not ok  then return nil, ret
         elseif ret then n = n + 1
                         meta.references[n] = ret
@@ -1756,10 +1750,10 @@ end
 -- @tparam table doc A document.
 -- @treturn[1] table `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise See `zotxt_get_item`.
+-- @raise See `zotxt_source`.
 -- @within Main
 function main (doc)
-    local ckeys = doc_get_ckeys(doc, 'u')
+    local ckeys = doc_ckeys(doc, 'u')
     if next(ckeys) == nil then return end
     for i = 1, 2 do
         local add_srcs
