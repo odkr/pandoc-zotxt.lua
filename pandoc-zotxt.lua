@@ -116,6 +116,7 @@ local os = os
 local package = package
 local string = string
 local table = table
+local utf8 = utf8
 
 
 -- Pandoc.
@@ -572,14 +573,13 @@ do
         end
         local len = #templ
         local nxs = 0
-        for i = 1, len do
-            if templ:sub(i, i) == 'X' then nxs = nxs + 1 end
+        for c in templ:gmatch(utf8.charpattern) do
+            if c == 'X' then nxs = nxs + 1 end
         end
         assert(nxs >= 6, 'Template string must contain at least six "X"s.')
         for _ = 1, 1024 do
             local fname = ''
-            for i = 1, len do
-                local c = templ:sub(i, i)
+            for c in templ:gmatch(utf8.charpattern) do
                 if c == 'X' then c = alnum[math.random(1, alnum.n)] end
                 fname = fname .. c
             end
@@ -845,13 +845,72 @@ end
 
 
 do
+    local rep = string.rep
+    local format = string.format
+    local charpattern = utf8.charpattern
+    local codepoint = utf8.codepoint
+
     local function spaces (n)
-        return string.rep(' ', n)
+        return rep(' ', n)
+    end
+
+    local function esc (char)
+        local cp = codepoint(char)
+        if     cp <= 2^8  then return format('\\x%x', cp)
+        elseif cp <= 2^16 then return format('\\u%x', cp)
+        else                   return format('\\U%x', cp)
+        end
+    end
+
+    local function scalarify (str)
+        -- Simple strings need no special treatment.
+        if
+            tonumber(str) ~= nil or -- Numbers
+            str:match '^[%w-]+$' or -- Simple words
+            str:match '^%a+:[%w/]+' -- URLs
+        then return str end
+
+        -- Replace singular LF with EOL sequence.
+        str = str:gsub('\r?\n', EOL)
+
+        -- Escape illegal characters.
+        local e = ''
+        for c in str:gmatch(charpattern) do
+            local cp = codepoint(c)
+            if
+                cp == 0x09 or -- TAB
+                cp == 0x0a or -- LF
+                cp == 0x0d or -- CR
+                cp == 0x85    -- NEL
+            then
+                e = e .. c
+            elseif
+                cp <= 0x001f or -- C0 control block
+                cp == 0x007f    -- DEL
+            then
+                e = e .. format('\\x%x', cp)
+            elseif
+                (0x0080 <= cp and cp <= 0x009f) or -- C1 control block
+                (0xd800 <= cp and cp <= 0xdfff) or -- Surrogate block
+                cp == 0xfffe or
+                cp == 0xffff
+            then
+                e = e .. format('\\u%x', cp)
+            else
+                e = e .. c
+            end
+        end
+
+        -- Quote.
+        return '"' .. e:gsub('(\\)+', '\\%1'):gsub('"', '\\"') .. '"'
     end
 
     --- Generate a YAML representation of some data.
     --
     -- Uses `EOL` to end lines.
+    -- Only parses UTF-8 encoded strings.
+    -- Strings in other encodings will be mangled.
+    -- Does not escape all non-printable characters (because Unicode).
     --
     -- @param data The data.
     -- @int[opt=4] ind How many spaces to indent blocks.
@@ -860,10 +919,9 @@ do
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
     -- @treturn[2] string An error message.
-    -- @raise An error if the data is nested too deeply.
+    -- @raise An error if the data cannot be expressed in YAML
+    --  or is nested too deeply.
     -- @within Converters
-    -- @fixme Doesn't normalise line breaks within strings.
-    -- @fixme May or may not be to spec.
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
         assert(_rd < 1024, 'Too much recursion.')
@@ -872,8 +930,7 @@ do
         if t == 'number' then
             return tostring(data)
         elseif t == 'string' then
-            if tonumber(data) then return data end
-            return '"' .. data:gsub('(\\)+', '%1\\'):gsub('"', '\\"') .. '"'
+            return scalarify(data)
         elseif t == 'table' then
             if not _col then _col = 0 end
             local ret = ''
@@ -892,7 +949,11 @@ do
                 local i = 0
                 for k, v in sorted_pairs(data, sort_f) do
                     i = i + 1
-                    k = tostring(k)
+                    if type(k) == 'number' then k = tostring(k) end
+                    local kt = type(k)
+                    assert(kt == 'string',
+                           kt .. ': Cannot be expressed in YAML.')
+                    k = scalarify(k)
                     if i > 1 then ret = ret .. sp end
                     ret = ret .. k .. ':'
                     local col = _col + ind
@@ -905,7 +966,7 @@ do
             end
             return ret
         else
-            return nil, t .. ': Cannot be expressed in YAML.'
+            error(t .. ': Cannot be expressed in YAML.')
         end
     end
 end
@@ -931,8 +992,7 @@ do
     --
     -- Only supports the HTML tags that Zotero *and* Pandoc support.
     --
-    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>
-    -- and <https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields>.
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
     --
     -- @string html Text that contains pseudo-HTML tags.
     -- @treturn string Text formatted in Markdown.

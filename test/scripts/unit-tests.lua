@@ -903,15 +903,23 @@ function test_yamlify ()
         lu.assert_error(M.yamlify, 'test', v)
     end
 
-    invalid = {nil, 3, 'x', {}}
+    invalid = {nil, 3, 'x', {},
+        {[{}] = 0}, [function () end] = 0, {test = function () end}}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.yamlify, 'test', nil, v)
     end
 
     lu.assert_equals(M.yamlify(3), '3')
-    lu.assert_equals(M.yamlify('test'), '"test"')
-    lu.assert_equals(M.yamlify({'test'}), '- "test"')
-
+    lu.assert_equals(M.yamlify('test'), 'test')
+    lu.assert_equals(M.yamlify({'test'}), '- test')
+    lu.assert_equals(M.yamlify('test test'), '"test test"')
+    lu.assert_equals(M.yamlify({['test test'] = 0}), '"test test": 0')
+    lu.assert_equals(M.yamlify('test\ntest'), '"test' .. M.EOL .. 'test"')
+    lu.assert_equals(M.yamlify('test\r\ntest'), '"test' .. M.EOL .. 'test"')
+    lu.assert_equals(M.yamlify('test' .. utf8.char(0x7f) .. 'test'),
+        '"test\\x7ftest"')
+    lu.assert_equals(M.yamlify('test' .. utf8.char(0xda99) .. 'test'),
+        '"test\\uda99test"')
     local str = M.yamlify(ZOTXT_CSL)
     local csl = rconv_nums_to_strs(yaml.parse(str))
     lu.assert_equals(csl, ZOTXT_CSL)
@@ -1241,7 +1249,6 @@ function test_doc_ckeys ()
         'nobody:0000nothing'
     })
     lu.assert_equals(n, 6)
-
 
     test_fname = M.path_join(DATA_DIR, 'test-dup.md')
     test_file, err = read_md_file(test_fname)
