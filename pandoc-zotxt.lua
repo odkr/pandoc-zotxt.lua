@@ -1249,7 +1249,7 @@ function BIBLIO_TYPES.yaml.decode (str)
     local iter = str:gmatch '(.-)\r?\n'
     local ln = iter(str, nil)
     while ln and ln ~= '---' do ln = iter(str, ln) end
-    if ln ~= '---' then str = concat{'---', EOL, str, EOL, '...', EOL} end
+    if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
     local doc = pandoc.read(str, 'markdown')
     if not doc.meta.references then return {} end
     return walk(doc.meta.references, {MetaInlines = markdownify})
