@@ -259,7 +259,6 @@ end
 
 local text = require 'text'
 local json = require 'lunajson'
-local yaml = require 'tinyyaml'
 
 
 -- FUNCTIONS
@@ -313,13 +312,15 @@ end
 -- @fixme Mostly untested.
 function rmap (func, data, _rd)
     if type(data) ~= 'table' then return func(data) end
-    if not _rd then _rd = 0 end
+    if not _rd then _rd = 0
+               else _rd = _rd + 1
+    end
     assert(_rd < 512, 'Too much recursion.')
     local ret = {}
     local k = next(data, nil)
     while k ~= nil do
         local v = data[k]
-        if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
+        if type(v) == 'table' then v = rmap(func, v, _rd) end
         ret[k] = func(v, k)
         k = next(data, k)
     end
@@ -546,7 +547,7 @@ do
     --  Cannot be the empty string ('').
     -- @string[optchain='tmp_XXXXXX'] templ A template for the filename.
     --  'X's are replaced with random alphanumeric characters.
-    --  Cannot be the empty string ('').
+    --  Must contain at least six 'X's.
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the generated filename is in use.
     -- @treturn[2] string An error message.
@@ -570,7 +571,8 @@ do
         for i = 1, len do
             if templ:sub(i, i) == 'X' then nxs = nxs + 1 end
         end
-        for _ = 1, math.min(2048, alnum.n ^ nxs) do
+        assert(nxs >= 6, 'Template string must contain at least six "X"s.')
+        for _ = 1, 1024 do
             local fname = ''
             for i = 1, len do
                 local c = templ:sub(i, i)
@@ -626,6 +628,7 @@ do
     -- @usage
     --      do
     --          local tmp, ok, err
+    --          -- Creates the fiele.
     --          tmp, err = tmp_file()
     --          if tmp then
     --              ok, err = tmp.file:write(data)
@@ -642,6 +645,9 @@ do
     --              print(err)
     --          end
     --      end
+    --      -- If writing and renaming the temporary file has not succeeded,
+    --      -- then the garbage collector will delete the file after
+    --      -- (not "at") this point.
     function tmp_file (...)
         local tmp, err, errno
         tmp = setmetatable({}, mt)
@@ -731,7 +737,7 @@ do
 
     --- Escape Markdown.
     --
-    -- Only escapes Markdown that Pandoc recognises in citations.
+    -- Only escapes Markdown that Pandoc recognises in bibliographic data.
     --
     -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
     --
@@ -747,6 +753,12 @@ end
 do
     local esc = {}
 
+    -- Escape Markdown in a string element.
+    --
+    -- Works like `esc_md` but for Pandoc string elements.
+    --
+    -- @tparam pandoc.Str str A string element.
+    -- @treturn pandoc.Str A string with Markdown markup escaped.
     function esc.Str (str)
         str.text = esc_md(str.text)
         return str
@@ -811,10 +823,88 @@ do
         return md.Span(span)
     end
 
+    --- Convert a Pandoc element to Markdown text.
+    --
+    -- Only recognises elements that are permitted in bibliographic data.
+    --
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn string Markdown text.
+    -- @within Converters
+    -- @fixme Untested.
     function markdownify (elem)
         return stringify(walk(walk(elem, esc), md))
     end
 end
+
+
+do
+    local function spaces (n)
+        return string.rep(' ', n)
+    end
+
+    --- Generate a YAML representation of some data.
+    --
+    -- Uses `EOL` to end lines.
+    --
+    -- @param data The data.
+    -- @int[opt=4] ind How many spaces to indent blocks.
+    -- @func[optchain] sort_f A function to sort keys of mappings.
+    --  Defaults to sorting them lexically.
+    -- @treturn[1] string A YAML string.
+    -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
+    -- @treturn[2] string An error message.
+    -- @raise An error if the data is nested too deeply.
+    -- @within Converters
+    -- @fixme Doesn't normalise line breaks within strings.
+    -- @fixme May or may not be to spec.
+    function yamlify (data, ind, sort_f, _col, _rd)
+        if not _rd then _rd = 0 end
+        assert(_rd < 1024, 'Too much recursion.')
+        if not ind then ind = 4 end
+        local t = type(data)
+        if t == 'number' then
+            return tostring(data)
+        elseif t == 'string' then
+            if tonumber(data) then return data end
+            return '"' .. data:gsub('(\\)+', '%1\\'):gsub('"', '\\"') .. '"'
+        elseif t == 'table' then
+            if not _col then _col = 0 end
+            local ret = ''
+            local n = #data
+            local nkeys = select(2, keys(data))
+            local sp = spaces(_col)
+            if n == nkeys then
+                local col = _col + 2
+                for i = 1, n do
+                    if i > 1 then ret = ret .. sp end
+                    ret = ret .. '- '
+                              .. yamlify(data[i], ind, sort_f, col, _rd + 1)
+                    if i ~= n then ret = ret .. EOL end
+                end
+            else
+                local i = 0
+                for k, v in sorted_pairs(data, sort_f) do
+                    i = i + 1
+                    k = tostring(k)
+                    if i > 1 then ret = ret .. sp end
+                    ret = ret .. k .. ':'
+                    local col = _col + ind
+                    if type(v) == 'table' then ret = ret .. EOL .. spaces(col)
+                                          else ret = ret .. ' '
+                    end
+                    ret = ret .. yamlify(v, ind, sort_f, col, _rd + 1)
+                    if i ~= nkeys then ret = ret .. EOL end
+                end
+            end
+            return ret
+        else
+            return nil, t .. ': Cannot be expressed in YAML.'
+        end
+    end
+end
+
 
 do
     -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
@@ -883,7 +973,7 @@ do
         return tostring(math.floor(data))
     end
 
-    --- Convert numbers to strings recursively.
+    --- Recursively convert numbers to strings.
     --
     -- Also converts floating point numbers to integers. This is needed
     -- because all numbers are floating point numbers in JSON, but some
@@ -895,72 +985,6 @@ do
     -- @within Converters
     function rconv_nums_to_strs (data)
         return rmap(conv, data)
-    end
-end
-
-
-do
-    local function spaces (n)
-        return string.rep(' ', n)
-    end
-
-    --- Generate a YAML representation of some data.
-    --
-    -- Uses `EOL` to end lines.
-    --
-    -- @param data The data.
-    -- @int[opt=4] ind How many spaces to indent blocks.
-    -- @func[optchain] sort_f A function to sort keys of mappings.
-    --  Defaults to sorting them lexically.
-    -- @treturn[1] string A YAML string.
-    -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
-    -- @treturn[2] string An error message.
-    -- @raise An error if the data is nested too deeply.
-    -- @within Converters
-    -- @fixme Doesn't normalise line breaks within strings.
-    function yamlify (data, ind, sort_f, _col, _rd)
-        if not _rd then _rd = 0 end
-        assert(_rd < 1024, 'Too much recursion.')
-        if not ind then ind = 4 end
-        local t = type(data)
-        if t == 'number' then
-            return tostring(data)
-        elseif t == 'string' then
-            if tonumber(data) then return data end
-            return '"' .. data:gsub('(\\)+', '%1\\'):gsub('"', '\\"') .. '"'
-        elseif t == 'table' then
-            if not _col then _col = 0 end
-            local ret = ''
-            local n = #data
-            local nkeys = select(2, keys(data))
-            local sp = spaces(_col)
-            if n == nkeys then
-                local col = _col + 2
-                for i = 1, n do
-                    if i > 1 then ret = ret .. sp end
-                    ret = ret .. '- '
-                              .. yamlify(data[i], ind, sort_f, col, _rd + 1)
-                    if i ~= n then ret = ret .. EOL end
-                end
-            else
-                local i = 0
-                for k, v in sorted_pairs(data, sort_f) do
-                    i = i + 1
-                    k = tostring(k)
-                    if i > 1 then ret = ret .. sp end
-                    ret = ret .. k .. ':'
-                    local col = _col + ind
-                    if type(v) == 'table' then ret = ret .. EOL .. spaces(col)
-                                          else ret = ret .. ' '
-                    end
-                    ret = ret .. yamlify(v, ind, sort_f, col, _rd + 1)
-                    if i ~= nkeys then ret = ret .. EOL end
-                end
-            end
-            return ret
-        else
-            return nil, t .. ': Cannot be expressed in YAML.'
-        end
     end
 end
 
@@ -1176,16 +1200,25 @@ do
 end
 
 
---- Read BibLaTeX files.
+--- Parse BibLaTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
 
 
---- Collect item IDs from the content of a BibTeX/BibLaTeX file.
+--- Parse the content of a BibLaTeX file.
 --
--- @string str The content of a BibTeX/BibLaTeX file.
--- @treturn {{id=string},...} A list of item IDs.
+-- @string str The content of a BibLaTeX file.
+-- @treturn[1] {table,...} A list of CSL items
+--  if you use Pandoc v2.11 or later.
+-- @treturn[2] {{id=string},...} A list of item IDs
+--  if you use an earlier version of Pandoc.
 -- @within Bibliography files
+function BIBLIO_TYPES.bib.decode (str)
+    local doc = pandoc.read(str, 'biblatex')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
+end
+
 if not pandoc.types or PANDOC_VERSION < {2, 11} then
     function BIBLIO_TYPES.bib.decode (str)
         local ret = {}
@@ -1196,25 +1229,30 @@ if not pandoc.types or PANDOC_VERSION < {2, 11} then
         end
         return ret
     end
-else
-    function BIBLIO_TYPES.bib.decode (str)
-        local doc = pandoc.read(str, 'biblatex')
-        if not doc.meta.references then return {} end
-        return walk(doc.meta.references, {MetaInlines = markdownify})
-    end
 end
 
 
---- Read BibTeX files.
+--- Parse BibTeX.
 -- @within Bibliography files
+BIBLIO_TYPES.bibtex = {}
+
+
+--- Parse the content of a BibTeX file
+--
+-- @string str The content of a BibTeX file.
+-- @treturn[1] {table,...} A list of CSL items
+--  if you use Pandoc v2.11 or later.
+-- @treturn[2] {{id=string},...} A list of item IDs
+--  if you use an earlier version of Pandoc.
+-- @within Bibliography files
+function BIBLIO_TYPES.bibtex.decode (str)
+    local doc = pandoc.read(str, 'bibtex')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
+end
+
 if not pandoc.types or PANDOC_VERSION < {2, 11} then
     BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
-else
-    function BIBLIO_TYPES.bib.decode (str)
-        local doc = pandoc.read(str, 'bibtex')
-        if not doc.meta.references then return {} end
-        return walk(doc.meta.references, {MetaInlines = markdownify})
-    end
 end
 
 
@@ -1233,30 +1271,18 @@ BIBLIO_TYPES.yaml = {}
 -- @string str A CSL YAML string.
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
-if not pandoc.types or PANDOC_VERSION < {2, 11} then
-    function BIBLIO_TYPES.yaml.decode (str)
-        local lns = ''
-        for ln in str:gmatch '(.-)\r?\n' do
-            if     ln == '...' then break
-            elseif ln ~= '---' then lns = lns .. ln .. EOL
-            end
+function BIBLIO_TYPES.yaml.decode (str)
+    local ds = false
+    for ln in str:gmatch '(.-)\r?\n' do
+        if ln == '---' then
+            ds = true
+            break
         end
-        return rconv_nums_to_strs(yaml.parse(lns).references)
     end
-else
-    function BIBLIO_TYPES.yaml.decode (str)
-        local ds = false
-        for ln in str:gmatch '(.-)\r?\n' do
-            if ln == '---' then
-                ds = true
-                break
-            end
-        end
-        if not ds then str = concat{'---', EOL, str, EOL, '...', EOL} end
-        local doc = pandoc.read(str, 'markdown')
-        if not doc.meta.references then return {} end
-        return walk(doc.meta.references, {MetaInlines = markdownify})
-    end
+    if not ds then str = concat{'---', EOL, str, EOL, '...', EOL} end
+    local doc = pandoc.read(str, 'markdown')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
 end
 
 
@@ -1471,6 +1497,16 @@ do
         end
     end
 
+    --- The type of a Pandoc AST element.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn[1] string The type
+    --  (e.g., 'MetaMap', 'Plain').
+    -- @treturn[1] string The high-order kind
+    --  (i.e., 'Block', 'Inline', or 'MetaValue').
+    -- @treturn[1] string The literal 'AstElement'.
+    -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
+    -- @within Document parsing
     function elem_type (elem)
         if type(elem) ~= 'table' then return end
         local mt = getmetatable(elem)
@@ -1517,6 +1553,22 @@ do
         end
     end
 
+    --- Walk the AST and apply functions to matching elements.
+    --
+    -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by accepting
+    -- AST elements of *any* type (i.e., including documents as a whole, the
+    -- metadata block, and metadata fields), by applying the filter to the
+    -- given element itself, by walking the AST bottom-up (which implies that
+    -- the filter is applied to every node, regardless of whether any of that
+    -- node's ancestors matches it), and by allowing the functions in the
+    -- filter to return arbitrary data (as opposed to either a Pandoc AST
+    -- element type or `nil`). Use with caution.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @tparam {string=func,...} filter A filter.
+    -- @return The element, with the filter applied.
+    -- @within Document parsing
+    -- @fixme Untested.
     function walk (elem, filter, _rd)
         if not _rd then _rd = 0
                    else _rd = _rd + 1
