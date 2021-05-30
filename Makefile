@@ -63,7 +63,7 @@ prepare-tmpdir:
 	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
-	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
+	"$(PANDOC)" --quiet --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
 		--from markdown --to plain -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
