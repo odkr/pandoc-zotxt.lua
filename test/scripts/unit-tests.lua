@@ -849,6 +849,27 @@ function test_html_to_md ()
     end
 end
 
+function test_markdownify ()
+    local invalid = {nil, true, 1, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.markdownify, v)
+    end
+
+    local tests = {
+        '', 'test',
+        '*test*', '**test**', '***test***',
+        '^test^', '~test~',
+        '[test]{.test}',
+        '[*test*^2^]{.nocase}',
+        '***test***^[ABC]{.class}^'
+    }
+
+    for i = 1, #tests do
+        local md = tests[i]
+        lu.assert_equals(M.markdownify(pandoc.read(md)), md)
+    end
+end
+
 function test_yamlify ()
     local invalid = {nil, function () end}
     for _, v in ipairs(invalid) do
