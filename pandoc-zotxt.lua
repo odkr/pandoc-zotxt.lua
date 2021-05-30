@@ -1628,40 +1628,39 @@ function meta_sources (meta)
 end
 
 
---- Collect the citation keys used in a document.
---
--- Prints errors to STDERR if it cannot parse a bibliography file.
---
--- @tab doc A document.
--- @string[opt] flags If the flag 'u' is given, collects only citation keys
---  of sources that are neither defined in the `references` metadata field
---  nor in any bibliography file.
--- @treturn {string,...} A list of citation keys.
--- @raise An error if an item ID is of an illegal data type.
--- @within Document parsing
-function doc_ckeys (doc, flags)
-    -- @fixme `flags` is untested.
-    local ids = {}
-    if flags == 'u' and doc.meta then
-        local items = meta_sources(doc.meta)
-        ids = csl_items_ids(items)
-    end
-    local n = 0
-    local ckeys = {}
-    local flt = {}
-    function flt.Cite (cite)
-        for i = 1, #cite.citations do
-            local id = cite.citations[i].id
-            if id and not ids[id] then
-                n = n + 1
-                ckeys[n] = id
-            end
+do
+    local function ids (cite, old, new)
+        local citations = cite.citations
+        for i = 1, #citations do
+            local id = citations[i].id
+            if id and not old[id] then new[id] = true end
         end
     end
-    for i = 1, #doc.blocks do
-        pandoc.walk_block(doc.blocks[i], flt)
+
+    --- Collect the citation keys used in a document.
+    --
+    -- Prints errors to STDERR if it cannot parse a bibliography file.
+    --
+    -- @tab doc A document.
+    -- @string[opt] flags If the flag 'u' is given, collects only citation keys
+    --  of sources that are neither defined in the `references` metadata field
+    --  nor in any bibliography file.
+    -- @treturn {string,...} A list of citation keys.
+    -- @treturn int The number citation keys found.
+    -- @raise An error if an item ID is of an illegal data type.
+    -- @within Document parsing
+    -- @fixme flag "u" is untested.
+    -- @fixme The number of citation keys thingy is not tested.
+    function doc_ckeys (doc, flags)
+        local meta = doc.meta
+        local old = {}
+        if flags == 'u' then old = csl_items_ids(meta_sources(meta)) end
+        local new = {}
+        local flt = {Cite = function (cite) return ids(cite, old, new) end}
+        local blocks = doc.blocks
+        for i = 1, #blocks do pandoc.walk_block(blocks[i], flt) end
+        return keys(new)
     end
-    return ckeys
 end
 
 
