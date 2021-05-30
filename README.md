@@ -10,7 +10,8 @@ file, where Pandoc can pick them up. See the
 ## Requirements
 
 **pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later,
-[Zotero](https://www.zotero.org/), and [zotxt](https://github.com/egh/zotxt/).
+[Zotero](https://www.zotero.org/), [zotxt](https://github.com/egh/zotxt/), and
+[Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
 It should work under any POSIX-compliant operating system (e.g., Linux, macOS,
 FreeBSD, OpenBSD, NetBSD) as well as under Windows. It has *not* been tested
 under Windows, however.
@@ -25,14 +26,16 @@ You use **pandoc-zotxt.lua** at your own risk.
 2. Unpack the repository.
 3. Move it to the `filters` sub-directory of your Pandoc data directory \
    (`pandoc --version` tells you where that is).
-4. Move the file **pandoc-zotxt.lua** from the repository directory
+4. Symlink or move the file `pandoc-zotxt.lua` from the repository directory
    up into the `filters` directory.
+5. You may also want to copy the manual page from the `man` directory in
+   the repository to wherever your operating system searches for manual pages
+   (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
-If you are using a POSIX-compliant system and have
-[curl](https://curl.haxx.se/) or
-[wget](https://www.gnu.org/software/wget/), you can
-install **pandoc-zotxt.lua** by copy-pasting the
-following commands into a bourne shell:
+If you are using a POSIX-compliant system (e.g., Linux or macOS) and have
+[curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
+you can install **pandoc-zotxt.lua** by copy-pasting the following commands
+into a Bourne-compatible shell:
 
 ```sh
 ( set -Cefu
@@ -45,10 +48,6 @@ following commands into a bourne shell:
     [ "${ERR-0}" -eq 127 ] && wget -O - "$URL"; } | tar xz
   mv "$NAME-$VERS/pandoc-zotxt.lua" .; )
 ```
-
-You may also want to copy the manual page from the `man` directory in the
-repository to wherever your operating system searches for manual pages
-(e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
 You also need to install [zotxt](https://github.com/egh/zotxt/) *and*
 [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
@@ -66,12 +65,12 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [Pandoc](https://www.pandoc.org/) v2.7.2.
+2. [Pandoc](https://www.pandoc.org/) v2.7.2 or later.
 3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
    (for Pandoc prior to v2.11).
 
 The test suite may or may not work with other versions of
-Pandoc and `pandoc-citeproc`.
+Pandoc (and `pandoc-citeproc`).
 
 ### Assumptions
 
@@ -114,7 +113,7 @@ If there's something wrong with **pandoc-zotxt.lua**,
 
 ## License
 
-Copyright 2018, 2019, 2020 Odin Kroeger
+Copyright 2018, 2019, 2020, 2021 Odin Kroeger
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

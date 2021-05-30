@@ -163,7 +163,7 @@ ZOTXT_YAML = {
     {
         author={{family="Crenshaw", given="Kimberlé"}},
         id="crenshaw1989DemarginalizingIntersectionRace",
-        issued={["date-parts"]={{1989}}},
+        issued={["date-parts"]={{'1989'}}},
         title="Demarginalizing the intersection of race and sex",
         type="paper"
     }
@@ -498,11 +498,9 @@ function test_tmp_fname ()
 
     local tests = {
         [{nil, nil}] = '^tmp_%w%w%w%w%w%w$',
-        [{nil, 'dada'}] = '^dada$',
-        [{nil, 'test_XXX'}] = '^test_%w%w%w$',
+        [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
         [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'tmp_%w%w%w%w%w%w$',
-        [{'/tmp', 'dada'}] = '^/tmp' .. M.PATH_SEP .. 'dada$',
-        [{'/tmp', 'test_XXX'}] = '^/tmp' .. M.PATH_SEP .. 'test_%w%w%w$'
+        [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
     }
 
     for k, v in pairs(tests) do
@@ -514,11 +512,6 @@ function test_tmp_fname ()
     local f1 = M.tmp_fname()
     local f2 = M.tmp_fname()
     lu.assert_not_equals(f1, f2)
-
-    -- Any filename without an 'X' that points to an existing file would do.
-    local fname, err = M.tmp_fname(DATA_DIR, 'bibliography.json')
-    lu.assert_nil(fname)
-    lu.assert_not_nil(err)
 end
 
 function test_tmp_file ()
@@ -552,6 +545,24 @@ end
 
 -- Table manipulation
 -- ------------------
+
+function test_rmap ()
+    local invalid = {nil, true, 0, 'string', {}}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.rmap(v, 0))
+    end
+
+    local function id (...) return ... end
+
+    local tests = {
+        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
+        false, {['false']=1}, {{{[false]=true}, 0}}, 'string'
+    }
+
+    for _, v in ipairs(tests) do
+        lu.assert_equals(M.rmap(id, v), v)
+    end
+end
 
 function test_keys ()
     local invalid = {nil, 0, 'string', function () end}
@@ -624,10 +635,10 @@ end
 -- Converters
 -- ----------
 
-function test_esc_inline_md ()
+function test_esc_md ()
     local invalid = {nil, 0, false, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_inline_md(v))
+        lu.assert_error(M.esc_md(v))
     end
 
     local tests = {
@@ -635,68 +646,90 @@ function test_esc_inline_md ()
         ['\\'] = '\\\\',
         ['\\\\'] = '\\\\\\',
         ['*'] = '*',
+        [' *'] = ' *',
+        ['* '] = '* ',
+        [' * '] = ' * ',
         ['**'] = '**',
-        ['*text'] = '*text',
-        ['**text'] = '**text',
-        ['***text'] = '***text',
-        ['****text'] = '****text',
+        ['*text'] = '\\*text',
+        ['**text'] = '\\*\\*text',
+        ['***text'] = '\\*\\*\\*text',
+        ['****text'] = '\\*\\*\\*\\*text',
+        ['* text'] = '* text',
         ['** text'] = '** text',
         ['*** text'] = '*** text',
         ['**** text'] = '**** text',
         ['*text*'] = '\\*text*',
-        ['**text**'] = '\\**text**',
+        ['**text**'] = '\\*\\*text**',
         ['***text***'] = '\\*\\*\\*text***',
-        ['****text****'] = '****text****',
+        ['****text****'] = '\\*\\*\\*\\*text****',
         ['*text *'] = '\\*text *',
-        ['**text **'] = '\\**text **',
+        ['**text **'] = '\\*\\*text **',
         ['***text ***'] = '\\*\\*\\*text ***',
-        ['****text ****'] = '****text ****',
-        ['**text*'] = '**text*',
-        ['*text**'] = '*text**',
-        ['**text *'] = '**text *',
-        ['*text **'] = '*text **',
+        ['****text ****'] = '\\*\\*\\*\\*text ****',
+        ['**text*'] = '\\*\\*text*',
+        ['*text**'] = '\\*text**',
+        ['**text *'] = '\\*\\*text *',
+        ['*text **'] = '\\*text **',
+        ['a*b*c'] = 'a\\*b\\*c',
+        ['***a*****b**'] = '\\*\\*\\*a\\*\\*\\*\\*\\*b**',
+        ['*a**b*'] = '\\*a\\*\\*b*',
+        ['***my**text*'] = '\\*\\*\\*my\\*\\*text*',
+        ['***my*text**'] = '\\*\\*\\*my\\*text**',
+        ['*my**text***'] = '\\*my\\*\\*text***',
+        ['**my*text***'] = '\\*\\*my\\*text***',
         ['_'] = '_',
+        [' _'] = ' _',
+        ['_ '] = '_ ',
+        [' _ '] = ' _ ',
         ['__'] = '__',
-        ['_text'] = '_text',
-        ['__text'] = '__text',
-        ['___text'] = '___text',
-        ['____text'] = '____text',
+        ['_text'] = '\\_text',
+        ['__text'] = '\\_\\_text',
+        ['___text'] = '\\_\\_\\_text',
+        ['____text'] = '\\_\\_\\_\\_text',
+        ['_ text'] = '_ text',
         ['__ text'] = '__ text',
         ['___ text'] = '___ text',
         ['____ text'] = '____ text',
         ['_text_'] = '\\_text_',
-        ['__text__'] = '\\__text__',
+        ['__text__'] = '\\_\\_text__',
         ['___text___'] = '\\_\\_\\_text___',
-        ['____text____'] = '____text____',
+        ['____text____'] = '\\_\\_\\_\\_text____',
         ['_text _'] = '\\_text _',
-        ['__text __'] = '\\__text __',
+        ['__text __'] = '\\_\\_text __',
         ['___text ___'] = '\\_\\_\\_text ___',
-        ['____text ____'] = '____text ____',
-        ['__text_'] = '__text_',
-        ['_text__'] = '_text__',
-        ['__text _'] = '__text _',
-        ['_text __'] = '_text __',
+        ['____text ____'] = '\\_\\_\\_\\_text ____',
+        ['__text_'] = '\\_\\_text_',
+        ['_text__'] = '\\_text__',
+        ['__text _'] = '\\_\\_text _',
+        ['_text __'] = '\\_text __',
+        ['___my__text_'] = '\\_\\_\\_my\\_\\_text_',
+        ['___my_text__'] = '\\_\\_\\_my\\_text__',
+        ['_my__text___'] = '\\_my\\_\\_text___',
+        ['__my_text___'] = '\\_\\_my\\_text___',
+        ['a_b_c'] = 'a\\_b\\_c',
+        ['___a_____b__'] = '\\_\\_\\_a\\_\\_\\_\\_\\_b__',
+        ['_a__b_'] = '\\_a\\_\\_b_',
         ['^'] = '^',
-        ['^^'] = '^^',
-        ['^^^'] = '^^^',
+        ['^^'] = '\\^\\^',
+        ['^^^'] = '\\^\\^\\^',
         ['^x'] = '^x',
         ['x^'] = 'x^',
-        ['^x^'] = '\\^x^',
-        ['^x#x^'] = '\\^x#x^',
-        ['^^x^'] = '^\\^x^',
-        ['^^^x^'] = '^^\\^x^',
-        ['^x^^^'] = '\\^x^^^',
+        ['^x^'] = '\\^x\\^',
+        ['^x#x^'] = '\\^x#x\\^',
+        ['^^x^'] = '\\^\\^x\\^',
+        ['^^^x^'] = '\\^\\^\\^x\\^',
+        ['^x^^^'] = '\\^x\\^\\^\\^',
         ['^x x^'] = '^x x^',
         ['~'] = '~',
         ['~~'] = '~~',
         ['~~~'] = '~~~',
         ['~x'] = '~x',
         ['x~'] = 'x~',
-        ['~x~'] = '\\~x~',
-        ['~x#x~'] = '\\~x#x~',
-        ['~~x~'] = '~\\~x~',
-        ['~~~x~'] = '~~\\~x~',
-        ['~x~~~'] = '\\~x~~~',
+        ['~x~'] = '\\~x\\~',
+        ['~x#x~'] = '\\~x#x\\~',
+        ['~~x~'] = '\\~\\~x\\~',
+        ['~~~x~'] = '\\~\\~\\~x\\~',
+        ['~x~~~'] = '\\~x\\~\\~\\~',
         ['~x x~'] = '~x x~',
         ['['] = '[',
         ['[['] = '[[',
@@ -707,21 +740,39 @@ function test_esc_inline_md ()
         ['[]'] = '[]',
         ['[text]'] = '[text]',
         ['[text]-'] = '[text]-',
-        ['[]()'] = '\\[]()',
-        ['[]{}'] = '\\[]{}',
-        ['[text](link)'] = '\\[text](link)',
-        ['[text]{.class}'] = '\\[text]{.class}',
+        ['[]()'] = '\\[\\]()',
+        ['[]{}'] = '\\[\\]{}',
+        ['[text](link)'] = '\\[text\\](link)',
+        ['[text]{.class}'] = '\\[text\\]{.class}',
+        ['[**E**[*x*~*i*~]]{.class}'] = '\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}',
+        ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*\\]{style="small-caps"}',
+        ['*my*~i~ is [more]{.complex}^'] = '\\*my\\*\\~i\\~ is \\[more\\]{.complex}^',
+        ['yet **another**~*test*~^a^ [b]{.c}'] = 'yet \\*\\*another\\*\\*\\~\\*test\\*\\~\\^a\\^ \\[b\\]{.c}'
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.esc_inline_md(i), o)
+        local ret = M.esc_md(i)
+        lu.assert_equals(ret, o)
+        -- luacheck: ignore ret
+        local doc = pandoc.read(ret, 'markdown-smart')
+        lu.assert_not_nil(doc)
+        if  doc.blocks[1]        and
+            not i:match '^%s'    and
+            not i:match '%s$'    and
+            not i:match '^%s*%*' and
+            not i:match '\\'
+        then
+            lu.assert_equals(i, stringify(doc.blocks[1].content))
+        end
     end
 end
 
 function test_conv_html_to_md ()
-    -- invalid?
+    local invalid = {nil, 0, false, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.esc_md(v))
+    end
 
-    -- test interactions!
     local tests = {
         [''] = '',
         ['test'] = 'test',
@@ -740,12 +791,36 @@ function test_conv_html_to_md ()
         ['<span class="test">test</span>'] = '[test]{.test}',
         ['<span class="a b c">test</span>'] = '[test]{.a .b .c}',
         ['<span style="test">test</span>'] = '[test]{style="test"}',
-        ['<span style="test" data-test="test">test</span>'] = 
-            '[test]{style="test" test="test"}'
+        ['<span style="test" data-test="test">test</span>'] =
+            '[test]{style="test" test="test"}',
+        ['<i><sc>test</sc></i>'] = '*[test]{style="font-variant: small-caps"}*',
+        ['<b><sc>test</sc><sub>2</sub></b>'] =
+            '**[test]{style="font-variant: small-caps"}~2~**',
+        ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
+            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}**^x^]{style="font-variant: small-caps"}',
+        ['<i>**test**</i>'] = '*\\*\\*test***',
+        ['<b>**test**</b>'] = '**\\*\\*test****',
+        ['<span class="test">*test*~2~</span>'] = '[\\*test\\*\\~2\\~]{.test}',
+        ['<span style="font-variant: small-caps">test~x~*!*</span>'] =
+            '[test\\~x\\~\\*!*]{style="font-variant: small-caps"}',
+        ['<span class="nocase"><i>*test*</i><sc>**X**</sc></span>'] =
+            '[*\\*test**[\\*\\*X**]{style="font-variant: small-caps"}]{.nocase}',
     }
 
     for i, o in pairs(tests) do
         lu.assert_equals(M.conv_html_to_md(i), o)
+
+        -- Spans are translated differently for HTML and Markdown,
+        -- so they cannot be tested.
+        if  not i:match '<sc>' and not i:match '<span>' and
+            -- Pandoc splits up the text differently for this one.
+            not i:match '*\\*\\*test***'
+        then
+            local idoc = pandoc.read(i, 'html')
+            local odoc = pandoc.read(o, 'markdown-smart')
+            -- pandoc.utils.equals reports them as different.
+            lu.assert_items_equals(idoc, odoc)
+        end
     end
 end
 
@@ -930,9 +1005,10 @@ function test_biblio_codecs_bib_decode ()
     local fname = M.path_join(DATA_DIR, 'bibliography.bib')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    lu.assert_items_equals(bib.decode(str), {
-        {id='crenshaw1989DemarginalizingIntersectionRace'},
-        {id='diaz-leon2015WhatSocialConstruction'}
+    local ids = M.csl_items_get_ids(bib.decode(str))
+    lu.assert_items_equals(ids, {
+        ['crenshaw1989DemarginalizingIntersectionRace'] = true,
+        ['diaz-leon2015WhatSocialConstruction'] = true
     })
 end
 
@@ -1069,9 +1145,11 @@ function test_meta_get_sources ()
         'test-duplicate-bibliography-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.meta_get_sources(test_file.meta),
-        {{id="crenshaw1989DemarginalizingIntersectionRace"},
-        {id="diaz-leon2015WhatSocialConstruction"}})
+    local ids = M.csl_items_get_ids(M.meta_get_sources(test_file.meta))
+    lu.assert_items_equals(ids, {
+        ["crenshaw1989DemarginalizingIntersectionRace"] = true,
+        ["diaz-leon2015WhatSocialConstruction"] = true
+    })
 end
 
 function test_doc_get_ckeys ()

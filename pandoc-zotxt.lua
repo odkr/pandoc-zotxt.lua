@@ -96,6 +96,7 @@
 -- Built-in functions.
 local assert = assert
 local error = error
+local getmetatable = getmetatable
 local next = next
 local pairs = pairs
 local pcall = pcall
@@ -103,6 +104,7 @@ local rawget = rawget
 local require = require
 local select = select
 local setmetatable = setmetatable
+local tonumber = tonumber
 local tostring = tostring
 local type = type
 
@@ -257,7 +259,6 @@ end
 
 local text = require 'text'
 local json = require 'lunajson'
-local yaml = require 'tinyyaml'
 
 
 -- FUNCTIONS
@@ -271,7 +272,7 @@ local PRINTF_PREFIX = SCPT_NAME .. ': '
 
 --- Print a message to STDERR.
 --
--- Prefixes the message with `PRINTF_PREFIX' and appends `EOL`.
+-- Prefixes the message with `PRINTF_PREFIX` and appends `EOL`.
 --
 -- @string[opt] msg The message.
 -- @param ... Arguments to that message (think `string.format`).
@@ -287,8 +288,7 @@ end
 -- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
 -- Otherwise the same as `printf`.
 --
--- @string[opt] msg The message.
--- @param ... Arguments to that message (think `string.format`).
+-- @param ... Takes the same arguments as `printf`.
 -- @within Warnings
 function warnf (...)
     if PANDOC_STATE.verbosity ~= 'ERROR' then printf(...) end
@@ -298,16 +298,30 @@ end
 -- Tables
 -- ------
 
+--- Recursively apply a function to every value of a tree.
+--
+-- The function is applied to *every* node of the data tree.
+-- If a node is a `table`, the function is applied *after* recursion.
+--
+-- @func func A function that takes a value and returns a new one.
+--  Receives the value's key as second argument, if applicable.
+-- @param data A data tree.
+-- @return `data` with `func` applied.
+-- @raise An error if the data is nested too deeply.
+-- @within Table manipulation
+-- @fixme Mostly untested.
 function rmap (func, data, _rd)
-    if type(data) ~= 'table' then return func(nil, data) end
-    if not _rd then _rd = 0 end
+    if type(data) ~= 'table' then return func(data) end
+    if not _rd then _rd = 0
+               else _rd = _rd + 1
+    end
     assert(_rd < 512, 'Too much recursion.')
     local ret = {}
     local k = next(data, nil)
-    while k do
+    while k ~= nil do
         local v = data[k]
-        if type(v) == 'table' then v = rmap(func, v, _rd + 1) end
-        ret[k] = func(k, v)
+        if type(v) == 'table' then v = rmap(func, v, _rd) end
+        ret[k] = func(v, k)
         k = next(data, k)
     end
     return ret
@@ -324,7 +338,7 @@ function keys (tab)
     local ks = {}
     local n = 0
     local k = next(tab, nil)
-    while k do
+    while k ~= nil do
         n = n + 1
         ks[n] = k
         k = next(tab, k)
@@ -336,20 +350,19 @@ end
 do
     local lower = text.lower
 
-    --- Convert table keys to lowercase recursively.
+    --- Recursively convert table keys to lowercase.
     --
     -- @tab tab The table.
     -- @return A copy of `tab` with keys in lowercase.
+    -- @raise An error if the data is nested too deeply.
     -- @within Table manipulation
     function lower_keys (tab, _rd)
-        if not _rd then _rd = 0
-                   else _rd = _rd + 1
-        end
+        if not _rd then _rd = 0 end
         assert(_rd < 512, 'Too much recursion.')
         local ret = {}
         for k, v in pairs(tab) do
-            if type(k) == 'string' then k = lower(k)           end
-            if type(v) == 'table'  then v = lower_keys(v, _rd) end
+            if type(k) == 'string' then k = lower(k)               end
+            if type(v) == 'table'  then v = lower_keys(v, _rd + 1) end
             ret[k] = v
         end
         return ret
@@ -435,7 +448,7 @@ do
     -- @string fname A filename.
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the file could not be found.
-    -- @treturn[2] An error message.
+    -- @treturn[2] string An error message.
     -- @within File I/O
     function file_locate (fname)
         if  not rsrc_path or file_exists(fname) then return fname end
@@ -489,6 +502,8 @@ function file_write (fname, ...)
     if not tmp then return nil, err, errno end
     ok, err, errno = tmp.file:write(...)
     if not ok then return nil, err, errno end
+    ok, err, errno = tmp.file:flush()
+    if not ok then return nil, err, errno end
     ok, err, errno = tmp.file:close()
     if not ok then return nil, err, errno end
     if file_exists(fname) then warnf('Updating %s.', fname) end
@@ -532,7 +547,7 @@ do
     --  Cannot be the empty string ('').
     -- @string[optchain='tmp_XXXXXX'] templ A template for the filename.
     --  'X's are replaced with random alphanumeric characters.
-    --  Cannot be the empty string ('').
+    --  Must contain at least six 'X's.
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the generated filename is in use.
     -- @treturn[2] string An error message.
@@ -556,7 +571,8 @@ do
         for i = 1, len do
             if templ:sub(i, i) == 'X' then nxs = nxs + 1 end
         end
-        for _ = 1, math.min(2048, alnum.n ^ nxs) do
+        assert(nxs >= 6, 'Template string must contain at least six "X"s.')
+        for _ = 1, 1024 do
             local fname = ''
             for i = 1, len do
                 local c = templ:sub(i, i)
@@ -612,6 +628,7 @@ do
     -- @usage
     --      do
     --          local tmp, ok, err
+    --          -- Creates the fiele.
     --          tmp, err = tmp_file()
     --          if tmp then
     --              ok, err = tmp.file:write(data)
@@ -628,6 +645,9 @@ do
     --              print(err)
     --          end
     --      end
+    --      -- If writing and renaming the temporary file has not succeeded,
+    --      -- then the garbage collector will delete the file after
+    --      -- (not "at") this point.
     function tmp_file (...)
         local tmp, err, errno
         tmp = setmetatable({}, mt)
@@ -659,6 +679,16 @@ end
 -- Converters
 -- ----------
 
+--- The list of CSL fields that can be formatted.
+--
+-- This list is a guess!
+--
+-- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
+-- of the CSL specification lists all field names.
+--
+-- @see rconv_html_to_md
+-- @within Bibliography files
+-- @todo Lookup in Citeproc source code.
 CSL_KEYS_FORMATTABLE = {
     'abstract',                 -- The abstract.
     'collection-title',         -- E.g., a series.
@@ -673,51 +703,91 @@ CSL_KEYS_FORMATTABLE = {
     'reviewed-title',           -- Title reviewed in the item.
     'title',                    -- The title.
     'title-short',              -- A short version of the title.
-    'short-title',              -- A short version of the title.
+    'short-title',              -- Ditto.
 }
 
 
 do
-    local function esc_bold_and_italics (op, tx, cl)
-        if #op > 3 or #op ~= #cl then return nil end
-        if #op == 3 then return op:gsub('.', '\\%1') .. tx .. cl end
-        return '\\' .. op .. tx .. cl
+    local function esc_bold_italics (char, tail)
+        return char:gsub('(.)', '\\%1') .. tail
     end
 
+    local function esc_sup_sub (head, body, tail)
+        return head:gsub('(.)', '\\%1') .. body .. tail:gsub('(.)', '\\%1')
+    end
+
+    local function esc_brackets (char, tail)
+        return '\\[' .. char:sub(2, -2) .. '\\]' .. tail
+    end
+
+    -- Pairs of expressions and replacements to escape Markdown.
     local esc_es = {
+        -- Backslashes.
         {'(\\+)', '\\%1'},
-        {'(%*+)([^%*%s][^*]*)(%*+)', esc_bold_and_italics},
-        {'(_+)([^_%s][^_]*)(_+)', esc_bold_and_italics},
-        {'%^([^%^%s]+)%^', '\\^%1^'},
-        {'~([^~%s]+)~', '\\~%1~'},
-        {'(%b[][%({])', '\\%1'}
+        -- Bold and italics.
+        -- This escapes liberally, but it is the only way to cover edge cases.
+        {'(%*+)([^%s%*])', esc_bold_italics},
+        {'(_+)([^%s_])', esc_bold_italics},
+        -- Superscript and subscript.
+        {'(%^+)([^%^%s]*)(%^+)', esc_sup_sub},
+        {'(~+)([^~%s]+)(~+)', esc_sup_sub},
+        -- Brackets (spans and links).
+        {'(%b[])([%({])', esc_brackets}
     }
 
-    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
-    -- other markdown is not supported. see also pandoc.
-    function esc_inline_md (str)
+    --- Escape Markdown.
+    --
+    -- Only escapes Markdown that Pandoc recognises in bibliographic data.
+    --
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    --
+    -- @string str A string.
+    -- @treturn string `str` with Markdown escaped.
+    -- @within Converters
+    function esc_md (str)
         for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
         return str
     end
 end
 
 do
-    local filter = {}
+    local esc = {}
 
+    -- Escape Markdown in a string element.
+    --
+    -- Works like `esc_md` but for Pandoc string elements.
+    --
+    -- @tparam pandoc.Str str A string element.
+    -- @treturn pandoc.Str A string with Markdown markup escaped.
+    function esc.Str (str)
+        str.text = esc_md(str.text)
+        return str
+    end
+
+    local md = {}
+
+    -- Make a function that converts an element to Markdown.
+    --
+    -- @string char The Markdown markup character for that element.
+    -- @treturn func The conversion function.
     local function mk_elem_conv_f (char)
         return function (elem)
-            local str = stringify(pandoc.walk_inline(elem, filter))
+            local str = stringify(pandoc.walk_inline(elem, md))
             return Str(char .. str .. char)
         end
     end
 
-    filter.Emph = mk_elem_conv_f '*'
-    filter.Strong = mk_elem_conv_f '**'
-    filter.Subscript = mk_elem_conv_f '~'
-    filter.Superscript = mk_elem_conv_f '^'
+    md.Emph = mk_elem_conv_f '*'
+    md.Strong = mk_elem_conv_f '**'
+    md.Subscript = mk_elem_conv_f '~'
+    md.Superscript = mk_elem_conv_f '^'
 
-    function filter.Span (span)
-        local str = stringify(pandoc.walk_inline(span, filter))
+    -- Convert <span> elements to Markdown text.
+    --
+    -- @tparam pandoc.Span A <span> element.
+    -- @treturn pandoc.Str The element as Markdown.
+    function md.Span (span)
+        local str = stringify(pandoc.walk_inline(span, md))
         local attrs = ''
 
         if span.identifier then
@@ -743,85 +813,28 @@ do
         return Str(str)
     end
 
-    function filter.SmallCaps (sc)
+    -- Convert SmallCaps elements to Markdown text.
+    --
+    -- @tparam pandoc.SmallCaps A SmallCaps element.
+    -- @treturn pandoc.Str The element as Markdown.
+    function md.SmallCaps (sc)
         local span = Span(sc.content)
         span.attributes.style = 'font-variant: small-caps'
-        return filter.Span(span)
+        return md.Span(span)
     end
 
-    local function conv_sc_to_span (str)
-        local tmp, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
-        if n == 0 then return str end
-        local ret, m = tmp:gsub('</sc>', '</span>')
-        if m == 0 then return str end
-        return ret
-    end
-
-    function conv_html_to_md (str)
-        local md_escaped = esc_inline_md(str)
-        local sc_replaced = conv_sc_to_span(md_escaped)
-        local doc = pandoc.read(sc_replaced, 'html')
-        for i = 1, #doc.blocks do
-            doc.blocks[i] = pandoc.walk_block(doc.blocks[i], filter)
-        end
-        return stringify(doc)
-    end
-end
-
-do
-    local keys_formattable = {}
-    for i = 1, #CSL_KEYS_FORMATTABLE do
-        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
-    end
-
-    local function conv (key, val)
-        if not keys_formattable[key] or
-           type(val) ~= 'string'     then return val end
-        return conv_html_to_md(val)
-    end
-
-    -- https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields
-    -- https://pandoc.org/MANUAL.html#specifying-bibliographic-data
-    function conv_zotfmt_to_pdfmt (item)
-        return rmap(conv, item)
-    end
-end
-
-
-do
-    function conv (_, data)
-        if type(data) ~= 'number' then return data end
-        return tostring(math.floor(data))
-    end
-
-    --- Convert numbers to strings recursively.
+    --- Convert a Pandoc element to Markdown text.
     --
-    -- Also converts floating point numbers to integers. This is needed
-    -- because all numbers are floating point numbers in JSON, but some
-    -- versions of Pandoc expect integers.
+    -- Only recognises elements that are permitted in bibliographic data.
     --
-    -- @tab data The data.
-    -- @return A copy of `data` with numbers converted to strings.
-    -- @raise An error if the data is nested too deeply.
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn string Markdown text.
     -- @within Converters
-    -- function rconv_nums_to_strs (data, _rd)
-    --     if not _rd then _rd = 0 end
-    --     assert(_rd < 1024, 'Too much recursion.')
-    --     local t = type(data)
-    --     if t == 'table' then
-    --         local ret = {}
-    --         for k, v in pairs(data) do
-    --             ret[k] = rconv_nums_to_strs(v, _rd + 1)
-    --         end
-    --         return ret
-    --     elseif t == 'number' then
-    --         return tostring(math.floor(data))
-    --     else
-    --         return data
-    --     end
-    -- end
-    function rconv_nums_to_strs (data)
-        return rmap(conv, data)
+    -- @fixme Untested.
+    function markdownify (elem)
+        return stringify(walk(walk(elem, esc), md))
     end
 end
 
@@ -830,7 +843,6 @@ do
     local function spaces (n)
         return string.rep(' ', n)
     end
-
 
     --- Generate a YAML representation of some data.
     --
@@ -842,17 +854,20 @@ do
     --  Defaults to sorting them lexically.
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
-    -- @treturn[2] An error message.
-    -- @raise An error if if the data is nested too deeply.
+    -- @treturn[2] string An error message.
+    -- @raise An error if the data is nested too deeply.
     -- @within Converters
+    -- @fixme Doesn't normalise line breaks within strings.
+    -- @fixme May or may not be to spec.
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
-        assert(_rd < 1024, 'Too much recusion.')
+        assert(_rd < 1024, 'Too much recursion.')
         if not ind then ind = 4 end
         local t = type(data)
         if t == 'number' then
             return tostring(data)
         elseif t == 'string' then
+            if tonumber(data) then return data end
             return '"' .. data:gsub('(\\)+', '%1\\'):gsub('"', '\\"') .. '"'
         elseif t == 'table' then
             if not _col then _col = 0 end
@@ -887,6 +902,89 @@ do
         else
             return nil, t .. ': Cannot be expressed in YAML.'
         end
+    end
+end
+
+
+do
+    -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
+    --
+    -- Zotero supports using '<sc>...</sc>' to set text in small caps.
+    -- Pandoc throws those tags out.
+    --
+    -- @string str A string.
+    -- @treturn string `str` with `<sc>...</sc>` replaced with <span> tags.
+    local function conv_sc_to_span (str)
+        local tmp, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
+        if n == 0 then return str end
+        local ret, m = tmp:gsub('</sc>', '</span>')
+        if m == 0 then return str end
+        return ret
+    end
+
+    --- Convert pseudo-HTML to Markdown.
+    --
+    -- Only supports the HTML tags that Zotero *and* Pandoc support.
+    --
+    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>
+    -- and <https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields>.
+    --
+    -- @string html Text that contains pseudo-HTML tags.
+    -- @treturn string Text formatted in Markdown.
+    -- @within Converters
+    function conv_html_to_md (html)
+        local sc_replaced = conv_sc_to_span(html)
+        local doc = pandoc.read(sc_replaced, 'html')
+        return markdownify(doc)
+    end
+end
+
+do
+    local keys_formattable = {}
+    for i = 1, #CSL_KEYS_FORMATTABLE do
+        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
+    end
+
+    local function conv (val, key)
+        if not keys_formattable[key] or type(val) ~= 'string' then
+            return val
+        end
+        return conv_html_to_md(val)
+    end
+
+    --- Recursively convert pseudo-HTML to Markdown.
+    --
+    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
+    -- @see conv_html_to_md
+    -- @within Converters
+    -- @fixme Untested
+    function rconv_html_to_md (item)
+        return rmap(conv, item)
+    end
+end
+
+
+do
+    function conv (data)
+        if type(data) ~= 'number' then return data end
+        return tostring(math.floor(data))
+    end
+
+    --- Recursively convert numbers to strings.
+    --
+    -- Also converts floating point numbers to integers. This is needed
+    -- because all numbers are floating point numbers in JSON, but some
+    -- versions of Pandoc expect integers.
+    --
+    -- @tab data The data.
+    -- @return A copy of `data` with numbers converted to strings.
+    -- @raise An error if the data is nested too deeply.
+    -- @within Converters
+    function rconv_nums_to_strs (data)
+        return rmap(conv, data)
     end
 end
 
@@ -948,7 +1046,7 @@ do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
-            -- (for Better BibTex citation keys).
+            -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
             local _, data = url_read(query_url)
             if data then
@@ -999,7 +1097,7 @@ do
     --- Convert a CSL JSON string to Pandoc metadata.
     --
     -- @string str A CSL JSON string.
-    -- @return Pandoc metadata.
+    -- @treturn pandoc.MetaMap Pandoc metadata.
     local function conv_json_to_meta (str)
         assert(str ~= '')
         return read(str, 'csljson').meta.references[1]
@@ -1042,9 +1140,10 @@ end
 
 --- The preferred order of keys in YAML bibliography files.
 --
--- See [appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
--- of the CSL specification and `csl_keys_sort` for details.
+-- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
+-- of the CSL specification lists all field names.
 --
+-- @see csl_keys_sort
 -- @within Bibliography files
 CSL_KEY_ORDER = {
     'id',                       -- Item ID.
@@ -1055,7 +1154,7 @@ CSL_KEY_ORDER = {
     'issued',                   -- When the item was published.
     'title',                    -- The title.
     'title-short',              -- A short version of the title.
-    'short-title',              -- A short version of the title.
+    'short-title',              -- Ditto.
     'original-title',           -- Original title.
     'translator',               -- Translator(s).
     'editor',                   -- Editor(s).
@@ -1101,29 +1200,60 @@ do
 end
 
 
---- Read BibTeX/BibLaTeX files.
+--- Parse BibLaTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
 
---- Collect item IDs from the content of a BibTeX/BibLaTeX file.
+
+--- Parse the content of a BibLaTeX file.
 --
--- @string str The content of a BibTeX/BibLaTeX file.
--- @treturn {{id=string},...} A list of item IDs.
+-- @string str The content of a BibLaTeX file.
+-- @treturn[1] {table,...} A list of CSL items
+--  if you use Pandoc v2.11 or later.
+-- @treturn[2] {{id=string},...} A list of item IDs
+--  if you use an earlier version of Pandoc.
 -- @within Bibliography files
 function BIBLIO_TYPES.bib.decode (str)
-    local ret = {}
-    local n = 0
-    for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
-        n = n + 1
-        ret[n] = {id=id}
+    local doc = pandoc.read(str, 'biblatex')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
+end
+
+if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    function BIBLIO_TYPES.bib.decode (str)
+        local ret = {}
+        local n = 0
+        for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
+            n = n + 1
+            ret[n] = {id=id}
+        end
+        return ret
     end
-    return ret
 end
 
 
---- Alternative suffix for BibTeX/BibLaTeX files.
+--- Parse BibTeX.
 -- @within Bibliography files
-BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
+BIBLIO_TYPES.bibtex = {}
+
+
+--- Parse the content of a BibTeX file
+--
+-- @string str The content of a BibTeX file.
+-- @treturn[1] {table,...} A list of CSL items
+--  if you use Pandoc v2.11 or later.
+-- @treturn[2] {{id=string},...} A list of item IDs
+--  if you use an earlier version of Pandoc.
+-- @within Bibliography files
+function BIBLIO_TYPES.bibtex.decode (str)
+    local doc = pandoc.read(str, 'bibtex')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
+end
+
+if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
+end
 
 
 --- De-/Encode CSL items in JSON.
@@ -1142,7 +1272,17 @@ BIBLIO_TYPES.yaml = {}
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
 function BIBLIO_TYPES.yaml.decode (str)
-    return yaml.parse(str).references
+    local ds = false
+    for ln in str:gmatch '(.-)\r?\n' do
+        if ln == '---' then
+            ds = true
+            break
+        end
+    end
+    if not ds then str = concat{'---', EOL, str, EOL, '...', EOL} end
+    local doc = pandoc.read(str, 'markdown')
+    if not doc.meta.references then return {} end
+    return walk(doc.meta.references, {MetaInlines = markdownify})
 end
 
 
@@ -1316,15 +1456,15 @@ function biblio_update (fname, ids)
     for i = 1, #ids do
         local id = ids[i]
         if not item_ids[id] then
-            local ok, item, err = pcall(zotxt_get_item_csl, id)
+            local ok, ret, err = pcall(zotxt_get_item_csl, id)
             if not ok then
-                return nil, 'Could not retrieve data from Zotero.'
-            elseif item then
+                return nil, ret
+            elseif ret then
                 if fmt == 'yaml' or fmt == 'yml' then
-                    item = conv_zotfmt_to_pdfmt(item)
+                    ret = rconv_html_to_md(ret)
                 end
                 n = n + 1
-                items[n] = lower_keys(item)
+                items[n] = lower_keys(ret)
             else
                 printf(err)
             end
@@ -1339,6 +1479,118 @@ end
 
 -- PANDOC
 -- ======
+
+do
+    local ts = {}
+    for k, v in sorted_pairs(pandoc) do
+        if type(v) == 'table' and not ts[v] then
+            local t = {k}
+            local mt = getmetatable(v)
+            n = 1
+            while mt and n < 16 do
+                if not mt.name or mt.name == 'Type' then break end
+                n = n + 1
+                t[n] = mt.name
+                mt = getmetatable(mt)
+            end
+            if t[n] == 'AstElement' then ts[v] = t end
+        end
+    end
+
+    --- The type of a Pandoc AST element.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn[1] string The type
+    --  (e.g., 'MetaMap', 'Plain').
+    -- @treturn[1] string The high-order kind
+    --  (i.e., 'Block', 'Inline', or 'MetaValue').
+    -- @treturn[1] string The literal 'AstElement'.
+    -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
+    -- @within Document parsing
+    function elem_type (elem)
+        if type(elem) ~= 'table' then return end
+        local mt = getmetatable(elem)
+        if not mt or not mt.__type then return end
+        return unpack(ts[mt.__type])
+    end
+end
+
+do
+    local function w_map (tab, ...)
+        for k, v in pairs(tab) do
+            tab[k] = walk(v, ...)
+        end
+    end
+
+    local function w_seq (tab, ...)
+        for i = 1, #tab do
+            tab[i] = walk(tab[i], ...)
+        end
+    end
+
+    local function w_list (elem, ...)
+        local content = elem.content
+        for i = 1, #content do
+            content[i] = w_seq(content[i], ...)
+        end
+    end
+
+    local walker_fs = {
+        Meta = w_map,
+        MetaBlocks = w_seq,
+        MetaList = w_seq,
+        MetaInlines = w_seq,
+        MetaMap = w_map,
+        BulletList = w_list,
+        OrderedList = w_list
+    }
+
+    function walker_fs.Doc (doc, ...)
+        doc.meta = walk(doc.meta, ...)
+        local blocks = doc.blocks
+        for i = 1, #blocks do
+            blocks[i] = walk(blocks[i], ...)
+        end
+    end
+
+    --- Walk the AST and apply functions to matching elements.
+    --
+    -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by accepting
+    -- AST elements of *any* type (i.e., including documents as a whole, the
+    -- metadata block, and metadata fields), by applying the filter to the
+    -- given element itself, by walking the AST bottom-up (which implies that
+    -- the filter is applied to every node, regardless of whether any of that
+    -- node's ancestors matches it), and by allowing the functions in the
+    -- filter to return arbitrary data (as opposed to either a Pandoc AST
+    -- element type or `nil`). Use with caution.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @tparam {string=func,...} filter A filter.
+    -- @return The element, with the filter applied.
+    -- @within Document parsing
+    -- @fixme Untested.
+    function walk (elem, filter, _rd)
+        if not _rd then _rd = 0
+                   else _rd = _rd + 1
+        end
+        assert(_rd < 512, 'Too much recursion.')
+        local ts = table.pack(elem_type(elem))
+        if ts.n == 0 then return elem end
+        local walker_f = walker_fs[ts[1]]
+        if     walker_f     then walker_f(elem, filter, _rd)
+        elseif elem.content then w_seq(elem.content, filter, _rd)
+                            end
+        for i = 1, ts.n do
+            local func = filter[ts[i]]
+            if func then
+                local new = func(elem:clone())
+                if new ~= nil then elem = new end
+            end
+        end
+        return elem
+    end
+end
+
 
 --- Collect sources from the document's metadata block.
 --
@@ -1434,7 +1686,7 @@ end
 -- @tab ckeys The citaton keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
 --  Citation keys are just item IDs.
--- @treturn[1] table An updated metadata block, with the field
+-- @treturn[1] tab An updated metadata block, with the field
 --  `bibliography` added if needed.
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
@@ -1484,10 +1736,10 @@ function add_refs (meta, ckeys)
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ref, err = pcall(zotxt_get_item, ckeys[i])
-        if not ok  then return nil, 'Could not retrieve data from Zotero.'
-        elseif ref then n = n + 1
-                        meta.references[n] = ref
+        local ok, ret, err = pcall(zotxt_get_item, ckeys[i])
+        if not ok  then return nil, ret
+        elseif ret then n = n + 1
+                        meta.references[n] = ret
                    else printf(err)
         end
     end
