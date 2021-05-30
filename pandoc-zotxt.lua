@@ -82,7 +82,7 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.1.0b
+-- @release 1.1.0b3
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021 Odin Kroeger
 -- @license MIT
