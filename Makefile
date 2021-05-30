@@ -39,7 +39,7 @@ BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
 		   test-zotero-id test-biblio-json \
 		   test-biblio-yaml test-merge \
 		   test-dup-biblio-bib test-dup-biblio-yaml \
-		   test-ex-simple test-exa-biblio \
+		   test-ex-simple test-ex-biblio \
 		   $(ISSUE_TESTS)
 
 OTHER_TESTS	:= test-resource-path
