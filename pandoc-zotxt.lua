@@ -693,7 +693,6 @@ end
 -- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
 -- of the CSL specification lists all field names.
 --
--- @see zotfmt_to_pdfmt
 -- @within Bibliography files
 -- @todo Lookup in Citeproc source code.
 CSL_KEYS_FORMATTABLE = {
