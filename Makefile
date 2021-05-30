@@ -36,11 +36,10 @@ SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
 ISSUE_TESTS	:= test-issue-4 test-issue-4-2
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography-json \
-		   test-bibliography-yaml test-merge \
-		   test-duplicate-bibliography-bib \
-		   test-duplicate-bibliography-yaml \
-		   test-example-simple test-example-bibliography \
+		   test-zotero-id test-biblio-json \
+		   test-biblio-yaml test-merge \
+		   test-dup-biblio-bib test-dup-biblio-yaml \
+		   test-ex-simple test-exa-biblio \
 		   $(ISSUE_TESTS)
 
 OTHER_TESTS	:= test-resource-path

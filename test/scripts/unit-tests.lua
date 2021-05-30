@@ -598,7 +598,8 @@ function test_keys ()
         [{1, 2, 3}] = {{1, 2, 3}, 3},
         [{a=1, b=2, c=3}] = {{'a', 'b', 'c'}, 3},
         [{a=1, [{}]=2}] = {{'a', {}}, 2},
-        [{[{}]='a'}] = {{{}}, 1}
+        [{[{}]='a'}] = {{{}}, 1},
+        [{[{}]='a', [false]='b'}] = {{{}, false}, 2}
     }
 
     for k, v in pairs(tests) do
@@ -619,7 +620,8 @@ function test_lower_keys ()
         [{1, 2, 3}] = {1, 2, 3},
         [{A=1, b=2, C=3}] = {a=1, b=2, c=3},
         [{nil}] = {nil},
-        [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}}
+        [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}},
+        [{A=1, B={C=2, [false]=3}}] = {a=1, b={c=2, [false]=3}}
     }
 
     for k, v in pairs(tests) do
@@ -1131,19 +1133,17 @@ function test_meta_sources ()
     assert(empty, err)
     lu.assert_equals(M.meta_sources(empty.meta), {})
 
-    local test_fname = M.path_join(DATA_DIR, 'test-duplicate.md')
+    local test_fname = M.path_join(DATA_DIR, 'test-dup.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_META)
 
-    test_fname = M.path_join(DATA_DIR,
-        'test-duplicate-bibliography-yaml.md')
+    test_fname = M.path_join(DATA_DIR, 'test-dup-biblio-yaml.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_YAML)
 
-    test_fname = M.path_join(DATA_DIR,
-        'test-duplicate-bibliography-bib.md')
+    test_fname = M.path_join(DATA_DIR, 'test-dup-biblio-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     local ids = M.csl_items_ids(M.meta_sources(test_file.meta))
