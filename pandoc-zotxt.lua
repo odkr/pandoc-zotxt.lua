@@ -975,7 +975,6 @@ ZOTXT_KEYTYPES = {
 do
     local read = pandoc.read
     local decode = json.decode
-
     local base_url = ZOTXT_BASE_URL
     local key_ts = ZOTXT_KEYTYPES
 
@@ -1247,14 +1246,10 @@ BIBLIO_TYPES.yaml = {}
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
 function BIBLIO_TYPES.yaml.decode (str)
-    local ds = false
-    for ln in str:gmatch '(.-)\r?\n' do
-        if ln == '---' then
-            ds = true
-            break
-        end
-    end
-    if not ds then str = concat{'---', EOL, str, EOL, '...', EOL} end
+    local iter = str:gmatch '(.-)\r?\n'
+    local ln = iter(str, nil)
+    while ln and ln ~= '---' do ln = iter(str, ln) end
+    if ln ~= '---' then str = concat{'---', EOL, str, EOL, '...', EOL} end
     local doc = pandoc.read(str, 'markdown')
     if not doc.meta.references then return {} end
     return walk(doc.meta.references, {MetaInlines = markdownify})
