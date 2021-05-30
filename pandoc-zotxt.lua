@@ -835,7 +835,6 @@ do
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
     -- @within Converters
-    -- @fixme Untested.
     function markdownify (elem)
         return stringify(walk(walk(elem, esc), md))
     end
@@ -1411,7 +1410,6 @@ do
     -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
     -- @see html_to_md
     -- @within Converters
-    -- @fixme Untested
     local function zotfmt_to_pdfmt (item)
         return rmap(conv, item)
     end
@@ -1652,7 +1650,6 @@ do
     -- @treturn int The number citation keys found.
     -- @raise An error if an item ID is of an illegal data type.
     -- @within Document parsing
-    -- @fixme flag "u" is untested.
     -- @fixme The number of citation keys thingy is not tested.
     function doc_ckeys (doc, flags)
         local meta = doc.meta

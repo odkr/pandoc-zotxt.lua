@@ -1174,6 +1174,28 @@ function test_meta_sources ()
     })
 end
 
+function test_elem_type ()
+    local non_pandoc = {nil, true, 1, 'string', {}, function () end}
+    for _, v in ipairs(non_pandoc) do
+        lu.assert_nil(M.elem_type(v))
+    end
+
+    local Str = pandoc.Str
+    local Para = pandoc.Para
+    local MetaInlines = pandoc.MetaInlines
+
+    local tests = {
+        [Str 'test'] = {'Str', 'Inline', 'AstElement', n = 3},
+        [Para{Str ''}] = {'Para', 'Block', 'AstElement', n = 3},
+        [MetaInlines{Str ''}] =
+            {'MetaInlines', 'MetaValue', 'AstElement', n = 3}
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(table.pack(M.elem_type(k)), v)
+    end
+end
+
 function test_doc_ckeys ()
     local invalid = {nil, false, 0, '', {}, function () end}
     for _, v in pairs(invalid) do
