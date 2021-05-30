@@ -317,7 +317,6 @@ end
 -- @return `data` with `func` applied.
 -- @raise An error if the data is nested too deeply.
 -- @within Table manipulation
--- @fixme Mostly untested.
 function rmap (func, data, _rd)
     if type(data) ~= 'table' then return func(data) end
     if not _rd then _rd = 0

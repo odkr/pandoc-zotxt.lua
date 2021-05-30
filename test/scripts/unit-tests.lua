@@ -585,6 +585,28 @@ function test_rmap ()
     for _, v in ipairs(tests) do
         lu.assert_equals(M.rmap(id, v), v)
     end
+
+    local function inc (v, k)
+        if type(v) ~= 'number' or k == 'dont' then return v end
+        return v + 1
+    end
+
+    tests = {
+        [{{}}] = {{}},
+        [1] = 2,
+        [false] = false,
+        [{['false'] = 1}] = {['false'] = 2},
+        [{{{[false] = true}, 0}}] = {{{[false] = true}, 1}},
+        ['string'] = 'string',
+        [{1}] = {2},
+        [{2}] = {3},
+        [{1, {2}}] = {2, {3}},
+        [{dont = 3, 3}] = {dont = 3, 4}
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.rmap(inc, k), v)
+    end
 end
 
 function test_keys ()
