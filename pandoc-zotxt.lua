@@ -1651,13 +1651,17 @@ do
     -- @within Document parsing
     -- @fixme flag "u" is untested.
     -- @fixme The number of citation keys thingy is not tested.
+    -- @fixme Collecting citekeys from metadata block is not nested.
     function doc_ckeys (doc, flags)
         local meta = doc.meta
-        local old = {}
-        if flags == 'u' then old = csl_items_ids(meta_sources(meta)) end
-        local new = {}
-        local flt = {Cite = function (cite) return ids(cite, old, new) end}
         local blocks = doc.blocks
+        local old = {}
+        local new = {}
+        if flags == 'u' then old = csl_items_ids(meta_sources(meta)) end
+        local flt = {Cite = function (cite) return ids(cite, old, new) end}
+        if meta then for k, v in pairs(meta) do
+            if k ~= 'references' then walk(v, flt) end
+        end end
         for i = 1, #blocks do pandoc.walk_block(blocks[i], flt) end
         return keys(new)
     end
