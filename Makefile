@@ -35,9 +35,9 @@ SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
 
 ISSUE_TESTS	:= test-issue-4 test-issue-4-2
 
-BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-biblio-json \
-		   test-biblio-yaml test-merge \
+BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
+		   test-biblio-json test-biblio-yaml \
+		   test-nocite test-merge \
 		   test-dup-biblio-bib test-dup-biblio-yaml \
 		   test-ex-simple test-ex-biblio \
 		   $(ISSUE_TESTS)
