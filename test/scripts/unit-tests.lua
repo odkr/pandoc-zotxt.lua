@@ -163,7 +163,7 @@ ZOTXT_YAML = {
     {
         author={{family="Crenshaw", given="Kimberlé"}},
         id="crenshaw1989DemarginalizingIntersectionRace",
-        issued={["date-parts"]={{1989}}},
+        issued={["date-parts"]={{'1989'}}},
         title="Demarginalizing the intersection of race and sex",
         type="paper"
     }
@@ -498,11 +498,9 @@ function test_tmp_fname ()
 
     local tests = {
         [{nil, nil}] = '^tmp_%w%w%w%w%w%w$',
-        [{nil, 'dada'}] = '^dada$',
-        [{nil, 'test_XXX'}] = '^test_%w%w%w$',
+        [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
         [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'tmp_%w%w%w%w%w%w$',
-        [{'/tmp', 'dada'}] = '^/tmp' .. M.PATH_SEP .. 'dada$',
-        [{'/tmp', 'test_XXX'}] = '^/tmp' .. M.PATH_SEP .. 'test_%w%w%w$'
+        [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
     }
 
     for k, v in pairs(tests) do
@@ -514,11 +512,6 @@ function test_tmp_fname ()
     local f1 = M.tmp_fname()
     local f2 = M.tmp_fname()
     lu.assert_not_equals(f1, f2)
-
-    -- Any filename without an 'X' that points to an existing file would do.
-    local fname, err = M.tmp_fname(DATA_DIR, 'bibliography.json')
-    lu.assert_nil(fname)
-    lu.assert_not_nil(err)
 end
 
 function test_tmp_file ()
@@ -805,13 +798,13 @@ function test_conv_html_to_md ()
             '**[test]{style="font-variant: small-caps"}~2~**',
         ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
             '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}**^x^]{style="font-variant: small-caps"}',
-        ['<i>**test**</i>'] = '*\\*\\*test\\*\\**',
-        ['<b>**test**</b>'] = '**\\*\\*test\\*\\***',
+        ['<i>**test**</i>'] = '*\\*\\*test***',
+        ['<b>**test**</b>'] = '**\\*\\*test****',
         ['<span class="test">*test*~2~</span>'] = '[\\*test\\*\\~2\\~]{.test}',
         ['<span style="font-variant: small-caps">test~x~*!*</span>'] =
-            '[test\\~x\\~\\*!\\*]{style="font-variant: small-caps"}',
+            '[test\\~x\\~\\*!*]{style="font-variant: small-caps"}',
         ['<span class="nocase"><i>*test*</i><sc>**X**</sc></span>'] =
-            '[*\\*test\\**[\\*\\*X\\*\\*]{style="font-variant: small-caps"}]{.nocase}',
+            '[*\\*test**[\\*\\*X**]{style="font-variant: small-caps"}]{.nocase}',
     }
 
     for i, o in pairs(tests) do
@@ -819,7 +812,10 @@ function test_conv_html_to_md ()
 
         -- Spans are translated differently for HTML and Markdown,
         -- so they cannot be tested.
-        if not i:match '<sc>' and not i:match '<span>' then
+        if  not i:match '<sc>' and not i:match '<span>' and
+            -- Pandoc splits up the text differently for this one.
+            not i:match '*\\*\\*test***'
+        then
             local idoc = pandoc.read(i, 'html')
             local odoc = pandoc.read(o, 'markdown-smart')
             -- pandoc.utils.equals reports them as different.
@@ -1009,9 +1005,10 @@ function test_biblio_codecs_bib_decode ()
     local fname = M.path_join(DATA_DIR, 'bibliography.bib')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    lu.assert_items_equals(bib.decode(str), {
-        {id='crenshaw1989DemarginalizingIntersectionRace'},
-        {id='diaz-leon2015WhatSocialConstruction'}
+    local ids = M.csl_items_get_ids(bib.decode(str))
+    lu.assert_items_equals(ids, {
+        ['crenshaw1989DemarginalizingIntersectionRace'] = true,
+        ['diaz-leon2015WhatSocialConstruction'] = true
     })
 end
 
@@ -1148,9 +1145,11 @@ function test_meta_get_sources ()
         'test-duplicate-bibliography-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.meta_get_sources(test_file.meta),
-        {{id="crenshaw1989DemarginalizingIntersectionRace"},
-        {id="diaz-leon2015WhatSocialConstruction"}})
+    local ids = M.csl_items_get_ids(M.meta_get_sources(test_file.meta))
+    lu.assert_items_equals(ids, {
+        ["crenshaw1989DemarginalizingIntersectionRace"] = true,
+        ["diaz-leon2015WhatSocialConstruction"] = true
+    })
 end
 
 function test_doc_get_ckeys ()

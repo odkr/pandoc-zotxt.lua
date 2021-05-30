@@ -33,7 +33,7 @@ SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
 # TARGETS
 # =======
 
-ISSUE_TESTS	:= test-issue-4
+ISSUE_TESTS	:= test-issue-4 test-issue-4-2
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
 		   test-zotero-id test-bibliography-json \
