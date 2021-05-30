@@ -275,31 +275,28 @@ local json = require 'lunajson'
 -- Warnings
 -- --------
 
---- A prefix for every message printed with `printf`.
-local PRINTF_PREFIX = SCPT_NAME .. ': '
-
 --- Print a message to STDERR.
 --
--- Prefixes the message with `PRINTF_PREFIX` and appends `EOL`.
+-- Prefixes the message with `SCPT_NAME` and ': ', and appends `EOL`.
 --
 -- @string[opt] msg The message.
 -- @param ... Arguments to that message (think `string.format`).
 -- @within Warnings
-function printf (msg, ...)
+function  errf (msg, ...)
     if not msg then msg = '' end
-    io.stderr:write(PRINTF_PREFIX, msg:format(...), EOL)
+    io.stderr:write(SCPT_NAME, ': ', msg:format(...), EOL)
 end
 
 
 --- Print a warning to STDERR.
 --
 -- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
--- Otherwise the same as `printf`.
+-- Otherwise the same as ` errf`.
 --
--- @param ... Takes the same arguments as `printf`.
+-- @param ... Takes the same arguments as ` errf`.
 -- @within Warnings
 function warnf (...)
-    if PANDOC_STATE.verbosity ~= 'ERROR' then printf(...) end
+    if PANDOC_STATE.verbosity ~= 'ERROR' then  errf(...) end
 end
 
 
@@ -605,11 +602,11 @@ do
         local fname = self.fname
         if fname then
             local ok, err = os.remove(fname)
-            if not ok then printf(err) end
+            if not ok then  errf(err) end
         end
         if io.type(file) == 'file' then
             local ok, err = file:close()
-            if not ok then printf(err) end
+            if not ok then  errf(err) end
         end
     end
 
@@ -1461,7 +1458,7 @@ do
                     n = n + 1
                     items[n] = lower_keys(ret)
                 else
-                    printf(err)
+                     errf(err)
                 end
             end
         end
@@ -1610,7 +1607,7 @@ function meta_sources (meta)
         elseif bibliography.tag == 'MetaList' then
             fnames = bibliography:map(stringify)
         else
-            printf 'Cannot parse metadata field "bibliography".'
+             errf 'Cannot parse metadata field "bibliography".'
             return ret
         end
         for i = 1, #fnames do
@@ -1619,10 +1616,10 @@ function meta_sources (meta)
                 -- luacheck: ignore err
                 local items, err = biblio_read(fname)
                 if items then ret:extend(items)
-                         else printf(err)
+                         else  errf(err)
                 end
             else
-                printf(err)
+                 errf(err)
             end
         end
     end
@@ -1738,7 +1735,7 @@ function add_refs (meta, ckeys)
         if not ok  then return nil, ret
         elseif ret then n = n + 1
                         meta.references[n] = ret
-                   else printf(err)
+                   else  errf(err)
         end
     end
     return meta
@@ -1769,7 +1766,7 @@ function main (doc)
             doc.meta = meta
             return doc
         elseif err then
-            printf(err)
+             errf(err)
         end
     end
 end
