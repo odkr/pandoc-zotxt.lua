@@ -184,11 +184,19 @@ do
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
         -- Replace a sequence of '/'s with a single '/'.
         {PATH_SEP .. '+', PATH_SEP},
-        -- Remove './' at the beginning of paths.
+        -- Remove './' at the beginning of a path.
         {'^%.' .. PATH_SEP, ''},
         -- Remove trailing '/'s, but not for the root node.
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
+
+    local function sanitise (path)
+        for i = 1, #san_es do
+            local expr, repl = unpack(san_es[i])
+            path = path:gsub(expr, repl)
+        end
+        return path
+    end
 
     --- Split a file's path into a directory and a filename part.
     --
@@ -202,7 +210,7 @@ do
     function path_split (path)
         if path == '' then return nil, 'Path is the empty string ("").' end
         local dir, fname = path:match(split_e)
-        for i = 1, #san_es do dir = dir:gsub(unpack(san_es[i])) end
+        dir = sanitise(dir)
         if     dir == ''   then dir = '.'
         elseif fname == '' then fname = '.' end
         assert(dir ~= '')
@@ -210,24 +218,24 @@ do
         return dir, fname
     end
 
-
-    --- Join multiple path segments.
-    --
-    -- @string ... Path segments.
-    -- @treturn string The complete path.
-    -- @raise An error if no path segments are given or if
-    --  a path segment is the empty string ('').
-    -- @within File I/O
-    function path_join (...)
-        local segs = {...}
-        local n = #segs
-        assert(n > 0, 'No path segments given.')
-        for i = 1, n do
-            assert(segs[i] ~= '', 'Path segment is the empty string ("").')
+    do
+        local function join (a, b, ...)
+            assert(type(a == 'string'), 'Path segment is not a string.')
+            assert(a ~= '', 'Path segment is the empty string.')
+            if not b then return a end
+            return a .. PATH_SEP .. path_join(b, ...)
         end
-        local path = concat(segs, PATH_SEP)
-        for i = 1, #san_es do path = path:gsub(unpack(san_es[i])) end
-        return path
+
+        --- Join multiple path segments.
+        --
+        -- @string ... Path segments.
+        -- @treturn string The complete path.
+        -- @raise An error if no path segments are given or if
+        --  a path segment is the empty string ('').
+        -- @within File I/O
+        function path_join (...)
+            return sanitise(join(...))
+        end
     end
 end
 
