@@ -498,11 +498,9 @@ function test_tmp_fname ()
 
     local tests = {
         [{nil, nil}] = '^tmp_%w%w%w%w%w%w$',
-        [{nil, 'dada'}] = '^dada$',
-        [{nil, 'test_XXX'}] = '^test_%w%w%w$',
+        [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
         [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'tmp_%w%w%w%w%w%w$',
-        [{'/tmp', 'dada'}] = '^/tmp' .. M.PATH_SEP .. 'dada$',
-        [{'/tmp', 'test_XXX'}] = '^/tmp' .. M.PATH_SEP .. 'test_%w%w%w$'
+        [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
     }
 
     for k, v in pairs(tests) do
@@ -514,11 +512,6 @@ function test_tmp_fname ()
     local f1 = M.tmp_fname()
     local f2 = M.tmp_fname()
     lu.assert_not_equals(f1, f2)
-
-    -- Any filename without an 'X' that points to an existing file would do.
-    local fname, err = M.tmp_fname(DATA_DIR, 'bibliography.json')
-    lu.assert_nil(fname)
-    lu.assert_not_nil(err)
 end
 
 function test_tmp_file ()
