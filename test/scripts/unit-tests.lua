@@ -1209,7 +1209,8 @@ function test_doc_ckeys ()
     local test_fname = M.path_join(DATA_DIR, 'test-easy-citekey.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.doc_ckeys(test_file), {
+    local ckeys, n = M.doc_ckeys(test_file)
+    lu.assert_items_equals(ckeys, {
         'dotson:2016word',
         'díaz-león:2013what',
         'díaz-león:2015defence',
@@ -1217,13 +1218,19 @@ function test_doc_ckeys ()
         'haslanger:2012resisting',
         'nobody:0000nothing'
     })
+    lu.assert_equals(n, 6)
+
 
     test_fname = M.path_join(DATA_DIR, 'test-dup.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.doc_ckeys(test_file),
+    ckeys, n = M.doc_ckeys(test_file)
+    lu.assert_items_equals(ckeys,
         {'crenshaw1989DemarginalizingIntersectionRace'})
-    lu.assert_items_equals(M.doc_ckeys(test_file, 'u'), {})
+    lu.assert_equals(n, 1)
+    ckeys, n = M.doc_ckeys(test_file, 'u')
+    lu.assert_items_equals(ckeys, {})
+    lu.assert_equals(n, 0)
 
     test_fname = M.path_join(DATA_DIR, 'test-nocite.md')
     test_file, err = read_md_file(test_fname)

@@ -1650,7 +1650,6 @@ do
     -- @treturn int The number citation keys found.
     -- @raise An error if an item ID is of an illegal data type.
     -- @within Document parsing
-    -- @fixme The number of citation keys thingy is not tested.
     function doc_ckeys (doc, flags)
         local meta = doc.meta
         local blocks = doc.blocks
