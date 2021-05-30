@@ -275,7 +275,7 @@ local json = require 'lunajson'
 -- Warnings
 -- --------
 
---- Print a message to STDERR.
+--- Print an error message to STDERR.
 --
 -- Prefixes the message with `SCPT_NAME` and ': ', and appends `EOL`.
 --
