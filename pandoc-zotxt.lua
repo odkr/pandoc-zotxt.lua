@@ -790,20 +790,23 @@ do
         local str = stringify(pandoc.walk_inline(span, md))
         local attrs = ''
 
-        if span.identifier then
-            local id = stringify(span.identifier)
+        local identifier = span.identifier
+        if identifier then
+            local id = stringify(identifier)
             if id ~= '' then attrs = '#' .. id end
         end
 
-        if span.classes then
-            for i = 1, #span.classes do
+        local classes = span.classes
+        if classes then
+            for i = 1, #classes do
                 if attrs ~= '' then attrs = attrs .. ' ' end
-                attrs = attrs .. '.' .. span.classes[i]
+                attrs = attrs .. '.' .. classes[i]
             end
         end
 
-        if span.attributes then
-            for k, v in pairs(span.attributes) do
+        local attributes = span.attributes
+        if attributes then
+            for k, v in pairs(attributes) do
                 if attrs ~= '' then attrs = attrs .. ' ' end
                 attrs = attrs .. k .. '="' .. v .. '"'
             end
@@ -1651,7 +1654,6 @@ do
     -- @within Document parsing
     -- @fixme flag "u" is untested.
     -- @fixme The number of citation keys thingy is not tested.
-    -- @fixme Collecting citekeys from metadata block is not nested.
     function doc_ckeys (doc, flags)
         local meta = doc.meta
         local blocks = doc.blocks
@@ -1659,9 +1661,11 @@ do
         local new = {}
         if flags == 'u' then old = csl_items_ids(meta_sources(meta)) end
         local flt = {Cite = function (cite) return ids(cite, old, new) end}
-        if meta then for k, v in pairs(meta) do
-            if k ~= 'references' then walk(v, flt) end
-        end end
+        if meta then
+            for k, v in pairs(meta) do
+                if k ~= 'references' then walk(v, flt) end
+            end
+        end
         for i = 1, #blocks do pandoc.walk_block(blocks[i], flt) end
         return keys(new)
     end
