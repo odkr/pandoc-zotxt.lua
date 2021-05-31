@@ -110,7 +110,7 @@ function M.url_read (url)
     local path = M.path_join(CAN_DIR, hash)
     local data, err, errno = M.file_read(path)
     if not data then return nil, err, errno end
-    return 'text/plain; charset=UTF-8', data
+    return 'text/plain; charset=utf-8', data
 end
 
 return M

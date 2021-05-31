@@ -35,12 +35,11 @@ SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
 
 ISSUE_TESTS	:= test-issue-4 test-issue-4-2
 
-BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography-json \
-		   test-bibliography-yaml test-merge \
-		   test-duplicate-bibliography-bib \
-		   test-duplicate-bibliography-yaml \
-		   test-example-simple test-example-bibliography \
+BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
+		   test-biblio-json test-biblio-yaml \
+		   test-nocite test-merge \
+		   test-dup-biblio-bib test-dup-biblio-yaml \
+		   test-ex-simple test-ex-biblio \
 		   $(ISSUE_TESTS)
 
 OTHER_TESTS	:= test-resource-path
@@ -64,7 +63,7 @@ prepare-tmpdir:
 	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
-	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
+	"$(PANDOC)" --quiet --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
 		--from markdown --to plain -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
@@ -103,15 +102,15 @@ prologue:
 	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
 		man/pandoc-zotxt.lua.md
 
-manual:
-	$(PANDOC) -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
+man:
+	$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
-		man/man1/pandoc-zotxt.lua.md
+		man/pandoc-zotxt.lua.md
 
-docs: manual
-	ldoc . 
+ldoc:
+	ldoc -c ldoc/config.ld .
 
 install:
 	@PATH="`getconf PATH`:$$PATH"; \
@@ -122,4 +121,4 @@ install:
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
-	prologue manual developer-documenation docs
+	prologue man developer-documenation ldoc
