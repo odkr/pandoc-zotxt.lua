@@ -751,7 +751,7 @@ do
     end
 
     -- Pairs of expressions and replacements to escape Markdown.
-    local esc_es = {
+    local esc_patterns = {
         -- Backslashes.
         {'(\\+)', '\\%1'},
         -- Bold and italics.
@@ -774,7 +774,10 @@ do
     -- @treturn string `str` with Markdown escaped.
     -- @within Converters
     function esc_md (str)
-        for i = 1, #esc_es do str = str:gsub(unpack(esc_es[i])) end
+        for i = 1, #esc_patterns do
+            local pattern, repl = unpack(esc_patterns[i])
+            str = str:gsub(pattern, repl)
+        end
         return str
     end
 end
@@ -1038,7 +1041,7 @@ do
     -- @within Converters
     function html_to_md (html)
         if type(html) ~= 'string' then
-            return nil, 'HTML code is not a string.'
+            return nil, 'Pseudo-HTML code is not a string.'
         end
         local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')
