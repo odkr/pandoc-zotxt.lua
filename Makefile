@@ -102,15 +102,15 @@ prologue:
 	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
 		man/pandoc-zotxt.lua.md
 
-manual:
+man:
 	$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
 		man/pandoc-zotxt.lua.md
 
-docs: manual
-	ldoc . 
+ldoc:
+	ldoc -c ldoc/config.ld .
 
 install:
 	@PATH="`getconf PATH`:$$PATH"; \
@@ -121,4 +121,4 @@ install:
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
-	prologue manual developer-documenation docs
+	prologue man developer-documenation ldoc
