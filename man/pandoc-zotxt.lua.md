@@ -19,33 +19,39 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-**pandoc-zotxt.lua** looks up sources of citations in Zotero and adds them
-either to a document's "references" metadata field or to a bibliography file,
-where Pandoc can pick them up.
+**pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
+them either to a document's "references" metadata field or to a
+bibliography file, where Pandoc can pick them up.
 
-Cite your sources using "easy citekeys" (provided by *zotxt*) or "Better
-BibTeX Citation Keys" (provided by Better BibTeX for Zotero). Then tell
-**pandoc** to filter your document through **pandoc-zotxt.lua** before
-processing citations; Zotero bust be running. That's all there is to it.
+Cite your sources using "easy citekeys" (provided by *zotxt*) or
+"Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
+Then tell **pandoc** to filter your document through **pandoc-zotxt.lua**
+before processing citations. That's all there is to it.
+Zotero bust be running, of course.
 
-**pandoc-zotxt.lua** only looks up sources that are defined neither
-in the "references" metadata field nor in any bibliography file.
+**pandoc-zotxt.lua** only fetches sources from Zotero that are defined
+neither in the "references" metadata field nor in any bibliography file.
 
 
 BIBLIOGRAPHY FILES
 ==================
 
-**pandoc-zotxt.lua** can add sources to a bibliography file, rather
-than to the "references" metadata field. This speeds up subsequent
-processing of the same document, because sources that are already
-in that file need not be fetched from Zotero again.
+**pandoc-zotxt.lua** can add sources to a special bibliography file,
+rather than to the "references" metadata field. This speeds up subsequent
+processing of the same document, because sources that are already in that
+file need not be fetched from Zotero again.
 
-You configure **pandoc-zotxt.lua** to do so by setting the
-"zotero-bibliography" metadata field to a filename. If the filename
-is relative, it is interpreted as relative to the directory of the
-first input file given to **pandoc** or, if not input file was given,
-as relative to the current working directory. The filename must end with
-'.json', because the bibliography is stored as a CSL JSON file.
+You configure **pandoc-zotxt.lua** to add sources to a bibliography file by
+setting the "zotero-bibliography" metadata field to a filename. If the
+filename is relative, it is interpreted as relative to the directory of the
+first input file passed to **pandoc** or, if no input file was given, as
+relative to the current working directory. The format of the file is
+determined by its filename ending:
+
+**Ending** | **Format** | **Feature**
+---------- | ---------- | ------------------------
+`.json`    | CSL JSON   | More robust.
+`.yaml`    | CSL YAML   | Easier to edit manually.
 
 The bibliography file is added to the "bibliography" metadata field
 automatically. You can safely set "zotero-bibliography" and "bibliography"
