@@ -194,6 +194,10 @@ do
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
+    -- Sanitise a path.
+    --
+    -- @string path The path.
+    -- @treturn string A sanitised path.
     local function sanitise (path)
         for i = 1, #sanitisation_patterns do
             local pattern, repl = unpack(sanitisation_patterns[i])
@@ -223,6 +227,10 @@ do
     end
 
     do
+        -- Join path segments (worker)
+        --
+        -- Has the same function signature as `path_join`.
+        -- Does not sanitise the path it returns.
         local function join (a, b, ...)
             assert(type(a == 'string'), 'Path segment is not a string.')
             assert(a ~= '', 'Path segment is the empty string.')
@@ -259,14 +267,11 @@ end
 
 do
     local repo = NAME .. '-' .. VERSION
-    local vers = {'5.4', '5.3'}
-    for i = 1, #vers do
-        local sub_dir = path_join('share', 'lua', vers[i], '?.lua')
-        package.path = concat({package.path,
-            path_join(SCPT_DIR, sub_dir),
-            path_join(SCPT_DIR, repo, sub_dir)
-        }, ';')
-    end
+    local sub_dir = path_join('share', 'lua', '5.4', '?.lua')
+    package.path = concat({package.path,
+        path_join(SCPT_DIR, sub_dir),
+        path_join(SCPT_DIR, repo, sub_dir)
+    }, ';')
 end
 
 local text = require 'text'
@@ -730,14 +735,17 @@ end
 -- ----------
 
 do
+    -- Escape bold and italics meta characters.
     local function esc_bold_italics (char, tail)
         return char:gsub('(.)', '\\%1') .. tail
     end
 
+    -- Escape superscript and subscript meta characters.
     local function esc_sup_sub (head, body, tail)
         return head:gsub('(.)', '\\%1') .. body .. tail:gsub('(.)', '\\%1')
     end
 
+    -- Escape brackets.
     local function esc_brackets (char, tail)
         return '\\[' .. char:sub(2, -2) .. '\\]' .. tail
     end
@@ -959,6 +967,8 @@ do
         elseif t == 'string' then
             return scalarify(data)
         elseif t == 'table' then
+            -- luacheck: ignore _rd
+            local _rd = _rd + 1
             if not _col then _col = 0 end
             local ret = ''
             local n = #data
@@ -969,7 +979,7 @@ do
                 for i = 1, n do
                     if i > 1 then ret = ret .. sp end
                     ret = ret .. '- '
-                              .. yamlify(data[i], ind, sort_f, col, _rd + 1)
+                              .. yamlify(data[i], ind, sort_f, col, _rd)
                     if i ~= n then ret = ret .. EOL end
                 end
             else
@@ -987,7 +997,7 @@ do
                     if type(v) == 'table' then ret = ret .. EOL .. spaces(col)
                                           else ret = ret .. ' '
                     end
-                    ret = ret .. yamlify(v, ind, sort_f, col, _rd + 1)
+                    ret = ret .. yamlify(v, ind, sort_f, col, _rd)
                     if i ~= nkeys then ret = ret .. EOL end
                 end
             end
@@ -1008,7 +1018,8 @@ do
     -- @string str A string.
     -- @treturn string `str` with `<sc>...</sc>` replaced with <span> tags.
     local function conv_sc_to_span (str)
-        local tmp, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
+        local tmp, n = str:gsub('<sc>',
+            '<span style="font-variant: small-caps">')
         if n == 0 then return str end
         local ret, m = tmp:gsub('</sc>', '</span>')
         if m == 0 then return str end
@@ -1057,10 +1068,18 @@ ZOTXT_KEYTYPES = {
 
 
 do
+    -- luacheck: ignore assert pcall tostring type
+    local assert = assert
+    local pcall = pcall
+    local tostring = tostring
+    local type = type
+    local floor = math.floor
+    local match = string.match
     local read = pandoc.read
     local decode = json.decode
     local base_url = ZOTXT_BASE_URL
     local key_ts = ZOTXT_KEYTYPES
+    local n_key_ts = #key_ts
     local utf8_p = ';%s*[Cc][Hh][Aa][Rr][Ss][Ee][Tt]="?[Uu][Tt][Ff]%-8"?%s*$'
 
     -- Retrieve a source from Zotero (low-level).
@@ -1087,7 +1106,7 @@ do
     --  The latter error can only be caught since Pandoc v2.11.
     -- @within zotxt
     local function get (parse_f, id)
-        for i = 1, #key_ts do
+        for i = 1, n_key_ts do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
@@ -1095,7 +1114,7 @@ do
             local query_url = concat{base_url, key_ts[i], '=', id}
             local mt, data = url_read(query_url)
             if mt and mt ~= '' then
-                assert(mt:match(utf8_p),
+                assert(match(mt, utf8_p),
                        'Data retrieved from zotxt is not encoded in UTF-8.')
                 local ok, item = pcall(parse_f, data, mt)
                 if ok then
@@ -1122,7 +1141,7 @@ do
     -- @within Converters
     local function num_to_str (data)
         if type(data) ~= 'number' then return data end
-        return tostring(math.floor(data))
+        return tostring(floor(data))
     end
 
 
@@ -1573,20 +1592,22 @@ end
 do
     local pack = table.pack
 
+    -- Walk a mapping.
     local function w_map (tab, ...)
         for k, v in pairs(tab) do
             tab[k] = walk(v, ...)
         end
     end
 
-    -- The difference between mappings and sequences must be honoured, because
-    -- Pandoc may use custom __pairs and __len metamethods.
+    -- The difference between mappings and sequences must be honoured,
+    -- because Pandoc may use custom __pairs and __len metamethods.
     local function w_seq (tab, ...)
         for i = 1, #tab do
             tab[i] = walk(tab[i], ...)
         end
     end
 
+    --- Walk a list AST element (e.g., `pandoc.OrderedList`).
     local function w_list (elem, ...)
         local content = elem.content
         for i = 1, #content do
@@ -1604,6 +1625,7 @@ do
         OrderedList = w_list
     }
 
+    -- Walk a document.
     function walker_fs.Doc (doc, ...)
         walk(doc.meta, ...)
         w_seq(doc.blocks, ...)
@@ -1692,6 +1714,11 @@ end
 
 
 do
+    -- Save IDs that are not in a given set into another.
+    --
+    -- @tparen pandoc.Cite A citation.
+    -- @tab old A set of IDs that should be ignroed.
+    -- @tab new The set to save the IDs in.
     local function ids (cite, old, new)
         local citations = cite.citations
         for i = 1, #citations do
@@ -1705,9 +1732,9 @@ do
     -- Prints errors to STDERR if it cannot parse a bibliography file.
     --
     -- @tab doc A document.
-    -- @string[opt] flags If the flag 'u' is given, collects only citation keys
-    --  of sources that are neither defined in the `references` metadata field
-    --  nor in any bibliography file.
+    -- @string[opt] flags If the flag 'u' is given, collects only
+    --  citation keys of sources that are defined neither in the
+    --  `references` metadata field nor in any bibliography file.
     -- @treturn {string,...} A list of citation keys.
     -- @treturn int The number of citation keys found.
     -- @raise An error if an item ID is of an illegal data type.
