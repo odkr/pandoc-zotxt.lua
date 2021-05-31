@@ -8,44 +8,46 @@
 -- DESCRIPTION
 -- -----------
 --
--- **pandoc-zotxt.lua** looks up sources of citations in Zotero and
--- adds them either to a document's "references" metadata field or
--- to a bibliography file, where Pandoc can pick them up.
+-- **pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
+-- them either to a document's "references" metadata field or to a
+-- bibliography file, where Pandoc can pick them up.
 --
--- You cite your sources using "easy citekeys" (provided by *zotxt*) or
+-- Cite your sources using "easy citekeys" (provided by *zotxt*) or
 -- "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
--- You then then tell **pandoc** to filter your document through
--- **pandoc-zotxt.lua** before processing citations (Zotero must be
--- running). That's all there is to it.
+-- Then tell **pandoc** to filter your document through **pandoc-zotxt.lua**
+-- before processing citations. That's all there is to it.
+-- Zotero bust be running, of course.
 --
--- **pandoc-zotxt.lua** only looks up sources that are defined neither
--- in the "references" metadata field nor in any bibliography file.
+-- **pandoc-zotxt.lua** only fetches sources from Zotero that are defined
+-- neither in the "references" metadata field nor in any bibliography file.
 --
 --
 -- BIBLIOGRAPHY FILES
 -- ------------------
 --
--- If you set the "zotero-bibliography" metadata field to a filename,
--- then **pandoc-zotxt.lua** adds sources to that file, rather than to
--- the "references" metadata field. It also adds the path of that file to
--- the document's "bibliography" metadata field, so that Pandoc picks up
--- the bibliographic data of those sources (you can safely set
--- "zotero-bibliography" and "bibliography" at the same time).
--- This speeds up subsequent processing of the same document, because
--- **pandoc-zotxt.lua** will only fetch those sources from Zotero that
--- are not yet in that file.
+-- **pandoc-zotxt.lua** can add sources to a special bibliography file,
+-- rather than to the "references" metadata field. This speeds up subsequent
+-- processing of the same document, because sources that are already in that
+-- file need not be fetched from Zotero again.
 --
--- The biblography is stored as a CSL JSON file, so the bibliography
--- file's name must end with ".json".
+-- You configure **pandoc-zotxt.lua** to add sources to a bibliography file by
+-- setting the "zotero-bibliography" metadata field to a filename. If the
+-- filename is relative, it is interpreted as relative to the directory of the
+-- first input file passed to **pandoc** or, if no input file was given, as
+-- relative to the current working directory. The format of the file is
+-- determined by its filename ending:
 --
--- **pandoc-zotxt.lua** interprets relative filenames as relative to the
--- directory of the first input file that you pass to **pandoc** or, if you
--- do not pass any input file, as relative to the current working directory.
+-- **Ending** | **Format** | **Feature**
+-- ---------- | ---------- | -----------------------
+-- `.json`    | CSL JSON   | More robust.
+-- `.yaml`    | CSL YAML   | Easier to edit manually.
 --
--- **pandoc-zotxt.lua** only ever adds sources to its bibliography file.
--- It does *not* update or delete them. If you want to update the sources
--- in your bibliography file, delete it. **pandoc-zotxt.lua** will then
--- regenerate it from scratch.
+-- The bibliography file is added to the "bibliography" metadata field
+-- automatically. You can safely set "zotero-bibliography" and "bibliography"
+-- at the same time.
+--
+-- The sources in the bibliography file are neither updated nor deleted.
+-- If you want to update the file, delete it.
 --
 --
 -- EXAMPLE
@@ -101,6 +103,7 @@ local next = next
 local pairs = pairs
 local pcall = pcall
 local rawget = rawget
+local rawset = rawset
 local require = require
 local select = select
 local setmetatable = setmetatable
@@ -177,10 +180,10 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 -- -------
 
 do
-    -- Expression to split a path into a directory and a filename part.
-    local split_e = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-    -- Expressions that sanitise directory paths.
-    local san_es = {
+    -- Pattern to split a path into a directory and a filename part.
+    local split_pattern = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
+    -- Patterns that sanitise directory paths.
+    local sanitisation_patterns = {
         -- Replace '/./' with '/'.
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
         -- Replace a sequence of '/'s with a single '/'.
@@ -192,9 +195,9 @@ do
     }
 
     local function sanitise (path)
-        for i = 1, #san_es do
-            local expr, repl = unpack(san_es[i])
-            path = path:gsub(expr, repl)
+        for i = 1, #sanitisation_patterns do
+            local pattern, repl = unpack(sanitisation_patterns[i])
+            path = path:gsub(pattern, repl)
         end
         return path
     end
@@ -210,7 +213,7 @@ do
     -- @within File I/O
     function path_split (path)
         if path == '' then return nil, 'Path is the empty string ("").' end
-        local dir, fname = path:match(split_e)
+        local dir, fname = path:match(split_pattern)
         dir = sanitise(dir)
         if     dir == ''   then dir = '.'
         elseif fname == '' then fname = '.' end
@@ -280,58 +283,32 @@ local json = require 'lunajson'
 --
 -- Prefixes the message with `SCPT_NAME` and ': ', and appends `EOL`.
 --
--- @string[opt] msg The message.
+-- @param msg The message. Coerced to `string`.
 -- @param ... Arguments to that message (think `string.format`).
+--  Only applied if `msg` is a `string`.
 -- @within Warnings
-function  errf (msg, ...)
-    if not msg then msg = '' end
-    io.stderr:write(SCPT_NAME, ': ', msg:format(...), EOL)
+function errf (msg, ...)
+    if type(msg) ~= 'string' then msg = tostring(msg)
+                             else msg = msg:format(...)
+    end
+    io.stderr:write(SCPT_NAME, ': ', msg , EOL)
 end
 
 
 --- Print a warning to STDERR.
 --
 -- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
--- Otherwise the same as ` errf`.
+-- Otherwise the same as `errf`.
 --
--- @param ... Takes the same arguments as ` errf`.
+-- @param ... Takes the same arguments as `errf`.
 -- @within Warnings
 function warnf (...)
-    if PANDOC_STATE.verbosity ~= 'ERROR' then  errf(...) end
+    if PANDOC_STATE.verbosity ~= 'ERROR' then errf(...) end
 end
 
 
 -- Tables
 -- ------
-
---- Recursively apply a function to every value of a tree.
---
--- The function is applied to *every* node of the data tree.
--- If a node is a `table`, the function is applied *after* recursion.
---
--- @func func A function that takes a value and returns a new one.
---  Receives the value's key as second argument, if applicable.
--- @param data A data tree.
--- @return `data` with `func` applied.
--- @raise An error if the data is nested too deeply.
--- @within Table manipulation
-function rmap (func, data, _rd)
-    if type(data) ~= 'table' then return func(data) end
-    if not _rd then _rd = 0
-               else _rd = _rd + 1
-    end
-    assert(_rd < 512, 'Too much recursion.')
-    local ret = {}
-    local k = next(data, nil)
-    while k ~= nil do
-        local v = data[k]
-        if type(v) == 'table' then v = rmap(func, v, _rd) end
-        ret[k] = func(v, k)
-        k = next(data, k)
-    end
-    return ret
-end
-
 
 --- Return the keys and the length of a table.
 --
@@ -349,6 +326,75 @@ function keys (tab)
         k = next(tab, k)
     end
     return ks, n
+end
+
+
+--- Copy a data tree.
+--
+-- Handles metatables, recursive structures, tables as keys, and
+-- avoids the `__pairs` and `__newindex` metamethods.
+-- Copies are deep.
+--
+-- @param data Arbitrary data.
+-- @return A deep copy of `data`.
+-- @within Table manipulation
+--
+-- @usage
+--      > x = {1, 2, 3}
+--      > y = {x, 4}
+--      > c = copy(y)
+--      > table.insert(x, 4)
+--      > table.unpack(c[1])
+--      1       2       3
+function copy (data, _seen)
+    -- Borrows from:
+    -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
+    -- * <http://lua-users.org/wiki/CopyTable>
+    if type(data) ~= 'table' then return data end
+    if _seen and _seen[data] then return _seen[data] end
+    local copy = copy
+    local ret = setmetatable({}, getmetatable(data))
+    _seen = _seen or {}
+    _seen[data] = ret
+    for k, v in next, data, nil do
+        rawset(ret, copy(k, _seen), copy(v, _seen))
+    end
+    return ret
+end
+
+--- Recursively apply a function to every value of a tree.
+--
+-- The function is applied to *every* node of the data tree.
+-- The tree is parsed bottom-up.
+--
+-- @func func A function that takes a value and returns a new one.
+--  If the function returns `nil`, the original value is kept.
+-- @param data A data tree.
+-- @return `data` with `func` applied.
+-- @raise An error if the data is nested too deeply.
+-- @within Table manipulation
+function rmap (func, data, _rd)
+    if type(data) ~= 'table' then
+        local nv = func(data)
+        if nv == nil then return data end
+        return nv
+    end
+    if not _rd then _rd = 0
+               else _rd = _rd + 1
+    end
+    assert(_rd < 512, 'Too much recursion.')
+    local ret = {}
+    local k = next(data, nil)
+    while k ~= nil do
+        local v = data[k]
+        if type(v) == 'table' then v = rmap(func, v, _rd) end
+        local nv = func(v)
+        if nv == nil then ret[k] = v
+                     else ret[k] = nv
+        end
+        k = next(data, k)
+    end
+    return ret
 end
 
 
@@ -432,13 +478,16 @@ end
 --- Check whether a filename refers to a file.
 --
 -- @string fname The filename.
--- @treturn bool Whether the file exists.
+-- @treturn[1] boolean `true` if the file exists.
+-- @treturn[2] nil `nil` if the file does not exist.
+-- @treturn[2] string An error message.
+-- @treturn[2] int The error number 2.
 -- @within File I/O
 function file_exists (fname)
     assert(fname ~= '', 'Filename is the empty string ("").')
-    local file, _, errno = io.open(fname)
-    if errno == 2 then return false end
-    if file ~= nil then file:close() end
+    local file, err, errno = io.open(fname, 'r')
+    if not file then return nil, err, errno end
+    assert(file:close())
     return true
 end
 
@@ -547,10 +596,11 @@ do
     --- Generate a name for a temporary file.
     --
     -- Tries to make sure that there is no file with that name already.
+    -- This is subject to race conditions.
     --
     -- @string[opt] dir A directory to prefix the filename with.
     --  Cannot be the empty string ('').
-    -- @string[optchain='tmp_XXXXXX'] templ A template for the filename.
+    -- @string[optchain='tmp-XXXXXXXXXX'] templ A template for the filename.
     --  'X's are replaced with random alphanumeric characters.
     --  Must contain at least six 'X's.
     -- @treturn[1] string A filename.
@@ -560,26 +610,23 @@ do
     --  not a string or the empty string ('').
     -- @within File I/O
     function tmp_fname (dir, templ)
-        if templ ~= nil then
+        if templ == nil then
+            templ = 'tmp-XXXXXXXXXX'
+        else
             assert(type(templ) == 'string')
             assert(templ ~= '', 'Template is the empty string.')
-        else
-            templ = 'tmp_XXXXXX'
+            local nxs = 0
+            for _ in templ:gmatch 'X' do nxs = nxs + 1 end
+            assert(nxs >= 6, 'Template must contain at least six "X"s.')
         end
         if dir ~= nil then
             assert(type(dir) == 'string')
             assert(dir ~= '', 'Directory is the empty string.')
             templ = path_join(dir, templ)
         end
-        local len = #templ
-        local nxs = 0
-        for c in templ:gmatch(utf8.charpattern) do
-            if c == 'X' then nxs = nxs + 1 end
-        end
-        assert(nxs >= 6, 'Template string must contain at least six "X"s.')
         for _ = 1, 1024 do
             local fname = ''
-            for c in templ:gmatch(utf8.charpattern) do
+            for c in templ:gmatch '.' do
                 if c == 'X' then c = alnum[math.random(1, alnum.n)] end
                 fname = fname .. c
             end
@@ -602,11 +649,11 @@ do
         local fname = self.fname
         if fname then
             local ok, err = os.remove(fname)
-            if not ok then  errf(err) end
+            if not ok then errf(err) end
         end
         if io.type(file) == 'file' then
             local ok, err = file:close()
-            if not ok then  errf(err) end
+            if not ok then errf(err) end
         end
     end
 
@@ -618,7 +665,8 @@ do
     -- If you call `os.exit` tell it to close the Lua state, so that Lua runs
     -- the garbage collector before exiting the script.
     --
-    -- Tries not to overwrite existing files.
+    -- Tries not to overwrite existing files. This is subject to
+    -- race conditions; there is no Lua equivalent to `O_CREAT | O_EXCL`.
     --
     -- @param ... Takes the same arguments as `tmp_fname`.
     --
@@ -632,15 +680,14 @@ do
     -- @usage
     --      do
     --          local tmp, ok, err
-    --          -- Creates the fiele.
+    --          -- Create the file.
     --          tmp, err = tmp_file()
     --          if tmp then
     --              ok, err = tmp.file:write(data)
     --              if ok then ok, err = tmp.file:close() end
     --              if ok then ok, err = os.rename(tmp.fname, fname) end
     --              if ok then
-    --                  -- The temporary file was renamed,
-    --                  -- so disable deletion (which would fail).
+    --                  -- Disable deletion (which would fail).
     --                  tmp.fname = nil
     --              else
     --                  print(err)
@@ -649,9 +696,8 @@ do
     --              print(err)
     --          end
     --      end
-    --      -- If writing and renaming the temporary file has not succeeded,
-    --      -- then the garbage collector will delete the file after
-    --      -- (not "at") this point.
+    --      -- If `tmp.fname` has not been set to nil, then the garbage
+    --      -- collector deletes the file after (not "at") this point.
     function tmp_file (...)
         local tmp, err, errno
         tmp = setmetatable({}, mt)
@@ -672,8 +718,8 @@ end
 -- @string url The URL.
 -- @treturn string The MIME type of the HTTP content.
 -- @treturn string The HTTP content itself.
--- @raise An error if no data can be retrieved. This error can only be
---  caught in Pandoc v2.11 or later.
+-- @raise An error if no data can be retrieved.
+--  This error can only be caught since Pandoc v2.11.
 -- @within Networking
 function url_read (url)
     return pandoc.mediabag.fetch(url, '.')
@@ -682,33 +728,6 @@ end
 
 -- Converters
 -- ----------
-
---- The list of CSL fields that can be formatted.
---
--- This list is a guess!
---
--- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
--- of the CSL specification lists all field names.
---
--- @within Bibliography files
--- @todo Lookup in Citeproc source code.
-CSL_KEYS_FORMATTABLE = {
-    'abstract',                 -- The abstract.
-    'collection-title',         -- E.g., a series.
-    'collection-title-short',   -- A short version of the title.
-    'container-title',          -- Publication the item was published in.
-    'container-title-short',    -- A short version of that title.
-    'original-publisher',       -- Original publisher.
-    'original-publisher-place', -- Place the item was originally published in.
-    'original-title',           -- Original title.
-    'publisher',                -- Publisher.
-    'publisher-place',          -- The city/cities the item was published in.
-    'reviewed-title',           -- Title reviewed in the item.
-    'title',                    -- The title.
-    'title-short',              -- A short version of the title.
-    'short-title',              -- Ditto.
-}
-
 
 do
     local function esc_bold_italics (char, tail)
@@ -740,9 +759,8 @@ do
 
     --- Escape Markdown.
     --
-    -- Only escapes Markdown that Pandoc recognises in bibliographic data.
-    --
-    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    -- Only escapes [Markdown that Pandoc recognises in bibliographic
+    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
     -- @string str A string.
     -- @treturn string `str` with Markdown escaped.
@@ -831,9 +849,8 @@ do
 
     --- Convert a Pandoc element to Markdown text.
     --
-    -- Only recognises elements that are permitted in bibliographic data.
-    --
-    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
+    -- Only recognises [elements Pandoc permits in bibliographic
+    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
@@ -847,62 +864,72 @@ end
 do
     local rep = string.rep
     local format = string.format
-    local charpattern = utf8.charpattern
-    local codepoint = utf8.codepoint
+    local char = utf8.char
+    local codes = utf8.codes
 
+    -- Create a number of spaces.
+    --
+    -- @int n The number of spaces.
+    -- @treturn string `n` spaces.
     local function spaces (n)
         return rep(' ', n)
     end
 
-    local function esc (char)
-        local cp = codepoint(char)
-        if     cp <= 2^8  then return format('\\x%x', cp)
-        elseif cp <= 2^16 then return format('\\u%x', cp)
-        else                   return format('\\U%x', cp)
-        end
-    end
-
+    -- Convert an arbitrary UTF-8 encoded string to a YAML scalar.
+    --
+    -- Does *not* escape *all* non-printable characters.
+    --
+    -- @string str The string.
+    -- @treturn string A YAML scalar.
     local function scalarify (str)
         -- Simple strings need no special treatment.
         if
-            tonumber(str) ~= nil or -- Numbers
-            str:match '^[%w-]+$' or -- Simple words
-            str:match '^%a+:[%w/]+' -- URLs
+            tonumber(str) ~= nil   or  -- Numbers
+            str:match '^[%w-]+$'   or  -- Simple words
+            str:match '^[%w%./]+$' or  -- DOIs
+            str:match '^%a+:[%w%./-]+' -- URLs
         then return str end
 
-        -- Replace singular LF with EOL sequence.
+        -- Replace line breaks with the OS' EOL sequence.
         str = str:gsub('\r?\n', EOL)
 
-        -- Escape illegal characters.
-        local e = ''
-        for c in str:gmatch(charpattern) do
-            local cp = codepoint(c)
+        -- Escape special and forbidden characters.
+        local n = 0
+        local chars = {}
+        for _, c in codes(str, true) do
+            n = n + 1
             if
-                cp == 0x09 or -- TAB
-                cp == 0x0a or -- LF
-                cp == 0x0d or -- CR
-                cp == 0x85    -- NEL
+                c == 0x22 or -- '"'
+                c == 0x5c    -- '\'
             then
-                e = e .. c
+                chars[n] = '\\' .. char(c)
             elseif
-                cp <= 0x001f or -- C0 control block
-                cp == 0x007f    -- DEL
+                c == 0x09 or -- TAB
+                c == 0x0a or -- LF
+                c == 0x0d or -- CR
+                c == 0x85    -- NEL
             then
-                e = e .. format('\\x%x', cp)
+                chars[n] = char(c)
             elseif
-                (0x0080 <= cp and cp <= 0x009f) or -- C1 control block
-                (0xd800 <= cp and cp <= 0xdfff) or -- Surrogate block
-                cp == 0xfffe or
-                cp == 0xffff
+                c <= 0x001f or -- C0 control block
+                c == 0x007f    -- DEL
             then
-                e = e .. format('\\u%x', cp)
+                chars[n] = format('\\x%02x', c)
+            elseif
+                (0x0080 <= c and c <= 0x009f) or -- C1 control block
+                (0xd800 <= c and c <= 0xdfff) or -- Surrogate block
+                c == 0xfffe or
+                c == 0xffff
+            then
+                chars[n] = format('\\u%04x', c)
             else
-                e = e .. c
+                chars[n] = char(c)
             end
         end
+        str = concat(chars)
 
         -- Quote.
-        return '"' .. e:gsub('(\\)+', '\\%1'):gsub('"', '\\"') .. '"'
+        return '"' .. str .. '"'
     end
 
     --- Generate a YAML representation of some data.
@@ -910,7 +937,7 @@ do
     -- Uses `EOL` to end lines.
     -- Only parses UTF-8 encoded strings.
     -- Strings in other encodings will be mangled.
-    -- Does not escape all non-printable characters (because Unicode).
+    -- Does *not* escape *all* non-printable characters (because Unicode).
     --
     -- @param data The data.
     -- @int[opt=4] ind How many spaces to indent blocks.
@@ -990,14 +1017,18 @@ do
 
     --- Convert Zotero pseudo-HTML to Markdown.
     --
-    -- Only supports the HTML tags that Zotero *and* Pandoc support.
+    -- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
+    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
-    -- See <https://pandoc.org/MANUAL.html#specifying-bibliographic-data>.
-    --
-    -- @string html Text that contains pseudo-HTML tags.
-    -- @treturn string Text formatted in Markdown.
+    -- @string html Pseudo-HTML code.
+    -- @treturn[1] string Text formatted in Markdown.
+    -- @treturn[2] nil `nil` if `html` is not a `string`.
+    -- @treturn[2] string An error message.
     -- @within Converters
     function html_to_md (html)
+        if type(html) ~= 'string' then
+            return nil, 'HTML code is not a string.'
+        end
         local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')
         return markdownify(doc)
@@ -1008,17 +1039,13 @@ end
 -- zotxt
 -- -----
 
---- The URL to lookup citation data.
---
--- See <https://github.com/egh/zotxt> for details.
+--- The [zotxt](https://github.com/egh/zotxt) endpoint.
 --
 -- @within zotxt
 ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
 
 
---- Types of citation keys.
---
--- See <https://github.com/egh/zotxt> for details.
+--- Types of citation keys [zotxt](https://github.com/egh/zotxt) supports.
 --
 -- @table ZOTXT_KEYTYPES
 -- @within zotxt
@@ -1034,6 +1061,7 @@ do
     local decode = json.decode
     local base_url = ZOTXT_BASE_URL
     local key_ts = ZOTXT_KEYTYPES
+    local utf8_p = ';%s*[Cc][Hh][Aa][Rr][Ss][Ee][Tt]="?[Uu][Tt][Ff]%-8"?%s*$'
 
     -- Retrieve a source from Zotero (low-level).
     --
@@ -1046,15 +1074,17 @@ do
     -- Tries every citation key type defined in `ZOTXT_KEYTYPES` until the
     -- query is successful or no more citation key types are left.
     --
-    -- @func parse_f A function that takes a CSL JSON string,
+    -- @func parse_f A function that takes an HTTP GET response,
+    --  typically, a CSL JSON string, and a MIME type,
     --  returns a CSL item, and raises an error if, and only if,
-    --  it cannot interpret the JSON string as CSL item.
+    --  it cannot interpret the HTTP get response as a CSL item.
     -- @string id An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An error if no data can be read from *zotxt*.
-    --  This error can only be caught in Pandoc v2.11 or later.
+    -- @raise An error if the data retrieved from *zotxt* is *not* encoded
+    --  in UTF-8 or if no data can be retrieved from *zotxt* at all.
+    --  The latter error can only be caught since Pandoc v2.11.
     -- @within zotxt
     local function get (parse_f, id)
         for i = 1, #key_ts do
@@ -1063,9 +1093,11 @@ do
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
-            local _, data = url_read(query_url)
-            if data then
-                local ok, item = pcall(parse_f, data)
+            local mt, data = url_read(query_url)
+            if mt and mt ~= '' then
+                assert(mt:match(utf8_p),
+                       'Data retrieved from zotxt is not encoded in UTF-8.')
+                local ok, item = pcall(parse_f, data, mt)
                 if ok then
                     if i ~= 1 then
                         key_ts[1], key_ts[i] = key_ts[i], key_ts[1]
@@ -1106,7 +1138,7 @@ do
 
     --- Retrieve a source from Zotero as CSL item.
     --
-    -- Returns bibliographic data as a Lua table. The retrieved item can be
+    -- Returns bibliographic data as a Lua table. That table can be
     -- passed to `biblio_write`; it should *not* be used in the `references`
     -- metadata field (unless you are using Pandoc prior to v2.11).
     --
@@ -1114,7 +1146,9 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `zotxt_source`.
+    -- @raise An error if the data retrieved from *zotxt* is *not* encoded
+    --  in UTF-8 or if no data can be retrieved from *zotxt* at all.
+    --  The latter error can only be caught since Pandoc v2.11.
     -- @within zotxt
     function zotxt_csl_item (id)
         assert(id ~= '', 'ID is the empty string ("").')
@@ -1137,7 +1171,7 @@ do
 
     --- Retrieve a source from Zotero as Pandoc metadata.
     --
-    -- Returns bibliographic data as Pandoc metadata. That retrieved item
+    -- Returns bibliographic data as a Pandoc metadata value. That value
     -- can be used in the `references` metadata field; it should *not* be
     -- passed to `biblio_write`.
     --
@@ -1145,7 +1179,7 @@ do
     -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `zotxt_source`.
+    -- @raise See `zotxt_csl_item`.
     -- @within zotxt
     function zotxt_source (id)
         assert(id ~= '', 'ID is the empty string ("").')
@@ -1155,7 +1189,7 @@ do
         return ref
     end
 
-    -- (a) The CSL JSON reader is only available in Pandoc v2.11 or later.
+    -- (a) The CSL JSON reader is only available since Pandoc v2.11.
     -- (b) However, pandoc-citeproc had a (useful) bug and parses formatting
     --     tags in metadata fields, so there is no need to treat metadata
     --     fields and bibliography files differently before Pandoc v2.11.
@@ -1188,10 +1222,10 @@ CSL_KEY_ORDER = {
     'short-title',              -- Ditto.
     'original-title',           -- Original title.
     'translator',               -- Translator(s).
-    'editor',                   -- Editor(s).
+    'editor',                   -- The editor(s).
     'container-title',          -- Publication the item was published in.
     'container-title-short',    -- A short version of that title.
-    'collection-editor',        -- E.g., series editor(s).
+    'collection-editor',        -- E.g., the series editor(s).
     'collection-title',         -- E.g., a series.
     'collection-title-short',   -- A short version of the title.
     'edition',                  -- Container's edition.
@@ -1236,30 +1270,19 @@ end
 BIBLIO_TYPES.bib = {}
 
 
---- Parse the content of a BibLaTeX file.
+--- Read the IDs from the content of a BibLaTeX file.
 --
 -- @string str The content of a BibLaTeX file.
--- @treturn[1] {table,...} A list of CSL items
---  if you use Pandoc v2.11 or later.
--- @treturn[2] {{id=string},...} A list of item IDs
---  if you use an earlier version of Pandoc.
+-- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
 function BIBLIO_TYPES.bib.decode (str)
-    local doc = pandoc.read(str, 'biblatex')
-    if not doc.meta.references then return {} end
-    return walk(doc.meta.references, {MetaInlines = markdownify})
-end
-
-if not pandoc.types or PANDOC_VERSION < {2, 11} then
-    function BIBLIO_TYPES.bib.decode (str)
-        local ret = {}
-        local n = 0
-        for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
-            n = n + 1
-            ret[n] = {id=id}
-        end
-        return ret
+    local ret = {}
+    local n = 0
+    for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
+        n = n + 1
+        ret[n] = {id = id}
     end
+    return ret
 end
 
 
@@ -1268,23 +1291,12 @@ end
 BIBLIO_TYPES.bibtex = {}
 
 
---- Parse the content of a BibTeX file.
+--- Read the IDs from the content of a BibTeX file.
 --
 -- @string str The content of a BibTeX file.
--- @treturn[1] {table,...} A list of CSL items
---  if you use Pandoc v2.11 or later.
--- @treturn[2] {{id=string},...} A list of item IDs
---  if you use an earlier version of Pandoc.
+-- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
-function BIBLIO_TYPES.bibtex.decode (str)
-    local doc = pandoc.read(str, 'bibtex')
-    if not doc.meta.references then return {} end
-    return walk(doc.meta.references, {MetaInlines = markdownify})
-end
-
-if not pandoc.types or PANDOC_VERSION < {2, 11} then
-    BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
-end
+BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
 
 
 --- De-/Encode CSL items in JSON.
@@ -1303,9 +1315,9 @@ BIBLIO_TYPES.yaml = {}
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
 function BIBLIO_TYPES.yaml.decode (str)
-    local iter = str:gmatch '(.-)\r?\n'
-    local ln = iter(str, nil)
-    while ln and ln ~= '---' do ln = iter(str, ln) end
+    local next_ln = str:gmatch '(.-)\r?\n'
+    local ln = next_ln(str, nil)
+    while ln and ln ~= '---' do ln = next_ln(str, ln) end
     if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
     local doc = pandoc.read(str, 'markdown')
     if not doc.meta.references then return {} end
@@ -1449,27 +1461,17 @@ end
 
 
 do
-    local keys_formattable = {}
-    for i = 1, #CSL_KEYS_FORMATTABLE do
-        keys_formattable[CSL_KEYS_FORMATTABLE[i]] = true
-    end
-
-    local function conv (val, key)
-        if not keys_formattable[key] then return val end
-        assert(type(val) == 'string', 'Value is not a string.')
-        return html_to_md(val)
-    end
-
     -- Recursively convert Zotero pseudo-HTML to Pandoc Markdown.
     --
-    -- Only changes fields listed in `CSL_KEYS_FORMATTABLE`.
+    -- [Citeproc](https://github.com/jgm/citeproc) appears to recognise
+    -- formatting in *every* CSL field, so `pandoc-zotxt.lua` does the same.
     --
     -- @tab item A CSL item.
     -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
     -- @see html_to_md
     -- @within Converters
     local function zotfmt_to_pdfmt (item)
-        return rmap(conv, item)
+        return rmap(html_to_md, item)
     end
 
     --- Add items from Zotero to a bibliography file.
@@ -1485,15 +1487,15 @@ do
     -- @treturn[2] nil `nil` if an error occurrs.
     -- @treturn[2] string An error message.
     -- @treturn[2] ?int An error number if the error is a file I/O error.
-    -- @raise See `zotxt_source`.
+    -- @raise See `zotxt_csl_item`.
     -- @within Bibliography files
     function biblio_update (fname, ids)
         -- luacheck: ignore ok fmt err errno
         if #ids == 0 then return true end
         local fmt, err = biblio_write(fname)
         if not fmt then return nil, err end
-        -- @todo Remove this once the test suite is complete,
-        -- the script has been dogfed, and was out in the open for a while.
+        -- @todo Remove this warning once the script has been dogfooded,
+        -- and was out in the open for a while.
         if fmt == 'yaml' or fmt == 'yml' then
             warnf 'YAML bibliography file support is EXPERIMENTAL!'
         end
@@ -1518,7 +1520,7 @@ do
                     n = n + 1
                     items[n] = lower_keys(ret)
                 else
-                     errf(err)
+                    errf(err)
                 end
             end
         end
@@ -1569,12 +1571,16 @@ do
 end
 
 do
+    local pack = table.pack
+
     local function w_map (tab, ...)
         for k, v in pairs(tab) do
             tab[k] = walk(v, ...)
         end
     end
 
+    -- The difference between mappings and sequences must be honoured, because
+    -- Pandoc may use custom __pairs and __len metamethods.
     local function w_seq (tab, ...)
         for i = 1, #tab do
             tab[i] = walk(tab[i], ...)
@@ -1584,7 +1590,7 @@ do
     local function w_list (elem, ...)
         local content = elem.content
         for i = 1, #content do
-            content[i] = w_seq(content[i], ...)
+            w_seq(content[i], ...)
         end
     end
 
@@ -1599,44 +1605,42 @@ do
     }
 
     function walker_fs.Doc (doc, ...)
-        doc.meta = walk(doc.meta, ...)
-        local blocks = doc.blocks
-        for i = 1, #blocks do
-            blocks[i] = walk(blocks[i], ...)
-        end
+        walk(doc.meta, ...)
+        w_seq(doc.blocks, ...)
     end
 
     --- Walk the AST and apply functions to matching elements.
     --
-    -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by accepting
-    -- AST elements of *any* type (i.e., including documents as a whole, the
-    -- metadata block, and metadata fields), by applying the filter to the
-    -- given element itself, by walking the AST bottom-up (which implies that
-    -- the filter is applied to every node, regardless of whether any of that
-    -- node's ancestors matches it), and by allowing the functions in the
-    -- filter to return arbitrary data (as opposed to either a Pandoc AST
-    -- element type or `nil`). Use with caution.
+    -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by never
+    -- modifying the original element, by accepting AST elements of *any* type
+    -- (including documents as a whole, the metadata block, and metadata
+    -- fields), by walking the AST bottom-up (which implies that the filter is
+    -- applied to every element, regardless of whether any of that elements's
+    -- ancestors matches it), by applying the filter to the given element
+    -- itself, and by allowing the functions in the filter to return data of
+    -- arbitrary types (as opposed to either a Pandoc AST element or `nil`).
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
     -- @return The element, with the filter applied.
     -- @within Document parsing
-    -- @fixme Untested.
+    -- @fixme Undertested.
     function walk (elem, filter, _rd)
         if not _rd then _rd = 0
                    else _rd = _rd + 1
         end
+        if _rd == 0 then elem = copy(elem) end
         assert(_rd < 512, 'Too much recursion.')
-        local ts = table.pack(elem_type(elem))
+        local ts = pack(elem_type(elem))
         if ts.n == 0 then return elem end
         local walker_f = walker_fs[ts[1]]
         if     walker_f     then walker_f(elem, filter, _rd)
         elseif elem.content then w_seq(elem.content, filter, _rd)
-                            end
+        end
         for i = 1, ts.n do
             local func = filter[ts[i]]
             if func then
-                local new = func(elem:clone())
+                local new = func(elem)
                 if new ~= nil then elem = new end
             end
         end
@@ -1667,7 +1671,7 @@ function meta_sources (meta)
         elseif bibliography.tag == 'MetaList' then
             fnames = bibliography:map(stringify)
         else
-             errf 'Cannot parse metadata field "bibliography".'
+            errf 'Cannot parse metadata field "bibliography".'
             return ret
         end
         for i = 1, #fnames do
@@ -1676,10 +1680,10 @@ function meta_sources (meta)
                 -- luacheck: ignore err
                 local items, err = biblio_read(fname)
                 if items then ret:extend(items)
-                         else  errf(err)
+                         else errf(err)
                 end
             else
-                 errf(err)
+                errf(err)
             end
         end
     end
@@ -1705,7 +1709,7 @@ do
     --  of sources that are neither defined in the `references` metadata field
     --  nor in any bibliography file.
     -- @treturn {string,...} A list of citation keys.
-    -- @treturn int The number citation keys found.
+    -- @treturn int The number of citation keys found.
     -- @raise An error if an item ID is of an illegal data type.
     -- @within Document parsing
     function doc_ckeys (doc, flags)
@@ -1746,7 +1750,7 @@ end
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `zotxt_source`.
+-- @raise See `zotxt_csl_item`.
 -- @within Main
 function add_biblio (meta, ckeys)
     -- luacheck: ignore ok
@@ -1784,7 +1788,7 @@ end
 --  with the field `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `zotxt_source`.
+-- @raise See `zotxt_csl_item`.
 -- @within Main
 function add_refs (meta, ckeys)
     if #ckeys == 0 then return end
@@ -1795,7 +1799,7 @@ function add_refs (meta, ckeys)
         if not ok  then return nil, ret
         elseif ret then n = n + 1
                         meta.references[n] = ret
-                   else  errf(err)
+                   else errf(err)
         end
     end
     return meta
@@ -1811,7 +1815,7 @@ end
 -- @tparam table doc A document.
 -- @treturn[1] table `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise See `zotxt_source`.
+-- @raise See `zotxt_csl_item`.
 -- @within Main
 function main (doc)
     local ckeys = doc_ckeys(doc, 'u')
@@ -1826,7 +1830,7 @@ function main (doc)
             doc.meta = meta
             return doc
         elseif err then
-             errf(err)
+            errf(err)
         end
     end
 end
