@@ -24,11 +24,6 @@ SHELL		?= sh
 RM		?= rm -f
 PANDOC		?= pandoc
 
-# The shells to try to run the installer with.
-# Must be filenames. Order by preference, from best to worst.
-# Change PATH to use different versions of the same shell.
-SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
-
 
 # TARGETS
 # =======
@@ -111,13 +106,6 @@ man:
 
 ldoc:
 	ldoc -c ldoc/config.ld .
-
-install:
-	@PATH="`getconf PATH`:$$PATH"; \
-	for SHELL in $(SHELLS); do \
-		"$$SHELL" install.sh; \
-		[ "$$?" -eq 127 ] || break; \
-	done
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \

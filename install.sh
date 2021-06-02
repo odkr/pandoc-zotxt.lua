@@ -2,85 +2,62 @@
 #
 # Installs pandoc-zotxt.lua.
 #
-# You should run this scripts via `make install`.
-# This makes it more likely that you run it with a POSIX-compliant shell.
+# Use --help or see below for details.
 
-# GLOBALS
+# PRELUDE
 # =======
 
-NAME="$(basename "$0")"
-readonly NAME
+# 'strict' mode.
+set -Cefu
+
+# Enforce POSIX compliance.
+# shellcheck disable=2039,3040
+[ "${BASH_VERSION-}" ] && set -o posix
+[ "${ZSH_VERSION-}"  ] && emulate sh 2>/dev/null
+BIN_SH=xpg4 NULLCMD=: POSIXLY_CORRECT=x
+export BIN_SH POSIXLY_CORRECT
+# shellcheck disable=2034
+readonly BIN_SH NULLCMD POSIXLY_CORRECT
 
 
 # FUNCTIONS
 # =========
 
-# warn - Print a message to STDERR.
-#
-# Synopsis:
-#	warn MESSAGE [ARG [ARG [...]]]
-#
-# Description:
-#	Formats MESSAGE with the given ARGs (think printf), prefixes it with
-#	"<script name>: ", appends a linefeed, and prints it to STDERR.
-#
-# Arguments:
-#	MESSAGE	The message.
-#	ARG	Argument for MESSAGE (think printf).
-#
-# Globals:
-#	NAME (ro)	Name of this script.
-warn() {
+# Print text to STDERR. Supports printf-like arguments.
+err() (
 	: "${1:?}"
 	exec >&2
-	# shellcheck disable=2006
-	printf '%s: ' "$NAME"
+	[ "${scpt_fname-}" ] && printf '%s: ' "$scpt_fname"
 	# shellcheck disable=2059
 	printf -- "$@"
-	printf '\n'
+)
+
+# Like `err` but appends a newline and respects $quiet.
+warn() {
+	[ "${quiet-}" ] && return 0
+	err "$@"
+	echo >&2
 }
 
-
-# panic - Exit the script with an error message.
-#
-# Synopsis:
-#	panic [STATUS [MESSAGE [ARG [ARG [...]]]]]
-#
-# Description:
-#	If a MESSAGE is given, prints it as warn would.
-#	Exits the programme with STATUS.
-#
-# Arguments:
-#	STATUS	The status to exit with. Defaults to 69.
-#
-#	See warn for the remaing arguments.
-#
-# Exits with:
-#	STATUS
-# shellcheck disable=2059
+# Abort the script with a given exit status and an error message.
 panic() {
 	set +e
-	[ $# -gt 1 ] && ( shift; warn "$@"; )
-	exit "${1:-69}"
+	__panic_stat="${1:?}"
+	__panic_err="${2:?}"
+	shift 2
+	err "${cred-}$__panic_err${ares-}\\n" "$@"
+	exit "$__panic_stat"
 }
 
+# Convience exit functions.
+ex_usage()	{ panic 64 "$@"; }
+ex_dataerr()	{ panic 65 "$@"; }
+ex_noinput()	{ panic 66 "$@"; }
+ex_other()	{ panic 69 "$@"; }
+ex_config()	{ panic 78 "$@"; }
 
-# inlist - Test whether a value equals any of a list of values.
-#
-# Synopsis:
-#	inlist NEEDLE [STRAW [STRAW [...]]]
-#
-# Description:
-#	Tests whether NEEDLE equals any given STRAW.
-#
-# Arguments:
-#	NEEDLE	A value to compare each STRAW against.
-#	STRAW	A value to compare NEEDLE against.
-#
-# Returns:
-#	0	At least one STRAW equals NEEDLE.
-#	1	No STRAW equals NEEDLE.
-inlist() (
+# Test whether a value equals any of a list of values.
+in_list() (
 	needle="${1:?}"
 	shift
 	for straw; do
@@ -89,461 +66,745 @@ inlist() (
 	return 1
 )
 
+# Signale name by number.
+sig_name() {
+	case "${1:?}" in
+		(0) echo EXIT ;;
+		(*) kill -l "$1"
+	esac
+}
 
-# onexit - Run code on exit.
-# 
-# Synopsis:
-#   onexit SIGNO
-#
-# Description:
-#	Runs the shell code in the global variable $EX. If SIGNO is greater
-#	than 0, propagates that signal to the process group. If SIGNO is not
-#	given or 0, terminates all children. Exits the script.
-#
-# Arguments:
-#	SIGNO	A signal number or 0.
-#		0 indicates a normal exit.
-#
-# Global variables:
-#	EX (rw)		Code to be run. Unset thereafter.
-#	TRAPS (ro)	A space-separated list of signal names
-#			that traps have been registered for (read-only). 
-# 
-# Exits with:
-#	If SIGNO was given, then SIGNO plus 128.
-#	Otherwise, the value of $? at the time of invocation.
-onexit() {
-	__ONEXIT_STATUS=$?
+# Trap wrapper for on_exit.
+# shellcheck disable=2064,2086
+trap_sigs() {
+	__trap_sigs_func="${1:-on_exit}"
+	shift
+	for __trap_sigs_no in ${*-0 1 2 3 15}; do
+		__trap_sigs_name="$(sig_name "$__trap_sigs_no")"
+		trap "$__trap_sigs_func $__trap_sigs_no" "$__trap_sigs_name"
+		in_list "$__trap_sigs_name" EXIT ${traps-} && continue
+		traps="${traps-} $__trap_sigs_name"
+	done
+	unset __trap_sigs_func __trap_sigs_no __trap_sigs_name
+}
+
+
+# Run $ex on exit. Propagate signal.
+# shellcheck disable=2059,2086
+on_exit() {
+	__on_exit_status=$?
 	unset IFS
-	# shellcheck disable=2086
-	trap '' EXIT ${TRAPS-INT TERM} || :
+	trap '' EXIT ${traps-HUP INT QUIT TERM} || :
 	set +e
-	# shellcheck disable=2059
-	printf "${R-}\\r\\033[K\\r"
-	if [ "${1-0}" -gt 0 ]; then
-		warn "${BL-}Caught ${B-}%s.${R-}\\033[K" "$(signame "$1")"
-	elif [ "$__ONEXIT_STATUS" -gt 0 ]; then
-		warn "${RD-}Something went wrong.${R-}\\033[K"
+	printf '%s\r\033[K\r' "${ares-}"
+	if [ "${1-0}" -gt 0 ] && ! [ "${sig_caught-}" ]; then
+		warn "${cblu-}caught ${bd-}%s${rg-}.${ares-}" \
+		     "$(sig_name "$1")"
+	elif [ "$__on_exit_status" -gt 0 ]; then
+		err "${cred-}fatal error.${ares-}\\n"
 	fi
-	if [ "${EX-}" ]; then
-		warn 'Cleaning up.\033[K'
-		eval "$EX" || __ONEXIT_ERR="$?"
-		unset EX
-		# shellcheck disable=2059
-		[ "${R-}" ] && printf "$R"
-		[ "${__ONEXIT_ERR-0}" -ne 0 ] && \
-			warn "${RD-}Clean-up failed.${R-}\\033[K"
+	if [ "${ex-}" ]; then
+		warn 'cleaning up.'
+		eval "$ex" || err "${cred-}clean-up failed.${ares-}\\n"
+		unset ex
 	fi
 	if [ "${1-0}" -gt 0 ]; then
-		__ONEXIT_STATUS=$((128+$1))
+		__on_exit_status=$((128 + $1))
 		kill "-$1" "-$$" 2>/dev/null
 	fi
-	exit "$__ONEXIT_STATUS"
+	exit "$__on_exit_status"
 }
 
+# Catches a signal and sets $sig_caught.
+catch_sig() {
+	[ "${1-0}" -gt 0 ] && \
+		warn "${cblu-}caught ${bd-}%s${rg-}.${ares-}" \
+		     "$(sig_name "$1")"
+	sig_caught="${1-0}"
+}
 
-# signame - Get a signal's name by its number.
-#
-# Synopsis:
-#	signame SIGNO
-#
-# Description:
-#	Prints the name of the signal with the number SIGNO.
-#	If SIGNO is 0, prints "EXIT".
-#
-# Arguments:
-#	SIGNO	A signal number or 0.
-signame() {
-	: "${1:?'missing SIGNO'}"
-	if [ "$1" -eq 0 ]
-		then printf 'EXIT\n'
-		else kill -l "$1"
+# Check whether a string is a legal variable name.
+is_varname() (
+	for vn; do
+		case $vn in ([!A-Za-z]*|*[!0-9A-Za-z_]*) return 1
+		esac
+	done
+	return 0
+)
+
+# Copy variables.
+var_cp() {
+	is_varname "${1:?}" "${2:?}" || panic 70 'illegal variable name.'
+	eval "$2=\"\$$1\""
+}
+
+# Calls a command, respects $dry_run and $verbose.
+call() {
+	: "${1:?}"
+	if [ "${dry_run-}" ]; then
+		err 'would call: %s\n' "$*"
+	else
+		[ "${verbose-}" ] && err 'calling: %s\n' "$*"
+		"$@"
 	fi
 }
 
-
-# trapsig - Register functions to trap signals.
-#
-# Synopsis:
-#	trapsig FUNCTION SIGNO
-#
-# Description:
-#	Registers FUNCTION to handle SIGNO.
-#
-# Arguments:
-#	FUNCTION	A shell function.
-#	SIGNO		A signal number or 0.
-#			0 signifies a normal exit.
-#
-# Global variables:
-#	TRAPS (rw)	A space-separated list of signal names
-#			that traps have been registered for. 
-#			Adds the name of every given SIGNO to TRAPS.
-trapsig() {
-	__TRAPSIG_FUNC="${1:?'missing FUNCTION'}"
-	shift
-	for __TRAPSIG_SIGNO; do
-		__TRAPSIG_SIGNAME="$(signame "$__TRAPSIG_SIGNO")"
-		# shellcheck disable=2064
-		trap "$__TRAPSIG_FUNC $__TRAPSIG_SIGNO" "$__TRAPSIG_SIGNAME"
-		# shellcheck disable=2086
-		inlist "$__TRAPSIG_SIGNAME" EXIT ${TRAPS-} && continue
-		TRAPS="${TRAPS-} $__TRAPSIG_SIGNAME"
-	done
-	unset __TRAPSIG_FUNC __TRAPSIG_SIGNO __TRAPSIG_SIGNAME
+# Move the cursor relative to its current position.
+mv_cursor() {
+	case ${1-0} in
+		(-*) printf '\033[%dA' "${1#-}" ;;
+		 (*) printf '\033[%dB' "$1"
+	esac
+	case ${2-0} in
+		(-*) printf '\033[%dD' "${2#-}" ;;
+		 (*) printf '\033[%dC' "$2"
+	esac
 }
 
-
-# yesno - Ask the user a yes/no question.
-#
-# Synopsis:
-#	yesno PROMPT
-#
-# Arguments:
-#	PROMPT	The question.
-#
-# Returns:
-#	0	"Yes".
-#	1	"No".
-#	2	"Abort".
-#	64	Too many wrong answers.
-#	69	An error occurred.
-#	70	A bug occurred.
-# shellcheck disable=2059
-yesno() (
-	set -Cefu
-	[ "${1-}" ] || return 70
+# Ask a yes/no question.
+yes_no() (
 	if ! [ -t 0 ] || ! [ -t 2 ]; then return 69; fi
-
-	prompt="\"${B}yes$R\" or \"${B}no$R\""
-	help="(Press ${B}Enter$R to confirm or ${B}Ctrl$R-${B}c$R to abort.)"
-	cs=51
-	[ "${2-}" ] && cs=$((38 - ${#2}))
-
-	exec 1>&2
-	printf -- "$NAME: $1\n"
-
+	prom="\"${bd-}yes${rg-}\" or \"${bd-}no${rg-}\"" cols=27
+	[ "${1-}" ] && prom="$prom [${bd-}$1${rg-}]" cols=$((30 + ${#1}))
+	prom="$prom: "
 	i=0
 	while [ "$i" -lt 5 ]; do
 		i=$((i + 1))
-		printf -- "$NAME: $prompt"
-		[ "${2-}" ] && printf " [$B$2$R]"
-		printf -- ": \\n$NAME: $help\\033[1A\\033[${cs}D"
-		read -r rep || return 69
-
-		if ! [ "${rep-}" ] && [ "${2-}" ]; then
-			rep="$2"
-			printf "\\033[1A\\033[32C$BL%s$R\033[K\\n" "$rep"
+		err "$prom"
+		read -r yn || return 69
+		if ! [ "${yn-}" ] && [ "${1-}" ]; then
+			yn="$1"
+			mv_cursor -1 "$cols"
+			echo "${cblu-}$yn${ares-}" 1>&2
 		fi
-		printf "$R\033[K\r"
-		case $rep in
+		case $yn in
 			([Yy]|[Yy][Ee][Ss]) return 0 ;;
 			([Nn]|[Nn][Oo])     return 1 ;;
-			('') warn "${YL}Please answer.$R" ;;
-			(*)  warn "$YL\"$B%s$R$YL\" makes no sense.$R" "$rep"
 		esac
+		err "${cyel-}???${ares-}\\n"
 	done
-	warn "${RD}Too many wrong entries.${R}"
-	return 64
+	ex_usage 'too many wrong entries.'
 )
 
+# Read the first @release LDoc comment from a Lua file.
+# Does not support multiline comments.
+release_of() {
+	: "${1:?}"
+	sed -n '/--/ { s/--[ \t]*//; s/[ \t]*//; s/@release[ \t]*//p; }' "$1" |
+	head -n1
+}
 
-# pphome - Replace $HOME with other text.
-#
-# Synopsis:
-#	pphome FNAME [STR]
-#
-# Description:
-#	If FNAME starts with $HOME, replaces $HOME with STR.
-#	If STR is not given, replaces $HOME with "~".
-#	If FNAME does not start with $HOME, prints it as it is.
-#
-# Arguments:
-#	FNAME	A filename.
-#	STR	Text to replace $HOME with.
-#
-# Globals:
-#	HOME (ro)	The user's home directory.
-pphome() {
-	: "${HOME:?}"
-	case "$1" in
-		("$HOME"*) printf '%s%s\n' "${2:-~}" "${1#${HOME%/}}";;
-		(*)        printf '%s\n' "$1" 	
+# Read the first global varialbe VERSION from a Lua file.
+version_of() (
+	: "${1:?}"
+	sp='[ \t]*' qt="['\"]"
+	sed -n "s/^${sp}VERSION$sp=$sp$qt\([0-9a-z.]\{1,\}\)$qt.*/\1/p" "$1" |
+	head -n1
+)
+
+# Pretty-print $HOME.
+pp_home() {
+	is_varname "$1" || panic 70 "illegal variable name."
+	case $2 in
+		("$HOME"*) eval "$1=\"\${3:-~}\${2#${HOME%/}}\"" ;;
+		(*)        eval "$1=\"\$2\""
 	esac
 }
 
 
-# PRELUDE
-# =======
+# INITIALISATION
+# ==============
 
-# shellcheck disable=2039,3040
-[ "$BASH_VERSION" ] && set -o posix
-[ "$ZSH_VERSION"  ] && emulate sh 2>/dev/null
-# shellcheck disable=2034
-BIN_SH=xpg4 NULLCMD=: POSIXLY_CORRECT=x
-export BIN_SH POSIXLY_CORRECT
+# Environment
+# -----------
 
-set -Cefu
-
-if [ -t 1 ]; then
-	case ${TERM-} in
-		(xterm-color|*-256color)
-			B='\033[1m' R='\033[0m'
-			RD='\033[31m' GR='\033[32m' YL='\033[33m'
-			BL='\033[34m' CY='\033[36m' ;;
-		(*)     B='' R='' RD='' GR='' YL='' BL='' CY=''
-	esac
-fi
-
-
+unset IFS
 
 PATH=/bin:/usr/bin
-PATH="$(getconf PATH):$PATH"
-export PATH
-
-[ "$(id -u)" -eq 0 ] && \
-	panic 64 "${RD}Refusing to run with superuser privileges.$R"
-
+PATH=$(getconf PATH) || exit 69
+: "${PATH:?}"
 : "${HOME:?}"
 : "${XDG_DATA_HOME:="$HOME/.local/share"}"
 
-if ! SCPT_DIR="$(dirname "$0")" || ! [ "$SCPT_DIR" ]; then
-	panic 69 "$B$0$R: ${RD}Could not locate$R."
+export IFS PATH XDG_DATA_HOME
+readonly PATH HOME XDG_DATA_HOME
+
+
+# ANSI escape sequences
+# ---------------------
+
+ares='' bd='' rg='' cred='' cgre='' cyel='' cblu='' ccya=''
+[ -t 2 ] && case ${TERM-} in (*color*|*colour*)
+	ares='\033[0m'
+	bd='\033[1m'	rg='\033[22m'	ul='\033[4m'	nu='\033[24m'
+	cred='\033[31m' cgre='\033[32m' cyel='\033[33m'
+	cblu='\033[34m' ccya='\033[36m'
+esac
+
+
+# Script metadata
+# ---------------
+
+if ! scpt_fname="$(basename "$0")" || ! [ "${scpt_fname-}" ]; then
+	panic 69 'installer not found.'
 fi
-cd -P "$SCPT_DIR" || exit 69
+readonly scpt_fname
 
-[ -e installrc ] || panic 78 "installrc: ${RD}No such file$R."
-unset FILTER
-# shellcheck disable=1091
-. ./installrc
-[ "${FILTER-}" ] || panic 78 "installrc: ${RD}No ${B}FILTER${R}${RD} given$R."
-readonly FILTER
-
-[ -e "$FILTER" ] || panic 69 "$B$FILTER$R: ${RD}No such file$R."
-VERSION="$(sed -n 's/--[[:space:]*]@release[[:space:]]*//p' <"$FILTER")"
-[ "$VERSION" ] || panic 65 "${RD}Could not read version from LDoc comments.$R"
-
-
-# MOVE FILES
-# ==========
-
-if ! REPO_DIR="$(pwd)" || ! [ "$REPO_DIR" ]; then
-	panic 69 "${RD}Could not locate repository$R."
+if ! scpt_dir="$(dirname "$0")" || ! [ "${scpt_dir-}" ]; then
+	panic 69 'installer could not be located.'
 fi
-readonly REPO_DIR
+readonly scpt_dir
 
-PANDOC_DATA_DIR="$XDG_DATA_HOME/pandoc" OTHER_PANDOC_DATA_DIR="$HOME/.pandoc"
-! [ -d "$PANDOC_DATA_DIR" ] && [ -d "$OTHER_PANDOC_DATA_DIR" ] && 
-	PANDOC_DATA_DIR="$OTHER_PANDOC_DATA_DIR"
-unset OTHER_PANDOC_DATA_DIR
-readonly PANDOC_FILTER_DIR="$PANDOC_DATA_DIR/filters"
 
-readonly REPO="$FILTER-$VERSION"
-REPO_NAME="$(basename "$REPO_DIR")"
-[ "$REPO" = "$REPO_NAME" ] || \
-	panic 69 "$B$REPO_NAME$R: ${RD}Wrong name.$R"
-unset REPO_NAME
+# System interaction
+# -------------------
 
-readonly INSTALL_DIR="$PANDOC_FILTER_DIR/$REPO"
+# Catch signals
+trap_sigs on_exit 0 1 2 3 15
 
-cd -P .. || exit
-if ! PWD="$(pwd)" || ! [ "$PWD" ]; then
-	panic 69 "${RD}Could not locate parent directory.$R"
+# All output should go to STDERR.
+exec 1>&2
+
+# Working directory
+cd -P "$scpt_dir" || exit 69
+
+
+# Sanity checks
+# -------------
+
+[ "${HOME#/}" = "$HOME" ] && ex_other "${bd}HOME$rg is relative."
+[ "$(cd -P "$HOME"; pwd)" = / ] && ex_other "${bd}HOME$rg points to $bd/$rg."
+
+
+# SETTINGS
+# ========
+
+# Command line options
+# --------------------
+
+unset install_prefix modify_manpath
+action=install
+dry_run='' allow_superuser='' quiet='' verbose=''
+while [ $# -gt 0 ]; do
+	case $1 in
+		(--debug)
+			set -x
+			shift
+			;;
+		(--dry-run)
+			dry_run=x
+			shift
+			;;
+		(--install-prefix)
+			[ "${2-}" ] || ex_usage "$bd$1$rg: missing directory."
+			install_prefix="$2"
+			shift 2 ;;
+		(--modify-manpath)
+			[ "${2-}" ] || ex_usage "$bd$1$rg: \"yes\" or \"no\"?"
+			case $2 in
+				([Yy]|[Yy][Ee][Ss])	modify_manpath=x ;;
+				([Nn]|[Nn][Oo])		modify_manpath= ;;
+			esac
+			shift 2 ;;
+		(--quiet)
+			quiet=x
+			shift ;;
+		(--allow-superuser)
+			allow_superuser=x
+			shift ;;
+		(--verbose)
+			verbose=x
+			shift ;;
+		(--help)
+			echo "$bd$scpt_fname$rg - install a Pandoc filter
+
+Options:
+    $bd--modify-manpath$rg {${ul}yes$nu|${ul}no$nu}
+        Modify MANPATH in your shell RC file(s), so that ${bd-\`}man${rg-\`}
+	finds the filter's manual. By default, you will be prompted.
+
+    $bd--dry-run$rg
+        Don't change your system, just show which changes would be made.
+
+    $bd--install-prefix$rg ${ul}directory$nu
+        Prefix installation the target with the given ${ul}directory$nu.
+
+    $bd--allow-superuser$rg
+        Don't abort if $bd$scpt_fname$rg is run with superuser privileges.
+
+    $bd--quiet$rg
+        Only print errors.
+
+    $bd--verbose$rg
+        Be even more verbose.
+
+    $bd--debug$rg
+        Call ${bd-\`}set -x${rg-\`} at startup."
+			exit 0
+			;;
+		(--)	shift
+			break ;;
+		(-*)	ex_usage "$bd$1$rg: unknown option." ;;
+		(*)	break
+	esac
+done
+readonly action allow_superuser
+
+
+# Safety check
+# ------------
+
+[ "$(id -u)" -eq 0 ] && ! [ "$allow_superuser" ] && \
+	ex_usage 'refusing to run with superuser privileges.'
+
+
+# RC file
+# -------
+
+rc=.installrc
+[ -e .installrc ] || ex_config "$ul$rc$nu: no such file."
+
+unset filter
+# shellcheck disable=1090
+. "./${rc:?}"
+
+[ "${filter-}" ] || ex_config "$ul$rc$nu: no ${bd}filter$rg defined."
+[ -e "$filter" ] || ex_config "$ul$filter$nu: no such file."
+[ "${filter%.lua}" = "$filter" ] && ex_config "$ul$filter$nu: not a Lua file."
+
+if ! [ "${install_prefix-}" ] && [ "${install_prefix-x}" != x ]; then
+	ex_config "${bd}install_prefix$rg: is the empty string."
+elif [ "${install_prefix-}" ]; then
+	[ -d "$install_prefix" ] || \
+		ex_noinput "$ul%s$nu: no such directory." "$install_prefix"
+	if ! install_prefix_abs="$(cd -P "$install_prefix"; pwd)" ||
+	   [ ! "$install_prefix_abs" ]
+	then
+		ex_noinput "$ul$install_prefix$nu: not found."
+	fi
+	install_prefix="$install_prefix_abs"
+	unset install_prefix_abs
+else
+	install_prefix=
 fi
 
-trapsig onexit 0 1 2 3 15
+readonly filter dry_run install_prefix quiet verbose
 
-if [ "$INSTALL_DIR" != "$REPO_DIR" ]; then
-	[ -e "$PANDOC_FILTER_DIR/$REPO" ] && \
-		panic 0 "$B$REPO$R: ${RD}Already installed.$R"
-	[ -d "$REPO" ] || panic 69 "$B$REPO$R: ${RD}No such directory.$R"
 
-	# Create Pandoc filter directory if it does not exist yet. 
-	if ! [ -e "$PANDOC_FILTER_DIR" ]; then
-		rmdir_wrapper() {
-			: "${1:?}"
-			warn "Removing $B%s$R." "$(pphome "$1")"
-			rmdir "$1"
-		}
+# Gather data
+# -----------
 
-		IFS=/ N=0 DIR=
-		for SEG in $PANDOC_FILTER_DIR; do
-			DIR="${DIR%/}/$SEG"
-			[ -e "$DIR" ] && continue
-			N=$((N + 1))
-			eval "readonly DIR_$N=\"\$DIR\""
-			EX="rmdir_wrapper \"\$DIR_$N\" \"\$HOME\"; ${EX-}"
-			warn "Making directory $B%s$R." "$(pphome "$DIR")"
-			mkdir "$DIR" || exit 69
-		done
+# $repo_fname
+if ! release="$(release_of "$filter")" || ! [ "${release-}" ]; then
+	ex_dataerr "$ul$filter$nu: $bd@release$rg LDoc comment not found."
+fi
+readonly release
+
+if ! version="$(version_of "$filter")" || ! [ "${version-}" ]; then
+	ex_dataerr "$ul$filter$nu: variable ${bd}VERSION$rg not found."
+fi
+readonly version
+
+if [ "$release" != "$version" ]; then
+	ex_dataerr "$ul$filter$nu: $bd@release$rg and ${bd}VERSION$rg differ."
+fi
+
+repo_fname="${filter:?}-${release:?}"
+readonly repo_fname
+
+# $repo_dir
+if ! repo_dir="$(pwd)" || ! [ "${repo_dir-}" ] || ! [ -d "$repo_dir" ]; then
+	ex_noinput "$ul$repo_fname$nu: not found."
+fi
+
+repo_dir_basename="$(basename "$repo_dir")"
+case "$repo_dir_basename" in
+	("$filter"|"$repo_fname") 	: ;;
+	(*) ex_other "$ul$repo_dir_basename$nu: wrong name."
+esac
+readonly repo_dir
+unset repo_dir_basename
+
+# $pandoc_data_dir
+for dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
+	pandoc_data_dir="$dir"
+	[ -d "$pandoc_data_dir" ] && break
+done
+readonly pandoc_data_dir
+unset dir
+
+# $today
+if ! today="$(date +%Y-%d-%m)" || ! [ "$today" ]; then
+	ex_other 'failed to get date.'
+fi
+readonly today
+
+# $pandoc_filters_dir
+readonly pandoc_filters_dir="${install_prefix-}/${pandoc_data_dir#/}/filters"
+
+# $install_dir
+install_dir="$pandoc_filters_dir/$repo_fname"
+[ -e "$install_dir" ] && panic 0 "$ul$repo_fname$nu: already installed."
+readonly install_dir
+
+# $filter_bak
+readonly filter_bak="$filter.orig"
+
+# $latest_link
+readonly latest_link="$filter-latest"
+
+# $latest_link_bak
+readonly latest_link_bak="$latest_link-$scpt_fname-$$-bak"
+
+# $sh_rc_bak_suffix
+readonly sh_rc_bak_suffix=".$scpt_fname-$$-bak"
+
+
+# Prettier versions for messages
+# ------------------------------
+
+pp_home pandoc_filters_dir_p "$pandoc_filters_dir"
+: "${pandoc_filters_dir_p:?}"
+readonly pandoc_filters_dir_p
+pp_home repo_dir_p "$repo_dir"
+: "$repo_dir_p"
+readonly repo_dir_p
+pp_home install_dir_p "$install_dir"
+: "$install_dir_p"
+readonly install_dir_p
+
+
+# Manual
+# ------
+
+# $has_man
+if [ -d man ]
+	then has_man=x
+	else has_man=
+fi
+readonly has_man
+
+# $man_dir
+readonly man_dir="$pandoc_filters_dir/$latest_link/man"
+
+# $man_accessible
+man_accessible=
+if [ "${has_man}" ]; then
+
+	man -w "$filter" >/dev/null 2>&1 && man_accessible=x
+	# man -w is not mandated by POSIX.
+	if ! [ "$man_accessible" ]; then
+		IFS=:
+		# shellcheck disable=2086
+		in_list "$man_dir" ${MANPATH-} && man_accessible=x
 		unset IFS
 	fi
-	
-	rm_install_dir() {
-		: "${INSTALL_DIR:?}"
-		warn "Removing $B%s$R." "$(pphome "$INSTALL_DIR")"
-		rm -rf "$INSTALL_DIR"
-	}
-
-	# Copy the files.
-	EX="rm_install_dir; ${EX-}"
-	warn "Copying $B%s$R to $B%s$R." \
-	     "$(pphome "$REPO")" "$(pphome "$PANDOC_FILTER_DIR")"
-	cp -R "$REPO" "$PANDOC_FILTER_DIR"
 fi
+readonly man_accessible
 
-# Switch to Pandoc filters directory.
-cd -P "$PANDOC_FILTER_DIR" || exit 69
+# $manpath_code
+# shellcheck disable=2016
+pp_home rel_man_dir "$man_dir" '$HOME'
+: "${rel_man_dir:?}"
+# shellcheck disable=2027
+manpath_code="export MANPATH=\"\$MANPATH:$rel_man_dir\""
+readonly manpath_code
+unset rel_man_dir
 
-# Create a symlink for the actual script.
-warn "Symlinking $B%s$R into $B%s$R." \
-	"$(pphome "$FILTER")" "$(pphome "$PANDOC_FILTER_DIR")"
-readonly FILTER_BACKUP="$PANDOC_FILTER_DIR/$FILTER.orig"
-if [ -e "$FILTER" ] || [ -L "$FILTER" ]; then
-	restore_old_filter() (
-		: "${FILTER_BACKUP:?}"
-		: "${FILTER_ORIG:?}"
-		warn "Restoring $B%s$R." "$(pphome "$FILTER_ORIG")"
-		[ -L "$FILTER_ORIG" ] && rm "$FILTER_ORIG"
-		mv "$FILTER_BACKUP" "$FILTER_ORIG"
-	)
+# $manpath_rc
+manpath_rc="
+# -----------------------------------------------------------------------------
+# Added by $filter installer on $today.
+$manpath_code
+# -----------------------------------------------------------------------------
+"
 
-	if [ -f "$FILTER_BACKUP" ] && ! [ -L "$FILTER_BACKUP" ]; then
-		panic 69 "$B%s$R: ${RD}Refusing to overwrite.${R}" \
-			"$(pphome "$FILTER_BACKUP")"
-	fi
-	[ -d "$FILTER_BACKUP" ] &&
-		panic 69 "$B%s$R: ${RD}Is a directory.${R}" \
-			"$(pphome "$FILTER_BACKUP")"
+[ "${#manpath_rc}" -lt 512 ] ||
+	ex_other 'RC code is too long.'
 
-	warn "Making a backup of the current $B$FILTER$R."
-	cp -PR "$FILTER" "$FILTER_BACKUP"
-	readonly FILTER_ORIG="$PANDOC_FILTER_DIR/$FILTER"
-	EX="restore_old_filter; ${EX-}"
-	CLEANUP="[ -L \"\$FILTER_BACKUP\"] && rm -- \"\$FILTER_BACKUP\"; \
-	         ${CLEANUP-}"
-else
-	# shellcheck disable=2034
-	readonly FILTER_ORIG="$PANDOC_FILTER_DIR/$FILTER"
-	EX="[ -L \"\${FILTER_ORIG:?}\" ] && rm -- \"\$FILTER_ORIG\"; ${EX-}"
-fi
-ln -fs "$REPO/$FILTER" .
-
-# Take care of the manual.
-readonly LATEST_DIR="$PANDOC_FILTER_DIR/$FILTER-latest"
-
-MAN_DIR="$LATEST_DIR/man"
-# man -w is not mandated by POSIX.
-IFS=: MAN_FOUND=
-for DIR in ${MANPATH-}; do
-	if [ "$DIR" = "$MAN_DIR" ]; then
-		IFS=: MAN_FOUND=x
-		break
-	fi
-done
-unset IFS
-
-if [ "${MODIFY_MANPATH-x}" = x ] &&
-   [ "${MODIFY_MANPATH-}" != x ] &&
-   ! [ "$MAN_FOUND" ]            &&
-   [ -t 0 ] && [ -t 2 ]		 &&
-   ! man -w "$FILTER" >/dev/null 2>&1
-then
-	YN=0
-	yesno "${CY}Modify ${B}MANPATH${R}${CY} in shell RC file(s)?$R" no || \
-	      YN=$?
-	case $YN in
-		(0) MODIFY_MANPATH=x ;;
-		(1) MODIFY_MANPATH=  ;;
-		(*) exit "$YN"
-	esac
-fi
-
-if [ "${MODIFY_MANPATH-}" ]; then
-	mv_wrapper() {
-		: "${1:?}"
-		: "${2:?}"
-		warn "Restoring old $B%s$R." "$(pphome "$2")"
-		mv "$1" "$2"
-	}
-
-	NOW="$(date +%Y-%d-%mT%H-%M-%S)"
-	# shellcheck disable=2016
-	REL_MAN_DIR="$(pphome "$MAN_DIR" '$HOME')"
-	CODE="export MANPATH=\"\$MANPATH:$REL_MAN_DIR\""
-	N=0 RC_FOUND=
-	for RC in .bashrc .kshrc .yashrc .zshrc; do
-		RC="$HOME/$RC"
-		[ -e "$RC" ] || continue
-		RC_FOUND=x
-		grep -q "$CODE" "$RC" && continue
-		warn "Adding ${B}[...]/%s/man$R to MANPATH in $B%s$R." \
-		     "$(basename "$LATEST_DIR")" "$(pphome "$RC")"
-		N=$((N + 1))
-		BACKUP="$RC.backup-pit$NOW-pid$$"
-		eval "readonly RC_$N=\"\$RC\""
-		eval "readonly RC_BACKUP_$N=\"\$BACKUP\""
-		cp "$RC" "$BACKUP"
-		EX="mv_wrapper \"\$RC_BACKUP_$N\" \"\$RC_$N\"; ${EX-}"
-		CLEANUP="rm -- \"\${RC_BACKUP_$N}\" \
-			\"\$HOME\" \"\$(basename \"\$RC_$N\")\"; ${CLEANUP-}"
-		printf '\n\n# Added by %s installer on %s.\n%s\n\n' \
-			"$FILTER" "${NOW%T*}" "$CODE" >>"$RC"
-	done
-	if [ "$N" -eq 0 ]; then
-		if [ "$RC_FOUND" ]
-			then warn 'No changes needed.'
-			else warn 'No shell RC file found.'
+# $sh_rc_*
+sh_rc_n=0
+if [ "${has_man}" ] && ! [ "$man_accessible" ]; then
+	n=0 sh_rc_refs_manpath=
+	for rc in .bashrc .kshrc .yashrc .zshrc; do
+		sh_rc="$HOME/$rc"
+		[ -e "$sh_rc" ] || continue
+		if grep -q "$manpath_code" "$sh_rc"; then
+			sh_rc_refs_manpath=x
+			continue
 		fi
-	fi
+		n=$((n + 1))
+		var_cp sh_rc "sh_rc_$n"
+		pp_home "sh_rc_${n}_p" "$sh_rc"
+		readonly "sh_rc_$n" "sh_rc_${n}_p"
+		unset sh_rc
+	done
+	sh_rc_n="$n"
+	unset n rc
 fi
+readonly sh_rc_n sh_rc_refs_manpath
 
-# Add a pointer to the latest version.
-if [ ${RC_FOUND-} ] || [ -e "$LATEST_DIR" ]; then
-	warn "Symlinking $B$REPO$R to $B$FILTER-latest$R."
-	if [ -e "$LATEST_DIR" ] || [ -L "$LATEST_DIR" ]; then
-		restore_prev_latest() (
-			: "${LATEST_DIR_BACKUP:?}"
-			: "${LATEST_DIR:?}"
-			warn "Restoring $B%s$R." "$(pphome "$LATEST_DIR")"
-			[ -L "$LATEST_DIR" ] && rm "$LATEST_DIR"
-			mv "$LATEST_DIR_BACKUP" "$LATEST_DIR"
+# $modify_manpath
+if [ "${has_man}" ] &&
+   [ "$sh_rc_n" -gt 0 ] && \
+   [ "${modify_manpath-x}" = x ] && [ "${modify_manpath-}" != x ] && \
+   [ -t 0 ] && [ -t 2 ]
+then
+	err "${ccya}modify ${bd}MANPATH$rg in "
+	n=0
+	while [ "$n" -lt "$sh_rc_n" ]; do
+		n=$((n + 1))
+		case $n in
+			(1)		fmt="$ul%s$nu" ;;
+			("$sh_rc_n")	fmt=" and $ul%s$nu" ;;
+			(*)		fmt=", $ul%s$nu" ;;
+		esac
+		var_cp "sh_rc_${n}_p" sh_rc_p
+		# shellcheck disable=2059,2154
+		printf "$fmt" "$sh_rc_p"
+		unset sh_rc_p fmt
+	done
+	unset n
+	echo "?$ares"
+	yn=0
+	yes_no no || yn=$?
+	case $yn in
+		(0) modify_manpath=x ;;
+		(1) modify_manpath=  ;;
+		(*) exit "$yn"
+	esac
+else
+	modify_manpath=
+fi
+: "${modify_manpath?}"
+readonly modify_manpath
+
+
+# INSTALLATION
+# ============
+
+if [ "$action" = install ]; then
+	# Move files.
+	if [ "$install_dir" != "$repo_dir" ]; then
+		# Make directories if necessary.
+		if ! [ -e "$pandoc_filters_dir" ]; then
+			rm_made_dirs() (
+				n="$made_dir_n"
+				while [ "$n" -gt 0 ]; do
+					unset dir dir_p
+					var_cp "made_dir_$n" dir
+					n=$((n - 1))
+					test -n "$dir" -a -d "$dir" || continue
+					pp_home dir_p "$dir"
+					warn "removing $ul${dir_p:-$dir}$nu."
+					call rmdir -- "$dir"
+				done
+			)
+
+			ex="rm_made_dirs; ${ex-}"
+			# shellcheck disable=2034
+			IFS=/ made_dir_n=0 dir='' empty=''
+			for fname in $pandoc_filters_dir; do
+				unset IFS
+				dir="${dir%/}/$fname"
+				[ -e "$dir" ] && continue
+				pp_home dir_p "$dir"
+				warn "making directory $ul${dir_p:-$dir}$nu."
+				made_dir_n=$((made_dir_n + 1))
+				var_cp empty "made_dir_$made_dir_n"
+				call mkdir -- "$dir" || exit 69
+				var_cp dir "made_dir_$made_dir_n"
+				readonly "made_dir_$made_dir_n"
+			done
+			unset dir fname empty
+		fi
+
+		# Move the repository.
+		mv_repo_back() (
+			[ -d "$install_dir" ] || return 0
+			warn "moving $ul%s$nu back to $ul%s$nu." \
+				"$install_dir_p" "$repo_dir_p"
+			call mv "$install_dir" "$repo_dir"
 		)
-		readonly LATEST_DIR_BACKUP="$LATEST_DIR-backup-pid$$"
-		[ -e "$LATEST_DIR_BACKUP" ] && ! [ -L "$LATEST_DIR_BACKUP" ] \
-			&& panic 69 "$B%s$R: ${RD}Not a symlink.${R}" \
-			            "$(pphome "$LATEST_DIR_BACKUP")"
-		cp -PR "$LATEST_DIR" "$LATEST_DIR_BACKUP"
-		mv "$LATEST_DIR" "$LATEST_DIR_BACKUP"
-		EX="restore_prev_latest; ${EX-}"
-		CLEANUP="[ -L \"\$LATEST_DIR_BACKUP\" ] && \
-		                 rm -- \"\$LATEST_DIR_BACKUP\"; \
-			 ${CLEANUP-}"
-	else
-		remove_latest() {
-			[ -L "$LATEST_DIR" ] || return
-			warn "Removing $B%s$R." "$(pphome "$LATEST_DIR")"
-			rm -- "$LATEST_DIR"
-		}
-		EX="remove_latest; ${EX-}"
+
+		ex="mv_repo_back; ${ex-}"
+		warn "moving $ul$repo_dir_p$nu to $ul$install_dir_p$nu."
+		call mv -- "$repo_dir" "$install_dir"
 	fi
-	ln -fs "$REPO" "$LATEST_DIR"
+
+	# Switch to filters directory.
+	call cd -P -- "$pandoc_filters_dir" || exit 69
+
+	# Symlink the script.
+	if [ -e "$filter" ] || [ -L "$filter" ]; then
+		rm_link_bak() {
+			[ "${link_backed-}" ] || return
+			bak="$pandoc_filters_dir/$filter_bak"
+			[ -L "$bak" ] || return 0
+			call rm -- "$bak"
+		}
+
+		restore_link() (
+			[ "${link_backed-}" ] || return
+			bak="$pandoc_filters_dir/$filter_bak"
+			link="$pandoc_filters_dir/$filter"
+			# shellcheck disable=2030
+			[ "${filter_linked-}" ] || return 0
+			warn "restoring previous symlink $ul$filter$nu."
+			call cp -PR -- "$bak" "$link"
+		)
+
+		if [ -f "$filter_bak" ]; then
+			ex_other "$ul$filter_bak$nu: refusing to overwrite."
+		elif ! [ -e "$filter_bak" ]; then
+			cleanup="rm_link_bak; ${cleanup-}"
+		else
+			ex_other "$ul$filter_bak$nu: not a symlink."
+		fi
+		warn "backing up symlink to $ul$filter$nu."
+		link_backed='' sig_caught=''
+		trap_sigs catch_sig 1 2 3 15
+		call cp -PR -- "$filter" "$filter_bak" && link_backed=x
+		trap_sigs on_exit 1 2 3 15
+		[ "${sig_caught-}" ] && on_exit "$sig_caught"
+		readonly link_backed
+		ex="restore_link; ${ex-}"
+	else
+		rm_link() (
+			# shellcheck disable=2031
+			[ "${filter_linked-}" ] || return 0
+			link="$pandoc_filters_dir/$filter"
+			[ -L "$link" ] || return
+			warn "removing symlink to $ul$filter$nu."
+			rm -- "$link"
+		)
+		ex="rm_link; ${ex-}"
+	fi
+	warn "symlinking $ul$filter$nu into $ul$pandoc_filters_dir_p$nu."
+	filter_linked='' sig_caught=''
+	trap_sigs catch_sig 1 2 3 15
+	call ln -fs -- "$repo_fname/$filter" . && filter_linked=x
+	trap_sigs on_exit 1 2 3 15
+	[ "${sig_caught-}" ] && on_exit "$sig_caught"
+	readonly filter_linked
+
+	# Update the symlink to the latest version.
+	if [ "$man_accessible" ]     ||
+	   [ "$sh_rc_refs_manpath" ] ||
+	   [ "$modify_manpath" ]     ||
+	   [ -L "$latest_link" ]
+	then
+		if [ -e "$latest_link" ] || [ -L "$latest_link" ]; then
+			rm_latest_bak() {
+				bak="$pandoc_filters_dir/$latest_link_bak"
+				[ -L "$bak" ] || return 0
+				call rm -- "$bak"
+			}
+
+			restore_latest() (
+				# shellcheck disable=2030
+				[ "${repo_linked-}" ] || return 0
+				bak="$pandoc_filters_dir/$latest_link_bak"
+				link="$pandoc_filters_dir/$latest_link"
+				# shellcheck disable=2030
+				[ -L "$bak" ] || return 0
+				warn "restoring previous $ul$latest_link$nu."
+				call cp -PR -- "$bak" "$link"
+			)
+
+			if [ -d "$latest_link_bak" ]; then
+				ex_other "$ul$%s$nu: refusing to replace." \
+				         "$latest_link_bak"
+			elif ! [ -e "$latest_link_bak" ]; then
+				cleanup="rm_latest_bak; ${cleanup-}"
+			else
+				ex_other "$ul%s$nu: not a symlink." \
+				         "$latest_link_bak"
+			fi
+			warn "backing up $ul$$lastest_link$nu."
+			call cp -PR -- "$latest_link" "$latest_link_bak"
+			ex="restore_latest; ${ex-}"
+		else
+			rm_latest() (
+				# shellcheck disable=2031
+				[ "${repo_linked-}" ] || return 0
+				latest="$pandoc_filters_dir/$latest_link"
+				[ -L "$latest" ] || return 0
+				warn "removing $ul$latest_link$nu."
+				call rm -- "$latest"
+			)
+			ex="rm_latest; ${ex-}"
+		fi
+		warn "symlinking $ul$repo_dir$nu to $ul$latest_link$nu."
+		repo_linked='' sig_caught=''
+		trap_sigs catch_sig 1 2 3 15
+		call ln -fs -- "$repo_fname" "$latest_link" && repo_linked=x
+		trap_sigs on_exit 1 2 3 15
+		readonly repo_linked
+	fi
+
+	# Add the manpath to shell RC files.
+	if [ "${has_man}" ] && [ "$modify_manpath" ]; then
+		rm_sh_rc_bak() (
+			n=0
+			while [ "$n" -lt "$sh_rc_n" ]; do
+				n=$((n + 1))
+				unset sh_rc
+				var_cp "sh_rc_$n" sh_rc
+				var_cp "sh_rc_${n}_p" sh_rc_p
+				# shellcheck disable=2030
+				[ "${sh_rc-}" ] || continue
+				backup="$sh_rc$sh_rc_bak_suffix"
+				[ -e "$backup" ] || continue
+				call rm -- "$backup"
+			done
+		)
+
+		restore_sh_rc() (
+			n=0
+			while [ "$n" -lt "$sh_rc_n" ]; do
+				n=$((n + 1))
+				unset sh_rc
+				var_cp "sh_rc_$n" sh_rc
+				var_cp "sh_rc_${n}_p" sh_rc_p
+				# shellcheck disable=2030,2031
+				[ "${sh_rc-}" ] || continue
+				backup="$sh_rc$sh_rc_bak_suffix"
+				[ -e "$backup" ] || continue
+				warn "restoring original $ul%s$nu." \
+				     "${sh_rc_p-$sh_rc}"
+				call mv -- "$backup" "$sh_rc"
+			done
+		)
+
+		ex="restore_sh_rc; ${ex-}"
+		cleanup="rm_sh_rc_bak; ${cleanup-}"
+
+		n=0
+		while [ "$n" -lt "$sh_rc_n" ]; do
+			n=$((n + 1))
+			unset sh_rc
+			var_cp "sh_rc_$n" sh_rc
+			var_cp "sh_rc_${n}_p" sh_rc_p
+			# shellcheck disable=2031
+			[ "${sh_rc-}" ] || continue
+			backup="$sh_rc$sh_rc_bak_suffix"
+			# set -C makes this safe.
+			call cat <"$sh_rc" >"$backup" || exit
+			warn "modifying ${bd}MANPATH$rg in $ul%s$nu." \
+			     "${sh_rc_p-$sh_rc}"
+			# Short append writes should be atomic.
+			call printf '%s' "$manpath_rc" >>"$sh_rc"
+		done
+		unset n
+	fi
+
+	if ! [ "$quiet" ]; then
+		err "${cgre}installation complete.$ares"
+		case "$LANG" in (*.[Uu][Tt][Ff]-8) printf ' 😀'; esac
+		echo
+	fi
+
+	# Clean-up.
+	ex="${cleanup-}"
 fi
-
-
-# Cleanup.
-warn "${GR}Installation complete.$R"
-EX="${CLEANUP-}"
-
-# Ask to delete the repository.
-YN=1 PRETTY_REPO_DIR="$(pphome "$REPO_DIR")" || exit
-if [ -t 0 ] && [ -t 2 ]; then
-	yesno "${CY}Remove $B$PRETTY_REPO_DIR$R$CY?$R" yes || YN=$?
-fi
-
-case $YN in
-	(0)	warn "Removing $B%s$R." "$PRETTY_REPO_DIR"
-		rm -rf -- "$REPO_DIR" ;;
-	(1|2)	: ;;
-	(*)	warn "Did ${B}not${R} remove $B%s$R." "$PRETTY_REPO_DIR"
-esac
