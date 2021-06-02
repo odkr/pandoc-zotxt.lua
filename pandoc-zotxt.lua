@@ -160,7 +160,7 @@ NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
 -- @within Metadata
-VERSION = '1.1.0b'
+VERSION = '1.1.0b3'
 
 
 -- Operating system
@@ -510,7 +510,7 @@ do
     -- @treturn[2] string An error message.
     -- @within File I/O
     function file_locate (fname)
-        if  not rsrc_path or file_exists(fname) then return fname end
+        if not rsrc_path or file_exists(fname) then return fname end
         for i = 1, #rsrc_path do
             local f = path_join(rsrc_path[i], fname)
             if file_exists(f) then return f end
