@@ -1630,11 +1630,13 @@ do
     -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by never
     -- modifying the original element, by accepting AST elements of *any* type
     -- (including documents as a whole, the metadata block, and metadata
-    -- fields), by walking the AST bottom-up (which implies that the filter is
-    -- applied to every element, regardless of whether any of that elements's
-    -- ancestors matches it), by applying the filter to the given element
-    -- itself, and by allowing the functions in the filter to return data of
-    -- arbitrary types (as opposed to either a Pandoc AST element or `nil`).
+    -- fields), by accepting the higher-order type `AstElement`, by *not*
+    -- accepting the filter keywords `Blocks` and `Inlines`, by walking
+    -- the AST bottom-up (which implies that the filter is applied to every
+    -- element, regardless of whether any of that elements's ancestors matches
+    -- it), by applying the filter to the given element itself, and by allowing
+    -- the functions in the filter to return data of arbitrary types (as
+    -- opposed to either a Pandoc AST element or `nil`).
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
