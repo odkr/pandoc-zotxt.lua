@@ -216,7 +216,7 @@ do
     -- @raise An error if the path is the empty string.
     -- @within File I/O
     function path_split (path)
-        if path == '' then return nil, 'Path is the empty string ("").' end
+        if path == '' then return nil, 'path is the empty string ("").' end
         local dir, fname = path:match(split_pattern)
         dir = sanitise(dir)
         if     dir == ''   then dir = '.'
@@ -232,8 +232,8 @@ do
         -- Has the same function signature as `path_join`.
         -- Does not sanitise the path it returns.
         local function join (a, b, ...)
-            assert(type(a == 'string'), 'Path segment is not a string.')
-            assert(a ~= '', 'Path segment is the empty string.')
+            assert(type(a == 'string'), 'path segment is not a string.')
+            assert(a ~= '', 'path segment is the empty string.')
             if not b then return a end
             return a .. PATH_SEP .. path_join(b, ...)
         end
@@ -387,7 +387,7 @@ function rmap (func, data, _rd)
     if not _rd then _rd = 0
                else _rd = _rd + 1
     end
-    assert(_rd < 512, 'Too much recursion.')
+    assert(_rd < 512, 'too much recursion.')
     local ret = {}
     local k = next(data, nil)
     while k ~= nil do
@@ -414,7 +414,7 @@ do
     -- @within Table manipulation
     function lower_keys (tab, _rd)
         if not _rd then _rd = 0 end
-        assert(_rd < 512, 'Too much recursion.')
+        assert(_rd < 512, 'too much recursion.')
         local ret = {}
         for k, v in pairs(tab) do
             if type(k) == 'string' then k = lower(k)               end
@@ -459,7 +459,7 @@ end
 -- @raise An error if the path is the empty string ('').
 -- @within File I/O
 function path_is_abs (path)
-    assert(path ~= '', 'Path is the empty string ("").')
+    assert(path ~= '', 'path is the empty string ("").')
     if PATH_SEP == '\\' and path:match '^.:\\' then return true end
     return path:match('^' .. PATH_SEP) ~= nil
 end
@@ -489,7 +489,7 @@ end
 -- @treturn[2] int The error number 2.
 -- @within File I/O
 function file_exists (fname)
-    assert(fname ~= '', 'Filename is the empty string ("").')
+    assert(fname ~= '', 'filename is the empty string ("").')
     local file, err, errno = io.open(fname, 'r')
     if not file then return nil, err, errno end
     assert(file:close())
@@ -515,7 +515,7 @@ do
             local f = path_join(rsrc_path[i], fname)
             if file_exists(f) then return f end
         end
-        return nil, fname .. ': Not found in resource path.'
+        return nil, fname .. ': not found in resource path.'
     end
 end
 
@@ -540,36 +540,68 @@ function file_read (fname)
 end
 
 
---- Write data to a file.
---
--- The data is first written to a temporary file,
--- that file is then renamed to the given name.
--- If the file exists, it is overwritten.
--- Tries to print a warning to STDERR if that happens
---
--- @string fname The name of the file.
--- @string ... The data.
--- @treturn[1] bool `true` if the data was written to the given file.
--- @treturn[2] nil `nil` if an error occurred.
--- @treturn[2] string An error message.
--- @treturn[2] int An error number.
--- @within File I/O
-function file_write (fname, ...)
-    assert(fname ~= '', 'Filename is the empty string.')
-    local tmp, ok, err, errno
-    tmp, err, errno = tmp_file(path_split(fname), nil)
-    if not tmp then return nil, err, errno end
-    ok, err, errno = tmp.file:write(...)
-    if not ok then return nil, err, errno end
-    ok, err, errno = tmp.file:flush()
-    if not ok then return nil, err, errno end
-    ok, err, errno = tmp.file:close()
-    if not ok then return nil, err, errno end
-    if file_exists(fname) then warnf('Updating %s.', fname) end
-    ok, err, errno = os.rename(tmp.fname, fname)
-    if not ok then return nil, err, errno end
-    tmp.fname = nil
-    return true
+do
+    local pack = table.pack
+    local with_temporary_directory = pandoc.system.with_temporary_directory
+    local get_working_directory = pandoc.system.get_working_directory
+
+    -- FIXME
+    local function path_mk_abs (fname)
+        if path_is_abs(fname) then return fname end
+        return path_join(get_working_directory(), fname)
+    end
+
+    -- FIXME
+    local function write_file (tmp_dir, fname, ...)
+        assert(fname ~= '', 'filename is the empty string.')
+        local tmp, ok, err, errno
+        tmp, err, errno = tmp_file(tmp_dir)
+        if not tmp then return nil, err, errno end
+        ok, err, errno = tmp.file:write(...)
+        if not ok then return nil, err, errno end
+        ok, err, errno = tmp.file:flush()
+        if not ok then return nil, err, errno end
+        ok, err, errno = tmp.file:close()
+        if not ok then return nil, err, errno end
+        if file_exists(fname) then warnf('updating %s.', fname) end
+        ok, err, errno = os.rename(tmp.fname, fname)
+        if not ok then return nil, err, errno end
+        tmp.fname = nil
+        return true
+    end
+
+    --- Write data to a file.
+    --
+    -- The data is first written to a temporary file,
+    -- that file is then renamed to the given name.
+    -- If the file exists, it is overwritten.
+    -- Tries to print a warning to STDERR if that happens
+    --
+    -- @string fname The name of the file.
+    -- @string ... The data.
+    -- @treturn[1] bool `true` if the data was written to the given file.
+    -- @treturn[2] nil `nil` if an error occurred.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number.
+    -- @within File I/O
+    function file_write(fname, ...)
+        assert(fname ~= '', 'filename is the empty string.')
+        -- luacheck: ignore fname
+        local fname = path_mk_abs(fname)
+        local dir = path_split(fname)
+        local data = pack(...)
+        return with_temporary_directory(dir, '', function (tmp_dir)
+            return write_file(tmp_dir, fname, unpack(data))
+        end)
+    end
+
+    if not pandoc.types or PANDOC_VERSION < {2, 8} then
+        function file_write (fname, ...)
+            assert(fname ~= '', 'filename is the empty string.')
+            local dir = path_split(fname)
+            return write_file(dir, fname, ...)
+        end
+    end
 end
 
 
@@ -619,14 +651,14 @@ do
             templ = 'tmp-XXXXXXXXXX'
         else
             assert(type(templ) == 'string')
-            assert(templ ~= '', 'Template is the empty string.')
+            assert(templ ~= '', 'template is the empty string.')
             local nxs = 0
             for _ in templ:gmatch 'X' do nxs = nxs + 1 end
-            assert(nxs >= 6, 'Template must contain at least six "X"s.')
+            assert(nxs >= 6, 'template must contain at least six "X"s.')
         end
         if dir ~= nil then
             assert(type(dir) == 'string')
-            assert(dir ~= '', 'Directory is the empty string.')
+            assert(dir ~= '', 'directory is the empty string.')
             templ = path_join(dir, templ)
         end
         for _ = 1, 1024 do
@@ -637,7 +669,7 @@ do
             end
             if not file_exists(fname) then return fname end
         end
-        return nil, 'Could not find an unused filename.'
+        return nil, 'no unused filename.'
     end
 end
 
@@ -662,6 +694,7 @@ do
         end
     end
 
+
     --- Create a temporary file.
     --
     -- The temporary file is removed when its file handle/filename pair is
@@ -670,8 +703,8 @@ do
     -- If you call `os.exit` tell it to close the Lua state, so that Lua runs
     -- the garbage collector before exiting the script.
     --
-    -- Tries not to overwrite existing files. This is subject to
-    -- race conditions; there is no Lua equivalent to `O_CREAT | O_EXCL`.
+    -- Tries not to overwrite existing files. This is subject to race
+    -- conditions. There is no Lua equivalent to `O_CREAT | O_EXCL`.
     --
     -- @param ... Takes the same arguments as `tmp_fname`.
     --
@@ -962,7 +995,7 @@ do
     -- @within Converters
     function yamlify (data, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
-        assert(_rd < 1024, 'Too much recursion.')
+        assert(_rd < 1024, 'too much recursion.')
         if not ind then ind = 4 end
         local t = type(data)
         if t == 'number' then
@@ -989,10 +1022,11 @@ do
                 local i = 0
                 for k, v in sorted_pairs(data, sort_f) do
                     i = i + 1
+                    -- @fixme scalarify should do that
                     if type(k) == 'number' then k = tostring(k) end
                     local kt = type(k)
                     assert(kt == 'string',
-                           kt .. ': Cannot be expressed in YAML.')
+                           kt .. ': cannot be expressed in YAML.')
                     k = scalarify(k)
                     if i > 1 then ret = ret .. sp end
                     ret = ret .. k .. ':'
@@ -1006,7 +1040,7 @@ do
             end
             return ret
         else
-            error(t .. ': Cannot be expressed in YAML.')
+            error(t .. ': cannot be expressed in YAML.')
         end
     end
 end
@@ -1041,7 +1075,7 @@ do
     -- @within Converters
     function html_to_md (html)
         if type(html) ~= 'string' then
-            return nil, 'Pseudo-HTML code is not a string.'
+            return nil, 'pseudo-HTML code is not a string.'
         end
         local sc_replaced = conv_sc_to_span(html)
         local doc = pandoc.read(sc_replaced, 'html')
@@ -1116,7 +1150,7 @@ do
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
             local ok, mt, data = pcall(url_read, query_url)
-            assert(ok, 'Could not get data from Zotero.')
+            assert(ok, 'could not retrieve data from Zotero.')
             assert(mt or match(mt, utf8_p),
                    'zotxt response is not encoded in UTF-8.')
             if mt ~= '' then
@@ -1130,7 +1164,7 @@ do
                 end
             end
         end
-        return nil, id .. ': Not found.'
+        return nil, id .. ': not found.'
     end
 
 
@@ -1414,7 +1448,7 @@ function csl_items_ids (items)
         local t = type(id)
         if     t == 'string' then ids[id] = true
         elseif t == 'table'  then ids[stringify(id)] = true
-        elseif t ~= 'nil'    then error 'Cannot parse ID of item.'
+        elseif t ~= 'nil'    then error 'cannot parse ID of item.'
         end
     end
     return ids
@@ -1433,13 +1467,13 @@ end
 -- @treturn[2] ?int An error number if the error is an I/O error.
 -- @within Bibliography files
 function biblio_read (fname)
-    assert(fname ~= '', 'Filename is the empty string')
+    assert(fname ~= '', 'filename is the empty string')
     local suffix = fname:match '%.(%w+)$'
-    if not suffix then return nil, fname .. ': No filename suffix.' end
+    if not suffix then return nil, fname .. ': no filename suffix.' end
     local codec = BIBLIO_TYPES[suffix]
-    if not codec then return nil, fname .. ': Unsupported format.' end
+    if not codec then return nil, fname .. ': unsupported format.' end
     local decode = codec.decode
-    if not decode then return nil, fname .. ': Cannot parse format.' end
+    if not decode then return nil, fname .. ': cannot parse format.' end
     local str, err, errno = file_read(fname)
     if not str then return nil, err, errno end
     local ok, ret = pcall(decode, str)
@@ -1467,13 +1501,13 @@ end
 -- @within Bibliography files
 function biblio_write (fname, items)
     -- luacheck: ignore ok
-    assert(fname ~= '', 'Filename is the empty string')
+    assert(fname ~= '', 'filename is the empty string')
     local suffix = fname:match '%.(%w+)$'
-    if not suffix then return nil, fname .. ': No filename suffix.' end
+    if not suffix then return nil, fname .. ': no filename suffix.' end
     local codec = BIBLIO_TYPES[suffix]
-    if not codec then return nil, fname .. ': Unsupported format.' end
+    if not codec then return nil, fname .. ': unsupported format.' end
     local encode = codec.encode
-    if not encode then return nil, fname .. ': Cannot write format.' end
+    if not encode then return nil, fname .. ': cannot write format.' end
     if not items or #items == 0 then return suffix end
     local ok, ret = pcall(encode, items)
     if not ok then return nil, fname .. ': ' .. tostring(ret) end
@@ -1481,8 +1515,6 @@ function biblio_write (fname, items)
     if not ok then return nil, err, errno end
     return suffix
 end
-
-
 
 
 --- Add items from Zotero to a bibliography file.
@@ -1511,7 +1543,7 @@ function biblio_update (fname, ids)
     -- @todo Remove this warning once the script has been dogfooded,
     -- and was out in the open for a while.
     if fmt == 'yaml' or fmt == 'yml' then
-        warnf 'YAML bibliography file support is EXPERIMENTAL!'
+        warnf 'YAML bibliography file support is experimental!'
     end
     local items, err, errno = biblio_read(fname)
     if not items then
@@ -1647,7 +1679,7 @@ do
         if not _rd then _rd = 0
                    else _rd = _rd + 1
         end
-        assert(_rd < 512, 'Too much recursion.')
+        assert(_rd < 512, 'too much recursion.')
         if _rd == 0 then elem = copy(elem) end
         local ts = pack(elem_type(elem))
         if ts.n == 0 then return elem end
@@ -1689,7 +1721,7 @@ function meta_sources (meta)
         elseif bibliography.tag == 'MetaList' then
             fnames = bibliography:map(stringify)
         else
-            errf 'Cannot parse metadata field "bibliography".'
+            errf 'cannot parse metadata field "bibliography".'
             return ret
         end
         for i = 1, #fnames do
@@ -1781,9 +1813,9 @@ function add_biblio (meta, ckeys)
     if meta['zotero-bibliography'] == nil then return end
     local ok, fname = pcall(stringify, meta['zotero-bibliography'])
     if not ok or not fname then
-        return nil, 'zotero-bibliography: Not a filename.'
+        return nil, 'zotero-bibliography: not a filename.'
     elseif fname == '' then
-        return nil, 'zotero-bibliography: Filename is the empty string ("").'
+        return nil, 'zotero-bibliography: filename is the empty string ("").'
     end
     if not path_is_abs(fname) then fname = path_join(wd(), fname) end
     local ok, err = biblio_update(fname, ckeys)
