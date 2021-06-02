@@ -1656,8 +1656,8 @@ do
         if not _rd then _rd = 0
                    else _rd = _rd + 1
         end
-        if _rd == 0 then elem = copy(elem) end
         assert(_rd < 512, 'Too much recursion.')
+        if _rd == 0 then elem = copy(elem) end
         local ts = pack(elem_type(elem))
         if ts.n == 0 then return elem end
         local walker_f = walker_fs[ts[1]]
