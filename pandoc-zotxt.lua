@@ -1484,75 +1484,64 @@ end
 
 
 
-do
-    -- Recursively convert Zotero pseudo-HTML to Pandoc Markdown.
-    --
-    -- [Citeproc](https://github.com/jgm/citeproc) appears to recognise
-    -- formatting in *every* CSL field, so `pandoc-zotxt.lua` does the same.
-    --
-    -- @tab item A CSL item.
-    -- @treturn tab The CSL item, with pseudo-HTML replaced with Markdown.
-    -- @see html_to_md
-    -- @within Converters
-    local function zotfmt_to_pdfmt (item)
-        return rmap(html_to_md, item)
-    end
 
-    --- Add items from Zotero to a bibliography file.
-    --
-    -- If an item is already in the bibliography file, it won't be added again.
-    -- Prints a warning to STDERR if it overwrites an existing file.
-    -- Also prints an error to STDERR for every item that cannot be found.
-    --
-    -- @string fname The name of the bibliography file.
-    -- @tab ids The IDs of the items that should be added,
-    --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
-    -- @treturn[1] bool `true` if the file was updated or no update was required.
-    -- @treturn[2] nil `nil` if an error occurrs.
-    -- @treturn[2] string An error message.
-    -- @treturn[2] ?int An error number if the error is a file I/O error.
-    -- @raise See `zotxt_csl_item`.
-    -- @within Bibliography files
-    function biblio_update (fname, ids)
-        -- luacheck: ignore ok fmt err errno
-        if #ids == 0 then return true end
-        local fmt, err = biblio_write(fname)
-        if not fmt then return nil, err end
-        -- @todo Remove this warning once the script has been dogfooded,
-        -- and was out in the open for a while.
-        if fmt == 'yaml' or fmt == 'yml' then
-            warnf 'YAML bibliography file support is EXPERIMENTAL!'
-        end
-        local items, err, errno = biblio_read(fname)
-        if not items then
-            if errno ~= 2 then return nil, err, errno end
-            items = {}
-        end
-        local item_ids = csl_items_ids(items)
-        local nitems = #items
-        local n = nitems
-        for i = 1, #ids do
-            local id = ids[i]
-            if not item_ids[id] then
-                local ok, ret, err = pcall(zotxt_csl_item, id)
-                if not ok then
-                    return nil, ret
-                elseif ret then
-                    if fmt == 'yaml' or fmt == 'yml' then
-                        ret = zotfmt_to_pdfmt(ret)
-                    end
-                    n = n + 1
-                    items[n] = lower_keys(ret)
-                else
-                    errf(err)
+--- Add items from Zotero to a bibliography file.
+--
+-- If an item is already in the bibliography file, it won't be added again.
+-- Prints a warning to STDERR if it overwrites an existing file.
+-- Also prints errors to STDERR if items cannot be found.
+--
+-- [Citeproc](https://github.com/jgm/citeproc) appears to recognise
+-- formatting in *every* CSL field, so `pandoc-zotxt.lua` does the same.
+--
+-- @string fname The name of the bibliography file.
+-- @tab ids The IDs of the items that should be added,
+--  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
+-- @treturn[1] bool `true` if the file was updated or no update was required.
+-- @treturn[2] nil `nil` if an error occurrs.
+-- @treturn[2] string An error message.
+-- @treturn[2] ?int An error number if the error is a file I/O error.
+-- @raise See `zotxt_csl_item`.
+-- @within Bibliography files
+function biblio_update (fname, ids)
+    -- luacheck: ignore ok fmt err errno
+    if #ids == 0 then return true end
+    local fmt, err = biblio_write(fname)
+    if not fmt then return nil, err end
+    -- @todo Remove this warning once the script has been dogfooded,
+    -- and was out in the open for a while.
+    if fmt == 'yaml' or fmt == 'yml' then
+        warnf 'YAML bibliography file support is EXPERIMENTAL!'
+    end
+    local items, err, errno = biblio_read(fname)
+    if not items then
+        if errno ~= 2 then return nil, err, errno end
+        items = {}
+    end
+    local item_ids = csl_items_ids(items)
+    local nitems = #items
+    local n = nitems
+    for i = 1, #ids do
+        local id = ids[i]
+        if not item_ids[id] then
+            local ok, ret, err = pcall(zotxt_csl_item, id)
+            if not ok then
+                return nil, ret
+            elseif ret then
+                if fmt == 'yaml' or fmt == 'yml' then
+                    ret = rmap(html_to_md, ret)
                 end
+                n = n + 1
+                items[n] = lower_keys(ret)
+            else
+                errf(err)
             end
         end
-        if (n == nitems) then return true end
-        fmt, err, errno = biblio_write(fname, items)
-        if not fmt then return nil, err, errno end
-        return true
     end
+    if (n == nitems) then return true end
+    fmt, err, errno = biblio_write(fname, items)
+    if not fmt then return nil, err, errno end
+    return true
 end
 
 
