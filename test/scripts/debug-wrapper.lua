@@ -108,9 +108,8 @@ function M.url_read (url)
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     M.warnf('%s -> %s', url, hash)
     local path = M.path_join(CAN_DIR, hash)
-    local data, err, errno = M.file_read(path)
-    if not data then return nil, err, errno end
-    return 'text/plain; charset=utf-8', data
+    local data = M.file_read(path)
+    return 'text/plain; charset=utf-8', data or '<not found>'
 end
 
 return M

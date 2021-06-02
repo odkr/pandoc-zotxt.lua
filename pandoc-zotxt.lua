@@ -1115,10 +1115,12 @@ do
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
-            local mt, data = url_read(query_url)
-            if mt and mt ~= '' then
-                assert(match(mt, utf8_p),
-                       'Data retrieved from zotxt is not encoded in UTF-8.')
+            local ok, mt, data = pcall(url_read, query_url)
+            assert(ok, 'Could not get data from Zotero.')
+            assert(mt or match(mt, utf8_p),
+                   'zotxt response is not encoded in UTF-8.')
+            if mt ~= '' then
+                -- luacheck: ignore ok
                 local ok, item = pcall(parse_f, data, mt)
                 if ok then
                     if i ~= 1 then
@@ -1440,9 +1442,9 @@ function biblio_read (fname)
     if not decode then return nil, fname .. ': Cannot parse format.' end
     local str, err, errno = file_read(fname)
     if not str then return nil, err, errno end
-    local ok, items = pcall(decode, str)
-    if not ok then return nil, fname ..  ': Parse error.' end
-    return items
+    local ok, ret = pcall(decode, str)
+    if not ok then return nil, fname ..  ': ' .. tostring(ret) end
+    return ret
 end
 
 
@@ -1473,9 +1475,9 @@ function biblio_write (fname, items)
     local encode = codec.encode
     if not encode then return nil, fname .. ': Cannot write format.' end
     if not items or #items == 0 then return suffix end
-    local ok, str = pcall(encode, items)
-    if not ok then return nil, fname .. ': Serialisation error.' end
-    local ok, err, errno = file_write(fname, str, EOL)
+    local ok, ret = pcall(encode, items)
+    if not ok then return nil, fname .. ': ' .. tostring(ret) end
+    local ok, err, errno = file_write(fname, ret, EOL)
     if not ok then return nil, err, errno end
     return suffix
 end
