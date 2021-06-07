@@ -35,6 +35,7 @@ BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
 		   test-nocite test-merge \
 		   test-dup-biblio-bib test-dup-biblio-yaml \
 		   test-ex-simple test-ex-biblio \
+		   test-new-cite-syntax \
 		   $(ISSUE_TESTS)
 
 OTHER_TESTS	:= test-resource-path
@@ -45,24 +46,26 @@ OTHER_TESTS	:= test-resource-path
 
 test: unit-tests behaviour-tests $(OTHER_TESTS)
 
+clean:
+	@[ -d "$(TMP_DIR)" ] && $(RM) "$(TMP_DIR)"/*
+
 behaviour-tests: $(BEHAVIOUR_TESTS)
 
 install-luaunit:
-	[ -e share/lua/*/luaunit.lua ] || \
+	@[ -e share/lua/*/luaunit.lua ] || \
 		luarocks install --tree=. luaunit
 
-prepare-tmpdir:
-	mkdir -p "$(TMP_DIR)"
-	$(RM) "$(TMP_DIR)"/*
-	cp "$(DATA_DIR)/bibliography.json" \
+prepare-tmpdir: clean
+	@mkdir -p "$(TMP_DIR)"
+	@cp "$(DATA_DIR)/bibliography.json" \
 	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
-	"$(PANDOC)" --quiet --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
+	@"$(PANDOC)" --quiet --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
 		--from markdown --to plain -o /dev/null </dev/null
 
 $(BEHAVIOUR_TESTS): prepare-tmpdir
-	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
+	@if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		--from markdown --to plain /dev/null >/dev/null 2>&1; \
 	then \
 		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
@@ -77,7 +80,7 @@ $(BEHAVIOUR_TESTS): prepare-tmpdir
 	fi
 
 test-resource-path:
-	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
+	@if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
 		--from markdown --to plain /dev/null >/dev/null 2>&1; \
 	then \
 		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
@@ -107,6 +110,6 @@ man:
 ldoc:
 	ldoc -c ldoc/config.ld .
 
-.PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
+.PHONY: clean install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
 	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
 	prologue man developer-documenation ldoc
