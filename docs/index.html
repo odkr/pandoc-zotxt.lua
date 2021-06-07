@@ -32,6 +32,7 @@
 <li><a href="#Metadata">Metadata</a></li>
 <li><a href="#File_I_O">File I/O</a></li>
 <li><a href="#Warnings">Warnings</a></li>
+<li><a href="#Higher_order_functions">Higher-order functions</a></li>
 <li><a href="#Table_manipulation">Table manipulation</a></li>
 <li><a href="#Networking">Networking</a></li>
 <li><a href="#Converters">Converters</a></li>
@@ -188,8 +189,12 @@ EOF
 	<td class="summary">The end of line sequence of the OS.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#path_sanitise">path_sanitise (path)</a></td>
+	<td class="summary">Sanitise a path.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#path_split">path_split (path)</a></td>
-	<td class="summary">Split a file&rsquo;s path into a directory and a filename part.</td>
+	<td class="summary">Split a path into a directory and a filename.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#path_join">path_join (...)</a></td>
@@ -198,6 +203,10 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#path_is_abs">path_is_abs (path)</a></td>
 	<td class="summary">Check whether a path is absolute.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#path_prettify">path_prettify (path)</a></td>
+	<td class="summary">Prettify Unix paths.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#wd">wd ()</a></td>
@@ -220,12 +229,12 @@ EOF
 	<td class="summary">Write data to a file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='tmp-XXXXXXXXXX']])</a></td>
+	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='pdz-XXXXXXXXXX']])</a></td>
 	<td class="summary">Generate a name for a temporary file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tmp_file">tmp_file (...)</a></td>
-	<td class="summary">Create a temporary file.</td>
+	<td class="name" nowrap><a href="#with_tmp_file">with_tmp_file ([dir[, templ='pdz-XXXXXXXXXX']], func, ...)</a></td>
+	<td class="summary">Run a function with a temporary file.</td>
 	</tr>
 </table>
 <h2><a href="#Warnings">Warnings</a></h2>
@@ -237,6 +246,13 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#warnf">warnf (...)</a></td>
 	<td class="summary">Print a warning to STDERR.</td>
+	</tr>
+</table>
+<h2><a href="#Higher_order_functions">Higher-order functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#do_after">do_after (ex, func, ...)</a></td>
+	<td class="summary">Run cleanup code after a function.</td>
 	</tr>
 </table>
 <h2><a href="#Table_manipulation">Table manipulation</a></h2>
@@ -281,7 +297,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#yamlify">yamlify (data[, ind=4[, sort_f]])</a></td>
-	<td class="summary">Generate a YAML representation of some data.</td>
+	<td class="summary">Generate a YAML representation of a data tree.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#html_to_md">html_to_md (html)</a></td>
@@ -393,7 +409,7 @@ EOF
 	<td class="summary">Collect sources from the document&rsquo;s metadata block.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#doc_ckeys">doc_ckeys (doc[, flags])</a></td>
+	<td class="name" nowrap><a href="#doc_ckeys">doc_ckeys (doc[, undef=false])</a></td>
 	<td class="summary">Collect the citation keys used in a document.</td>
 	</tr>
 </table>
@@ -509,11 +525,38 @@ EOF
 
 </dd>
     <dt>
+    <a name = "path_sanitise"></a>
+    <strong>path_sanitise (path)</strong>
+    </dt>
+    <dd>
+    Sanitise a path.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         The path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A sanitised path.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "path_split"></a>
     <strong>path_split (path)</strong>
     </dt>
     <dd>
-    Split a file&rsquo;s path into a directory and a filename part.
+    Split a path into a directory and a filename.
 
 
     <h3>Parameters:</h3>
@@ -604,6 +647,37 @@ EOF
 
     <h3>Raises:</h3>
     An error if the path is the empty string (&lsquo;&rsquo;).
+
+
+
+</dd>
+    <dt>
+    <a name = "path_prettify"></a>
+    <strong>path_prettify (path)</strong>
+    </dt>
+    <dd>
+    Prettify Unix paths.</p>
+
+<p> Replaces the user&rsquo;s home directory with &lsquo;~&rsquo;,
+ but only if it&rsquo;s followed by a Unix path seperator (&lsquo;/&rsquo;).
+ Trusts the <code>HOME</code> environment variable.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A prettier path.
+    </ol>
+
 
 
 
@@ -752,10 +826,17 @@ EOF
     <dd>
     Write data to a file.</p>
 
-<p> The data is first written to a temporary file,
- that file is then renamed to the given name.
- If the file exists, it is overwritten.
- Tries to print a warning to STDERR if that happens
+<p> If a file of that name already exists, it is overwritten.
+ <a href="index.html#file_write">file_write</a> <em>tries</em> to print a warning to STDERR if that happens,
+ but another process may create a file between the time <a href="index.html#file_write">file_write</a>
+ checks whether a filename is in use and the time it starts writing.</p>
+
+<p> Prints warnings and errors to STDERR.</p>
+
+<p> <strong>Caveats:</strong> Data is first written to a temporary file, that file is
+ then renamed to the given filename. This is safe and secure starting
+ with Pandoc v2.8. If you are using an older version of Pandoc, then
+ the caveats of <a href="index.html#with_tmp_file">with_tmp_file</a> apply.
 
 
     <h3>Parameters:</h3>
@@ -795,7 +876,7 @@ EOF
 </dd>
     <dt>
     <a name = "tmp_fname"></a>
-    <strong>tmp_fname ([dir[, templ='tmp-XXXXXXXXXX']])</strong>
+    <strong>tmp_fname ([dir[, templ='pdz-XXXXXXXXXX']])</strong>
     </dt>
     <dd>
     Generate a name for a temporary file.</p>
@@ -809,7 +890,7 @@ EOF
         <li><span class="parameter">dir</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A directory to prefix the filename with.
-  Cannot be the empty string (&lsquo;&rsquo;).
+  Must not be the empty string (&lsquo;&rsquo;).
          (<em>optional</em>)
         </li>
         <li><span class="parameter">templ</span>
@@ -817,7 +898,7 @@ EOF
          A template for the filename.
   &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
   Must contain at least six 'X&rsquo;s.
-         (<em>default</em> 'tmp-XXXXXXXXXX')
+         (<em>default</em> 'pdz-XXXXXXXXXX')
         </li>
     </ul>
 
@@ -845,75 +926,63 @@ EOF
 
 </dd>
     <dt>
-    <a name = "tmp_file"></a>
-    <strong>tmp_file (...)</strong>
+    <a name = "with_tmp_file"></a>
+    <strong>with_tmp_file ([dir[, templ='pdz-XXXXXXXXXX']], func, ...)</strong>
     </dt>
     <dd>
-    Create a temporary file.</p>
+    Run a function with a temporary file.</p>
 
-<p> The temporary file is removed when its file handle/filename pair is
- garbage-collected. If the file should <em>not</em> be removed, set <code>fname</code>
- to <code>nil</code>. Prints errors that occur during garbage collection to STDERR.
- If you call <a href="https://www.lua.org/manual/5.1/manual.html#pdf-os.exit">os.exit</a> tell it to close the Lua state, so that Lua runs
- the garbage collector before exiting the script.</p>
+<p> If the function raises an error or returns <code>nil</code> or <code>false</code>, then the
+ temporary file is deleted. Prints an error to STDERR if the file could
+ not be removed.</p>
 
-<p> Tries not to overwrite existing files. This is subject to race
- conditions. There is no Lua equivalent to <code>O_CREAT | O_EXCL</code>.
+<p> The function passed to <a href="index.html#with_tmp_file">with_tmp_file</a> must <em>not</em> change the working
+ directory, say, by invoking, <code>pandoc.system.with_working_directory</code>.
+ This could cause an abitrary file to be deleted instead of the
+ temporary one; it could also cause the automatic deletion of the
+ temporary file to fail.</p>
+
+<p> <strong>Caveats:</strong> Any temporary file you <a href="https://www.lua.org/manual/5.1/manual.html#pdf-io.open">io.open</a> may have been created
+ by <em>another</em> process. If you create a temporary file in a directory
+ that others users have write access to, <code>/tmp</code>, for example, then
+ this is a security issue.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">dir</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A directory to prefix the name of the temporary file with.
+  Must not be the empty string (&lsquo;&rsquo;). See <a href="index.html#tmp_fname">tmp_fname</a>.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">templ</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A template for the name of the temporary file.
+  &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
+  Must contain at least six 'X&rsquo;s. See <a href="index.html#tmp_fname">tmp_fname</a>.
+         (<em>default</em> 'pdz-XXXXXXXXXX')
+        </li>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">func</span></span>
+         The function to run.
+  Passed the name of the temporary file as first argument.
+        </li>
         <li><span class="parameter">...</span>
-         Takes the same arguments as <a href="index.html#tmp_fname">tmp_fname</a>.
+         Passed on to <code>func</code>.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{file=FILE*,fname=string}</span></span>
-        A file handle/filename pair.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if an error occurs.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-        <li>
-           <span class="types">optional <span class="type">int</span></span>
-        An error number if the error is an I/O error.</li>
+        The values that <code>func</code> returns.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#tmp_fname">tmp_fname</a>.
+    An error if <code>func</code> raises an error.
 
 
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example"><span class="keyword">do</span>
-    <span class="keyword">local</span> tmp, ok, err
-    <span class="comment">-- Create the file.
-</span>    tmp, err = tmp_file()
-    <span class="keyword">if</span> tmp <span class="keyword">then</span>
-        ok, err = tmp.file:write(data)
-        <span class="keyword">if</span> ok <span class="keyword">then</span> ok, err = tmp.file:close() <span class="keyword">end</span>
-        <span class="keyword">if</span> ok <span class="keyword">then</span> ok, err = <span class="global">os</span>.rename(tmp.fname, fname) <span class="keyword">end</span>
-        <span class="keyword">if</span> ok <span class="keyword">then</span>
-            <span class="comment">-- Disable deletion (which would fail).
-</span>            tmp.fname = <span class="keyword">nil</span>
-        <span class="keyword">else</span>
-            <span class="global">print</span>(err)
-        <span class="keyword">end</span>
-    <span class="keyword">else</span>
-        <span class="global">print</span>(err)
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-<span class="comment">-- If <code>tmp.fname</code> has not been set to nil, then the garbage
-</span><span class="comment">-- collector deletes the file after (not "at") this point.</span></pre>
-    </ul>
 
 </dd>
 </dl>
@@ -965,6 +1034,51 @@ EOF
     </ul>
 
 
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Higher_order_functions"></a>Higher-order functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "do_after"></a>
+    <strong>do_after (ex, func, ...)</strong>
+    </dt>
+    <dd>
+    Run cleanup code after a function.</p>
+
+<p> The cleanup code runs regardless of whether an error occurs
+ in the function. But Lua filters cannot respond to signals,
+ so it is <em>not</em> run if Pandoc exits because of a signal.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ex</span>
+            <span class="types"><span class="type">func</span></span>
+         The cleanup code. Its first argument indicates whether
+  the protected call to <code>func</code> exited with an error. The remaining
+  arguments are the values returned by <code>func</code>.
+        </li>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">func</span></span>
+         The code itself. Called in protected mode.
+        </li>
+        <li><span class="parameter">...</span>
+         Passed on to <code>func</code>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        The values that <code>func</code> returns.
+    </ol>
+
+    <h3>Raises:</h3>
+    An error if <code>func</code> raises an error.
 
 
 
@@ -1243,10 +1357,9 @@ EOF
     <strong>yamlify (data[, ind=4[, sort_f]])</strong>
     </dt>
     <dd>
-    Generate a YAML representation of some data.</p>
+    Generate a YAML representation of a data tree.</p>
 
-<p> Uses <a href="index.html#EOL">EOL</a> to end lines.
- Only parses UTF-8 encoded strings.
+<p> Uses <a href="index.html#EOL">EOL</a> to end lines. Only parses UTF-8 encoded strings.
  Strings in other encodings will be mangled.
  Does <em>not</em> escape <em>all</em> non-printable characters (because Unicode).
 
@@ -1932,9 +2045,7 @@ EOF
 
 <p> The filename suffix determins what format the data is written as.
  There must be an encoder for that suffix in <a href="index.html#BIBLIO_TYPES">BIBLIO_TYPES</a>.
- If the file exists, it is overwritten.
- Tries to print a warning to STDERR if that happens.
- Ends every file with <a href="index.html#EOL">EOL</a>.
+ Ends every file with <a href="index.html#EOL">EOL</a>. The caveats of <a href="index.html#file_write">file_write</a> apply.
 
 
     <h3>Parameters:</h3>
@@ -1984,11 +2095,12 @@ EOF
     Add items from Zotero to a bibliography file.</p>
 
 <p> If an item is already in the bibliography file, it won&rsquo;t be added again.
- Prints a warning to STDERR if it overwrites an existing file.
- Also prints errors to STDERR if items cannot be found.</p>
+ Prints errors to STDERR if items cannot be found.</p>
 
 <p> <a href="https://github.com/jgm/citeproc">Citeproc</a> appears to recognise
- formatting in <em>every</em> CSL field, so <a href="index.html#">pandoc-zotxt.lua</a> does the same.
+ formatting in <em>every</em> CSL field, so <a href="index.html#">pandoc-zotxt.lua</a> does the same.</p>
+
+<p> The caveats of <a href="index.html#file_write">file_write</a> apply.
 
 
     <h3>Parameters:</h3>
@@ -2149,7 +2261,7 @@ EOF
 </dd>
     <dt>
     <a name = "doc_ckeys"></a>
-    <strong>doc_ckeys (doc[, flags])</strong>
+    <strong>doc_ckeys (doc[, undef=false])</strong>
     </dt>
     <dd>
     Collect the citation keys used in a document.</p>
@@ -2163,12 +2275,12 @@ EOF
             <span class="types"><span class="type">tab</span></span>
          A document.
         </li>
-        <li><span class="parameter">flags</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         If the flag &lsquo;u&rsquo; is given, collects only
-  citation keys of sources that are defined neither in the
-  <code>references</code> metadata field nor in any bibliography file.
-         (<em>optional</em>)
+        <li><span class="parameter">undef</span>
+            <span class="types"><span class="type">bool</span></span>
+         Whether to collect only the citation keys of
+  sources that are defined neither in the <code>references</code> metadata field
+  nor in a bibliography file.
+         (<em>default</em> false)
         </li>
     </ul>
 
@@ -2337,7 +2449,7 @@ EOF
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-06-03 00:40:00 </i>
+<i style="float:right;">Last updated 2021-06-07 18:42:59 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
