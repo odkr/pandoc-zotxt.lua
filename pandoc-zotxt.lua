@@ -38,7 +38,7 @@
 -- determined by its filename ending:
 --
 -- **Ending** | **Format** | **Feature**
--- ---------- | ---------- | -----------------------
+-- ---------- | ---------- | ------------------------
 -- `.json`    | CSL JSON   | More robust.
 -- `.yaml`    | CSL YAML   | Easier to edit manually.
 --
@@ -55,7 +55,6 @@
 --
 --      pandoc -L pandoc-zotxt.lua -C <<EOF
 --      See @doe2020Title for details.
---      EOF
 --
 -- This will look up "doe2020Title" in Zotero.
 --
@@ -71,6 +70,18 @@
 --
 -- CAVEATS
 -- -------
+--
+-- **pandoc-zotxt.lua** creates a temporary file when it adds sources to
+-- a bibliography file. If Pandoc exits because it receives a signal, for
+-- example, because you press **Ctrl**-**c**, then this file will *not*
+-- be deleted.
+--
+-- If you are using Pandoc up to v2.7, then another process may, mistakenly,
+-- use the same temporary file at the same time, though this is highly
+-- unlikely. Moreover, if the bibliography file resides in a directory that
+-- other users have write access to, then they can read and change the
+-- bibliography file's content, regardless of whether they have permission
+-- to read or write the file itself.
 --
 -- **pandoc-zotxt.lua** is Unicode-agnostic.
 --
