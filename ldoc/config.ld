@@ -7,8 +7,9 @@ bibliography file, where Pandoc can pick them up.
 It requires zotxt and Better BibTeX for Zotero.
 
 See <https://github.com/odkr/pandoc-zotxt.lua> for details.]]
+
 file = '../pandoc-zotxt.lua'
-format = 'discount'
 readme = '../README.md'
+format = 'discount'
 dir = '../docs'
 style = '.'

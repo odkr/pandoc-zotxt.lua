@@ -310,6 +310,57 @@ end
 -- File I/O
 -- --------
 
+function test_path_sanitise ()
+    local invalid = {nil, false, '', 0, {}, function () end}
+
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_sanitise, v)
+    end
+
+    local ok, err = M.path_split('')
+    lu.assert_nil(ok)
+    lu.assert_not_nil(err)
+
+    local tests = {
+        ['.']                   = '.',
+        ['..']                  = '..',
+        ['/']                   = '/',
+        ['//']                  = '/',
+        ['/////////']           = '/',
+        ['/.//////']            = '/',
+        ['/.////.//']           = '/',
+        ['/.//..//.//']         = '/..',
+        ['/.//..//.//../']      = '/../..',
+        ['a']                   = 'a',
+        ['./a']                 = 'a',
+        ['../a']                = '../a',
+        ['/a']                  = '/a',
+        ['//a']                 = '/a',
+        ['//////////a']         = '/a',
+        ['/.//////a']           = '/a',
+        ['/.////.//a']          = '/a',
+        ['/.//..//.//a']        = '/../a',
+        ['/.//..//.//../a']     = '/../../a',
+        ['a/b']                 = 'a/b',
+        ['./a/b']               = 'a/b',
+        ['../a/b']              = '../a/b',
+        ['/a/b']                = '/a/b',
+        ['//a/b']               = '/a/b',
+        ['///////a/b']          = '/a/b',
+        ['/.//////a/b']         = '/a/b',
+        ['/.////.//a/b']        = '/a/b',
+        ['/.//..//.//a/b']      = '/../a/b',
+        ['/.//..//.//../a/b']   = '/../../a/b',
+        ['/a/b/c/d']            = '/a/b/c/d',
+        ['a/b/c/d']             = 'a/b/c/d',
+        ['a/../.././c/d']       = 'a/../../c/d'
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.path_prettify(k), v)
+    end
+end
+
 function test_path_split ()
     local invalid = {nil, false, 0, {}, function () end}
 
@@ -427,6 +478,36 @@ function test_path_is_abs ()
     M.PATH_SEP = original_path_sep
 end
 
+function test_path_prettify ()
+    lu.assert_error(M.path_prettify)
+
+    local invalid = {nil, false, 0, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_prettify, v)
+    end
+
+    if M.PATH_SEP ~= '/' then return end
+    local home = os.getenv('HOME')
+
+    local tests = {
+        [home .. 'x'] = home .. 'x',
+        [M.path_join(home, 'test')] = '~/test'
+    }
+
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        local wd = pandoc.system.get_working_directory()
+        local home_wd = M.path_prettify(wd)
+        lu.assert_not_nil(home_wd)
+        lu.assert_not_equals(home_wd, '')
+        tests[M.path_join(wd, 'test')] = 'test'
+        tests[M.path_join(wd .. 'test')] = home_wd .. 'test'
+    end
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.path_prettify(k), v)
+    end
+end
+
 function test_wd ()
     lu.assert_equals(M.wd(), '.')
 end
@@ -518,9 +599,9 @@ function test_tmp_fname ()
     end
 
     local tests = {
-        [{nil, nil}] = '^tmp%-%w%w%w%w%w%w%w%w%w%w$',
+        [{nil, nil}] = '^pdz%-%w%w%w%w%w%w%w%w%w%w$',
         [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
-        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'tmp%-%w%w%w%w%w%w%w%w%w%w$',
+        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'pdz%-%w%w%w%w%w%w%w%w%w%w$',
         [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
     }
 
@@ -535,24 +616,30 @@ function test_tmp_fname ()
     lu.assert_not_equals(f1, f2)
 end
 
-function test_tmp_file ()
+function test_with_tmp_file ()
     local invalid = {false, 0, {}, '', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.tmp_file, nil, v)
-        lu.assert_error(M.tmp_file, v, nil)
+        lu.assert_error(M.with_tmp_file, nil, v)
+        lu.assert_error(M.with_tmp_file, v, nil)
     end
 
-    local tmp_fname
-    do
-        local tmp, err = M.tmp_file(TMP_DIR)
-        tmp_fname = tmp.fname
-        lu.assert_not_nil(tmp)
-        lu.assert_nil(err)
-        lu.assert_true(M.file_exists(tmp.fname))
-        lu.assert_not_nil(tmp.file:write('test'))
-    end
-    collectgarbage()
-    lu.assert_nil(M.file_exists(tmp_fname))
+    local tmp_file_copy
+    M.with_tmp_file(nil, nil, function (tmp_file)
+        tmp_file_copy = tmp_file
+        return os.remove(tmp_file)
+    end)
+
+    lu.assert_not_nil(tmp_file_copy)
+    lu.assert_nil(M.file_exists(tmp_file_copy))
+
+    tmp_file_copy = nil
+    pcall(M.with_tmp_file, nil, nil, function (tmp_file)
+        tmp_file_copy = tmp_file
+        error 'test'
+    end)
+
+    lu.assert_not_nil(tmp_file_copy)
+    lu.assert_nil(M.file_exists(tmp_file_copy))
 end
 
 
@@ -561,6 +648,37 @@ end
 
 function test_printf ()
     lu.assert_error(M.printf, 99)
+end
+
+
+-- Higher-order functions
+-- ----------------------
+
+function test_do_after ()
+    local invalid = {nil, false, 0, {}, ''}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.do_after, function () end, v)
+        lu.assert_error(M.do_after, v, function () end)
+    end
+
+    local vs
+    local function cleanup (...)
+        vs = table.pack(...)
+    end
+
+    vs = nil
+    M.do_after(cleanup, function ()
+        return 1, 2, 3
+    end)
+    lu.assert_equals(vs, {true, 1, 2, 3, n = 4})
+
+    vs = nil
+    pcall(M.do_after, cleanup, function ()
+        error 'err'
+    end)
+    lu.assert_equals(vs[1], false)
+    lu.assert_str_contains(tostring(vs[2]), 'err')
+    lu.assert_equals(vs.n, 2)
 end
 
 
@@ -1368,7 +1486,7 @@ function test_doc_ckeys ()
     lu.assert_items_equals(ckeys,
         {'crenshaw1989DemarginalizingIntersectionRace'})
     lu.assert_equals(n, 1)
-    ckeys, n = M.doc_ckeys(test_file, 'u')
+    ckeys, n = M.doc_ckeys(test_file, true)
     lu.assert_items_equals(ckeys, {})
     lu.assert_equals(n, 0)
 
@@ -1377,7 +1495,7 @@ function test_doc_ckeys ()
     assert(test_file, err)
     lu.assert_items_equals(M.doc_ckeys(test_file),
         {'crenshaw1989DemarginalizingIntersectionRace'})
-    lu.assert_items_equals(M.doc_ckeys(test_file, 'u'),
+    lu.assert_items_equals(M.doc_ckeys(test_file, true),
     {'crenshaw1989DemarginalizingIntersectionRace'})
 end
 
