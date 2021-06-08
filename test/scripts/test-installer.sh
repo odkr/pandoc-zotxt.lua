@@ -1,4 +1,41 @@
 #!/bin/sh
+# test-installer.sh - Test the installer.
+#
+# SYNOPSIS
+# ========
+#
+#	test-installer.sh
+#
+# CAVEATS
+# =======
+#
+# Must be run from with the Git repository.
+#
+# AUTHOR
+# ======
+#
+# Copyright 2021 Odin Kroeger
+#
+# LICENSE
+# =======
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
 
 
 # PRELUDE
@@ -118,6 +155,7 @@ on_exit() {
 }
 
 # Resolve a link.
+# shellcheck disable=2012
 follow_ln() (
 	[ -L "${1:?}" ] || panic "$1: not a link."
 	ls -l "$1" |
@@ -146,6 +184,7 @@ readonly PATH
 # ---------------------
 
 ares='' bd='' rg='' cred='' cgre='' cyel='' cblu='' ccya=''
+# shellcheck disable=2034
 [ -t 2 ] && case ${TERM-} in (*color*|*colour*)
 	ares='\033[0m'
 	bd='\033[1m'	rg='\033[22m'	ul='\033[4m'	nu='\033[24m'
@@ -201,6 +240,7 @@ if ! release="$(sh install.sh -q -o action print-repo-name)" ||
 	panic 'cannot determine release'
 fi
 
+# shellcheck disable=1091
 . ./.installrc || exit
 
 
@@ -227,9 +267,9 @@ sh install.sh --option action prepare-release \
 
 
 for action in fresh_complete fresh_abort; do
+	warn "${ccya}=== test: $bd% 14s$rg ===============$ares" "$action"
 	for sh in oksh dash bash yash zsh ksh sh; do
-		warn "${ccya}test: $bd% 14s$rg === shell: $bd %4s$rg %s$ares" \
-		     "$action" "$sh" "======================="
+		warn "${ccya}--- shell: $bd%4s$rg ------------$ares" "$sh"
 		install_dir="$TMP_DIR/target"
 		mkdir "$install_dir" || exit
 
@@ -259,6 +299,7 @@ for action in fresh_complete fresh_abort; do
 			(*_complete)
 				[ -d "$target_dir" ] ||
 					ex_other 'filter not installed.'
+				# shellcheck disable=2154
 				symlink="$filters_dir/$filter"
 				[ -L "$symlink" ] ||
 					ex_other 'filter not linked'
@@ -276,7 +317,7 @@ for action in fresh_complete fresh_abort; do
 				[ -L "$symlink" ] &&
 					ex_other 'symlink not removed.'
 				[ -d "$filters_dir" ] &&
-					ex_other 'filters directory not removed.'
+					ex_other 'filters not removed.'
 				rmdir "$install_dir"
 				;;
 		esac
