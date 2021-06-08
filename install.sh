@@ -1,8 +1,52 @@
 #!/bin/sh
+# install.sh - Install a Pandoc filter.
 #
-# Installs a Pandoc filter.
+# SYNOPSIS
+# ========
 #
-# Use --help or see below for details.
+#	install.sh [<options>]
+#	install.sh [--help]
+#
+#
+# DESCRIPTION
+# ===========
+#
+# Install a Pandoc filter in the "filters" sub-directory of the user's
+# Pandoc data directory. It uses an existing directory if there is one,
+# otherwise it creates a Pandoc data directory in `XDG_DATA_HOME`.
+# If the filter has a manual, it offers to modify `MANPATH` so that `man`
+# finds that manual.
+#
+# It can also be used to create a release.
+#
+#
+# AUTHOR
+# ======
+#
+# Copyright 2021 Odin Kroeger
+#
+#
+# LICENSE
+# =======
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+
 
 # PRELUDE
 # =======
@@ -224,437 +268,12 @@ prettify_path() {
 }
 
 
-# INITIALISATION
-# ==============
-
-# Environment
-# -----------
-
-unset IFS
-
-PATH=/bin:/usr/bin
-PATH=$(getconf PATH) || exit 69
-: "${PATH:?}"
-: "${HOME:?}"
-: "${XDG_DATA_HOME:="$HOME/.local/share"}"
-
-export IFS PATH XDG_DATA_HOME
-readonly PATH HOME XDG_DATA_HOME
-
-
-# ANSI escape sequences
-# ---------------------
-
-ares='' bd='' rg='' cred='' cgre='' cyel='' cblu='' ccya=''
-[ -t 2 ] && case ${TERM-} in (*color*|*colour*)
-	ares='\033[0m'
-	bd='\033[1m'	rg='\033[22m'	ul='\033[4m'	nu='\033[24m'
-	cred='\033[31m' cgre='\033[32m' cyel='\033[33m'
-	cblu='\033[34m' ccya='\033[36m'
-esac
-
-
-# Globals
-# -------
-
-lf="
-"
-readonly lf
-
-
-# Script metadata
-# ---------------
-
-if ! scpt_fname="$(basename "$0")" || ! [ "${scpt_fname-}" ]; then
-	ex_other 'installer not found.'
-fi
-readonly scpt_fname
-
-if ! scpt_dir="$(dirname "$0")" || ! [ "${scpt_dir-}" ]; then
-	ex_other 'installer could not be located.'
-fi
-readonly scpt_dir
-
-
-# System interaction
-# -------------------
-
-# Catch signals
-trap_sigs on_exit 0 1 2 3 15
-
-# Save STDIN, just in case.
-ex="exec 3>&-; ${ex-}"
-cleanup="exec 3>&-; ${cleanup-}"
-exec 3>&1
-
-# All output should go to STDERR.
-exec 1>&2
-
-# Working directory
-cd -P "$scpt_dir" || exit 69
-
-
-# Sanity checks
-# -------------
-
-[ "${HOME#/}" = "$HOME" ] && ex_other "${bd}HOME$rg is relative."
-[ "$(cd -P "$HOME"; pwd)" = / ] && ex_other "${bd}HOME$rg points to $bd/$rg."
-
-
-# SETTINGS
-# ========
-
-# Defaults
-# --------
-
-action=install
-allow_superuser=
-dry_run=
-gpg=/usr/local/bin/gpg
-install_prefix=
-luarocks=/usr/local/bin/luarocks
-manifest_file=Manifest
-unset modify_manpath
-package=x
-quiet=
-release_base_dir=release
-remove_release_dir=x
-rc=.installrc
-rocks=
-verbose=
-
-
-# Command line options
-# --------------------
-
-while [ $# -gt 0 ]; do
-	case $1 in
-		(-e|--enable|-d|--disable|-o|--option)
-			case ${2-} in
-				(modify_manpath|install_prefix) : ;;
-				('')	ex_usage "$bd$1$rg: no option given." ;;
-				(*[!a-z_]*)
-					ex_usage "$bd$1$rg: '$bd$2$rg' is not an option name." ;;
-				(*)	is_def "$2" || ex_usage "$bd$1$rg: $bd$2$rg: no such option." ;;
-			esac
-			case $1 in
-				(-e|--enable) 	eval "$2=x"
-						shift 2 ;;
-				(-d|--disable)	eval "$2="
-						shift 2 ;;
-				(-o|--option)	eval "$2=\"\$3\""
-						shift 3
-			esac
-			;;
-		(-D|--debug)
-			set -x
-			shift ;;
-		(-c|--rc-file)
-		        [ "${2-}" ] || ex_usage "$bd$1$rg: no file given."
-			rc="$2"
-			shift 2 ;;
-		(-n|--dry-run)
-			dry_run=x
-			shift ;;
-		(-q|--quiet)
-			quiet=x
-			shift ;;
-		(-v|--verbose)
-			verbose=x
-			shift ;;
-		(-h|--help)
-			echo "$bd$scpt_fname$rg - install a Pandoc filter
-
-Options:
-    $bd-e$rg, $bd--enable$rg ${ul}option$nu
-	Enable ${ul}option$nu.
-
-	Available options:
-
-	    allow_superuser   Allow superuser to run $scpt_fname.
-
-	    modify_manpath    Modify MANPATH in shell RC files, so that
-                              ${bd-\`}man${rg-\`} finds the filter's manual.
-
-    $bd-d$rg, $bd--disable$rg ${ul}option$nu
-        Disable ${ul}option$nu. See above for a list.
-
-    $bd-o$rg, $bd--option$rg ${ul}option$nu ${ul}value$nu
-	Set ${ul}option$nu to ${ul}value$nu. Available options are:
-
-		install_prefix	 Path to prefix the target directory with.
-
-    $bd-c$rg, $bd--rc-file$rg ${ul}file$nu
-        Run the given ${ul}file$nu instead of ${ul}.installrc$nu.
-
-    $bd-n$rg, $bd--dry-run$rg
-        Don't change anything, just show which changes would be made.
-
-    $bd-q$rg, $bd--quiet$rg
-        Only print errors.
-
-    $bd-v$rg, $bd--verbose$rg
-        Be even more verbose.
-
-    $bd-D$rg, $bd--debug$rg
-        Call ${bd-\`}set -x${rg-\`} at startup.
-
-    $bd-h$rg, $bd--help$rg
-        Show this help."
-			exit 0
-			;;
-		(--)	shift
-			break ;;
-		(-*)	ex_usage "$bd$1$rg: no such option." ;;
-		(*)	break
-	esac
-done
-readonly action allow_superuser rc
-
-case $# in
-	(0) : ;;
-	(1) ex_other "$bd$1$rg: meaningless operand." ;;
-	(*) ex_other "$bd$*$rg: meaningless operands."
-esac
-
-
-# Safety check
-# ------------
-
-[ "$(id -u)" -eq 0 ] && ! [ "$allow_superuser" ] && \
-	ex_usage 'refusing to run with superuser privileges.'
-
-
-# RC file
-# -------
-
-[ -e .installrc ] || {
-	prettify_path rc_p "$rc"
-	ex_config "$ul${rc_p-$rc}$nu: no such file."
-}
-
-unset filter
-# shellcheck disable=1090
-. "./${rc:?}"
-
-[ "${filter-}" ] || ex_config "$ul$rc$nu: no ${bd}filter$rg defined."
-[ -e "$filter" ] || ex_config "$ul$filter$nu: no such file."
-[ "${filter%.lua}" = "$filter" ] && ex_config "$ul$filter$nu: not a Lua file."
-
-if [ "${install_prefix-}" ]; then
-	prettify_path install_prefix_p "$install_prefix"
-	[ -d "$install_prefix" ] ||
-		ex_noinput "$ul$install_prefix_p$nu: no such directory."
-	if ! install_prefix_abs="$(cd -P "$install_prefix"; pwd)" ||
-	   [ ! "$install_prefix_abs" ]
-	then
-		ex_noinput "$ul$install_prefix_p$nu: not found."
-	fi
-	install_prefix="$install_prefix_abs"
-	unset install_prefix_abs
-else
-	install_prefix=
-fi
-
-readonly filter dry_run install_prefix manifest_file quiet verbose \
-	 release_base_dir rocks
-
-
-# Gather general data
-# -------------------
-
-# $repo_fname
-if ! release="$(release_of "$filter")" || ! [ "${release-}" ]; then
-	ex_dataerr "$ul$filter$nu: $bd@release$rg LDoc comment not found."
-fi
-readonly release
-
-if ! version="$(version_of "$filter")" || ! [ "${version-}" ]; then
-	ex_dataerr "$ul$filter$nu: variable ${bd}VERSION$rg not found."
-fi
-readonly version
-
-if [ "$release" != "$version" ]; then
-	ex_dataerr "$ul$filter$nu: $bd@release$rg and ${bd}VERSION$rg differ."
-fi
-
-repo_fname="${filter:?}-${release:?}"
-readonly repo_fname
-
-# $repo_dir
-if ! repo_dir="$(pwd)" || ! [ "${repo_dir-}" ] || ! [ -d "$repo_dir" ]; then
-	ex_noinput "$ul$repo_fname$nu: not found."
-fi
-
-repo_dir_basename="$(basename "$repo_dir")"
-case "$repo_dir_basename" in
-	("$filter"|"$repo_fname") 	: ;;
-	(*) ex_other "$ul$repo_dir_basename$nu: wrong name."
-esac
-readonly repo_dir
-unset repo_dir_basename
-
-# $pandoc_data_dir
-for dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
-	pandoc_data_dir="$dir"
-	[ -d "$pandoc_data_dir" ] && break
-done
-readonly pandoc_data_dir
-unset dir
-
-# $today
-if ! today="$(date +%Y-%d-%m)" || ! [ "$today" ]; then
-	ex_other 'failed to get date.'
-fi
-readonly today
-
-# $pandoc_filters_dir
-readonly pandoc_filters_dir="${install_prefix-}/${pandoc_data_dir#/}/filters"
-
-# $install_dir
-install_dir="$pandoc_filters_dir/$repo_fname"
-[ -e "$install_dir" ] && panic 0 "$ul$repo_fname$nu: already installed."
-readonly install_dir
-
-# $filter_bak
-readonly filter_bak="$filter.orig"
-
-# $latest_link
-readonly latest_link="$filter-latest"
-
-# $latest_link_bak
-readonly latest_link_bak="$latest_link-$scpt_fname-$$-bak"
-
-# $sh_rc_bak_suffix
-readonly sh_rc_bak_suffix=".$scpt_fname-$$-bak"
-
-
-# Prettier versions for messages
-# ------------------------------
-
-prettify_path pandoc_filters_dir_p "$pandoc_filters_dir"
-: "${pandoc_filters_dir_p:?}"
-readonly pandoc_filters_dir_p
-prettify_path repo_dir_p "$repo_dir"
-: "$repo_dir_p"
-readonly repo_dir_p
-prettify_path install_dir_p "$install_dir"
-: "$install_dir_p"
-readonly install_dir_p
-
-
-# INSTALLATION
-# ============
-
-if [ "$action" = install ]; then
-	# Gather data about the manual
-	# ----------------------------
-
-	# $has_man
-	if [ -d man ]
-		then has_man=x
-		else has_man=
-	fi
-	readonly has_man
-
-	# $man_dir
-	readonly man_dir="$pandoc_filters_dir/$latest_link/man"
-
-	# $man_accessible
-	man_accessible=
-	if [ "${has_man}" ]; then
-
-		man -w "$filter" >/dev/null 2>&1 && man_accessible=x
-		# man -w is not mandated by POSIX.
-		if ! [ "$man_accessible" ]; then
-			IFS=:
-			# shellcheck disable=2086
-			in_list "$man_dir" ${MANPATH-} && man_accessible=x
-			unset IFS
-		fi
-	fi
-	readonly man_accessible
-
-	# $manpath_code
-	# shellcheck disable=2016
-	prettify_path rel_man_dir "$man_dir" '$HOME'
-	: "${rel_man_dir:?}"
-	# shellcheck disable=2027
-	manpath_code="export MANPATH=\"\$MANPATH:$rel_man_dir\""
-	readonly manpath_code
-	unset rel_man_dir
-
-	# $manpath_rc
-	manpath_rc="
-# -----------------------------------------------------------------------------
-# Added by $filter installer on $today.
-$manpath_code
-# -----------------------------------------------------------------------------
-"
-
-	[ "${#manpath_rc}" -lt 512 ] ||
-		ex_other 'RC code is too long.'
-
-	# $sh_rc_*
-	sh_rc_n=0
-	if [ "${has_man}" ] && ! [ "$man_accessible" ]; then
-		n=0 sh_rc_refs_manpath=
-		for sh_rc in .bashrc .kshrc .yashrc .zshrc; do
-			sh_rc="$HOME/$rc"
-			[ -e "$sh_rc" ] || continue
-			if grep -q "$manpath_code" "$sh_rc"; then
-				sh_rc_refs_manpath=x
-				continue
-			fi
-			n=$((n + 1))
-			var_cp sh_rc "sh_rc_$n"
-			prettify_path "sh_rc_${n}_p" "$sh_rc"
-			readonly "sh_rc_$n" "sh_rc_${n}_p"
-			unset sh_rc
-		done
-		sh_rc_n="$n"
-		unset n
-	fi
-	readonly sh_rc_n sh_rc_refs_manpath
-
-	# $modify_manpath
-	if [ "${has_man}" ] &&
-	[ "$sh_rc_n" -gt 0 ] && \
-	[ "${modify_manpath-x}" = x ] && [ "${modify_manpath-}" != x ] && \
-	[ -t 0 ] && [ -t 2 ]
-	then
-		err "${ccya}modify ${bd}MANPATH$rg in "
-		n=0
-		while [ "$n" -lt "$sh_rc_n" ]; do
-			n=$((n + 1))
-			case $n in
-				(1)		fmt="$ul%s$nu" ;;
-				("$sh_rc_n")	fmt=" and $ul%s$nu" ;;
-				(*)		fmt=", $ul%s$nu" ;;
-			esac
-			var_cp "sh_rc_${n}_p" sh_rc_p
-			# shellcheck disable=2059,2154
-			printf "$fmt" "$sh_rc_p"
-			unset sh_rc_p fmt
-		done
-		unset n
-		echo "?$ares"
-		yn=0
-		yes_no no || yn=$?
-		case $yn in
-			(0) modify_manpath=x ;;
-			(1) modify_manpath=  ;;
-			(*) exit "$yn"
-		esac
-	else
-		modify_manpath=
-	fi
-	: "${modify_manpath?}"
-	readonly modify_manpath
-
-
+# ACTIONS
+# =======
+
+# Install the filter.
+install() {
 	# Move files
-	# ----------
 	if [ "$install_dir" != "$repo_dir" ]; then
 		# Make directories if necessary.
 		if ! [ -e "$pandoc_filters_dir" ]; then
@@ -881,16 +500,10 @@ $manpath_code
 
 	# Clean-up.
 	ex="${cleanup-}"
+}
 
-
-
-# CREATE RELEASE
-# ==============
-
-elif [ "$action" = prepare-release ]; then
-	# Gather data
-	# -----------
-
+# Prepare a release.
+prepeare_release() {
 	# $tag
 	if ! tag="$(git tag --list 'v*' --sort=-version:refname | head -n1)" ||
 	   ! [ "$tag" ]
@@ -951,7 +564,7 @@ elif [ "$action" = prepare-release ]; then
 
 
 	# Create release directory
-	# ------------------------
+	# shellcheck disable=2030
 	rm_release_dir() (
 		if ! [ "${release_dir}" ] || ! [ -d "$release_dir" ]; then
 			return
@@ -960,15 +573,14 @@ elif [ "$action" = prepare-release ]; then
 		call rmdir "$release_dir"
 	)
 
+	# shellcheck disable=2031
 	warn "making $ul$release_dir$nu."
+	# shellcheck disable=2031
 	call mkdir "$release_dir"
 	ex="rm_release_dir; ${ex-}"
 	cleanup="rm_release_dir; ${cleanup-}"
 
-
 	# Copy files
-	# ----------
-
 	IFS="$lf" n=0
 	# shellcheck disable=2013
 	for file in $(grep -vE '^[[:space:]]*#' "$manifest_file" | sort -u); do
@@ -983,6 +595,7 @@ elif [ "$action" = prepare-release ]; then
 	unset n
 
 	rm_release_files() (
+		# shellcheck disable=2030,2031
 		[ "${release_dir}" ] || return
 		[ "${file_n-0}" -gt 0 ] || return
 		n="$file_n"
@@ -1003,6 +616,7 @@ elif [ "$action" = prepare-release ]; then
 	cleanup="rm_release_files; ${cleanup-}"
 
 	n=0
+	# shellcheck disable=2031
 	while [ "$n" -lt "$file_n" ]; do
 		n="$((n + 1))"
 		var_cp "file_$n" file
@@ -1016,10 +630,8 @@ elif [ "$action" = prepare-release ]; then
 	done
 	unset n
 
-
 	# Install rocks
-	# -------------
-
+	# shellcheck disable=2030,2031
 	rm_rocks() (
 		[ "${rocks}" ] || return
 		[ "${release_dir}" ] || return
@@ -1032,7 +644,7 @@ elif [ "$action" = prepare-release ]; then
 		done
 	)
 
-	# for signatures!
+	# shellcheck disable=2031
 	if [ "$rocks" ]; then
 		ex="rm_rocks; ${ex-}"
 		cleanup="rm_rocks; ${cleanup-}"
@@ -1061,8 +673,6 @@ elif [ "$action" = prepare-release ]; then
 
 	if [ "$package" ]; then
 		# Create the archives
-		# -------------------
-
 		rm_archives() (
 			for archive in "$tarball" "$zipfile"; do
 				prettify_path archive_p "$archive"
@@ -1080,10 +690,7 @@ elif [ "$action" = prepare-release ]; then
 			call zip -rq "$repo_fname.zip" "$repo_fname"
 		)
 
-
 		# Sign the archives
-		# -----------------
-
 		rm_archive_sigs () (
 			for signature in "$tarball_sig" "$zipfile_sig"; do
 				prettify_path signature_p "$signature"
@@ -1110,6 +717,448 @@ elif [ "$action" = prepare-release ]; then
 		then ex="$cleanup"
 		else unset ex
 	fi
+}
+
+
+# INITIALISATION
+# ==============
+
+# Environment
+# -----------
+
+unset IFS
+
+PATH=/bin:/usr/bin
+PATH=$(getconf PATH) || exit 69
+: "${PATH:?}"
+: "${HOME:?}"
+: "${XDG_DATA_HOME:="$HOME/.local/share"}"
+
+export IFS PATH XDG_DATA_HOME
+readonly PATH HOME XDG_DATA_HOME
+
+
+# ANSI escape sequences
+# ---------------------
+
+ares='' bd='' rg='' cred='' cgre='' cyel='' cblu='' ccya=''
+[ -t 2 ] && case ${TERM-} in (*color*|*colour*)
+	ares='\033[0m'
+	bd='\033[1m'	rg='\033[22m'	ul='\033[4m'	nu='\033[24m'
+	cred='\033[31m' cgre='\033[32m' cyel='\033[33m'
+	cblu='\033[34m' ccya='\033[36m'
+esac
+
+
+# Globals
+# -------
+
+lf="
+"
+readonly lf
+
+
+# Script metadata
+# ---------------
+
+if ! scpt_fname="$(basename "$0")" || ! [ "${scpt_fname-}" ]; then
+	ex_other 'installer not found.'
+fi
+readonly scpt_fname
+
+if ! scpt_dir="$(dirname "$0")" || ! [ "${scpt_dir-}" ]; then
+	ex_other 'installer could not be located.'
+fi
+readonly scpt_dir
+
+
+# System interaction
+# -------------------
+
+# Catch signals
+trap_sigs on_exit 0 1 2 3 15
+
+# Save STDIN, just in case.
+ex="exec 3>&-; ${ex-}"
+cleanup="exec 3>&-; ${cleanup-}"
+exec 3>&1
+
+# All output should go to STDERR.
+exec 1>&2
+
+# Working directory
+cd -P "$scpt_dir" || exit 69
+
+
+# Sanity checks
+# -------------
+
+[ "${HOME#/}" = "$HOME" ] && ex_other "${bd}HOME$rg is relative."
+[ "$(cd -P "$HOME"; pwd)" = / ] && ex_other "${bd}HOME$rg points to $bd/$rg."
+
+
+# SETTINGS
+# ========
+
+# Defaults
+# --------
+
+action=install
+allow_superuser=
+dry_run=
+gpg=/usr/local/bin/gpg
+install_prefix=
+luarocks=/usr/local/bin/luarocks
+manifest_file=Manifest
+unset modify_manpath
+package=x
+quiet=
+release_base_dir=release
+remove_release_dir=x
+rc=.installrc
+rocks=
+verbose=
+
+
+# Command line options
+# --------------------
+
+while [ $# -gt 0 ]; do
+	case $1 in
+		(-e|--enable|-d|--disable|-o|--option)
+			case ${2-} in
+				(modify_manpath|install_prefix) : ;;
+				('')	ex_usage "$bd$1$rg: no option given." ;;
+				(*[!a-z_]*)
+					ex_usage "$bd$1$rg: '$bd$2$rg' is not an option name." ;;
+				(*)	is_def "$2" || ex_usage "$bd$1$rg: $bd$2$rg: no such option." ;;
+			esac
+			case $1 in
+				(-e|--enable) 	eval "$2=x"
+						shift 2 ;;
+				(-d|--disable)	eval "$2="
+						shift 2 ;;
+				(-o|--option)	eval "$2=\"\$3\""
+						shift 3
+			esac
+			;;
+		(-D|--debug)
+			set -x
+			shift ;;
+		(-c|--rc-file)
+		        [ "${2-}" ] || ex_usage "$bd$1$rg: no file given."
+			rc="$2"
+			shift 2 ;;
+		(-n|--dry-run)
+			dry_run=x
+			shift ;;
+		(-q|--quiet)
+			quiet=x
+			shift ;;
+		(-v|--verbose)
+			verbose=x
+			shift ;;
+		(-h|--help)
+			echo "$bd$scpt_fname$rg - install a Pandoc filter
+
+Options:
+    $bd-e$rg, $bd--enable$rg ${ul}option$nu
+	Enable ${ul}option$nu.
+
+	Available options:
+
+	    allow_superuser   Allow superuser to run $scpt_fname.
+
+	    modify_manpath    Modify MANPATH in shell RC files, so that
+                              ${bd-\`}man${rg-\`} finds the filter's manual.
+
+    $bd-d$rg, $bd--disable$rg ${ul}option$nu
+        Disable ${ul}option$nu. See above for a list.
+
+    $bd-o$rg, $bd--option$rg ${ul}option$nu ${ul}value$nu
+	Set ${ul}option$nu to ${ul}value$nu. Available options are:
+
+		install_prefix	 Path to prefix the target directory with.
+
+    $bd-c$rg, $bd--rc-file$rg ${ul}file$nu
+        Run the given ${ul}file$nu instead of ${ul}.installrc$nu.
+
+    $bd-n$rg, $bd--dry-run$rg
+        Don't change anything, just show which changes would be made.
+
+    $bd-q$rg, $bd--quiet$rg
+        Only print errors.
+
+    $bd-v$rg, $bd--verbose$rg
+        Be even more verbose.
+
+    $bd-D$rg, $bd--debug$rg
+        Call ${bd-\`}set -x${rg-\`} at startup.
+
+    $bd-h$rg, $bd--help$rg
+        Show this help."
+			exit 0
+			;;
+		(--)	shift
+			break ;;
+		(-*)	ex_usage "$bd$1$rg: no such option." ;;
+		(*)	break
+	esac
+done
+readonly action allow_superuser rc
+
+case $# in
+	(0) : ;;
+	(1) ex_other "$bd$1$rg: meaningless operand." ;;
+	(*) ex_other "$bd$*$rg: meaningless operands."
+esac
+
+
+# Safety check
+# ------------
+
+[ "$(id -u)" -eq 0 ] && ! [ "$allow_superuser" ] && \
+	ex_usage 'refusing to run with superuser privileges.'
+
+
+# RC file
+# -------
+
+[ -e .installrc ] || {
+	prettify_path rc_p "$rc"
+	ex_config "$ul${rc_p-$rc}$nu: no such file."
+}
+
+unset filter
+# shellcheck disable=1090
+. "./${rc:?}"
+
+[ "${filter-}" ] || ex_config "$ul$rc$nu: no ${bd}filter$rg defined."
+[ -e "$filter" ] || ex_config "$ul$filter$nu: no such file."
+[ "${filter%.lua}" = "$filter" ] && ex_config "$ul$filter$nu: not a Lua file."
+
+if [ "${install_prefix-}" ]; then
+	prettify_path install_prefix_p "$install_prefix"
+	# shellcheck disable=2154
+	[ -d "$install_prefix" ] ||
+		ex_noinput "$ul$install_prefix_p$nu: no such directory."
+	if ! install_prefix_abs="$(cd -P "$install_prefix"; pwd)" ||
+	   [ ! "$install_prefix_abs" ]
+	then
+		ex_noinput "$ul$install_prefix_p$nu: not found."
+	fi
+	install_prefix="$install_prefix_abs"
+	unset install_prefix_abs
+else
+	install_prefix=
+fi
+
+readonly filter dry_run install_prefix manifest_file quiet verbose \
+	 release_base_dir rocks
+
+
+# Gather general data
+# -------------------
+
+# $repo_fname
+if ! release="$(release_of "$filter")" || ! [ "${release-}" ]; then
+	ex_dataerr "$ul$filter$nu: $bd@release$rg LDoc comment not found."
+fi
+readonly release
+
+if ! version="$(version_of "$filter")" || ! [ "${version-}" ]; then
+	ex_dataerr "$ul$filter$nu: variable ${bd}VERSION$rg not found."
+fi
+readonly version
+
+if [ "$release" != "$version" ]; then
+	ex_dataerr "$ul$filter$nu: $bd@release$rg and ${bd}VERSION$rg differ."
+fi
+
+repo_fname="${filter:?}-${release:?}"
+readonly repo_fname
+
+# $repo_dir
+if ! repo_dir="$(pwd)" || ! [ "${repo_dir-}" ] || ! [ -d "$repo_dir" ]; then
+	ex_noinput "$ul$repo_fname$nu: not found."
+fi
+
+repo_dir_basename="$(basename "$repo_dir")"
+case "$repo_dir_basename" in
+	("$filter"|"$repo_fname") 	: ;;
+	(*) ex_other "$ul$repo_dir_basename$nu: wrong name."
+esac
+readonly repo_dir
+unset repo_dir_basename
+
+# $pandoc_data_dir
+for dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
+	pandoc_data_dir="$dir"
+	[ -d "$pandoc_data_dir" ] && break
+done
+readonly pandoc_data_dir
+unset dir
+
+# $today
+if ! today="$(date +%Y-%d-%m)" || ! [ "$today" ]; then
+	ex_other 'failed to get date.'
+fi
+readonly today
+
+# $pandoc_filters_dir
+readonly pandoc_filters_dir="${install_prefix-}/${pandoc_data_dir#/}/filters"
+
+# $install_dir
+install_dir="$pandoc_filters_dir/$repo_fname"
+[ -e "$install_dir" ] && panic 0 "$ul$repo_fname$nu: already installed."
+readonly install_dir
+
+# $filter_bak
+readonly filter_bak="$filter.orig"
+
+# $latest_link
+readonly latest_link="$filter-latest"
+
+# $latest_link_bak
+readonly latest_link_bak="$latest_link-$scpt_fname-$$-bak"
+
+# $sh_rc_bak_suffix
+readonly sh_rc_bak_suffix=".$scpt_fname-$$-bak"
+
+
+# Prettier versions for messages
+# ------------------------------
+
+prettify_path pandoc_filters_dir_p "$pandoc_filters_dir"
+: "${pandoc_filters_dir_p:?}"
+readonly pandoc_filters_dir_p
+prettify_path repo_dir_p "$repo_dir"
+: "$repo_dir_p"
+readonly repo_dir_p
+prettify_path install_dir_p "$install_dir"
+: "$install_dir_p"
+readonly install_dir_p
+
+
+# Gather data about the manual
+# ============================
+
+# $has_man
+if [ -d man ]
+	then has_man=x
+	else has_man=
+fi
+readonly has_man
+
+# $man_dir
+readonly man_dir="$pandoc_filters_dir/$latest_link/man"
+
+# $man_accessible
+man_accessible=
+if [ "${has_man}" ]; then
+
+	man -w "$filter" >/dev/null 2>&1 && man_accessible=x
+	# man -w is not mandated by POSIX.
+	if ! [ "$man_accessible" ]; then
+		IFS=:
+		# shellcheck disable=2086
+		in_list "$man_dir" ${MANPATH-} && man_accessible=x
+		unset IFS
+	fi
+fi
+readonly man_accessible
+
+# $manpath_code
+# shellcheck disable=2016
+prettify_path rel_man_dir "$man_dir" '$HOME'
+: "${rel_man_dir:?}"
+# shellcheck disable=2027
+manpath_code="export MANPATH=\"\$MANPATH:$rel_man_dir\""
+readonly manpath_code
+unset rel_man_dir
+
+# $manpath_rc
+manpath_rc="
+# -----------------------------------------------------------------------------
+# Added by $filter installer on $today.
+$manpath_code
+# -----------------------------------------------------------------------------
+"
+
+[ "${#manpath_rc}" -lt 512 ] ||
+	ex_other 'RC code is too long.'
+
+# $sh_rc_*
+sh_rc_n=0
+if [ "${has_man}" ] && ! [ "$man_accessible" ]; then
+	n=0 sh_rc_refs_manpath=
+	for sh_rc in .bashrc .kshrc .yashrc .zshrc; do
+		sh_rc="$HOME/$rc"
+		[ -e "$sh_rc" ] || continue
+		if grep -q "$manpath_code" "$sh_rc"; then
+			sh_rc_refs_manpath=x
+			continue
+		fi
+		n=$((n + 1))
+		var_cp sh_rc "sh_rc_$n"
+		prettify_path "sh_rc_${n}_p" "$sh_rc"
+		readonly "sh_rc_$n" "sh_rc_${n}_p"
+		unset sh_rc
+	done
+	sh_rc_n="$n"
+	unset n
+fi
+readonly sh_rc_n sh_rc_refs_manpath
+
+# $modify_manpath
+if [ "${has_man}" ] &&
+[ "$sh_rc_n" -gt 0 ] && \
+[ "${modify_manpath-x}" = x ] && [ "${modify_manpath-}" != x ] && \
+[ -t 0 ] && [ -t 2 ]
+then
+	err "${ccya}modify ${bd}MANPATH$rg in "
+	n=0
+	while [ "$n" -lt "$sh_rc_n" ]; do
+		n=$((n + 1))
+		case $n in
+			(1)		fmt="$ul%s$nu" ;;
+			("$sh_rc_n")	fmt=" and $ul%s$nu" ;;
+			(*)		fmt=", $ul%s$nu" ;;
+		esac
+		var_cp "sh_rc_${n}_p" sh_rc_p
+		# shellcheck disable=2059,2154
+		printf "$fmt" "$sh_rc_p"
+		unset sh_rc_p fmt
+	done
+	unset n
+	echo "?$ares"
+	yn=0
+	yes_no no || yn=$?
+	case $yn in
+		(0) modify_manpath=x ;;
+		(1) modify_manpath=  ;;
+		(*) exit "$yn"
+	esac
+else
+	modify_manpath=
+fi
+: "${modify_manpath?}"
+readonly modify_manpath
+
+
+# MAIN
+# ====
+
+if [ "$action" = install ]; then
+	install
+
+
+
+# CREATE RELEASE
+# ==============
+
+elif [ "$action" = prepare-release ]; then
+	prepeare_release
 
 
 # PRINT CURRENT RELEASE
