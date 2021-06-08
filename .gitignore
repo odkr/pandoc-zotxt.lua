@@ -1,4 +1,5 @@
 .DS_Store
+release
 test/biblio.json
 test/tmp/*
 .vscode
