@@ -513,28 +513,44 @@ end
 
 
 do
-    local home_pattern
+    local get_working_directory
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        get_working_directory = pandoc.system.get_working_directory
+    end
+
+    local home_dir
     do
         if PATH_SEP == '/' then
-            local home_dir = os.getenv('HOME')
-            if home_dir and path_is_abs(home_dir) then
-                home_pattern = '^' .. home_dir .. '%f[/]'
+            local env_home = os.getenv('HOME')
+            if env_home and path_is_abs(env_home) then
+                home_dir = env_home
             end
         end
     end
 
-    --- Prettify Unix paths.
+    --- Prettify paths.
     --
-    -- Replaces the user's home directory with '~',
-    -- but only if it's followed by a Unix path seperator ('/').
-    -- Trusts the `HOME` environment variable.
+    -- Removes the current working directory from the beginning of a path
+    -- and, on POSIX systems, replaces the user's home directory with '~'.
     --
     -- @string path A path.
     -- @treturn string A prettier path.
     -- @within File I/O
     function path_prettify (path)
-        if not home_pattern then return path_sanitise(path) end
-        return path_sanitise(path:gsub(home_pattern, '~'))
+        assert(path ~= '', 'Path is the empty string ("").')
+        path = path_sanitise(path)
+        if get_working_directory then
+            local wd = path_sanitise(get_working_directory())
+            -- `path:find(wd .. '/', 1, false)` *always* returns `nil`.
+            if path:sub(1, #wd + 1) == wd .. PATH_SEP then
+                return path:sub(#wd + 2)
+            end
+        end
+        if home_dir then
+            local pos = path:find(home_dir .. '/', 1, false)
+            if pos == 1 then return '~' .. path:sub(#home_dir + 1) end
+        end
+        return path
     end
 end
 

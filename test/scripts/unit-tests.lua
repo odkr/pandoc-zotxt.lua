@@ -310,6 +310,57 @@ end
 -- File I/O
 -- --------
 
+function test_path_sanitise ()
+    local invalid = {nil, false, '', 0, {}, function () end}
+
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_sanitise, v)
+    end
+
+    local ok, err = M.path_split('')
+    lu.assert_nil(ok)
+    lu.assert_not_nil(err)
+
+    local tests = {
+        ['.']                   = '.',
+        ['..']                  = '..',
+        ['/']                   = '/',
+        ['//']                  = '/',
+        ['/////////']           = '/',
+        ['/.//////']            = '/',
+        ['/.////.//']           = '/',
+        ['/.//..//.//']         = '/..',
+        ['/.//..//.//../']      = '/../..',
+        ['a']                   = 'a',
+        ['./a']                 = 'a',
+        ['../a']                = '../a',
+        ['/a']                  = '/a',
+        ['//a']                 = '/a',
+        ['//////////a']         = '/a',
+        ['/.//////a']           = '/a',
+        ['/.////.//a']          = '/a',
+        ['/.//..//.//a']        = '/../a',
+        ['/.//..//.//../a']     = '/../../a',
+        ['a/b']                 = 'a/b',
+        ['./a/b']               = 'a/b',
+        ['../a/b']              = '../a/b',
+        ['/a/b']                = '/a/b',
+        ['//a/b']               = '/a/b',
+        ['///////a/b']          = '/a/b',
+        ['/.//////a/b']         = '/a/b',
+        ['/.////.//a/b']        = '/a/b',
+        ['/.//..//.//a/b']      = '/../a/b',
+        ['/.//..//.//../a/b']   = '/../../a/b',
+        ['/a/b/c/d']            = '/a/b/c/d',
+        ['a/b/c/d']             = 'a/b/c/d',
+        ['a/../.././c/d']       = 'a/../../c/d'
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.path_prettify(k), v)
+    end
+end
+
 function test_path_split ()
     local invalid = {nil, false, 0, {}, function () end}
 
@@ -440,8 +491,17 @@ function test_path_prettify ()
 
     local tests = {
         [home .. 'x'] = home .. 'x',
-        [home .. '/test'] = '~/test'
+        [M.path_join(home, 'test')] = '~/test'
     }
+
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        local wd = pandoc.system.get_working_directory()
+        local home_wd = M.path_prettify(wd)
+        lu.assert_not_nil(home_wd)
+        lu.assert_not_equals(home_wd, '')
+        tests[M.path_join(wd, 'test')] = 'test'
+        tests[M.path_join(wd .. 'test')] = home_wd .. 'test'
+    end
 
     for k, v in pairs(tests) do
         lu.assert_equals(M.path_prettify(k), v)
