@@ -1,0 +1,8 @@
+pandoc-zotxt.lua
+man
+man/man1
+man/man1/pandoc-zotxt.lua.1
+README.md
+LICENSE.txt
+install.sh
+.installrc
