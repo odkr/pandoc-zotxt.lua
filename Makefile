@@ -53,7 +53,7 @@ install-luaunit:
 
 prepare-tmpdir:
 	mkdir -p "$(TMP_DIR)"
-	$(RM) "$(TMP_DIR)"/*
+	$(RM) -r "$(TMP_DIR)"/*
 	cp "$(DATA_DIR)/bibliography.json" \
 	   "$(TMP_DIR)/update-bibliography.json"
 
@@ -93,6 +93,11 @@ test-resource-path:
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
+test-installer: prepare-tmpdir
+	@$(SH) "$(SCPT_DIR)/test-installer.sh"
+
+full-test: test test-installer
+
 prologue:
 	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
 		man/pandoc-zotxt.lua.md
@@ -108,5 +113,5 @@ ldoc:
 	ldoc -c ldoc/config.ld .
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
-	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
-	prologue man developer-documenation ldoc
+	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests test-installer \
+	prologue man ldoc
