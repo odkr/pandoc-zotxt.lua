@@ -46,18 +46,16 @@ OTHER_TESTS	:= test-resource-path
 
 test: unit-tests behaviour-tests $(OTHER_TESTS)
 
-clean:
-	@[ -d "$(TMP_DIR)" ] && $(RM) "$(TMP_DIR)"/*
-
 behaviour-tests: $(BEHAVIOUR_TESTS)
 
 install-luaunit:
 	@[ -e share/lua/*/luaunit.lua ] || \
 		luarocks install --tree=. luaunit
 
-prepare-tmpdir: clean
-	@mkdir -p "$(TMP_DIR)"
-	@cp "$(DATA_DIR)/bibliography.json" \
+prepare-tmpdir:
+	mkdir -p "$(TMP_DIR)"
+	$(RM) -r "$(TMP_DIR)"/*
+	cp "$(DATA_DIR)/bibliography.json" \
 	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
@@ -96,6 +94,11 @@ test-resource-path:
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
+test-installer: prepare-tmpdir
+	@$(SH) "$(SCPT_DIR)/test-installer.sh"
+
+full-test: test test-installer
+
 prologue:
 	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
 		man/pandoc-zotxt.lua.md
@@ -110,6 +113,6 @@ man:
 ldoc:
 	ldoc -c ldoc/config.ld .
 
-.PHONY: clean install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
-	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
-	prologue man developer-documenation ldoc
+.PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
+	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests test-installer \
+	prologue man ldoc
