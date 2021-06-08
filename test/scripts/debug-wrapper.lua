@@ -9,7 +9,7 @@
 -- DESCRIPTION
 -- -----------
 --
--- Runs pandoc-zotxt.lua, but money-patches it so that URL requests are
+-- Runs pandoc-zotxt.lua, but monkey-patches it so that URL requests are
 -- redirected to canned responses in the filesystem.
 --
 -- AUTHOR
