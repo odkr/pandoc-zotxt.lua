@@ -523,10 +523,11 @@ do
         if PATH_SEP == '/' then
             local env_home = os.getenv('HOME')
             if env_home and path_is_abs(env_home) then
-                home_dir = env_home
+                home_dir = path_sanitise(env_home)
             end
         end
     end
+
 
     --- Prettify paths.
     --
@@ -540,15 +541,17 @@ do
         assert(path ~= '', 'Path is the empty string ("").')
         path = path_sanitise(path)
         if get_working_directory then
-            local wd = path_sanitise(get_working_directory())
-            -- `path:find(wd .. '/', 1, false)` *always* returns `nil`.
-            if path:sub(1, #wd + 1) == wd .. PATH_SEP then
-                return path:sub(#wd + 2)
+            local wd = get_working_directory()
+            local last = #wd + 1
+            if path:sub(1, last) == wd .. PATH_SEP then
+                return path:sub(last + 1)
             end
         end
         if home_dir then
-            local pos = path:find(home_dir .. '/', 1, false)
-            if pos == 1 then return '~' .. path:sub(#home_dir + 1) end
+            local last = #home_dir + 1
+            if path:sub(1, last) == home_dir .. '/' then
+                return '~' .. path:sub(last)
+            end
         end
         return path
     end
@@ -647,7 +650,7 @@ do
     end
 
 
-    -- Write data to a file.
+    -- Write data to a file (worker).
     --
     -- @param file The name or handle of a file to write data to.
     -- @string ... The data.
@@ -1278,7 +1281,7 @@ do
     utf8_err.template = '$id: data fetched from zotxt is not encoded in UTF-8.'
 
 
-    -- Retrieve a source from Zotero (low-level).
+    -- Retrieve a source from Zotero (worker).
     --
     -- Takes an item ID and a parsing function, queries *zotxt* for that ID,
     -- passes whatever *zotxt* returns to the parsing function, and then
