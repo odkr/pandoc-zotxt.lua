@@ -529,15 +529,14 @@ do
     end
 
 
-    --- Prettify paths.
+    --- Prettify paths (worker).
     --
     -- Removes the current working directory from the beginning of a path
     -- and, on POSIX systems, replaces the user's home directory with '~'.
     --
     -- @string path A path.
     -- @treturn string A prettier path.
-    -- @within File I/O
-    function path_prettify (path)
+    local function prettify (path)
         assert(path ~= '', 'Path is the empty string ("").')
         path = path_sanitise(path)
         if get_working_directory then
@@ -554,6 +553,20 @@ do
             end
         end
         return path
+    end
+
+    --- Prettify paths.
+    --
+    -- Removes the current working directory from the beginning of a path
+    -- and, on POSIX systems, replaces the user's home directory with '~'.
+    --
+    -- @string ... Paths.
+    -- @treturn[...] string Prettier paths.
+    -- @within File I/O
+    function path_prettify (...)
+        local paths = {...}
+        assert(#paths > 0, 'No paths given.')
+        return unpack(rmap(prettify, paths))
     end
 end
 
@@ -734,8 +747,7 @@ do
                 return os.rename(tmp_file, fname)
             end)}
             if tmp_file_copy and not file_exists(tmp_file_copy) then
-               warnf('%s renamed to %s.',
-                     path_prettify(tmp_file_copy), path_prettify(fname))
+               warnf('%s renamed to %s.', path_prettify(tmp_file_copy, fname))
             end
             return unpack(vs)
         end
