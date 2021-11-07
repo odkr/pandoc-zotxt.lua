@@ -53,9 +53,9 @@ install-luaunit:
 		luarocks install --tree=. luaunit
 
 prepare-tmpdir:
-	mkdir -p "$(TMP_DIR)"
-	$(RM) -r "$(TMP_DIR)"/*
-	cp "$(DATA_DIR)/bibliography.json" \
+	@mkdir -p "$(TMP_DIR)"
+	@$(RM) -r "$(TMP_DIR)"/*
+	@cp "$(DATA_DIR)/bibliography.json" \
 	   "$(TMP_DIR)/update-bibliography.json"
 
 unit-tests: install-luaunit prepare-tmpdir
@@ -94,19 +94,20 @@ test-resource-path:
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
-prologue:
-	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
-		man/pandoc-zotxt.lua.md
+header-documentation:
+	@sh etc/update-header-documentation.sh pandoc-zotxt.lua
 
 man:
-	$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
+	@$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
 		-M title=pandoc-zotxt.lua  \
 		-M date="$$(date '+%B %d, %Y')" \
 		-M section=1 \
 		man/pandoc-zotxt.lua.md
 
-ldoc:
-	ldoc -c ldoc/config.ld .
+ldoc: header-documentation
+	@ldoc -c ldoc/config.ld .
+
+docs: man ldoc
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
-	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) prologue man ldoc
+	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) header-documentation man ldoc docs

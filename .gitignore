@@ -7,3 +7,4 @@ test/tmp/*
 /lua
 /lua_modules
 /.luarocks
+*.bak
