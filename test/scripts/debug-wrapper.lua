@@ -103,7 +103,7 @@ local M = require 'pandoc-zotxt'
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[3] int An error number.
-function M.url_read (url)
+function M.http_get (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     M.warnf('%s -> %s', url, hash)

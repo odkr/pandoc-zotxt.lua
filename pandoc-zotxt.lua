@@ -1,99 +1,108 @@
 ---
 -- SYNOPSIS
--- --------
+-- ========
 --
 -- **pandoc** **-L** *pandoc-zotxt.lua* **-C**
 --
 --
 -- DESCRIPTION
--- -----------
+-- ===========
 --
 -- **pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
 -- them either to a document's "references" metadata field or to a
 -- bibliography file, where Pandoc can pick them up.
 --
--- Cite your sources using "easy citekeys" (provided by *zotxt*) or
--- "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
--- Then tell **pandoc** to filter your document through **pandoc-zotxt.lua**
--- before processing citations. That's all there is to it.
--- Zotero bust be running, of course.
+-- Cite your sources using "Better BibTeX Citation Keys" (provided by Better
+-- BibTeX for Zotero) or "easy citekeys" (provided by *zotxt*). Then tell
+-- **pandoc** to filter your document through **pandoc-zotxt.lua**
+-- before processing citations (Zotero must be running).
+-- That's all there is to it.
 --
--- **pandoc-zotxt.lua** only fetches sources from Zotero that are defined
--- neither in the "references" metadata field nor in any bibliography file.
+-- **pandoc-zotxt.lua** only looks up sources in Zotero that are defined
+-- neither in the "references" metadata field nor in a bibliography file.
 --
 --
 -- BIBLIOGRAPHY FILES
--- ------------------
+-- ==================
 --
 -- **pandoc-zotxt.lua** can add sources to a special bibliography file,
--- rather than to the "references" metadata field. This speeds up subsequent
--- processing of the same document, because sources that are already in that
--- file need not be fetched from Zotero again.
+-- rather than to the "references" metadata field. This speeds up subsequen
+-- processing of the same document, because sources that are in that file
+-- already need not be fetched again from Zotero.
 --
--- You configure **pandoc-zotxt.lua** to add sources to a bibliography file by
--- setting the "zotero-bibliography" metadata field to a filename. If the
--- filename is relative, it is interpreted as relative to the directory of the
--- first input file passed to **pandoc** or, if no input file was given, as
--- relative to the current working directory. The format of the file is
--- determined by its filename ending:
+-- You tell **pandoc-zotxt.lua** to add sources to such a special bibliography
+-- file by setting the "zotero-bibliography" metadata field to a filename.
+-- If the filename is relative, it is interpreted as relative to the directory
+-- of the first input file passed to **pandoc** or, if no input file was
+-- given, as relative to the current working directory. The format of the
+-- file is determined by its filename ending:
 --
--- **Ending** | **Format** | **Feature**
--- ---------- | ---------- | ------------------------
--- `.json`    | CSL JSON   | More robust.
--- `.yaml`    | CSL YAML   | Easier to edit manually.
+-- | **Ending** | **Format** | **Feature**                        |
+-- | ---------- | ---------- | ---------------------------------- |
+-- | `.json`    | CSL JSON   | More reliable.                     |
+-- | `.yaml`    | CSL YAML   | Easier to edit with a text editor. |
+--
 --
 -- The bibliography file is added to the "bibliography" metadata field
 -- automatically. You can safely set "zotero-bibliography" and "bibliography"
 -- at the same time.
 --
 -- The sources in the bibliography file are neither updated nor deleted.
--- If you want to update the file, delete it.
+-- If you want to update them, delete the file.
 --
 --
 -- EXAMPLE
--- -------
+-- =======
 --
---      pandoc -L pandoc-zotxt.lua -C <<EOF
---      See @doe2020Title for details.
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
+--     See @doe2020Title for details.
+--     EOF
+--
 --
 -- This will look up "doe2020Title" in Zotero.
 --
 --
 -- KNOWN ISSUES
--- ------------
+-- ============
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
 -- that do not set the "User Agent" HTTP header. And **pandoc** does not.
 -- As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
 -- versions of Zotero unless you tell **pandoc** to set that header.
 --
+-- **pandoc-zotxt.lua** creates a temporary file when it adds sources to
+-- a bibliography file. If Pandoc exits because it catches a signal, for
+-- example, because you press **Ctrl**-**c**, then this file will *not*
+-- be deleted (this is a bug in Pandoc and in the process of being fixed).
+--
+-- Moreover, if you are using Pandoc up to v2.7, another process may,
+-- mistakenly, use the same temporary file at the same time, though this
+-- is highly unlikely.
+--
+--
+-- SECURITY
+-- ========
+--
+-- If you are using Pandoc up to v2.7 and place the special bibliography file
+-- in a directory that other users have write access to, then they can read
+-- and change the content of that file, regardless of whether they have
+-- permission to read or write the file itself.
+--
 --
 -- CAVEATS
--- -------
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to
--- a bibliography file. If Pandoc exits because it receives a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not*
--- be deleted.
---
--- If you are using Pandoc up to v2.7, then another process may, mistakenly,
--- use the same temporary file at the same time, though this is highly
--- unlikely. Moreover, if the bibliography file resides in a directory that
--- other users have write access to, then they can read and change the
--- bibliography file's content, regardless of whether they have permission
--- to read or write the file itself.
+-- =======
 --
 -- **pandoc-zotxt.lua** is Unicode-agnostic.
 --
 --
 -- SEE ALSO
--- --------
+-- ========
 --
 -- * [zotxt](https://github.com/egh/zotxt)
 -- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
 --
--- pandoc(1)
 --
+-- pandoc(1)
 -- @script pandoc-zotxt.lua
 -- @release 1.1.0b3
 -- @author Odin Kroeger
@@ -177,11 +186,11 @@ VERSION = '1.1.0b3'
 -- Operating system
 -- ----------------
 
---- The path segment seperator of the OS.
+--- The path segment seperator of your operating system.
 -- @within File I/O
 PATH_SEP = package.config:sub(1, 1)
 
---- The end of line sequence of the OS.
+--- The end of line sequence of your operating system.
 -- @within File I/O
 EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
@@ -396,13 +405,13 @@ end
 --      > table.insert(x, 4)
 --      > table.unpack(c[1])
 --      1       2       3
+-- @todo Add an option to make shallow copies.
 function copy (data, _seen)
     -- Borrows from:
     -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
     -- * <http://lua-users.org/wiki/CopyTable>
     if type(data) ~= 'table' then return data end
     if _seen and _seen[data] then return _seen[data] end
-    local copy = copy
     local ret = setmetatable({}, getmetatable(data))
     _seen = _seen or {}
     _seen[data] = ret
@@ -852,10 +861,10 @@ do
     -- that others users have write access to, `/tmp`, for example, then
     -- this is a security issue.
     --
-    -- @string[opt] dir A directory to prefix the name of the temporary file with.
-    --  Must not be the empty string (''). See `tmp_fname`.
-    -- @string[optchain='pdz-XXXXXXXXXX'] templ A template for the name of the temporary file.
-    --  'X's are replaced with random alphanumeric characters.
+    -- @string[opt] dir A directory to prefix the name of the temporary
+    --  file with. Must not be the empty string (''). See `tmp_fname`.
+    -- @string[optchain='pdz-XXXXXXXXXX'] templ A template for the name of the
+    --  temporary file. 'X's are replaced with random alphanumeric characters.
     --  Must contain at least six 'X's. See `tmp_fname`.
     -- @func func The function to run.
     --  Passed the name of the temporary file as first argument.
@@ -883,7 +892,7 @@ end
 -- @raise An error if no data can be retrieved.
 --  This error can only be caught since Pandoc v2.11.
 -- @within Networking
-function url_read (url)
+function http_get (url)
     return pandoc.mediabag.fetch(url, '.')
 end
 
@@ -1031,6 +1040,7 @@ do
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
     -- @within Converters
+    -- @fixme no longer works. Might be due to walk
     function markdownify (elem)
         return stringify(walk(walk(elem, esc), md))
     end
@@ -1220,7 +1230,7 @@ end
 -- zotxt
 -- -----
 
---- The [zotxt](https://github.com/egh/zotxt) endpoint.
+--- The URL of the [zotxt](https://github.com/egh/zotxt) endpoint.
 --
 -- @within zotxt
 ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
@@ -1293,7 +1303,7 @@ do
     utf8_err.template = '$id: data fetched from zotxt is not encoded in UTF-8.'
 
 
-    -- Retrieve a source from Zotero (worker).
+    -- Retrieve bibliographic data from Zotero (worker).
     --
     -- Takes an item ID and a parsing function, queries *zotxt* for that ID,
     -- passes whatever *zotxt* returns to the parsing function, and then
@@ -1323,7 +1333,7 @@ do
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
-            local ok, mt, data = pcall(url_read, query_url)
+            local ok, mt, data = pcall(http_get, query_url)
             assert(ok, fetch_err(id))
             assert(mt or match(mt, utf8_p), utf8_err(id))
             if mt ~= '' then
@@ -1367,7 +1377,7 @@ do
     end
 
 
-    --- Retrieve a source from Zotero as CSL item.
+    --- Retrieve bibliographic data from Zotero as CSL item.
     --
     -- Returns bibliographic data as a Lua table. That table can be
     -- passed to `biblio_write`; it should *not* be used in the `references`
@@ -1400,7 +1410,7 @@ do
     end
 
 
-    --- Retrieve a source from Zotero as Pandoc metadata.
+    --- Retrieve bibliographic data from Zotero as Pandoc metadata.
     --
     -- Returns bibliographic data as a Pandoc metadata value. That value
     -- can be used in the `references` metadata field; it should *not* be
@@ -1651,7 +1661,7 @@ function biblio_read (fname)
 end
 
 
---- Write sources to a bibliography file.
+--- Write bibliographic data to a bibliography file.
 --
 -- The filename suffix determins what format the data is written as.
 -- There must be an encoder for that suffix in `BIBLIO_TYPES`.
@@ -1749,37 +1759,75 @@ end
 -- ======
 
 do
-    local ts = {}
-    for k, v in sorted_pairs(pandoc) do
-        if type(v) == 'table' and not ts[v] then
-            local t = {k}
-            local mt = getmetatable(v)
-            n = 1
-            while mt and n < 16 do
-                if not mt.name or mt.name == 'Type' then break end
-                n = n + 1
-                t[n] = mt.name
-                mt = getmetatable(mt)
-            end
-            if t[n] == 'AstElement' then ts[v] = t end
-        end
-    end
+    local types = {
+        -- AstElement = 'Type',
+        Pandoc = 'AstElement',
+        Meta = 'AstElement',
+        MetaValue = 'AstElement',
+        MetaBlocks = 'MetaValue',
+        MetaBool = 'MetaValue',
+        MetaInlines = 'MetaValue',
+        MetaList = 'MetaValue',
+        MetaMap = 'MetaValue',
+        MetaString = 'MetaValue',
+        Block = 'AstElement',
+        BlockQuote = 'Block',
+        BulletList = 'Block',
+        CodeBlock = 'Block',
+        DefinitionList = 'Block',
+        Div = 'Block',
+        Header = 'Block',
+        HorizontalRule = 'Block',
+        LineBlock = 'Block',
+        Null = 'Block',
+        OrderedList = 'Block',
+        Para = 'Block',
+        Plain = 'Block',
+        RawBlock = 'Block',
+        Table = 'Block',
+        Inline = 'AstElement',
+        Cite = 'Inline',
+        Code = 'Inline',
+        Emph = 'Inline',
+        Image = 'Inline',
+        LineBreak = 'Inline',
+        Link = 'Inline',
+        Math = 'Inline',
+        Note = 'Inline',
+        Quoted = 'Inline',
+        RawInline = 'Inline',
+        SmallCaps = 'Inline',
+        SoftBreak = 'Inline',
+        Space = 'Inline',
+        Span = 'Inline',
+        Str = 'Inline',
+        Strikeout = 'Inline',
+        Strong = 'Inline',
+        Subscript = 'Inline',
+        Superscript = 'Inline',
+        Underline = 'Inline'
+    }
 
-    --- The type of a Pandoc AST element.
-    --
-    -- @tparam pandoc.AstElement elem A Pandoc AST element.
-    -- @treturn[1] string The type
-    --  (e.g., 'MetaMap', 'Plain').
-    -- @treturn[1] string The higher-order type
-    --  (i.e., 'Block', 'Inline', or 'MetaValue').
-    -- @treturn[1] string 'AstElement'.
-    -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
-    -- @within Document parsing
+    -- @fixme
+    --local cache = {}
+
     function elem_type (elem)
-        if type(elem) ~= 'table' then return end
-        local mt = getmetatable(elem)
-        if not mt or not mt.__type then return end
-        return unpack(ts[mt.__type])
+        local t = type(elem)
+        if t ~= 'table' and t ~= 'userdata' then return end
+        local ts = {}
+        local n = 0
+        t = elem.tag
+        if not t then
+            -- @fixme This is ugly.
+            if elem.meta and elem.blocks then t = 'Pandoc' end
+        end
+
+        while t do
+            n = n + 1
+            ts[n] = t
+            t = types[t]
+        end
+        if n > 0 then return unpack(ts) end
     end
 end
 
@@ -1795,7 +1843,7 @@ do
         for i = 1, #tab do tab[i] = walk(tab[i], ...) end
     end
 
-    --- Walk a list AST element (e.g., `pandoc.OrderedList`).
+    --- Walk a list-like AST element (e.g., `pandoc.OrderedList`).
     local function w_list (elem, ...)
         local content = elem.content
         for i = 1, #content do w_seq(content[i], ...) end
@@ -1813,7 +1861,7 @@ do
     }
 
     -- Walk a document.
-    function walker_fs.Doc (doc, ...)
+    function walker_fs.Pandoc (doc, ...)
         walk(doc.meta, ...)
         w_seq(doc.blocks, ...)
     end
@@ -1836,15 +1884,21 @@ do
     -- @return The element, with the filter applied.
     -- @within Document parsing
     -- @fixme Undertested.
+    -- @fixme Still appears to fail.
     function walk (elem, filter, _rd)
         if not _rd then _rd = 0
                    else _rd = _rd + 1
         end
         assert(_rd < 512, 'too much recursion.')
-        if _rd == 0 then elem = copy(elem) end
         local ts = {elem_type(elem)}
         local n = #ts
         if n == 0 then return elem end
+        if elem.clone then
+            elem = elem:clone ()
+        else
+            elem = copy(elem) -- @fixme a shallow copy would do.
+        end
+
         local walker_f = walker_fs[ts[1]]
         if     walker_f     then walker_f(elem, filter, _rd)
         elseif elem.content then w_seq(elem.content, filter, _rd)
@@ -1861,7 +1915,7 @@ do
 end
 
 
---- Collect sources from the document's metadata block.
+--- Collect bibliographic data from the document's metadata block.
 --
 -- Reads the `references` metafata field and every bibliography file
 -- referenced by the `bibliography` metadata field.
@@ -1950,7 +2004,7 @@ end
 -- MAIN
 -- ====
 
---- Add sources to a bibliography file and the file to the document's metadata.
+--- Add data to a bibliography file and the file to the document's metadata.
 --
 -- Updates the bibliography file as needed and adds it to the `bibliography`
 -- metadata field. Interpretes a relative filename as relative to the
@@ -1993,7 +2047,7 @@ function add_biblio (meta, ckeys)
 end
 
 
---- Add sources to the `references` metadata field.
+--- Add bibliographic data to the `references` metadata field.
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
