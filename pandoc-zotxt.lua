@@ -1808,26 +1808,29 @@ do
         Underline = 'Inline'
     }
 
-    -- @fixme
-    --local cache = {}
-
+    -- It is unclear whether this works in Pandoc before v2.15.
+    -- The documentation suggests it does, testing doesn't.
+    -- elem.tag used to be unreliable.
     function elem_type (elem)
         local t = type(elem)
         if t ~= 'table' and t ~= 'userdata' then return end
         local ts = {}
         local n = 0
-        t = elem.tag
-        if not t then
-            -- @fixme This is ugly.
-            if elem.meta and elem.blocks then t = 'Pandoc' end
+        local et = elem.tag
+        -- There is no better way.
+        if  t == 'userdata' and
+            not et          and
+            elem.meta       and
+            elem.blocks
+        then
+            et = 'Pandoc'
         end
-
-        while t do
+        while et do
             n = n + 1
-            ts[n] = t
-            t = types[t]
+            ts[n] = et
+            et = types[et]
         end
-        if n > 0 then return unpack(ts) end
+        return unpack(ts)
     end
 end
 
@@ -1843,7 +1846,7 @@ do
         for i = 1, #tab do tab[i] = walk(tab[i], ...) end
     end
 
-    --- Walk a list-like AST element (e.g., `pandoc.OrderedList`).
+    --- Walk a *List AST element (e.g., `pandoc.OrderedList`).
     local function w_list (elem, ...)
         local content = elem.content
         for i = 1, #content do w_seq(content[i], ...) end
@@ -1869,15 +1872,15 @@ do
     --- Walk the AST and apply functions to matching elements.
     --
     -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by never
-    -- modifying the original element, by accepting AST elements of *any* type
-    -- (including documents as a whole, the metadata block, and metadata
+    -- modifying the original element, by accepting AST elements of *any*
+    -- type (including documents as a whole, the metadata block, and metadata
     -- fields), by accepting the higher-order type `AstElement`, by *not*
     -- accepting the filter keywords `Blocks` and `Inlines`, by walking
     -- the AST bottom-up (which implies that the filter is applied to every
-    -- element, regardless of whether any of that elements's ancestors matches
-    -- it), by applying the filter to the given element itself, and by allowing
-    -- the functions in the filter to return data of arbitrary types (as
-    -- opposed to either a Pandoc AST element or `nil`).
+    -- element, regardless of whether any of that elements's ancestors
+    -- matches), by applying the filter to the given element itself, and by
+    -- allowing the functions in the filter to return data of arbitrary types
+    -- (as opposed to either a Pandoc AST element or `nil`).
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
@@ -1890,13 +1893,23 @@ do
                    else _rd = _rd + 1
         end
         assert(_rd < 512, 'too much recursion.')
+        local t = type(elem)
         local ts = {elem_type(elem)}
         local n = #ts
         if n == 0 then return elem end
-        if elem.clone then
-            elem = elem:clone ()
-        else
-            elem = copy(elem) -- @fixme a shallow copy would do.
+        if t == 'userdata' then
+            if ts[1] == 'Pandoc' then
+                local blocks = elem.blocks:clone()
+                local meta = elem.meta:clone()
+                -- @todo shorten
+                elem = pandoc.Pandoc(blocks, meta)
+            elseif elem.clone then
+                elem = elem:clone()
+            end
+        elseif t == 'table' and _rd == 0 then
+            -- @todo Replace with a shallow copy so that copy()
+            -- can be thrown out (save for errors.)
+            elem = copy(elem)
         end
 
         local walker_f = walker_fs[ts[1]]
