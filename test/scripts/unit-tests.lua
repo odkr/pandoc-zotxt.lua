@@ -1401,8 +1401,7 @@ function test_walk ()
         assert(doc, err)
         lu.assert_equals(doc, M.walk(doc, id))
         lu.assert_equals(doc, M.walk(doc, nilify))
-        -- @fixme fails
-        -- lu.assert_equals(M.walk(doc, nullify).tag, 'Null')
+        lu.assert_equals(M.walk(doc, nullify).tag, 'Null')
     end
 
     local Str = pandoc.Str
