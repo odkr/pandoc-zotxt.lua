@@ -28,7 +28,7 @@ PANDOC		?= pandoc
 # TARGETS
 # =======
 
-ISSUE_TESTS	:= test-issue-4 test-issue-4-2 test-issue-6
+ISSUE_TESTS	:= test-issue-4 test-issue-4-2 test-issue-6 test-issue-7
 
 BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex test-zotero-id \
 		   test-biblio-json test-biblio-yaml \
