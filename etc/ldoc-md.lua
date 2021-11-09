@@ -20,9 +20,6 @@ setmetatable(_G, {__index = function (_, key)
     return function () return '' end
 end})
 
-Str = stringify
-Plain = stringify
-
 function Blocksep ()
     return '\n\n'
 end
@@ -88,13 +85,17 @@ function Para (s)
     return s
 end
 
+Plain = stringify
+
 function SoftBreak ()
-    return '\n'
+    return ' '
 end
 
 function Space ()
     return ' '
 end
+
+Str = stringify
 
 function Strong (s)
     return '**' .. s .. '**'

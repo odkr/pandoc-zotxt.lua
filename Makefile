@@ -94,8 +94,8 @@ test-resource-path:
 		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
 	fi
 
-header-documentation:
-	@sh etc/update-header-documentation.sh pandoc-zotxt.lua
+header-docs:
+	@sh etc/update-header-docs.sh pandoc-zotxt.lua
 
 man:
 	@$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
@@ -104,10 +104,10 @@ man:
 		-M section=1 \
 		man/pandoc-zotxt.lua.md
 
-ldoc: header-documentation
+ldoc: header-docs
 	@ldoc -c ldoc/config.ld .
 
 docs: man ldoc
 
 .PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
-	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) header-documentation man ldoc docs
+	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) header-docs man ldoc docs
