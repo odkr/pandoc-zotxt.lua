@@ -1037,18 +1037,6 @@ function test_html_to_md ()
 
     for i, o in pairs(tests) do
         lu.assert_equals(M.html_to_md(i), o)
-
-        -- Spans are translated differently for HTML and Markdown,
-        -- so they cannot be tested.
-        if  not i:match '<sc>' and not i:match '<span>' and
-            -- Pandoc splits up the text differently for this one.
-            not i:match '*\\*\\*test***'
-        then
-            local idoc = pandoc.read(i, 'html')
-            local odoc = pandoc.read(o, 'markdown-smart')
-            -- pandoc.utils.equals reports them as different.
-            lu.assert_items_equals(idoc, odoc)
-        end
     end
 end
 
