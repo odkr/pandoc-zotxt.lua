@@ -218,7 +218,6 @@ do
     -- @string path The path.
     -- @treturn string A sanitised path.
     -- @within File I/O
-    -- @fixme Untested.
     function path_sanitise (path)
         for i = 1, #sanitisation_patterns do
             local pattern, repl = unpack(sanitisation_patterns[i])
@@ -1006,7 +1005,6 @@ do
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
     -- @within Converters
-    -- @fixme no longer works. Might be due to walk
     function markdownify (elem)
         return stringify(walk(walk(elem, esc), md))
     end
@@ -1818,7 +1816,8 @@ do
             return unpack(ets)
         end
     else
-        -- @fixme It's unclear whether Pandoc and Doc work like this.
+        -- @fixme It's unclear whether this code ignores pandoc.Doc
+        --        in favour of pandoc.Pandoc (as it should) for Pandoc <v2.15.
         local super_types = {}
         for k, v in sorted_pairs(pandoc) do
             if type(v) == 'table' and not super_types[v] and k ~= 'Doc' then
@@ -1846,7 +1845,7 @@ end
 
 do
     local clone
-    -- @fixme This has not been tested for Pandoc <=v2.14.
+    -- @fixme This has not been tested for Pandoc <v2.15.
     if pandoc.types and PANDOC_VERSION > {2, 14} then
         function clone (elem)
             assert(type(elem), 'userdata')
@@ -1913,7 +1912,6 @@ do
     -- @tparam {string=func,...} filter A filter.
     -- @return The element, with the filter applied.
     -- @within Document parsing
-    -- @fixme Undertested.
     function walk (elem, filter, _rd)
         if not _rd then _rd = 0
                    else _rd = _rd + 1
