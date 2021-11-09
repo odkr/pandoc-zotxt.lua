@@ -305,6 +305,62 @@ local text = require 'text'
 local json = require 'lunajson'
 
 
+-- PROTOTYPES
+-- ==========
+
+--- Prototype for errors.
+--
+-- @type Error
+Error = {}
+Error.template = 'something went wrong.'
+
+
+--- Metatable for errors.
+Error.mt = {}
+Error.mt.__index = Error
+setmetatable(Error, Error.mt)
+
+
+--- Delegate to Error.
+--
+-- @tab tab Data that describes the error.
+-- @treturn Error A zotxt error object.
+function Error.mt:__call (tab)
+        if not tab then tab = {} end
+        local mt = {}
+        for k, v in pairs(getmetatable(self)) do mt[k] = v end
+        mt.__index = self
+        return setmetatable(tab, mt)
+end
+
+
+--- Convert an error into a string.
+--
+-- Returns the errors `template` field but replaces every word that is
+-- preceded by a `$` with the value of the field of that name.
+--
+-- @treturn string An error message.
+function Error.mt:__tostring ()
+    return self.template:gsub('$([%a%w_]*)', self)
+end
+
+
+--- Prototype for connection errors.
+--
+-- @type ConnectionError
+ConnectionError = Error {
+    template = 'failed to connect to Zotero.'
+}
+
+
+--- Prototype for encoding errors.
+--
+-- @type EncodingError
+EncodingError = Error {
+    template = '$id: fetched data is not encoded in UTF-8.'
+}
+
+
 -- FUNCTIONS
 -- =========
 
@@ -1210,7 +1266,6 @@ ZOTXT_KEYTYPES = {
     'easykey',         -- zotxt easy citekey
 }
 
-
 do
     -- luacheck: ignore assert pcall tostring type
     local assert = assert
@@ -1224,56 +1279,7 @@ do
     local base_url = ZOTXT_BASE_URL
     local key_ts = ZOTXT_KEYTYPES
     local n_key_ts = #key_ts
-    local utf8_p = ';%s*[Cc][Hh][Aa][Rr][Ss][Ee][Tt]="?[Uu][Tt][Ff]%-8"?%s*$'
-
-
-    --- Prototype for zotxt errors.
-    --
-    -- @type ZotxtError
-    ZotxtError = {}
-
-    --- Metatable for zotxt errors.
-    ZotxtError.mt = {}
-    setmetatable(ZotxtError, ZotxtError.mt)
-    ZotxtError.mt.template = '$id: an unspecified error occurred.'
-
-    --- Create a zotxt error.
-    --
-    -- @string id The ID of the source that triggered the error.
-    -- @treturn ZotxtError A zotxt error object.
-    function ZotxtError.mt:__call(id)
-            return setmetatable({id = id}, getmetatable(self))
-    end
-
-    --- Convert a zotxt error into an error message.
-    --
-    -- @treturn string An error message.
-    function ZotxtError.mt:__tostring ()
-        local mt = getmetatable(self)
-        return mt.template:gsub('$([%a%w_]*)', self)
-    end
-
-    --- Prototype for connection errors.
-    --
-    -- @type ConnectionError
-    -- @see `ZotxtError`.
-    ConnectionError = {}
-    ConnectionError.mt = {}
-    setmetatable(ConnectionError, ConnectionError.mt)
-    for k, v in pairs(ZotxtError.mt) do ConnectionError.mt[k] = v end
-    ConnectionError.mt.template = '$id: failed to connect to Zotero.'
-
-
-    --- Prototype for encoding errors.
-    --
-    -- @type EncodingError
-    -- @see `ZotxtError`.
-    EncodingError = {}
-    EncodingError.mt = {}
-    setmetatable(EncodingError, EncodingError.mt)
-    for k, v in pairs(ZotxtError.mt) do EncodingError.mt[k] = v end
-    EncodingError.mt.template = '$id: fetched data is not encoded in UTF-8.'
-
+    local utf8_p = ';%s*charset="?utf%-?8"?%s*$'
 
     -- Retrieve bibliographic data from Zotero (worker).
     --
@@ -1306,10 +1312,11 @@ do
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
             local ok, mt, data = pcall(http_get, query_url)
-            assert(ok, ConnectionError(id))
+            assert(ok, ConnectionError())
             err = match(data, '^<([^>]+)>$')
             if not err and mt ~= '' then
-                assert(match(mt, utf8_p), EncodingError(id))
+                mt = mt:lower()
+                assert(match(mt, utf8_p), EncodingError{id = id})
                 -- luacheck: ignore ok
                 local ok, ret = pcall(parse_f, data, mt)
                 if ok then
