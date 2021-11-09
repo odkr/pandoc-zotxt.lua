@@ -1,9 +1,7 @@
 ---
-bibliography: test/data/bibliography.yaml
+bibliography: test/data/dashed-bibliography.yaml
 ---
 
-This is to test a bug with the fix to [issue #4](https://github.com/odkr/pandoc-zotxt.lua/issues/4).
+A Better BibTeX citation:
 
-It should *not* find the item, but it should *not* crash either.
-
-Cite something not in Zotero [@no_such_entry 123].
+@crenshaw1989DemarginalizingIntersectionRace makes a good case.
