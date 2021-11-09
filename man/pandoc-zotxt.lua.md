@@ -19,46 +19,78 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-**pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
-them either to a document's "references" metadata field or to a
-bibliography file, where Pandoc can pick them up.
+**pandoc-zotxt.lua** is a Lua filter for Pandoc that looks up citations in
+Zotero and adds their bibliographic data to a document's "references" metadata
+field or to a bibliography file, where Pandoc can pick it up.
 
-Cite your sources using "easy citekeys" (provided by *zotxt*) or
-"Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
-Then tell **pandoc** to filter your document through **pandoc-zotxt.lua**
-before processing citations. That's all there is to it.
-Zotero bust be running, of course.
+Cite your sources using so-called "Better BibTeX citation keys" (provided
+by Better BibTeX for Zotero) or "easy citekeys" (provided by zotxt). Then,
+while Zotero is running, tell **pandoc** to filter your document through
+**pandoc-zotxt.lua** before processing citations. That's all there is to it.
 
-**pandoc-zotxt.lua** only fetches sources from Zotero that are defined
-neither in the "references" metadata field nor in any bibliography file.
+If a document's "references" metadata field or a bibliography file already
+has bibliographic data for a citation, that citation will be ignored.
 
 
 BIBLIOGRAPHY FILES
 ==================
 
-**pandoc-zotxt.lua** can add sources to a special bibliography file,
-rather than to the "references" metadata field. This speeds up subsequent
-processing of the same document, because sources that are already in that
-file need not be fetched from Zotero again.
+**pandoc-zotxt.lua** can add bibliographic data to a bibliography file, rather
+than to the "references" metadata field. This speeds up subsequent processing
+of the same document, because that data need not be fetched again from Zotero.
 
-You configure **pandoc-zotxt.lua** to add sources to a bibliography file by
-setting the "zotero-bibliography" metadata field to a filename. If the
-filename is relative, it is interpreted as relative to the directory of the
-first input file passed to **pandoc** or, if no input file was given, as
-relative to the current working directory. The format of the file is
-determined by its filename ending:
+To use such a bibliography file, set the "zotero-bibliography" metadata field
+to a filename. If the filename is relative, it is interpreted as relative to
+the directory of the first input file passed to **pandoc** or, if no input
+file was given, as relative to the current working directory. The format of
+the file is determined by its filename ending:
 
 **Ending** | **Format** | **Feature**
----------- | ---------- | ------------------------
-`.json`    | CSL JSON   | More robust.
-`.yaml`    | CSL YAML   | Easier to edit manually.
+---------- | ---------- | ----------------
+`.json`    | CSL JSON   | More reliable.
+`.yaml`    | CSL YAML   | Easier to edit.
 
 The bibliography file is added to the "bibliography" metadata field
 automatically. You can safely set "zotero-bibliography" and "bibliography"
 at the same time.
 
-The sources in the bibliography file are neither updated nor deleted.
-If you want to update the file, delete it.
+**pandoc-zotxt.lua** only adds bibliographic records to that file; it does
+*not* change, update, or delete them. If you need to update or delete records,
+delete the file; **pandoc-zotxt.lua** will then regenerate it.
+
+
+CITATION KEY TYPES
+==================
+
+**pandoc-zotxt.lua** supports multiple types of citation keys, namely,
+"Better BibTeX citation keys", "easy citekeys" and Zotero iterm IDs.
+
+However, it may happen that a Better BibTeX citation key is interpreted
+as an easy citekey *and* yet picks out an item, if not the one that it
+actually is the citation key of (and vice versa). That is, citation keys
+may be matched with the wrong bibliographic data.
+
+If this happens, you can disable citation keys that you do not use by setting
+the "zotero-citekey-types" metadata field either to the citation key type or
+the list of citation key types that you want to use.
+
+You can use the following types:
+
+**Key**           | **Type**                   | **Comments**
+----------------- | -------------------------- | -----------------------
+`betterbibtexkey` | Better BibTeX citation key | -
+`easykey`         | easy citekey               | Deprecated.
+`key`             | Zotero item ID             | Hard to use.
+
+For example:
+
+```markdown
+---
+zotero-citekey-types: betterbibtexkey
+...
+
+@doe2020Title is now guaranteed to be read as a Better BibTeX citation key.
+```
 
 
 EXAMPLE
@@ -81,21 +113,27 @@ that do not set the "User Agent" HTTP header. And **pandoc** does not.
 As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
 versions of Zotero unless you tell **pandoc** to set that header.
 
+**pandoc-zotxt.lua** creates a temporary file when it adds sources to
+a bibliography file. If Pandoc exits because it catches a signal, for
+example, because you press **Ctrl**-**c**, then this file will *not*
+be deleted (this is a bug in Pandoc and in the process of being fixed).
+
+Moreover, if you are using Pandoc up to v2.7, another process may,
+mistakenly, use the same temporary file at the same time, though this
+is highly unlikely.
+
+
+SECURITY
+========
+
+If you are using Pandoc up to v2.7 and place the special bibliography file
+in a directory that other users have write access to, then they can read
+and change the content of that file, regardless of whether they have
+permission to read or write the file itself.
+
 
 CAVEATS
 =======
-
-**pandoc-zotxt.lua** creates a temporary file when it adds sources to
-a bibliography file. If Pandoc exits because it receives a signal, for
-example, because you press **Ctrl**-**c**, then this file will *not*
-be deleted.
-
-If you are using Pandoc up to v2.7, then another process may, mistakenly,
-use the same temporary file at the same time, though this is highly
-unlikely. Moreover, if the bibliography file resides in a directory that
-other users have write access to, then they can read and change the
-bibliography file's content, regardless of whether they have permission
-to read or write the file itself.
 
 **pandoc-zotxt.lua** is Unicode-agnostic.
 

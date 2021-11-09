@@ -31,12 +31,14 @@
 <ul>
 <li><a href="#Metadata">Metadata</a></li>
 <li><a href="#File_I_O">File I/O</a></li>
+<li><a href="#Class_Prototype">Class Prototype </a></li>
+<li><a href="#Class_Error">Class Error </a></li>
 <li><a href="#Warnings">Warnings</a></li>
 <li><a href="#Higher_order_functions">Higher-order functions</a></li>
 <li><a href="#Table_manipulation">Table manipulation</a></li>
 <li><a href="#Networking">Networking</a></li>
 <li><a href="#Converters">Converters</a></li>
-<li><a href="#zotxt">zotxt</a></li>
+<li><a href="#Class_Zotxt">Class Zotxt </a></li>
 <li><a href="#Bibliography_files">Bibliography files</a></li>
 <li><a href="#Document_parsing">Document parsing</a></li>
 <li><a href="#Main">Main</a></li>
@@ -63,50 +65,48 @@
 
 <h2> DESCRIPTION</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and adds
- them either to a document&rsquo;s &ldquo;references&rdquo; metadata field or to a
- bibliography file, where Pandoc can pick them up.</p></p>
-<p> Cite your sources using &ldquo;easy citekeys&rdquo; (provided by <em>zotxt</em>) or
- &ldquo;Better BibTeX Citation Keys&rdquo; (provided by Better BibTeX for Zotero).
- Then tell <strong>pandoc</strong> to filter your document through <strong>pandoc-zotxt.lua</strong>
- before processing citations. That&rsquo;s all there is to it.
- Zotero bust be running, of course.</p>
+<p> <strong>pandoc-zotxt.lua</strong> is a Lua filter for Pandoc that looks up citations in
+ Zotero and adds their bibliographic data to a document&rsquo;s &ldquo;references&rdquo;
+ metadata field or to a bibliography file, where Pandoc can pick it up.</p></p>
+<p><p> Cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo; (provided
+ by Better BibTeX for Zotero) or &ldquo;easy citekeys&rdquo; (provided by zotxt). Then,
+ while Zotero is running, tell <strong>pandoc</strong> to filter your document through
+ <strong>pandoc-zotxt.lua</strong> before processing citations. That&rsquo;s all there is to it.</p>
 
-<p> <strong>pandoc-zotxt.lua</strong> only fetches sources from Zotero that are defined
- neither in the &ldquo;references&rdquo; metadata field nor in any bibliography file.</p>
+<p> If a document&rsquo;s &ldquo;references&rdquo; metadata field or a bibliography file already
+ has bibliographic data for a citation, that citation will be ignored.</p>
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> can add sources to a special bibliography file,
+<p> <strong>pandoc-zotxt.lua</strong> can add bibliographic data to a bibliography file,
  rather than to the &ldquo;references&rdquo; metadata field. This speeds up subsequent
- processing of the same document, because sources that are already in that
- file need not be fetched from Zotero again.</p>
+ processing of the same document, because that data need not be fetched
+ again from Zotero.</p>
 
-<p> You configure <strong>pandoc-zotxt.lua</strong> to add sources to a bibliography file by
- setting the &ldquo;zotero-bibliography&rdquo; metadata field to a filename. If the
- filename is relative, it is interpreted as relative to the directory of the
- first input file passed to <strong>pandoc</strong> or, if no input file was given, as
- relative to the current working directory. The format of the file is
- determined by its filename ending:</p>
+<p> To use such a bibliography file, set the &ldquo;zotero-bibliography&rdquo; metadata
+ field to a filename. If the filename is relative, it is interpreted as
+ relative to the directory of the first input file passed to <strong>pandoc</strong> or,
+ if no input file was given, as relative to the current working directory.
+ The format of the file is determined by its filename ending:</p>
 
 <table>
 <thead>
 <tr>
-<th><strong>Ending</strong> </th>
+<th> <strong>Ending</strong> </th>
 <th> <strong>Format</strong> </th>
-<th> <strong>Feature</strong></th>
+<th> <strong>Feature</strong>     </th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>.json</code>    </td>
+<td> <code>.json</code>    </td>
 <td> CSL JSON   </td>
-<td> More robust.</td>
+<td> More reliable.  </td>
 </tr>
 <tr>
-<td><code>.yaml</code>    </td>
+<td> <code>.yaml</code>    </td>
 <td> CSL YAML   </td>
-<td> Easier to edit manually.</td>
+<td> Easier to edit. </td>
 </tr>
 </tbody>
 </table>
@@ -116,51 +116,62 @@
  automatically. You can safely set &ldquo;zotero-bibliography&rdquo; and &ldquo;bibliography&rdquo;
  at the same time.</p>
 
-<p> The sources in the bibliography file are neither updated nor deleted.
- If you want to update the file, delete it.</p>
+<p> <strong>pandoc-zotxt.lua</strong> only adds bibliographic records to that file; it does
+ <em>not</em> change, update, or delete them. If you need to update or delete
+ records, delete the file; <strong>pandoc-zotxt.lua</strong> will then regenerate it.</p>
 
-<h2> EXAMPLE</h2>
+<h2> CITATION KEY TYPES</h2>
+
+<p> <strong>pandoc-zotxt.lua</strong> supports multiple types of citation keys, namely,
+ &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;easy citekeys&rdquo; and Zotero iterm IDs.</p>
+
+<p> However, it may happen that a Better BibTeX citation key is interpreted as
+ an easy citekey <em>and</em> yet picks out an item, if not the one that it
+ actually is the citation key of (and vice versa). That is, citation keys
+ may be matched with the wrong bibliographic data.</p>
+
+<p> If this happens, you can disable citation keys that you do not use by
+ setting the &ldquo;zotero-citekey-types&rdquo; metadata field either to the citation
+ key type or the list of citation key types that you want to use.</p>
+
+<p> You can use the following types:</p>
+
+<table>
+<thead>
+<tr>
+<th> <strong>Key</strong>           </th>
+<th> <strong>Type</strong>                   </th>
+<th> <strong>Comments</strong> </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> <code>betterbibtexkey</code> </td>
+<td> Better BibTeX citation key </td>
+<td> -            </td>
+</tr>
+<tr>
+<td> <code>easykey</code>         </td>
+<td> easy citekey               </td>
+<td> Deprecated.  </td>
+</tr>
+<tr>
+<td> <code>key</code>             </td>
+<td> Zotero item ID             </td>
+<td> Hard to use. </td>
+</tr>
+</tbody>
+</table>
+
+
+<p> For example:</p>
 
 <pre>
-pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
-See @doe2020Title <span class="keyword">for</span> details.
+<span class="comment">---
+</span>zotero-citekey-types: betterbibtexkey
+...
 </pre>
-
-
-<p> This will look up &ldquo;doe2020Title&rdquo; in Zotero.</p>
-
-<h2> KNOWN ISSUES</h2>
-
-<p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
- that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does not.
- As a consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these
- versions of Zotero unless you tell <strong>pandoc</strong> to set that header.</p>
-
-<h2> CAVEATS</h2>
-
-<p> <strong>pandoc-zotxt.lua</strong> creates a temporary file when it adds sources to
- a bibliography file. If Pandoc exits because it receives a signal, for
- example, because you press <strong>Ctrl</strong>-<strong>c</strong>, then this file will <em>not</em>
- be deleted.</p>
-
-<p> If you are using Pandoc up to v2.7, then another process may, mistakenly,
- use the same temporary file at the same time, though this is highly
- unlikely. Moreover, if the bibliography file resides in a directory that
- other users have write access to, then they can read and change the
- bibliography file&rsquo;s content, regardless of whether they have permission
- to read or write the file itself.</p>
-
-<p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
-
-<h2> SEE ALSO</h2>
-
-<ul>
-<li><a href="https://github.com/egh/zotxt">zotxt</a></li>
-<li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
-</ul>
-
-
-<p> pandoc(1)</p>
+</p>
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020, 2021 Odin Kroeger</li>
@@ -181,11 +192,11 @@ See @doe2020Title <span class="keyword">for</span> details.
 	<td class="summary">The version of this script.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#SCPT_DIR">SCPT_DIR</a></td>
+	<td class="name" nowrap><a href="#SCRIPT_DIR">SCRIPT_DIR</a></td>
 	<td class="summary">The directory the script is in.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#SCPT_NAME">SCPT_NAME</a></td>
+	<td class="name" nowrap><a href="#SCRIPT_NAME">SCRIPT_NAME</a></td>
 	<td class="summary">The filename of the script.</td>
 	</tr>
 </table>
@@ -193,11 +204,11 @@ See @doe2020Title <span class="keyword">for</span> details.
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#PATH_SEP">PATH_SEP</a></td>
-	<td class="summary">The path segment seperator of the OS.</td>
+	<td class="summary">The path segment seperator of your OS.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#EOL">EOL</a></td>
-	<td class="summary">The end of line sequence of the OS.</td>
+	<td class="summary">The end of line sequence of your OS.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#path_sanitise">path_sanitise (path)</a></td>
@@ -216,8 +227,8 @@ See @doe2020Title <span class="keyword">for</span> details.
 	<td class="summary">Check whether a path is absolute.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#path_prettify">path_prettify (path)</a></td>
-	<td class="summary">Prettify Unix paths.</td>
+	<td class="name" nowrap><a href="#path_prettify">path_prettify (...)</a></td>
+	<td class="summary">Prettify paths.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#wd">wd ()</a></td>
@@ -240,12 +251,34 @@ See @doe2020Title <span class="keyword">for</span> details.
 	<td class="summary">Write data to a file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='pdz-XXXXXXXXXX']])</a></td>
+	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='pdz-XXXXXX']])</a></td>
 	<td class="summary">Generate a name for a temporary file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#with_tmp_file">with_tmp_file ([dir[, templ='pdz-XXXXXXXXXX']], func, ...)</a></td>
+	<td class="name" nowrap><a href="#with_tmp_file">with_tmp_file ([dir[, templ='pdz-XXXXXX']], func, ...)</a></td>
 	<td class="summary">Run a function with a temporary file.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Prototype">Class Prototype </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Prototype.mt">Prototype.mt</a></td>
+	<td class="summary">Metatable for prototypes.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Prototype.mt:__call">Prototype.mt:__call (tab)</a></td>
+	<td class="summary">Delegate to a prototype.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Error">Class Error </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Error.mt">Error.mt</a></td>
+	<td class="summary">Metatable for errors.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Error.mt:__tostring">Error.mt:__tostring ()</a></td>
+	<td class="summary">Convert an error into a string.</td>
 	</tr>
 </table>
 <h2><a href="#Warnings">Warnings</a></h2>
@@ -273,10 +306,6 @@ See @doe2020Title <span class="keyword">for</span> details.
 	<td class="summary">Return the keys and the length of a table.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#copy">copy (data)</a></td>
-	<td class="summary">Copy a data tree.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#rmap">rmap (func, data)</a></td>
 	<td class="summary">Recursively apply a function to every value of a tree.</td>
 	</tr>
@@ -292,7 +321,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 <h2><a href="#Networking">Networking</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#url_read">url_read (url)</a></td>
+	<td class="name" nowrap><a href="#http_get">http_get (url)</a></td>
 	<td class="summary">Retrieve data from a URL via an HTTP GET request.</td>
 	</tr>
 </table>
@@ -315,23 +344,23 @@ See @doe2020Title <span class="keyword">for</span> details.
 	<td class="summary">Convert Zotero pseudo-HTML to Markdown.</td>
 	</tr>
 </table>
-<h2><a href="#zotxt">zotxt</a></h2>
+<h2><a href="#Class_Zotxt">Class Zotxt </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_BASE_URL">ZOTXT_BASE_URL</a></td>
-	<td class="summary">The <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.</td>
+	<td class="name" nowrap><a href="#Zotxt.base_url">Zotxt.base_url</a></td>
+	<td class="summary">The URL of the <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_KEYTYPES">ZOTXT_KEYTYPES</a></td>
+	<td class="name" nowrap><a href="#Zotxt.citekey_types">Zotxt.citekey_types</a></td>
 	<td class="summary">Types of citation keys <a href="https://github.com/egh/zotxt">zotxt</a> supports.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#zotxt_csl_item">zotxt_csl_item (id)</a></td>
-	<td class="summary">Retrieve a source from Zotero as CSL item.</td>
+	<td class="name" nowrap><a href="#Zotxt:get_csl_item">Zotxt:get_csl_item (id)</a></td>
+	<td class="summary">Retrieve bibliographic data from Zotero as CSL item.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#zotxt_source">zotxt_source (id)</a></td>
-	<td class="summary">Retrieve a source from Zotero as Pandoc metadata.</td>
+	<td class="name" nowrap><a href="#Zotxt:get_source">Zotxt:get_source (id)</a></td>
+	<td class="summary">Retrieve bibliographic data from Zotero as Pandoc metadata.</td>
 	</tr>
 </table>
 <h2><a href="#Bibliography_files">Bibliography files</a></h2>
@@ -398,10 +427,10 @@ See @doe2020Title <span class="keyword">for</span> details.
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio_write">biblio_write (fname[, items])</a></td>
-	<td class="summary">Write sources to a bibliography file.</td>
+	<td class="summary">Write bibliographic data to a bibliography file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio_update">biblio_update (fname, ids)</a></td>
+	<td class="name" nowrap><a href="#biblio_update">biblio_update (handle, fname, ids)</a></td>
 	<td class="summary">Add items from Zotero to a bibliography file.</td>
 	</tr>
 </table>
@@ -417,7 +446,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#meta_sources">meta_sources (meta)</a></td>
-	<td class="summary">Collect sources from the document&rsquo;s metadata block.</td>
+	<td class="summary">Collect bibliographic data from the document&rsquo;s metadata block.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#doc_ckeys">doc_ckeys (doc[, undef=false])</a></td>
@@ -427,16 +456,20 @@ See @doe2020Title <span class="keyword">for</span> details.
 <h2><a href="#Main">Main</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#add_biblio">add_biblio (meta, ckeys)</a></td>
-	<td class="summary">Add sources to a bibliography file and the file to the document&rsquo;s metadata.</td>
+	<td class="name" nowrap><a href="#add_biblio">add_biblio (handle, meta, ckeys)</a></td>
+	<td class="summary">Add data to a bibliography file and the file to the document&rsquo;s metadata.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#add_refs">add_refs (meta, ckeys)</a></td>
-	<td class="summary">Add sources to the <code>references</code> metadata field.</td>
+	<td class="name" nowrap><a href="#add_refs">add_refs (handle, meta, ckeys)</a></td>
+	<td class="summary">Add bibliographic data to the <code>references</code> metadata field.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#meta_ckey_types">meta_ckey_types (meta)</a></td>
+	<td class="summary">Get citation key types to use.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#main">main (doc)</a></td>
-	<td class="summary">Collect sources and adds bibliographic data to a document.</td>
+	<td class="summary">Collect citations and add bibliographic data to a document.</td>
 	</tr>
 </table>
 
@@ -476,8 +509,8 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "SCPT_DIR"></a>
-    <strong>SCPT_DIR</strong>
+    <a name = "SCRIPT_DIR"></a>
+    <strong>SCRIPT_DIR</strong>
     </dt>
     <dd>
     The directory the script is in.
@@ -490,8 +523,8 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "SCPT_NAME"></a>
-    <strong>SCPT_NAME</strong>
+    <a name = "SCRIPT_NAME"></a>
+    <strong>SCRIPT_NAME</strong>
     </dt>
     <dd>
     The filename of the script.
@@ -512,7 +545,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <strong>PATH_SEP</strong>
     </dt>
     <dd>
-    The path segment seperator of the OS.
+    The path segment seperator of your OS.
 
 
 
@@ -526,7 +559,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <strong>EOL</strong>
     </dt>
     <dd>
-    The end of line sequence of the OS.
+    The end of line sequence of your OS.
 
 
 
@@ -664,21 +697,20 @@ See @doe2020Title <span class="keyword">for</span> details.
 </dd>
     <dt>
     <a name = "path_prettify"></a>
-    <strong>path_prettify (path)</strong>
+    <strong>path_prettify (...)</strong>
     </dt>
     <dd>
-    Prettify Unix paths.</p>
+    Prettify paths.</p>
 
-<p> Replaces the user&rsquo;s home directory with &lsquo;~&rsquo;,
- but only if it&rsquo;s followed by a Unix path seperator (&lsquo;/&rsquo;).
- Trusts the <code>HOME</code> environment variable.
+<p> Removes the current working directory from the beginning of a path
+ and, on POSIX systems, replaces the user&rsquo;s home directory with &lsquo;~&rsquo;.
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">path</span>
+        <li><span class="parameter">...</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A path.
+         Paths.
         </li>
     </ul>
 
@@ -686,7 +718,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <ol>
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A prettier path.
+        Prettier paths.
     </ol>
 
 
@@ -887,7 +919,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 </dd>
     <dt>
     <a name = "tmp_fname"></a>
-    <strong>tmp_fname ([dir[, templ='pdz-XXXXXXXXXX']])</strong>
+    <strong>tmp_fname ([dir[, templ='pdz-XXXXXX']])</strong>
     </dt>
     <dd>
     Generate a name for a temporary file.</p>
@@ -909,7 +941,7 @@ See @doe2020Title <span class="keyword">for</span> details.
          A template for the filename.
   &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
   Must contain at least six 'X&rsquo;s.
-         (<em>default</em> 'pdz-XXXXXXXXXX')
+         (<em>default</em> 'pdz-XXXXXX')
         </li>
     </ul>
 
@@ -938,7 +970,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 </dd>
     <dt>
     <a name = "with_tmp_file"></a>
-    <strong>with_tmp_file ([dir[, templ='pdz-XXXXXXXXXX']], func, ...)</strong>
+    <strong>with_tmp_file ([dir[, templ='pdz-XXXXXX']], func, ...)</strong>
     </dt>
     <dd>
     Run a function with a temporary file.</p>
@@ -963,16 +995,16 @@ See @doe2020Title <span class="keyword">for</span> details.
     <ul>
         <li><span class="parameter">dir</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A directory to prefix the name of the temporary file with.
-  Must not be the empty string (&lsquo;&rsquo;). See <a href="../index.html#tmp_fname">tmp_fname</a>.
+         A directory to prefix the name of the temporary
+  file with. Must not be the empty string (&lsquo;&rsquo;). See <a href="../index.html#tmp_fname">tmp_fname</a>.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">templ</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A template for the name of the temporary file.
-  &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
+         A template for the name of the
+  temporary file. &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
   Must contain at least six 'X&rsquo;s. See <a href="../index.html#tmp_fname">tmp_fname</a>.
-         (<em>default</em> 'pdz-XXXXXXXXXX')
+         (<em>default</em> 'pdz-XXXXXX')
         </li>
         <li><span class="parameter">func</span>
             <span class="types"><span class="type">func</span></span>
@@ -997,6 +1029,100 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
 </dl>
+    <h2 class="section-header has-description"><a name="Class_Prototype"></a>Class Prototype </h2>
+
+          <div class="section-description">
+          Prototype for prototypes.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Prototype.mt"></a>
+    <strong>Prototype.mt</strong>
+    </dt>
+    <dd>
+    Metatable for prototypes.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Prototype.mt:__call"></a>
+    <strong>Prototype.mt:__call (tab)</strong>
+    </dt>
+    <dd>
+    Delegate to a prototype.</p>
+
+<p> Takes an object and makes it delegate to a prototype.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">tab</span>
+            <span class="types"><span class="type">tab</span></span>
+         A table.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">tab</span></span>
+        A prototype.
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_Error"></a>Class Error </h2>
+
+          <div class="section-description">
+          Prototype for errors.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Error.mt"></a>
+    <strong>Error.mt</strong>
+    </dt>
+    <dd>
+    Metatable for errors.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Error.mt:__tostring"></a>
+    <strong>Error.mt:__tostring ()</strong>
+    </dt>
+    <dd>
+    Convert an error into a string.</p>
+
+<p> Return the error&rsquo;s <code>template</code> field but replace every word that is
+ preceded by a <code>$</code> with the value of the field of that name.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.
+    </ol>
+
+
+
+
+</dd>
+</dl>
     <h2 class="section-header "><a name="Warnings"></a>Warnings</h2>
 
     <dl class="function">
@@ -1007,7 +1133,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <dd>
     Print an error message to STDERR.</p>
 
-<p> Prefixes the message with <a href="../index.html#SCPT_NAME">SCPT_NAME</a> and &lsquo;: &rsquo;, and appends <a href="../index.html#EOL">EOL</a>.
+<p> Prefixes the message with <a href="../index.html#SCRIPT_NAME">SCRIPT_NAME</a> and &lsquo;: &rsquo;, and appends <a href="../index.html#EOL">EOL</a>.
 
 
     <h3>Parameters:</h3>
@@ -1129,44 +1255,6 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "copy"></a>
-    <strong>copy (data)</strong>
-    </dt>
-    <dd>
-    Copy a data tree.</p>
-
-<p> Handles metatables, recursive structures, tables as keys, and
- avoids the <code>__pairs</code> and <code>__newindex</code> metamethods.
- Copies are deep.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">data</span>
-         Arbitrary data.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        A deep copy of <code>data</code>.
-    </ol>
-
-
-
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example">&gt; x = {<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>}
-&gt; y = {x, <span class="number">4</span>}
-&gt; c = copy(y)
-&gt; <span class="global">table</span>.insert(x, <span class="number">4</span>)
-&gt; <span class="global">table</span>.<span class="global">unpack</span>(c[<span class="number">1</span>])
-<span class="number">1</span>       <span class="number">2</span>       <span class="number">3</span></pre>
-    </ul>
-
-</dd>
-    <dt>
     <a name = "rmap"></a>
     <strong>rmap (func, data)</strong>
     </dt>
@@ -1267,8 +1355,8 @@ See @doe2020Title <span class="keyword">for</span> details.
 
     <dl class="function">
     <dt>
-    <a name = "url_read"></a>
-    <strong>url_read (url)</strong>
+    <a name = "http_get"></a>
+    <strong>http_get (url)</strong>
     </dt>
     <dd>
     Retrieve data from a URL via an HTTP GET request.
@@ -1456,15 +1544,18 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="zotxt"></a>zotxt</h2>
+    <h2 class="section-header has-description"><a name="Class_Zotxt"></a>Class Zotxt </h2>
 
+          <div class="section-description">
+          Interface to zotxt.
+          </div>
     <dl class="function">
     <dt>
-    <a name = "ZOTXT_BASE_URL"></a>
-    <strong>ZOTXT_BASE_URL</strong>
+    <a name = "Zotxt.base_url"></a>
+    <strong>Zotxt.base_url</strong>
     </dt>
     <dd>
-    The <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.
+    The URL of the <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.
 
 
 
@@ -1474,25 +1565,13 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "ZOTXT_KEYTYPES"></a>
-    <strong>ZOTXT_KEYTYPES</strong>
+    <a name = "Zotxt.citekey_types"></a>
+    <strong>Zotxt.citekey_types</strong>
     </dt>
     <dd>
     Types of citation keys <a href="https://github.com/egh/zotxt">zotxt</a> supports.
 
 
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">key</span>
-        Zotero item ID
-        </li>
-        <li><span class="parameter">betterbibtexkey</span>
-        Better BibTeX citation key
-        </li>
-        <li><span class="parameter">easykey</span>
-        zotxt easy citekey
-        </li>
-    </ul>
 
 
 
@@ -1500,11 +1579,11 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "zotxt_csl_item"></a>
-    <strong>zotxt_csl_item (id)</strong>
+    <a name = "Zotxt:get_csl_item"></a>
+    <strong>Zotxt:get_csl_item (id)</strong>
     </dt>
     <dd>
-    Retrieve a source from Zotero as CSL item.</p>
+    Retrieve bibliographic data from Zotero as CSL item.</p>
 
 <p> Returns bibliographic data as a Lua table. That table can be
  passed to <a href="../index.html#biblio_write">biblio_write</a>; it should <em>not</em> be used in the <code>references</code>
@@ -1544,11 +1623,11 @@ See @doe2020Title <span class="keyword">for</span> details.
 
 </dd>
     <dt>
-    <a name = "zotxt_source"></a>
-    <strong>zotxt_source (id)</strong>
+    <a name = "Zotxt:get_source"></a>
+    <strong>Zotxt:get_source (id)</strong>
     </dt>
     <dd>
-    Retrieve a source from Zotero as Pandoc metadata.</p>
+    Retrieve bibliographic data from Zotero as Pandoc metadata.</p>
 
 <p> Returns bibliographic data as a Pandoc metadata value. That value
  can be used in the <code>references</code> metadata field; it should <em>not</em> be
@@ -1580,7 +1659,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#zotxt_csl_item">zotxt_csl_item</a>.
+    See <code>Zotxt.get_csl_item</code>.
 
 
 
@@ -2052,7 +2131,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <strong>biblio_write (fname[, items])</strong>
     </dt>
     <dd>
-    Write sources to a bibliography file.</p>
+    Write bibliographic data to a bibliography file.</p>
 
 <p> The filename suffix determins what format the data is written as.
  There must be an encoder for that suffix in <a href="../index.html#BIBLIO_TYPES">BIBLIO_TYPES</a>.
@@ -2100,7 +2179,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 </dd>
     <dt>
     <a name = "biblio_update"></a>
-    <strong>biblio_update (fname, ids)</strong>
+    <strong>biblio_update (handle, fname, ids)</strong>
     </dt>
     <dd>
     Add items from Zotero to a bibliography file.</p>
@@ -2116,6 +2195,10 @@ See @doe2020Title <span class="keyword">for</span> details.
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="../index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">fname</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The name of the bibliography file.
@@ -2147,7 +2230,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#zotxt_csl_item">zotxt_csl_item</a>.
+    See <code>Zotxt.get_csl_item</code>.
 
 
 
@@ -2176,11 +2259,11 @@ See @doe2020Title <span class="keyword">for</span> details.
     <ol>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The type
+        Type
   (e.g., &lsquo;MetaMap&rsquo;, &lsquo;Plain&rsquo;).</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The higher-order type
+        Super-type
   (i.e., &lsquo;Block&rsquo;, &lsquo;Inline&rsquo;, or &lsquo;MetaValue&rsquo;).</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -2205,15 +2288,15 @@ See @doe2020Title <span class="keyword">for</span> details.
     Walk the AST and apply functions to matching elements.</p>
 
 <p> Differs from <code>pandoc.walk_block</code> and <code>pandoc.walk_inline</code> by never
- modifying the original element, by accepting AST elements of <em>any</em> type
- (including documents as a whole, the metadata block, and metadata
+ modifying the original element, by accepting AST elements of <em>any</em>
+ type (including documents as a whole, the metadata block, and metadata
  fields), by accepting the higher-order type <code>AstElement</code>, by <em>not</em>
  accepting the filter keywords <code>Blocks</code> and <code>Inlines</code>, by walking
  the AST bottom-up (which implies that the filter is applied to every
- element, regardless of whether any of that elements&rsquo;s ancestors matches
- it), by applying the filter to the given element itself, and by allowing
- the functions in the filter to return data of arbitrary types (as
- opposed to either a Pandoc AST element or <code>nil</code>).
+ element, regardless of whether any of that elements&rsquo;s ancestors
+ matches), by applying the filter to the given element itself, and by
+ allowing the functions in the filter to return data of arbitrary types
+ (as opposed to either a Pandoc AST element or <code>nil</code>).
 
 
     <h3>Parameters:</h3>
@@ -2243,7 +2326,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <strong>meta_sources (meta)</strong>
     </dt>
     <dd>
-    Collect sources from the document&rsquo;s metadata block.</p>
+    Collect bibliographic data from the document&rsquo;s metadata block.</p>
 
 <p> Reads the <code>references</code> metafata field and every bibliography file
  referenced by the <code>bibliography</code> metadata field.</p>
@@ -2254,7 +2337,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">tab</span></span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
          A metadata block.
         </li>
     </ul>
@@ -2317,10 +2400,10 @@ See @doe2020Title <span class="keyword">for</span> details.
     <dl class="function">
     <dt>
     <a name = "add_biblio"></a>
-    <strong>add_biblio (meta, ckeys)</strong>
+    <strong>add_biblio (handle, meta, ckeys)</strong>
     </dt>
     <dd>
-    Add sources to a bibliography file and the file to the document&rsquo;s metadata.</p>
+    Add data to a bibliography file and the file to the document&rsquo;s metadata.</p>
 
 <p> Updates the bibliography file as needed and adds it to the <code>bibliography</code>
  metadata field. Interpretes a relative filename as relative to the
@@ -2330,8 +2413,12 @@ See @doe2020Title <span class="keyword">for</span> details.
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="../index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">tab</span></span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
          A metadata block, with the field
   <code>zotero-bibliography</code> set to the filename of the bibliography file.
         </li>
@@ -2346,7 +2433,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">tab</span></span>
+           <span class="types"><span class="type">pandoc.Meta</span></span>
         An updated metadata block, with the field
   <code>bibliography</code> added if needed.
     </ol>
@@ -2362,23 +2449,27 @@ See @doe2020Title <span class="keyword">for</span> details.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#zotxt_csl_item">zotxt_csl_item</a>.
+    See <code>Zotxt.get_csl_item</code>.
 
 
 
 </dd>
     <dt>
     <a name = "add_refs"></a>
-    <strong>add_refs (meta, ckeys)</strong>
+    <strong>add_refs (handle, meta, ckeys)</strong>
     </dt>
     <dd>
-    Add sources to the <code>references</code> metadata field.</p>
+    Add bibliographic data to the <code>references</code> metadata field.</p>
 
 <p> Prints an error message to STDERR for every source that cannot be found.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="../index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">meta</span>
             <span class="types"><span class="type">tab</span></span>
          A metadata block.
@@ -2409,7 +2500,48 @@ See @doe2020Title <span class="keyword">for</span> details.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#zotxt_csl_item">zotxt_csl_item</a>.
+    See <code>Zotxt.get_csl_item</code>.
+
+
+
+</dd>
+    <dt>
+    <a name = "meta_ckey_types"></a>
+    <strong>meta_ckey_types (meta)</strong>
+    </dt>
+    <dd>
+    Get citation key types to use.</p>
+
+<p> Return a list of citation key types from the <code>zotero-citekey-types</code>
+ metadata field. If a value of that field does <em>not</em> pick out a citation
+ key type listed in <a href="../index.html#Zotxt.citekey_types">Zotxt.citekey_types</a>, it is ignored.</p>
+
+<p> Prints messages to STDERR if it cannot parse the <code>zotero-citekey-types</code>
+ metadata field or if a value of that field does not pick out an actual
+ citation key type.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">meta</span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
+         A metadata block.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">pandoc.List</span></span>
+        A list of citation key types.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        If no valid citation key types were found.
+    </ol>
+
 
 
 
@@ -2419,7 +2551,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     <strong>main (doc)</strong>
     </dt>
     <dd>
-    Collect sources and adds bibliographic data to a document.</p>
+    Collect citations and add bibliographic data to a document.</p>
 
 <p> Prints messages to STDERR if errors occur.</p>
 
@@ -2448,7 +2580,7 @@ See @doe2020Title <span class="keyword">for</span> details.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#zotxt_csl_item">zotxt_csl_item</a>.
+    See <code>Zotxt.get_csl_item</code>.
 
 
 
@@ -2460,7 +2592,7 @@ See @doe2020Title <span class="keyword">for</span> details.
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-06-07 19:45:04 </i>
+<i style="float:right;">Last updated 2021-11-09 20:45:09 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
