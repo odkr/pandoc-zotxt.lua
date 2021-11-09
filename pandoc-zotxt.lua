@@ -388,39 +388,6 @@ function keys (tab)
 end
 
 
---- Copy a data tree.
---
--- Handles metatables, recursive structures, tables as keys, and
--- avoids the `__pairs` and `__newindex` metamethods.
--- Copies are deep.
---
--- @param data Arbitrary data.
--- @return A deep copy of `data`.
--- @within Table manipulation
---
--- @usage
---      > x = {1, 2, 3}
---      > y = {x, 4}
---      > c = copy(y)
---      > table.insert(x, 4)
---      > table.unpack(c[1])
---      1       2       3
-function copy (data, _seen)
-    -- Borrows from:
-    -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
-    -- * <http://lua-users.org/wiki/CopyTable>
-    if type(data) ~= 'table' then return data end
-    if _seen and _seen[data] then return _seen[data] end
-    local ret = setmetatable({}, getmetatable(data))
-    _seen = _seen or {}
-    _seen[data] = ret
-    for k, v in next, data, nil do
-        rawset(ret, copy(k, _seen), copy(v, _seen))
-    end
-    return ret
-end
-
-
 --- Recursively apply a function to every value of a tree.
 --
 -- The function is applied to *every* node of the data tree.

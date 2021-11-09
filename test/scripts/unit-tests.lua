@@ -771,20 +771,20 @@ function test_copy ()
 
     -- Test a nested table.
     local t = {1, 2, 3, {1, 2, 3, {4, 5, 6}}}
-    local c = M.copy(t)
+    local c = copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a self-referential table.
     t = {1, 2, 3}
     t.t = t
-    c = M.copy(t)
+    c = copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a table that has another table as key.
     t = {1, 2, 3}
     local u = {1, 2, 3, {4, 5, 6}}
     u[t] = 7
-    c = M.copy(u)
+    c = copy(u)
     lu.assert_items_equals(c, u)
 
     -- Test a table that overrides `__pairs`.
@@ -792,7 +792,7 @@ function test_copy ()
         return function () end
     end}
     t = setmetatable({1, 2, 3}, single)
-    c = M.copy(t)
+    c = copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a table that does all of this.
@@ -800,7 +800,7 @@ function test_copy ()
     u = {1, 2, 3, {4, 5, 6}}
     t[u] = {1, 2, 3, {4, 5}}
     t.t = t
-    c = M.copy(t)
+    c = copy(t)
     lu.assert_items_equals(c, t)
 end
 
