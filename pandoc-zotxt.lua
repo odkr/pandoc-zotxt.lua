@@ -169,6 +169,7 @@ local MetaInlines = pandoc.MetaInlines
 local MetaList = pandoc.MetaList
 local Str = pandoc.Str
 local Span = pandoc.Span
+local Pandoc = pandoc.Pandoc
 
 
 -- Metadata
@@ -1719,7 +1720,7 @@ function biblio_update (fname, ids)
     local fmt, err = biblio_write(fname)
     if not fmt then return nil, err end
     -- @todo Remove this warning once the script has been dogfooded,
-    -- and was out in the open for a while.
+    --       and was out in the open for a while.
     if fmt == 'yaml' or fmt == 'yml' then
         warnf 'YAML bibliography file support is experimental!'
     end
@@ -1759,115 +1760,174 @@ end
 -- ======
 
 do
-    local types = {
-        -- AstElement = 'Type',
-        Pandoc = 'AstElement',
-        Meta = 'AstElement',
-        MetaValue = 'AstElement',
-        MetaBlocks = 'MetaValue',
-        MetaBool = 'MetaValue',
-        MetaInlines = 'MetaValue',
-        MetaList = 'MetaValue',
-        MetaMap = 'MetaValue',
-        MetaString = 'MetaValue',
-        Block = 'AstElement',
-        BlockQuote = 'Block',
-        BulletList = 'Block',
-        CodeBlock = 'Block',
-        DefinitionList = 'Block',
-        Div = 'Block',
-        Header = 'Block',
-        HorizontalRule = 'Block',
-        LineBlock = 'Block',
-        Null = 'Block',
-        OrderedList = 'Block',
-        Para = 'Block',
-        Plain = 'Block',
-        RawBlock = 'Block',
-        Table = 'Block',
-        Inline = 'AstElement',
-        Cite = 'Inline',
-        Code = 'Inline',
-        Emph = 'Inline',
-        Image = 'Inline',
-        LineBreak = 'Inline',
-        Link = 'Inline',
-        Math = 'Inline',
-        Note = 'Inline',
-        Quoted = 'Inline',
-        RawInline = 'Inline',
-        SmallCaps = 'Inline',
-        SoftBreak = 'Inline',
-        Space = 'Inline',
-        Span = 'Inline',
-        Str = 'Inline',
-        Strikeout = 'Inline',
-        Strong = 'Inline',
-        Subscript = 'Inline',
-        Superscript = 'Inline',
-        Underline = 'Inline'
-    }
+    -- @fixme This has not been tested for Pandoc <=v2.14.
+    if pandoc.types and PANDOC_VERSION <= {2, 14} then
+        local super_types = {}
+        for k, v in sorted_pairs(pandoc) do
+            if type(v) == 'table' and not super_types[v] then
+                local t = {k}
+                local mt = getmetatable(v)
+                n = 1
+                while mt and n < 16 do
+                    if not mt.name or mt.name == 'Type' then break end
+                    n = n + 1
+                    t[n] = mt.name
+                    mt = getmetatable(mt)
+                end
+                if t[n] == 'AstElement' then super_types[v] = t end
+            end
+        end
 
-    -- It is unclear whether this works in Pandoc before v2.15.
-    -- The documentation suggests it does, testing doesn't.
-    -- elem.tag used to be unreliable.
-    function elem_type (elem)
-        local t = type(elem)
-        if t ~= 'table' and t ~= 'userdata' then return end
-        local ts = {}
-        local n = 0
-        local et = elem.tag
-        -- There is no better way.
-        if  t == 'userdata' and
-            not et          and
-            elem.meta       and
-            elem.blocks
-        then
-            et = 'Pandoc'
+        --- The type of a Pandoc AST element.
+        --
+        -- @tparam pandoc.AstElement elem A Pandoc AST element.
+        -- @treturn[1] string Type
+        --  (e.g., 'MetaMap', 'Plain').
+        -- @treturn[1] string Super-type
+        --  (i.e., 'Block', 'Inline', or 'MetaValue').
+        -- @treturn[1] string 'AstElement'.
+        -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
+        -- @within Document parsing
+        function elem_type (elem)
+            if type(elem) ~= 'table' then return end
+            local mt = getmetatable(elem)
+            if not mt or not mt.__type then return end
+            return unpack(super_types[mt.__type])
         end
-        while et do
-            n = n + 1
-            ts[n] = et
-            et = types[et]
+    else
+        local super_types = {
+            Pandoc = 'AstElement',
+            Meta = 'AstElement',
+            MetaValue = 'AstElement',
+            MetaBlocks = 'MetaValue',
+            MetaBool = 'MetaValue',
+            MetaInlines = 'MetaValue',
+            MetaList = 'MetaValue',
+            MetaMap = 'MetaValue',
+            MetaString = 'MetaValue',
+            Block = 'AstElement',
+            BlockQuote = 'Block',
+            BulletList = 'Block',
+            CodeBlock = 'Block',
+            DefinitionList = 'Block',
+            Div = 'Block',
+            Header = 'Block',
+            HorizontalRule = 'Block',
+            LineBlock = 'Block',
+            Null = 'Block',
+            OrderedList = 'Block',
+            Para = 'Block',
+            Plain = 'Block',
+            RawBlock = 'Block',
+            Table = 'Block',
+            Inline = 'AstElement',
+            Cite = 'Inline',
+            Code = 'Inline',
+            Emph = 'Inline',
+            Image = 'Inline',
+            LineBreak = 'Inline',
+            Link = 'Inline',
+            Math = 'Inline',
+            Note = 'Inline',
+            Quoted = 'Inline',
+            RawInline = 'Inline',
+            SmallCaps = 'Inline',
+            SoftBreak = 'Inline',
+            Space = 'Inline',
+            Span = 'Inline',
+            Str = 'Inline',
+            Strikeout = 'Inline',
+            Strong = 'Inline',
+            Subscript = 'Inline',
+            Superscript = 'Inline',
+            Underline = 'Inline'
+        }
+
+        --- The type of a Pandoc AST element.
+        --
+        -- @tparam pandoc.AstElement elem A Pandoc AST element.
+        -- @treturn[1] string Type
+        --  (e.g., 'MetaMap', 'Plain').
+        -- @treturn[1] string Super-type
+        --  (i.e., 'Block', 'Inline', or 'MetaValue').
+        -- @treturn[1] string 'AstElement'.
+        -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
+        -- @within Document parsing
+        function elem_type (elem)
+            local t = type(elem)
+            if t ~= 'table' and t ~= 'userdata' then return end
+            local et = elem.tag
+            -- There is no better way.
+            if  not et          and
+                elem.meta       and
+                elem.blocks     and
+                t == 'userdata'
+            then
+                et = 'Pandoc'
+            end
+            local ets = {}
+            local n = 0
+            while et do
+                n = n + 1
+                ets[n] = et
+                et = super_types[et]
+            end
+            return unpack(ets)
         end
-        return unpack(ts)
     end
 end
 
 do
+    local clone
+    -- @fixme This has not been tested for Pandoc <=v2.14.
+    if pandoc.types and PANDOC_VERSION <= {2, 14} then
+        function clone (elem)
+            assert(type(elem), 'table')
+            local ret = setmetatable({}, getmetatable(elem))
+            for k, v in next, elem, nil do rawset(ret, k, v) end
+            return ret
+        end
+    else
+        function clone (elem)
+            assert(type(elem), 'userdata')
+            if elem.clone then return elem:clone() end
+            return Pandoc(elem.blocks:clone(), elem.meta:clone())
+        end
+    end
+
     -- Walk a mapping.
-    local function w_map (tab, ...)
+    local function walk_lua_mapping (tab, ...)
         for k, v in pairs(tab) do tab[k] = walk(v, ...) end
     end
 
-    -- The difference between mappings and sequences must be honoured,
-    -- because Pandoc may provide __pairs and __len metamethods.
-    local function w_seq (tab, ...)
+    -- Walk a sequence.
+    local function walk_lua_sequence (tab, ...)
         for i = 1, #tab do tab[i] = walk(tab[i], ...) end
     end
 
     --- Walk a *List AST element (e.g., `pandoc.OrderedList`).
-    local function w_list (elem, ...)
+    local function walk_pandoc_list (elem, ...)
         local content = elem.content
-        for i = 1, #content do w_seq(content[i], ...) end
+        for i = 1, #content do walk_lua_sequence(content[i], ...) end
+    end
+
+    -- Walk a Pandoc document.
+    function walk_pandoc_doc (doc, ...)
+        doc.meta = walk(doc.meta, ...)
+        walk_lua_sequence(doc.blocks, ...)
     end
 
     -- Walking functions by Pandoc AST element type.
     local walker_fs = {
-        Meta = w_map,
-        MetaBlocks = w_seq,
-        MetaList = w_seq,
-        MetaInlines = w_seq,
-        MetaMap = w_map,
-        BulletList = w_list,
-        OrderedList = w_list
+        Meta = walk_lua_mapping,
+        MetaBlocks = walk_lua_sequence,
+        MetaList = walk_lua_sequence,
+        MetaInlines = walk_lua_sequence,
+        MetaMap = walk_lua_mapping,
+        BulletList = walk_pandoc_list,
+        OrderedList = walk_pandoc_list,
+        Pandoc = walk_pandoc_doc
     }
-
-    -- Walk a document.
-    function walker_fs.Pandoc (doc, ...)
-        walk(doc.meta, ...)
-        w_seq(doc.blocks, ...)
-    end
 
     --- Walk the AST and apply functions to matching elements.
     --
@@ -1887,37 +1947,22 @@ do
     -- @return The element, with the filter applied.
     -- @within Document parsing
     -- @fixme Undertested.
-    -- @fixme Still appears to fail.
     function walk (elem, filter, _rd)
         if not _rd then _rd = 0
                    else _rd = _rd + 1
         end
         assert(_rd < 512, 'too much recursion.')
-        local t = type(elem)
-        local ts = {elem_type(elem)}
-        local n = #ts
+        local ets = {elem_type(elem)}
+        local et = ets[1]
+        local n = #ets
         if n == 0 then return elem end
-        if t == 'userdata' then
-            if ts[1] == 'Pandoc' then
-                local blocks = elem.blocks:clone()
-                local meta = elem.meta:clone()
-                -- @todo shorten
-                elem = pandoc.Pandoc(blocks, meta)
-            elseif elem.clone then
-                elem = elem:clone()
-            end
-        elseif t == 'table' and _rd == 0 then
-            -- @todo Replace with a shallow copy so that copy()
-            -- can be thrown out (save for errors.)
-            elem = copy(elem)
-        end
-
-        local walker_f = walker_fs[ts[1]]
+        elem = clone(elem)
+        local walker_f = walker_fs[et]
         if     walker_f     then walker_f(elem, filter, _rd)
-        elseif elem.content then w_seq(elem.content, filter, _rd)
+        elseif elem.content then walk_lua_sequence(elem.content, filter, _rd)
         end
         for i = 1, n do
-            local func = filter[ts[i]]
+            local func = filter[ets[i]]
             if func then
                 local new = func(elem)
                 if new ~= nil then elem = new end
