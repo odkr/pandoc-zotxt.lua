@@ -1266,7 +1266,7 @@ Zotxt = Prototype()
 
 
 --- The URL of the [zotxt](https://github.com/egh/zotxt) endpoint.
-Zotxt.base_url = 'http://localhost:23119/zotxt/items'
+Zotxt.base_url = 'http://localhost:23119/zotxt/items?'
 
 
 --- Types of citation keys [zotxt](https://github.com/egh/zotxt) supports.
@@ -1313,15 +1313,15 @@ do
     --  The former error can only be caught since Pandoc v2.11.
     -- @within zotxt
     local function get (handle, parse_f, id)
-        local citekey_ts = handle.citekey_types
+        local ckey_ts = handle.citekey_types
         local base_url = handle.base_url
         local err = nil
-        for i = 1, #citekey_ts do
+        for i = 1, #ckey_ts do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
-            local query_url = concat{base_url, '?', citekey_ts[i], '=', id}
+            local query_url = concat{base_url, ckey_ts[i], '=', id}
             local ok, mt, data = pcall(http_get, query_url)
             assert(ok, ConnectionError())
             err = match(data, '^<([^>]+)>$')
@@ -1332,8 +1332,7 @@ do
                 local ok, ret = pcall(parse_f, data, mt)
                 if ok then
                     if i ~= 1 then
-                        citekey_ts[1], citekey_ts[i] =
-                        citekey_ts[i], citekey_ts[1]
+                        ckey_ts[1], ckey_ts[i] = ckey_ts[i], ckey_ts[1]
                     end
                     return ret
                 else
@@ -1996,6 +1995,32 @@ function meta_sources (meta)
     return ret
 end
 
+-- @fixme
+-- documentation missing
+function meta_ckey_types (meta)
+    local citekey_types = meta['zotero-citekey-types']
+    if not citekey_types then return end
+    if citekey_types.tag == 'MetaInlines' then
+        citekey_types = MetaList{citekey_types}
+    elseif citekey_types.tag ~= 'MetaList' then
+        errf 'cannot parse metadata field "zotero-citekey-types", ignoring.'
+        return
+    end
+    local ret = List()
+    local n = 0
+    for i = 1, #citekey_types do
+        local t = stringify(citekey_types[i])
+        if Zotxt.citekey_types:includes(t) then
+            n = n + 1
+            ret[n] = t
+        elseif t == '' then
+            errf 'the empty string ("") is not a citation key type, ignoring.'
+        else
+            errf(t .. ': unknown citation key type, ingoring.')
+        end
+    end
+    if n > 0 then return ret end
+end
 
 do
     -- Save IDs that are not in a given set into another.
@@ -2133,12 +2158,17 @@ end
 function main (doc)
     local ckeys = doc_ckeys(doc, true)
     if next(ckeys) == nil then return end
+    local handle = Zotxt()
+    if doc.meta then
+        local ckey_ts = meta_ckey_types(doc.meta)
+        if ckey_ts then handle.citekey_types = ckey_ts end
+    end
     for i = 1, 2 do
         local add_srcs
         if     i == 1 then add_srcs = add_biblio
         elseif i == 2 then add_srcs = add_refs
         end
-        local meta, err = add_srcs(Zotxt, doc.meta, ckeys)
+        local meta, err = add_srcs(handle, doc.meta, ckeys)
         if meta then
             doc.meta = meta
             return doc
