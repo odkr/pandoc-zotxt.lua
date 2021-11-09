@@ -63,6 +63,13 @@ local stringify = pandoc.utils.stringify
 -- luacheck: pop
 
 
+local MetaInlines = pandoc.MetaInlines
+local Null = pandoc.Null
+local Para = pandoc.Para
+local Space = pandoc.Space
+local Str = pandoc.Str
+
+
 -- LIBRARIES
 -- =========
 
@@ -169,29 +176,55 @@ ZOTXT_YAML = {
 }
 
 --- Bibliographic data as stored in the metadata block.
-ZOTXT_META = {
-    {
-        author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
-        id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
-        issued={["date-parts"]={{{{text="1989"}}}}},
-        title={
-            {text="Demarginalizing"},
-            {},
-            {text="the"},
-            {},
-            {text="intersection"},
-            {},
-            {text="of"},
-            {},
-            {text="race"},
-            {},
-            {text="and"},
-            {},
-            {text="sex"}
-        },
-        type={{text="paper"}}
+if pandoc.types and PANDOC_VERSION <= {2, 14} then
+    ZOTXT_META = {
+        {
+            author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
+            id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
+            issued={["date-parts"]={{{{text="1989"}}}}},
+            title={
+                {text="Demarginalizing"},
+                {},
+                {text="the"},
+                {},
+                {text="intersection"},
+                {},
+                {text="of"},
+                {},
+                {text="race"},
+                {},
+                {text="and"},
+                {},
+                {text="sex"}
+            },
+            type={{text="paper"}}
+        }
     }
-}
+else
+    ZOTXT_META = {
+        {
+            author={Str "Kimberlé", Space(), Str "Crenshaw"},
+            id={Str "crenshaw1989DemarginalizingIntersectionRace"},
+            issued={["date-parts"]={{{Str "1989"}}}},
+            title={
+                Str "Demarginalizing",
+                Space(),
+                Str "the",
+                Space(),
+                Str "intersection",
+                Space(),
+                Str "of",
+                Space(),
+                Str "race",
+                Space(),
+                Str "and",
+                Space(),
+                Str "sex"
+            },
+            type={Str "paper"}
+        }
+    }
+end
 
 --- Bibliographic data as JSON string.
 ZOTXT_JSON = '[\n  ' ..
@@ -1348,10 +1381,6 @@ function test_elem_type ()
         lu.assert_nil(M.elem_type(v))
     end
 
-    local Str = pandoc.Str
-    local Para = pandoc.Para
-    local MetaInlines = pandoc.MetaInlines
-
     local tests = {
         [Str 'test'] = {'Str', 'Inline', 'AstElement', n = 3},
         [Para{Str ''}] = {'Para', 'Block', 'AstElement', n = 3},
@@ -1367,7 +1396,7 @@ end
 function test_walk ()
     local id = {AstElement = function (...) return ... end}
     local nilify = {AstElement = function () return end}
-    local nullify = {AstElement = function () return pandoc.Null() end}
+    local nullify = {AstElement = function () return Null() end}
     local pt = {nil, false, 0, '', {}, function () end}
 
     for _, v in ipairs(pt) do
@@ -1392,7 +1421,6 @@ function test_walk ()
         lu.assert_equals(M.walk(doc, nullify).tag, 'Null')
     end
 
-    local Str = pandoc.Str
     local yesify = {Str = function (s)
         if stringify(s) == 'no' then return Str 'yes' end
     end}
@@ -1401,8 +1429,6 @@ function test_walk ()
     local no = M.walk(Str 'no!', yesify)
     lu.assert_equals(stringify(no), 'no!')
 
-    local Para = pandoc.Para
-    local Null = pandoc.Null
     local elem = Para{Str 'no'}
     local walked = M.walk(elem, {
         Str = function () return Str 'yes' end,
