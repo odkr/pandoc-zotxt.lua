@@ -578,7 +578,7 @@ end
 
 
 do
-    local rsrc_path = PANDOC_STATE.resource_path
+    local resource_path = PANDOC_STATE.resource_path
 
     --- Locate a file in Pandoc's resource path.
     --
@@ -590,9 +590,9 @@ do
     -- @treturn[2] string An error message.
     -- @within File I/O
     function file_locate (fname)
-        if not rsrc_path or file_exists(fname) then return fname end
-        for i = 1, #rsrc_path do
-            local f = path_join(rsrc_path[i], fname)
+        if not resource_path or file_exists(fname) then return fname end
+        for i = 1, #resource_path do
+            local f = path_join(resource_path[i], fname)
             if file_exists(f) then return f end
         end
         return nil, fname .. ': not found in resource path.'
