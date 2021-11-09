@@ -8,47 +8,46 @@
 -- DESCRIPTION
 -- ===========
 --
--- **pandoc-zotxt.lua** looks up sources of citations in Zotero and adds
--- them either to a document's "references" metadata field or to a
--- bibliography file, where Pandoc can pick them up.
+-- **pandoc-zotxt.lua** is a Lua filter for Pandoc that looks up citations in
+-- Zotero and adds their bibliographic data to a document's "references"
+-- metadata field or to a bibliography file, where Pandoc can pick it up.
 --
--- Cite your sources using "Better BibTeX Citation Keys" (provided by Better
--- BibTeX for Zotero) or "easy citekeys" (provided by *zotxt*). Then tell
--- **pandoc** to filter your document through **pandoc-zotxt.lua**
--- before processing citations (Zotero must be running).
--- That's all there is to it.
+-- Cite your sources using so-called "Better BibTeX Citation Keys" (provided
+-- by Better BibTeX for Zotero) or "easy citekeys" (provided by zotxt). Then,
+-- while Zotero is running, tell **pandoc** to filter your document through
+-- **pandoc-zotxt.lua** before processing citations. That's all there is to it.
 --
--- **pandoc-zotxt.lua** only looks up sources in Zotero that are defined
--- neither in the "references" metadata field nor in a bibliography file.
+-- If a document's "references" metadata field or a bibliography file already
+-- has bibliographic data for a citation, that citation will be ignored.
 --
 --
 -- BIBLIOGRAPHY FILES
 -- ==================
 --
--- **pandoc-zotxt.lua** can add sources to a special bibliography file,
--- rather than to the "references" metadata field. This speeds up subsequen
--- processing of the same document, because sources that are in that file
--- already need not be fetched again from Zotero.
+-- **pandoc-zotxt.lua** can add bibliographic data to a bibliography file,
+-- rather than to the "references" metadata field. This speeds up subsequent
+-- processing of the same document, because that data need not be fetched
+-- again from Zotero.
 --
--- You tell **pandoc-zotxt.lua** to add sources to such a special bibliography
--- file by setting the "zotero-bibliography" metadata field to a filename.
--- If the filename is relative, it is interpreted as relative to the directory
--- of the first input file passed to **pandoc** or, if no input file was
--- given, as relative to the current working directory. The format of the
--- file is determined by its filename ending:
+-- To use such a bibliography file, set the "zotero-bibliography" metadata
+-- field to a filename. If the filename is relative, it is interpreted as
+-- relative to the directory of the first input file passed to **pandoc** or,
+-- if no input file was given, as relative to the current working directory.
+-- The format of the file is determined by its filename ending:
 --
--- | **Ending** | **Format** | **Feature**                        |
--- | ---------- | ---------- | ---------------------------------- |
--- | `.json`    | CSL JSON   | More reliable.                     |
--- | `.yaml`    | CSL YAML   | Easier to edit with a text editor. |
+-- | **Ending** | **Format** | **Feature**     |
+-- | ---------- | ---------- | --------------- |
+-- | `.json`    | CSL JSON   | More reliable.  |
+-- | `.yaml`    | CSL YAML   | Easier to edit. |
 --
 --
 -- The bibliography file is added to the "bibliography" metadata field
 -- automatically. You can safely set "zotero-bibliography" and "bibliography"
 -- at the same time.
 --
--- The sources in the bibliography file are neither updated nor deleted.
--- If you want to update them, delete the file.
+-- **pandoc-zotxt.lua** only adds bibliographic records to that file; it does
+-- *not* change, update, or delete them. If you need to update or delete
+-- records, delete the file; **pandoc-zotxt.lua** will then regenerate it.
 --
 --
 -- EXAMPLE
@@ -66,18 +65,18 @@
 -- ============
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not.
--- As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
--- versions of Zotero unless you tell **pandoc** to set that header.
+-- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
+-- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
+-- of Zotero unless you tell **pandoc** to set that header.
 --
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to
--- a bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not*
--- be deleted (this is a bug in Pandoc and in the process of being fixed).
+-- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
+-- bibliography file. If Pandoc exits because it catches a signal, for
+-- example, because you press **Ctrl**-**c**, then this file will *not* be
+-- deleted (this is a bug in Pandoc and in the process of being fixed).
 --
 -- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this
--- is highly unlikely.
+-- mistakenly, use the same temporary file at the same time, though this is
+-- highly unlikely.
 --
 --
 -- SECURITY
@@ -286,11 +285,11 @@ do
 
     --- The directory the script is in.
     -- @within Metadata
-    SCPT_DIR = script_dir
+    SCRIPT_DIR = script_dir
 
     --- The filename of the script.
     -- @within Metadata
-    SCPT_NAME = script_name
+    SCRIPT_NAME = script_name
 end
 
 
@@ -298,8 +297,8 @@ do
     local repo = NAME .. '-' .. VERSION
     local sub_dir = path_join('share', 'lua', '5.4', '?.lua')
     package.path = concat({package.path,
-        path_join(SCPT_DIR, sub_dir),
-        path_join(SCPT_DIR, repo, sub_dir)
+        path_join(SCRIPT_DIR, sub_dir),
+        path_join(SCRIPT_DIR, repo, sub_dir)
     }, ';')
 end
 
@@ -315,7 +314,7 @@ local json = require 'lunajson'
 
 --- Print an error message to STDERR.
 --
--- Prefixes the message with `SCPT_NAME` and ': ', and appends `EOL`.
+-- Prefixes the message with `SCRIPT_NAME` and ': ', and appends `EOL`.
 --
 -- @param msg The message. Coerced to `string`.
 -- @param ... Arguments to that message (think `string.format`).
@@ -325,7 +324,7 @@ function errf (msg, ...)
     if type(msg) ~= 'string' then msg = tostring(msg)
                              else msg = msg:format(...)
     end
-    io.stderr:write(SCPT_NAME, ': ', msg , EOL)
+    io.stderr:write(SCRIPT_NAME, ': ', msg , EOL)
 end
 
 
@@ -406,7 +405,6 @@ end
 --      > table.insert(x, 4)
 --      > table.unpack(c[1])
 --      1       2       3
--- @todo Add an option to make shallow copies.
 function copy (data, _seen)
     -- Borrows from:
     -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
@@ -720,11 +718,11 @@ do
         assert(fname ~= '', 'filename is the empty string.')
         local dir, base = path_split(path_mk_abs(fname))
         local data = {...}
-        local tmp_dir_copy
-        local vs = {with_temporary_directory(dir, 'pdz', function (tmp_dir)
-            tmp_dir_copy = tmp_dir
-            warnf('created temporary directory %s.', path_prettify(tmp_dir))
-            local tmp_file = path_join(tmp_dir, base)
+        local tmp_dir
+        local vs = {with_temporary_directory(dir, 'pdz', function (td)
+            tmp_dir = td
+            warnf('created temporary directory %s.', path_prettify(td))
+            local tmp_file = path_join(td, base)
             local ok, err, errno = write_to_file(tmp_file, unpack(data))
             if not ok then return nil, err, errno end
             if file_exists(fname) then
@@ -732,8 +730,8 @@ do
             end
             return os.rename(tmp_file, fname)
         end)}
-        if tmp_dir_copy and not file_exists(tmp_dir_copy) then
-            warnf('removed %s.', path_prettify(tmp_dir_copy))
+        if tmp_dir and not file_exists(tmp_dir) then
+            warnf('removed %s.', path_prettify(tmp_dir))
         end
         return unpack(vs)
     end
@@ -797,7 +795,7 @@ do
     --
     -- @string[opt] dir A directory to prefix the filename with.
     --  Must not be the empty string ('').
-    -- @string[optchain='pdz-XXXXXXXXXX'] templ A template for the filename.
+    -- @string[optchain='pdz-XXXXXX'] templ A template for the filename.
     --  'X's are replaced with random alphanumeric characters.
     --  Must contain at least six 'X's.
     -- @treturn[1] string A filename.
@@ -808,7 +806,7 @@ do
     -- @within File I/O
     function tmp_fname (dir, templ)
         if templ == nil then
-            templ = 'pdz-XXXXXXXXXX'
+            templ = 'pdz-XXXXXX'
         else
             assert(type(templ) == 'string')
             assert(templ ~= '', 'template is the empty string.')
@@ -864,7 +862,7 @@ do
     --
     -- @string[opt] dir A directory to prefix the name of the temporary
     --  file with. Must not be the empty string (''). See `tmp_fname`.
-    -- @string[optchain='pdz-XXXXXXXXXX'] templ A template for the name of the
+    -- @string[optchain='pdz-XXXXXX'] templ A template for the name of the
     --  temporary file. 'X's are replaced with random alphanumeric characters.
     --  Must contain at least six 'X's. See `tmp_fname`.
     -- @func func The function to run.
@@ -1264,44 +1262,52 @@ do
     local utf8_p = ';%s*[Cc][Hh][Aa][Rr][Ss][Ee][Tt]="?[Uu][Tt][Ff]%-8"?%s*$'
 
 
-    -- Prototype for zotxt errors.
+    --- Prototype for zotxt errors.
     --
-    -- @type err
-    local err = {}
+    -- @type ZotxtError
+    ZotxtError = {}
 
-    -- Metatable for zotxt errors.
-    err.mt = {}
-    setmetatable(err, err.mt)
+    --- Metatable for zotxt errors.
+    ZotxtError.mt = {}
+    setmetatable(ZotxtError, ZotxtError.mt)
+    ZotxtError.mt.template = '$id: an unspecified error occurred.'
 
-    -- Create a zotxt error object.
+    --- Create a zotxt error.
     --
     -- @string id The ID of the source that triggered the error.
-    -- @treturn err A zotxt error object.
-    function err.mt:__call(id)
-            return setmetatable({id = id}, self)
+    -- @treturn ZotxtError A zotxt error object.
+    function ZotxtError.mt:__call(id)
+            return setmetatable({id = id}, getmetatable(self))
     end
 
-    -- Convert a zotxt error into an error message.
+    --- Convert a zotxt error into an error message.
     --
     -- @treturn string An error message.
-    function err:__tostring ()
+    function ZotxtError.mt:__tostring ()
         local mt = getmetatable(self)
         return mt.template:gsub('$([%a%w_]*)', self)
     end
 
-
-    -- Prototype for fetch errors.
+    --- Prototype for connection errors.
     --
-    -- @see `err`.
-    fetch_err = copy(err)
-    fetch_err.template = '$id: failed to fetch data from Zotero.'
+    -- @type ConnectionError
+    -- @see `ZotxtError`.
+    ConnectionError = {}
+    ConnectionError.mt = {}
+    setmetatable(ConnectionError, ConnectionError.mt)
+    for k, v in pairs(ZotxtError.mt) do ConnectionError.mt[k] = v end
+    ConnectionError.mt.template = '$id: failed to connect to Zotero.'
 
 
-    -- Prototype for UTF-8 errors.
+    --- Prototype for encoding errors.
     --
-    -- @see `err`.
-    utf8_err = copy(err)
-    utf8_err.template = '$id: data fetched from zotxt is not encoded in UTF-8.'
+    -- @type EncodingError
+    -- @see `ZotxtError`.
+    EncodingError = {}
+    EncodingError.mt = {}
+    setmetatable(EncodingError, EncodingError.mt)
+    for k, v in pairs(ZotxtError.mt) do EncodingError.mt[k] = v end
+    EncodingError.mt.template = '$id: fetched data is not encoded in UTF-8.'
 
 
     -- Retrieve bibliographic data from Zotero (worker).
@@ -1315,19 +1321,19 @@ do
     -- Tries every citation key type defined in `ZOTXT_KEYTYPES` until the
     -- query is successful or no more citation key types are left.
     --
-    -- @func parse_f A function that takes an HTTP GET response,
-    --  typically, a CSL JSON string, and a MIME type,
-    --  returns a CSL item, and raises an error if, and only if,
-    --  it cannot interpret the HTTP get response as a CSL item.
+    -- @func parse_f A function that takes an HTTP GET response and a MIME
+    --  type, returns a CSL item, and raises an error if, and only if,
+    --  it cannot interpret the response as a CSL item.
     -- @string id An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An error if the data retrieved from *zotxt* is *not* encoded
-    --  in UTF-8 or if no data can be retrieved from *zotxt* at all.
-    --  The latter error can only be caught since Pandoc v2.11.
+    -- @raise An error if connecing to *zotxt* fails or
+    --  if the data received from *zotxt* is *not* encoded in UTF-8.
+    --  The former error can only be caught since Pandoc v2.11.
     -- @within zotxt
     local function get (parse_f, id)
+        local err = nil
         for i = 1, n_key_ts do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
@@ -1335,20 +1341,23 @@ do
             -- (for Better BibTeX citation keys).
             local query_url = concat{base_url, key_ts[i], '=', id}
             local ok, mt, data = pcall(http_get, query_url)
-            assert(ok, fetch_err(id))
-            assert(mt or match(mt, utf8_p), utf8_err(id))
-            if mt ~= '' then
+            assert(ok, ConnectionError(id))
+            err = match(data, '^<([^>]+)>$')
+            if not err and mt ~= '' then
+                assert(match(mt, utf8_p), EncodingError(id))
                 -- luacheck: ignore ok
-                local ok, item = pcall(parse_f, data, mt)
+                local ok, ret = pcall(parse_f, data, mt)
                 if ok then
                     if i ~= 1 then
                         key_ts[1], key_ts[i] = key_ts[i], key_ts[1]
                     end
-                    return item
+                    return ret
+                else
+                    err = ret
                 end
             end
         end
-        return nil, id .. ': not found.'
+        return nil, id .. ': ' .. tostring(err) .. '.'
     end
 
 
@@ -1373,7 +1382,7 @@ do
     -- @string str A CSL JSON string.
     -- @return A Lua data structure.
     local function json_to_lua (str)
-        assert(str ~= '')
+        assert(str ~= '', 'no data.')
         return rmap(num_to_str, decode(str)[1])
     end
 
@@ -1406,7 +1415,7 @@ do
     -- @string str A CSL JSON string.
     -- @treturn pandoc.MetaMap Pandoc metadata.
     local function json_to_meta (str)
-        assert(str ~= '')
+        assert(str ~= '', 'no data.')
         return read(str, 'csljson').meta.references[1]
     end
 
@@ -1432,7 +1441,7 @@ do
     end
 
     -- (a) The CSL JSON reader is only available since Pandoc v2.11.
-    -- (b) However, pandoc-citeproc had a (useful) bug and parses formatting
+    -- (b) However, pandoc-citeproc has a (useful) bug and parses formatting
     --     tags in metadata fields, so there is no need to treat metadata
     --     fields and bibliography files differently before Pandoc v2.11.
     -- See <https://github.com/jgm/pandoc/issues/6722> for details.
@@ -1760,41 +1769,8 @@ end
 -- ======
 
 do
-    -- @fixme This has not been tested for Pandoc <=v2.14.
-    if pandoc.types and PANDOC_VERSION <= {2, 14} then
-        local super_types = {}
-        for k, v in sorted_pairs(pandoc) do
-            if type(v) == 'table' and not super_types[v] then
-                local t = {k}
-                local mt = getmetatable(v)
-                n = 1
-                while mt and n < 16 do
-                    if not mt.name or mt.name == 'Type' then break end
-                    n = n + 1
-                    t[n] = mt.name
-                    mt = getmetatable(mt)
-                end
-                if t[n] == 'AstElement' then super_types[v] = t end
-            end
-        end
 
-        --- The type of a Pandoc AST element.
-        --
-        -- @tparam pandoc.AstElement elem A Pandoc AST element.
-        -- @treturn[1] string Type
-        --  (e.g., 'MetaMap', 'Plain').
-        -- @treturn[1] string Super-type
-        --  (i.e., 'Block', 'Inline', or 'MetaValue').
-        -- @treturn[1] string 'AstElement'.
-        -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
-        -- @within Document parsing
-        function elem_type (elem)
-            if type(elem) ~= 'table' then return end
-            local mt = getmetatable(elem)
-            if not mt or not mt.__type then return end
-            return unpack(super_types[mt.__type])
-        end
-    else
+    if pandoc.types and PANDOC_VERSION > {2, 14} then
         local super_types = {
             Pandoc = 'AstElement',
             Meta = 'AstElement',
@@ -1874,24 +1850,48 @@ do
             end
             return unpack(ets)
         end
+    else
+        -- @fixme It's unclear whether Pandoc and Doc work like this.
+        local super_types = {}
+        for k, v in sorted_pairs(pandoc) do
+            if type(v) == 'table' and not super_types[v] and k ~= 'Doc' then
+                local t = {k}
+                local mt = getmetatable(v)
+                n = 1
+                while mt and n < 16 do
+                    if not mt.name or mt.name == 'Type' then break end
+                    n = n + 1
+                    t[n] = mt.name
+                    mt = getmetatable(mt)
+                end
+                if t[n] == 'AstElement' then super_types[v] = t end
+            end
+        end
+
+        function elem_type (elem)
+            if type(elem) ~= 'table' then return end
+            local mt = getmetatable(elem)
+            if not mt or not mt.__type then return end
+            return unpack(super_types[mt.__type])
+        end
     end
 end
 
 do
     local clone
     -- @fixme This has not been tested for Pandoc <=v2.14.
-    if pandoc.types and PANDOC_VERSION <= {2, 14} then
+    if pandoc.types and PANDOC_VERSION > {2, 14} then
+        function clone (elem)
+            assert(type(elem), 'userdata')
+            if elem.clone then return elem:clone() end
+            return Pandoc(elem.blocks:clone(), elem.meta:clone())
+        end
+    else
         function clone (elem)
             assert(type(elem), 'table')
             local ret = setmetatable({}, getmetatable(elem))
             for k, v in next, elem, nil do rawset(ret, k, v) end
             return ret
-        end
-    else
-        function clone (elem)
-            assert(type(elem), 'userdata')
-            if elem.clone then return elem:clone() end
-            return Pandoc(elem.blocks:clone(), elem.meta:clone())
         end
     end
 
@@ -2135,7 +2135,7 @@ function add_refs (meta, ckeys)
 end
 
 
---- Collect sources and adds bibliographic data to a document.
+--- Collect citations and add bibliographic data to a document.
 --
 -- Prints messages to STDERR if errors occur.
 --
