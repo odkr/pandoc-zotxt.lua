@@ -632,10 +632,10 @@ function test_tmp_fname ()
     end
 
     local tests = {
-        [{nil, nil}] = '^pdz%-%w%w%w%w%w%w%w%w%w%w$',
+        [{nil, nil}] = '^pdz%-%w%w%w%w%w%w$',
         [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
-        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'pdz%-%w%w%w%w%w%w%w%w%w%w$',
-        [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
+        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'pdz%-%w%w%w%w%w%w$',
+        [{'/tmp', 'XXXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w%w$'
     }
 
     for k, v in pairs(tests) do
