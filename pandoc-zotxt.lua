@@ -308,30 +308,39 @@ local json = require 'lunajson'
 -- PROTOTYPES
 -- ==========
 
+
+--- Prototype for prototypes.
+--
+-- @type Prototype
+Prototype = {}
+
+--- Metatable for prototypes.
+Prototype.mt = {}
+setmetatable(Prototype, Prototype.mt)
+
+
+--- Delegate to a prototype.
+--
+-- @fixme Explain what this does.
+-- @tab tab A table.
+-- @treturn tab A prototype.
+function Prototype.mt:__call (tab)
+    if not tab then tab = {} end
+    local mt = {}
+    for k, v in pairs(getmetatable(self)) do mt[k] = v end
+    mt.__index = self
+    return setmetatable(tab, mt)
+end
+
+
 --- Prototype for errors.
 --
 -- @type Error
-Error = {}
+Error = Prototype()
 Error.template = 'something went wrong.'
 
-
 --- Metatable for errors.
-Error.mt = {}
-Error.mt.__index = Error
-setmetatable(Error, Error.mt)
-
-
---- Delegate to Error.
---
--- @tab tab Data that describes the error.
--- @treturn Error A zotxt error object.
-function Error.mt:__call (tab)
-        if not tab then tab = {} end
-        local mt = {}
-        for k, v in pairs(getmetatable(self)) do mt[k] = v end
-        mt.__index = self
-        return setmetatable(tab, mt)
-end
+Error.mt = getmetatable(Error)
 
 
 --- Convert an error into a string.
@@ -1250,21 +1259,23 @@ end
 -- zotxt
 -- -----
 
---- The URL of the [zotxt](https://github.com/egh/zotxt) endpoint.
+--- Interface to zotxt.
 --
--- @within zotxt
-ZOTXT_BASE_URL = 'http://localhost:23119/zotxt/items?'
+-- @type Zotxt
+Zotxt = Prototype()
+
+
+--- The URL of the [zotxt](https://github.com/egh/zotxt) endpoint.
+Zotxt.base_url = 'http://localhost:23119/zotxt/items'
 
 
 --- Types of citation keys [zotxt](https://github.com/egh/zotxt) supports.
---
--- @table ZOTXT_KEYTYPES
--- @within zotxt
-ZOTXT_KEYTYPES = {
+Zotxt.citekey_types = List {
     'key',             -- Zotero item ID
     'betterbibtexkey', -- Better BibTeX citation key
     'easykey',         -- zotxt easy citekey
 }
+
 
 do
     -- luacheck: ignore assert pcall tostring type
@@ -1276,10 +1287,7 @@ do
     local match = string.match
     local read = pandoc.read
     local decode = json.decode
-    local base_url = ZOTXT_BASE_URL
-    local key_ts = ZOTXT_KEYTYPES
-    local n_key_ts = #key_ts
-    local utf8_p = ';%s*charset="?utf%-?8"?%s*$'
+    local utf8_pattern = ';%s*charset="?utf%-?8"?%s*$'
 
     -- Retrieve bibliographic data from Zotero (worker).
     --
@@ -1289,9 +1297,10 @@ do
     -- should raise an error if its argument cannot be interpreted as
     -- bibliographic data.
     --
-    -- Tries every citation key type defined in `ZOTXT_KEYTYPES` until the
-    -- query is successful or no more citation key types are left.
+    -- Tries every citation key type defined in `Zotxt.citekey_types` until
+    -- the query is successful or no more citation key types are left.
     --
+    -- @tab Zotxt handle An interface to Zotero.
     -- @func parse_f A function that takes an HTTP GET response and a MIME
     --  type, returns a CSL item, and raises an error if, and only if,
     --  it cannot interpret the response as a CSL item.
@@ -1303,25 +1312,28 @@ do
     --  if the data received from *zotxt* is *not* encoded in UTF-8.
     --  The former error can only be caught since Pandoc v2.11.
     -- @within zotxt
-    local function get (parse_f, id)
+    local function get (handle, parse_f, id)
+        local citekey_ts = handle.citekey_types
+        local base_url = handle.base_url
         local err = nil
-        for i = 1, n_key_ts do
+        for i = 1, #citekey_ts do
             -- zotxt supports searching for multiple citation keys at once,
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
-            local query_url = concat{base_url, key_ts[i], '=', id}
+            local query_url = concat{base_url, '?', citekey_ts[i], '=', id}
             local ok, mt, data = pcall(http_get, query_url)
             assert(ok, ConnectionError())
             err = match(data, '^<([^>]+)>$')
             if not err and mt ~= '' then
                 mt = mt:lower()
-                assert(match(mt, utf8_p), EncodingError{id = id})
+                assert(match(mt, utf8_pattern), EncodingError{id = id})
                 -- luacheck: ignore ok
                 local ok, ret = pcall(parse_f, data, mt)
                 if ok then
                     if i ~= 1 then
-                        key_ts[1], key_ts[i] = key_ts[i], key_ts[1]
+                        citekey_ts[1], citekey_ts[i] =
+                        citekey_ts[i], citekey_ts[1]
                     end
                     return ret
                 else
@@ -1372,10 +1384,9 @@ do
     -- @raise An error if the data retrieved from *zotxt* is *not* encoded
     --  in UTF-8 or if no data can be retrieved from *zotxt* at all.
     --  The latter error can only be caught since Pandoc v2.11.
-    -- @within zotxt
-    function zotxt_csl_item (id)
+    function Zotxt:get_csl_item (id)
         assert(id ~= '', 'ID is the empty string ("").')
-        local ref, err = get(json_to_lua, id)
+        local ref, err = get(self, json_to_lua, id)
         if not ref then return nil, err end
         ref.id = id
         return ref
@@ -1403,10 +1414,9 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See `zotxt_csl_item`.
-    -- @within zotxt
-    function zotxt_source (id)
+    function Zotxt:get_source (id)
         assert(id ~= '', 'ID is the empty string ("").')
-        local ref, err, errtype = get(json_to_meta, id)
+        local ref, err, errtype = get(self, json_to_meta, id)
         if not ref then return nil, err, errtype end
         ref.id = MetaInlines{Str(id)}
         return ref
@@ -1686,6 +1696,7 @@ end
 --
 -- The caveats of `file_write` apply.
 --
+-- @tparam Zotxt handle A interface to Zotero.
 -- @string fname The name of the bibliography file.
 -- @tab ids The IDs of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
@@ -1695,7 +1706,7 @@ end
 -- @treturn[2] ?int An error number if the error is a file I/O error.
 -- @raise See `zotxt_csl_item`.
 -- @within Bibliography files
-function biblio_update (fname, ids)
+function biblio_update (handle, fname, ids)
     -- luacheck: ignore ok fmt err errno
     if #ids == 0 then return true end
     local fmt, err = biblio_write(fname)
@@ -1716,7 +1727,7 @@ function biblio_update (fname, ids)
     for i = 1, #ids do
         local id = ids[i]
         if not item_ids[id] then
-            local ok, ret, err = pcall(zotxt_csl_item, id)
+            local ok, ret, err = pcall(handle.get_csl_item, handle, id)
             if not ok then
                 return nil, tostring(ret)
             elseif ret then
@@ -1741,7 +1752,6 @@ end
 -- ======
 
 do
-
     if pandoc.types and PANDOC_VERSION > {2, 14} then
         local super_types = {
             Pandoc = 'AstElement',
@@ -1952,7 +1962,7 @@ end
 --
 -- Prints errors to STDERR if it cannot parse a bibliography file.
 --
--- @tab meta A metadata block.
+-- @tparam pandoc.Meta A metadata block.
 -- @treturn pandoc.List A list of CSL items.
 -- @within Document parsing
 function meta_sources (meta)
@@ -2041,19 +2051,20 @@ end
 -- directory of the first input file passed to **pandoc**, *not* as relative
 -- to the current working directory (unless no input files are given).
 --
--- @tab meta A metadata block, with the field
+-- @tparam Zotxt handle A interface to Zotero.
+-- @tparam pandoc.Meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
 -- @tab ckeys The citaton keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
 --  Citation keys are just item IDs.
--- @treturn[1] tab An updated metadata block, with the field
+-- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `bibliography` added if needed.
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
 -- @raise See `zotxt_csl_item`.
 -- @within Main
-function add_biblio (meta, ckeys)
+function add_biblio (handle, meta, ckeys)
     -- luacheck: ignore ok
     if #ckeys == 0 then return end
     if meta['zotero-bibliography'] == nil then return end
@@ -2064,7 +2075,7 @@ function add_biblio (meta, ckeys)
         return nil, 'zotero-bibliography: filename is the empty string ("").'
     end
     if not path_is_abs(fname) then fname = path_join(wd(), fname) end
-    local ok, err = biblio_update(fname, ckeys)
+    local ok, err = biblio_update(handle, fname, ckeys)
     if not ok then return nil, err end
     if not meta.bibliography then
         meta.bibliography = fname
@@ -2081,6 +2092,7 @@ end
 --
 -- Prints an error message to STDERR for every source that cannot be found.
 --
+-- @tparam Zotxt handle A interface to Zotero.
 -- @tab meta A metadata block.
 -- @tab ckeys The citation keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
@@ -2091,12 +2103,12 @@ end
 -- @treturn[2] string An error message, if applicable.
 -- @raise See `zotxt_csl_item`.
 -- @within Main
-function add_refs (meta, ckeys)
+function add_refs (handle, meta, ckeys)
     if #ckeys == 0 then return end
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ret, err = pcall(zotxt_source, ckeys[i])
+        local ok, ret, err = pcall(handle.get_source, handle, ckeys[i])
         if not ok  then return nil, tostring(ret)
         elseif ret then n = n + 1
                         meta.references[n] = ret
@@ -2126,7 +2138,7 @@ function main (doc)
         if     i == 1 then add_srcs = add_biblio
         elseif i == 2 then add_srcs = add_refs
         end
-        local meta, err = add_srcs(doc.meta, ckeys)
+        local meta, err = add_srcs(Zotxt, doc.meta, ckeys)
         if meta then
             doc.meta = meta
             return doc

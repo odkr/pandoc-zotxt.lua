@@ -1132,13 +1132,13 @@ end
 -- zotxt
 -- -----
 
-function test_zotxt_csl_item ()
+function test_zotxt_get_csl_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.zotxt_csl_item, v)
     end
 
-    local ret = M.zotxt_csl_item('haslanger2012ResistingRealitySocial')
+    local ret = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_equals(ret, ZOTXT_CSL)
 end
 
@@ -1303,12 +1303,12 @@ end
 function test_biblio_update ()
     local invalid = {nil, false, 0, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.biblio_update, v, {'<n/a>'})
+        lu.assert_error(M.biblio_update, M.Zotxt, v, {'<n/a>'})
     end
 
     local wrong = {'nosuffix', 'n.', 'n.wrongformat'}
     for _, v in ipairs(wrong) do
-        local ok, err =  M.biblio_update(v, {'<n/a>'})
+        local ok, err =  M.biblio_update(M.Zotxt, v, {'<n/a>'})
         lu.assert_nil(ok)
         lu.assert_not_nil(err)
     end
@@ -1316,7 +1316,7 @@ function test_biblio_update ()
     local fname = M.path_join(TMP_DIR, 'update-biblio.json')
     invalid = {nil, false, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.biblio_update, fname, v)
+        lu.assert_error(M.biblio_update, M.Zotxt, fname, v)
     end
 
     -- Remove file, just in case.
@@ -1325,13 +1325,13 @@ function test_biblio_update ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.biblio_update(fname, {})
+    ok, err = M.biblio_update(M.Zotxt, fname, {})
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.biblio_update(fname, {'haslanger:2012resisting'})
+    ok, err = M.biblio_update(M.Zotxt, fname, {'haslanger:2012resisting'})
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1344,7 +1344,7 @@ function test_biblio_update ()
     -- Checks adding a new citation.
     local new
     ckeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1352,7 +1352,7 @@ function test_biblio_update ()
     lu.assert_not_nil(data)
     lu.assert_equals(#data, 2)
 
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = read_json_file(fname)
@@ -1362,7 +1362,7 @@ function test_biblio_update ()
 
     -- This should not change the file.
     local post
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = read_json_file(fname)
