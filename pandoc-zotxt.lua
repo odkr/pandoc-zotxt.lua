@@ -58,14 +58,14 @@
 --
 -- However, it may happen that a Better BibTeX citation key is interpreted as
 -- an easy citekey *and* yet picks out an item, if not the one that it
--- actually is the citation key of (and vice versa). That is, citation keys
--- may be matched with the wrong bibliographic data.
+-- actually is the citation key of. That is to say, citation keys may be
+-- matched with the wrong bibliographic data.
 --
 -- If this happens, you can disable citation keys that you do not use by
--- setting the "zotero-citekey-types" metadata field either to the citation
--- key type or the list of citation key types that you want to use.
+-- setting the "zotero-citekey-types" metadata field to the citation key type
+-- or the list of citation key types that you want to use.
 --
--- You can use the following types:
+-- You can set the following citation key types:
 --
 -- | **Key**           | **Type**                   | **Comments** |
 -- | ----------------- | -------------------------- | ------------ |
@@ -74,52 +74,70 @@
 -- | `key`             | Zotero item ID             | Hard to use. |
 --
 --
--- For example:
 --
+-- EXAMPLES
+-- ========
+--
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
+--     See @doe2020Title for details.
+--     EOF
+--
+--
+-- This will look up "doe2020Title" in Zotero.
+--
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
+--     ---
+--     zotero-bibliography: bibliography.json
+--     ...
+--     See @doe2020Title for details.
+--     EOF
+--
+--
+-- This will look up "doe2020Title" in Zotero and save its bibliographic data
+-- into the file "bibliography.json" in the current working directory. If the
+-- same command is run again, "doe2020Title" will *not* be looked up again.
+--
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
 --     zotero-citekey-types: betterbibtexkey
 --     ...
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
---
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     See @doe2020Title for details.
 --     EOF
 --
 --
--- This will look up "doe2020Title" in Zotero.
+-- This forces **pandoc-zotxt.lua** to interpret "doe2020Title" as a Better
+-- BibTeX citation key.
 --
 --
 -- KNOWN ISSUES
 -- ============
+--
+-- Citation keys may, on rare occassions, be matched with the wrong
+-- bibliographic data. This happens if a citation key picks out a different
+-- record depending on whether it is interpreted as a Better BibTeX citation
+-- key or as an easy citekey. See **CITATION KEY TYPES** above on how to fix
+-- this.
+--
+-- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
+-- bibliography file. If Pandoc exits because it catches a signal (e.g.,
+-- because you press **Ctrl**-**c**), then this file will *not* be deleted.
+-- This is a bug in Pandoc and in the process of being fixed. Moreover, if you
+-- are using Pandoc up to v2.7, another process may, mistakenly, use the same
+-- temporary file at the same time, though this is highly unlikely.
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
 -- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
 -- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
 -- of Zotero unless you tell **pandoc** to set that header.
 --
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
 --
 -- SECURITY
 -- ========
 --
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
+-- If you are using Pandoc up to v2.7 and place the auto-generated
+-- bibliography file in a directory that other users have write access to,
+-- then they can read and change the content of that file, regardless of
+-- whether they have permission to read or write the file itself.
 --
 --
 -- CAVEATS
@@ -136,291 +154,7 @@
 --
 --
 -- pandoc(1)
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
 --
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
---     See @doe2020Title for details.
---     EOF
---
---
--- This will look up "doe2020Title" in Zotero.
---
---
--- KNOWN ISSUES
--- ============
---
--- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
--- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
--- of Zotero unless you tell **pandoc** to set that header.
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
---
--- SECURITY
--- ========
---
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
---
---
--- CAVEATS
--- =======
---
--- **pandoc-zotxt.lua** is Unicode-agnostic.
---
---
--- SEE ALSO
--- ========
---
--- * [zotxt](https://github.com/egh/zotxt)
--- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
---
--- pandoc(1)
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
---
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
---     See @doe2020Title for details.
---     EOF
---
---
--- This will look up "doe2020Title" in Zotero.
---
---
--- KNOWN ISSUES
--- ============
---
--- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
--- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
--- of Zotero unless you tell **pandoc** to set that header.
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
---
--- SECURITY
--- ========
---
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
---
---
--- CAVEATS
--- =======
---
--- **pandoc-zotxt.lua** is Unicode-agnostic.
---
---
--- SEE ALSO
--- ========
---
--- * [zotxt](https://github.com/egh/zotxt)
--- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
---
--- pandoc(1)
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
---
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
---     See @doe2020Title for details.
---     EOF
---
---
--- This will look up "doe2020Title" in Zotero.
---
---
--- KNOWN ISSUES
--- ============
---
--- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
--- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
--- of Zotero unless you tell **pandoc** to set that header.
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
---
--- SECURITY
--- ========
---
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
---
---
--- CAVEATS
--- =======
---
--- **pandoc-zotxt.lua** is Unicode-agnostic.
---
---
--- SEE ALSO
--- ========
---
--- * [zotxt](https://github.com/egh/zotxt)
--- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
---
--- pandoc(1)
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
---
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
---     See @doe2020Title for details.
---     EOF
---
---
--- This will look up "doe2020Title" in Zotero.
---
---
--- KNOWN ISSUES
--- ============
---
--- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
--- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
--- of Zotero unless you tell **pandoc** to set that header.
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
---
--- SECURITY
--- ========
---
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
---
---
--- CAVEATS
--- =======
---
--- **pandoc-zotxt.lua** is Unicode-agnostic.
---
---
--- SEE ALSO
--- ========
---
--- * [zotxt](https://github.com/egh/zotxt)
--- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
---
--- pandoc(1)
---     @doe2020Title is now guaranteed to be read as a Better BibTeX citation
--- key.
---
---
---
--- EXAMPLE
--- =======
---
---     pandoc -L pandoc-zotxt.lua -C <<EOF
---     See @doe2020Title for details.
---     EOF
---
---
--- This will look up "doe2020Title" in Zotero.
---
---
--- KNOWN ISSUES
--- ============
---
--- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
--- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
--- consequence, **pandoc-zotxt.lua** cannot retrieve data from these versions
--- of Zotero unless you tell **pandoc** to set that header.
---
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal, for
--- example, because you press **Ctrl**-**c**, then this file will *not* be
--- deleted (this is a bug in Pandoc and in the process of being fixed).
---
--- Moreover, if you are using Pandoc up to v2.7, another process may,
--- mistakenly, use the same temporary file at the same time, though this is
--- highly unlikely.
---
---
--- SECURITY
--- ========
---
--- If you are using Pandoc up to v2.7 and place the special bibliography file
--- in a directory that other users have write access to, then they can read
--- and change the content of that file, regardless of whether they have
--- permission to read or write the file itself.
---
---
--- CAVEATS
--- =======
---
--- **pandoc-zotxt.lua** is Unicode-agnostic.
---
---
--- SEE ALSO
--- ========
---
--- * [zotxt](https://github.com/egh/zotxt)
--- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
---
--- pandoc(1)
 -- @script pandoc-zotxt.lua
 -- @release 1.1.0b3
 -- @author Odin Kroeger
@@ -470,11 +204,9 @@ local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
 local PANDOC_VERSION = PANDOC_VERSION
 -- luacheck: pop
 
-
 -- luacheck: ignore _ENV
 local M = {}
 local _ENV = M
-
 
 -- Shorthands.
 local concat = table.concat
@@ -531,7 +263,6 @@ do
         {'(.)' .. PATH_SEP .. '$', '%1'}
     }
 
-
     --- Sanitise a path.
     --
     -- @string path The path.
@@ -545,7 +276,6 @@ do
         return path
     end
 end
-
 
 do
     -- Pattern to split a path into a directory and a filename part.
@@ -572,7 +302,6 @@ do
     end
 end
 
-
 do
     -- Join path segments (worker)
     --
@@ -597,7 +326,6 @@ do
     end
 end
 
-
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
 
@@ -609,7 +337,6 @@ do
     -- @within Metadata
     SCRIPT_NAME = script_name
 end
-
 
 do
     local repo = NAME .. '-' .. VERSION
@@ -639,7 +366,33 @@ setmetatable(Prototype, Prototype.mt)
 
 --- Delegate to a prototype.
 --
--- Takes an object and makes it delegate to a prototype.
+-- @usage
+--      > ObjA = Prototype()
+--      > mt = getmetatable(ObjA)
+--      > function mt:__tostring ()
+--      >     return 'a string'
+--      > end
+--      > ObjA.key = 'value'
+--      > ObjB = ObjA()
+--      > ObjB.key
+--      value
+--      > -- This syntax is less pretty, but permissible.
+--      > ObjB = {}
+--      > ObjA(ObjB)
+--      > ObjB.key
+--      value
+--      > -- `ObjB` can override properties.
+--      > ObjB.key = 'another value'
+--      > ObjC = ObjB()
+--      > ObjC.key
+--      another value
+--      > -- A more consise way to define objects.
+--      > ObjD = ObjC { key = 'yet another value' }
+--      > ObjD.key
+--      yet another value
+--      > -- Metatables are copied, save for "__index".
+--      > tostring(ObjD)
+--      a string
 --
 -- @tab tab A table.
 -- @treturn tab A prototype.
@@ -666,6 +419,14 @@ Error.mt = getmetatable(Error)
 --
 -- Return the error's `template` field but replace every word that is
 -- preceded by a `$` with the value of the field of that name.
+--
+-- @usage
+--      > FileOpenError = Error {
+--      >     template = '$fname: failed to open.'
+--      > }
+--      > err = FileOpenError{fname = '/path/to/file'}
+--      > tostring(err)
+--      /path/to/file: failed to open.
 --
 -- @treturn string An error message.
 function Error.mt:__tostring ()
@@ -729,8 +490,8 @@ end
 --- Run cleanup code after a function.
 --
 -- The cleanup code runs regardless of whether an error occurs
--- in the function. But Lua filters cannot respond to signals,
--- so it is *not* run if Pandoc exits because of a signal.
+-- in the function. However, Lua filters cannot respond to signals,
+-- so it is *not* run if Pandoc exits because it catches a signal.
 --
 -- @func ex The cleanup code. Its first argument indicates whether
 --  the protected call to `func` exited with an error. The remaining
@@ -912,6 +673,7 @@ do
         end
         return path
     end
+
 
     --- Prettify paths.
     --
@@ -1581,6 +1343,10 @@ end
 --- Interface to zotxt.
 --
 -- @type Zotxt
+-- @usage
+--      > handle = Zotxt()
+--      > handle.citekey_types = List{'betterbibtexkey'}
+--      > local csl_item = handle:get_csl_item('@name2019TwoWords')
 Zotxt = Prototype()
 
 
@@ -1731,7 +1497,7 @@ do
     -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `Zotxt.get_csl_item`.
+    -- @raise See `Zotxt:get_csl_item`.
     function Zotxt:get_source (id)
         assert(id ~= '', 'ID is the empty string ("").')
         local ref, err, errtype = get(self, json_to_meta, id)
@@ -2022,7 +1788,7 @@ end
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number if the error is a file I/O error.
--- @raise See `Zotxt.get_csl_item`.
+-- @raise See `Zotxt:get_csl_item`.
 -- @within Bibliography files
 function biblio_update (handle, fname, ids)
     -- luacheck: ignore ok fmt err errno
@@ -2380,7 +2146,7 @@ end
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `Zotxt.get_csl_item`.
+-- @raise See `Zotxt:get_csl_item`.
 -- @within Main
 function add_biblio (handle, meta, ckeys)
     -- luacheck: ignore ok
@@ -2419,7 +2185,7 @@ end
 --  with the field `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `Zotxt.get_csl_item`.
+-- @raise See `Zotxt:get_csl_item`.
 -- @within Main
 function add_refs (handle, meta, ckeys)
     if #ckeys == 0 then return end
@@ -2439,7 +2205,7 @@ end
 
 --- Get citation key types to use.
 --
--- Return a list of citation key types from the `zotero-citekey-types`
+-- Returns a list of citation key types from the `zotero-citekey-types`
 -- metadata field. If a value of that field does *not* pick out a citation
 -- key type listed in `Zotxt.citekey_types`, it is ignored.
 --
@@ -2486,7 +2252,7 @@ end
 -- @tparam table doc A document.
 -- @treturn[1] table `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise See `Zotxt.get_csl_item`.
+-- @raise See `Zotxt:get_csl_item`.
 -- @within Main
 function main (doc)
     local ckeys = doc_ckeys(doc, true)

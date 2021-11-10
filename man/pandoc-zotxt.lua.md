@@ -67,14 +67,14 @@ CITATION KEY TYPES
 
 However, it may happen that a Better BibTeX citation key is interpreted
 as an easy citekey *and* yet picks out an item, if not the one that it
-actually is the citation key of (and vice versa). That is, citation keys
-may be matched with the wrong bibliographic data.
+actually is the citation key of. That is to say, citation keys may be
+matched with the wrong bibliographic data.
 
 If this happens, you can disable citation keys that you do not use by setting
-the "zotero-citekey-types" metadata field either to the citation key type or
-the list of citation key types that you want to use.
+the "zotero-citekey-types" metadata field to the citation key type or the
+list of citation key types that you want to use.
 
-You can use the following types:
+You can set the following citation key types:
 
 **Key**           | **Type**                   | **Comments**
 ----------------- | -------------------------- | -----------------------
@@ -82,19 +82,9 @@ You can use the following types:
 `easykey`         | easy citekey               | Deprecated.
 `key`             | Zotero item ID             | Hard to use.
 
-For example:
 
-```markdown
----
-zotero-citekey-types: betterbibtexkey
-...
-
-@doe2020Title is now guaranteed to be read as a Better BibTeX citation key.
-```
-
-
-EXAMPLE
-=======
+EXAMPLES
+========
 
 ```sh
 pandoc -L pandoc-zotxt.lua -C <<EOF
@@ -104,31 +94,58 @@ EOF
 
 This will look up "doe2020Title" in Zotero.
 
+```sh
+pandoc -L pandoc-zotxt.lua -C <<EOF
+---
+zotero-bibliography: bibliography.json
+...
+See @doe2020Title for details.
+EOF
+```
+
+This will look up "doe2020Title" in Zotero and save its bibliographic data
+into the file "bibliography.json" in the current working directory. If the
+same command is run again, "doe2020Title" will *not* be looked up again.
+
+```sh
+pandoc -L pandoc-zotxt.lua -C <<EOF
+---
+zotero-citekey-types: betterbibtexkey
+...
+See @doe2020Title for details.
+EOF
+```
+
+This forces **pandoc-zotxt.lua** to interpret "doe2020Title" as a
+Better BibTeX citation key.
+
 
 KNOWN ISSUES
 ============
+
+Citation keys may, on rare occassions, be matched with the wrong bibliographic
+data. This happens if a citation key picks out a different record depending
+on whether it is interpreted as a Better BibTeX citation key or as an easy
+citekey. See **CITATION KEY TYPES** above on how to fix this.
+
+**pandoc-zotxt.lua** creates a temporary file when it adds sources to
+a bibliography file. If Pandoc exits because it catches a signal (e.g.,
+because you press **Ctrl**-**c**), then this file will *not* be deleted.
+This is a bug in Pandoc and in the process of being fixed. Moreover, if
+you are using Pandoc up to v2.7, another process may, mistakenly, use the
+same temporary file at the same time, though this is highly unlikely.
 
 Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
 that do not set the "User Agent" HTTP header. And **pandoc** does not.
 As a consequence, **pandoc-zotxt.lua** cannot retrieve data from these
 versions of Zotero unless you tell **pandoc** to set that header.
 
-**pandoc-zotxt.lua** creates a temporary file when it adds sources to
-a bibliography file. If Pandoc exits because it catches a signal, for
-example, because you press **Ctrl**-**c**, then this file will *not*
-be deleted (this is a bug in Pandoc and in the process of being fixed).
-
-Moreover, if you are using Pandoc up to v2.7, another process may,
-mistakenly, use the same temporary file at the same time, though this
-is highly unlikely.
-
-
 SECURITY
 ========
 
-If you are using Pandoc up to v2.7 and place the special bibliography file
-in a directory that other users have write access to, then they can read
-and change the content of that file, regardless of whether they have
+If you are using Pandoc up to v2.7 and place the auto-generated bibliography
+file in a directory that other users have write access to, then they can
+read and change the content of that file, regardless of whether they have
 permission to read or write the file itself.
 
 
