@@ -95,7 +95,7 @@ test-resource-path:
 	fi
 
 header-docs:
-	@sh etc/update-header-docs.sh pandoc-zotxt.lua
+	@sh scripts/update-header-docs.sh pandoc-zotxt.lua
 
 man:
 	@$(PANDOC) -o man/man1/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \

@@ -8,11 +8,11 @@ set -Cefu
 # CONSTANTS
 # =========
 
-SCPT_NAME="$(basename "$0")" && [ "$SCPT_NAME" ] || {
+SCRIPT_NAME="$(basename "$0")" && [ "$SCRIPT_NAME" ] || {
 	printf '%s: failed to get basename.\n' "$0" >&2
 	exit 69
 }
-readonly SCPT_NAME
+readonly SCRIPT_NAME
 
 
 # FUNCTIONS
@@ -20,7 +20,7 @@ readonly SCPT_NAME
 
 warn() (
 	exec >&2
-	printf '%s: ' "$SCPT_NAME"
+	printf '%s: ' "$SCRIPT_NAME"
 	printf -- "$@"
 	echo
 )
@@ -36,7 +36,7 @@ panic() {
 		esac
 	done
 	shift $((OPTIND - 1))
-	warn "${@-unspecified error.}"
+	warn "${@-something went wrong.}"
 	exit "$__panic_status"
 }
 
@@ -62,10 +62,10 @@ do
 	case $opt in
 		(m) manpage="$OPTARG" ;;
 		(h) exec cat <<EOF
-$SCPT_NAME - Update a Lua filter's header from its manual.
+$SCRIPT_NAME - Update a Lua filter's header from its manual.
 
 Synopsis:
-    $SCPT_NAME [-m MANPAGE] FILTER
+    $SCRIPT_NAME [-m MANPAGE] FILTER
 
 Operand:
     FILTER      Path to the Lua filter.
@@ -94,7 +94,7 @@ then
 	dir="$(git rev-parse --show-toplevel)" && [ "$dir" ] ||
 		panic 'failed to determine root directory of repository.'
 	filter_name="$(basename "$filter")" && [ "$filter_name" ] ||
-		panic 'failed to determine basename of %s.' "$filter"
+		panic '%s: failed to determine basename.' "$filter"
 	manpage="$dir/man/$filter_name.md"
 fi
 
@@ -115,11 +115,9 @@ trap 'cleanup 15' TERM
 script_dir="$(dirname "$0")" && [ "$script_dir" ] ||
 	panic 'failed to locate.'
 filter_dir="$(dirname "$filter")" && [ "$filter_dir" ] &&
-	[ -d "$filter_dir" ] ||
-		panic '%s: failed to locate.' "$filter"
+	[ -d "$filter_dir" ] || panic '%s: failed to locate.' "$filter"
 TMP_FILE="$(mktemp "$filter_dir/tmp-XXXXXX")" && [ "$TMP_FILE" ] &&
-	[ -e "$TMP_FILE" ] ||
-		panic 'failed to create temporary file.'
+	[ -e "$TMP_FILE" ] || panic 'failed to create temporary file.'
 readonly TMP_FILE
 
 
@@ -129,10 +127,10 @@ readonly TMP_FILE
 exec >>"$TMP_FILE"
 printf -- '---\n'
 pandoc --from markdown-smart --to "$script_dir/ldoc-md.lua" "$manpage" |
-fold -sw 76 |
-perl -ne '$p = 1 if /^SYNOPSIS$/; print "-- $_" if $p;' |
+fold -sw 76                                                            |
+perl -ne '$p = 1 if /^SYNOPSIS$/; print "-- $_" if $p;'                |
 sed 's/ *$//'
 perl -ne '$p = 1 if /^-- *@/; print if $p; ' <"$filter"
 
-mv "$filter" "$filter.bak"
+mv "$filter" "$filter.bak" &&
 mv "$TMP_FILE" "$filter"

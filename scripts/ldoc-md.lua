@@ -14,11 +14,33 @@ local format = string.format
 local stringify = pandoc.utils.stringify
 
 
--- Report an error if a format is unsupported.
+-- FUNCTIONS
+-- =========
+
+--- Print an error message to STDERR.
+--
+-- Prefixes the message with `ldoc-md.lua` and ': ', and appends `\n`.
+--
+-- @param msg The message. Coerced to `string`.
+-- @param ... Arguments to that message (think `string.format`).
+--  Only applied if `msg` is a `string`.
+-- @within Warnings
+local function errf (msg, ...)
+    if type(msg) ~= 'string' then msg = tostring(msg)
+                             else msg = msg:format(...)
+    end
+    io.stderr:write('ldoc-md.lua: ', msg , '\n')
+end
+
+-- Report if a format is unsupported.
 setmetatable(_G, {__index = function (_, key)
-    io.stderr:write(format('%s: unsupported format.\n', key))
+    errf('%s: unsupported format.', key)
     return function () return '' end
 end})
+
+
+-- ELEMENTS
+-- ========
 
 function Blocksep ()
     return '\n\n'
@@ -77,7 +99,8 @@ function Header (level, s, attr)
         end
         return '\n' .. s .. '\n' .. rep(c, len(s))
     else
-        return '\n' .. rep('#', level) .. ' ' .. s
+        errf 'LDoc only supports Setext-style headers.'
+        return '\n' .. s
     end
 end
 
@@ -87,6 +110,7 @@ end
 
 Plain = stringify
 
+-- This is so that the output can be wrapped with `fold` or `fmt`.
 function SoftBreak ()
     return ' '
 end
@@ -101,7 +125,7 @@ function Strong (s)
     return '**' .. s .. '**'
 end
 
-function Table (_, aligns, _, headers, rows)
+function Table (_, _, _, headers, rows)
     local ret = ''
     local widths = {}
     if headers then
@@ -113,8 +137,8 @@ function Table (_, aligns, _, headers, rows)
         for i = 1, #rows do
             local row = rows[i]
             for j = 1, #row do
-                local len = len(row[j])
-                if not widths[j] or widths[j] < len then widths[j] = len end
+                local n = len(row[j])
+                if not widths[j] or widths[j] < n then widths[j] = n end
             end
         end
     end
