@@ -130,6 +130,7 @@ pandoc --from markdown-smart --to "$script_dir/ldoc-md.lua" "$manpage" |
 fold -sw 76                                                            |
 perl -ne '$p = 1 if /^SYNOPSIS$/; print "-- $_" if $p;'                |
 sed 's/ *$//'
+printf -- '--\n'
 perl -ne '$p = 1 if /^-- *@/; print if $p; ' <"$filter"
 
 mv "$filter" "$filter.bak" &&
