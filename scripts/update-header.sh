@@ -1,6 +1,8 @@
 #!/bin/sh
 # update-hdr.sh - Update a filters's header from a its manual.
 # See -h for details.
+# 2021, Odin Kroeger
+# shellcheck disable=2015
 
 set -Ceu
 
@@ -18,6 +20,7 @@ readonly SCRIPT_NAME
 # FUNCTIONS
 # =========
 
+# shellcheck disable=2059
 warn() (
 	exec >&2
 	printf '%s: ' "$SCRIPT_NAME"
