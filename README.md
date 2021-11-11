@@ -38,7 +38,7 @@ into a Bourne-compatible shell:
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
   name=pandoc-zotxt.lua vers=1.0.0
-  url="https://github.com/odkr/$name/archive/v$vers.tar.gz"
+  url="https://github.com/odkr/$name/releases/download/$vers/$name-$vers.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
     [ -d "$data_dir" ] && break
   done
