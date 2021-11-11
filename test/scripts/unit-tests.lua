@@ -1409,7 +1409,7 @@ function test_walk ()
         'test-easy-citekey.md', 'test-empty.md', 'test-ex-biblio.md',
         'test-ex-simple.md', 'test-issue-4-2.md', 'test-issue-4.md',
         'test-merge.md', 'test-nocite.md', 'test-pre-existing-mixed.md',
-        'test-resource-path.md', 'test-zotero-id.md'
+        'test-zotero-id.md'
     }
 
     for _, v in ipairs(fnames) do
