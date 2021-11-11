@@ -55,10 +55,7 @@ cleanup() {
 	__cleanup_status=$?
 	set +e
 	trap '' EXIT HUP INT TERM
-	[ "${RELEASE-}" ] && [ -d "$RELEASE" ] &&
-		rm -rf "$RELEASE"
-	[ "${RELEASES-}" ] && [ -d "$RELEASES" ] &&
-		rmdir "$RELEASES" 2>/dev/null
+	[ "${TMP_DIR-}" ] && [ -d "$TMP_DIR" ] && rm -rf "$TMP_DIR"
 	if [ "${CLEANUP-}" ]
 	then
 		eval "$CLEANUP"
@@ -98,11 +95,8 @@ trapf() {
 # DEFAULTS
 # =======
 
-# FIXME
+# Where to look for the Manifest file.
 MANIFEST="$REPO/Manifest"
-
-# FIXME
-RELEASES="$REPO/dist"
 
 
 # ARGUMENTS
@@ -115,7 +109,6 @@ do
 	case $opt in
 		(f) filter="$OPTARG" ;;
 		(m) MANIFEST="$OPTARG" ;;
-		(d) RELEASES="$OPTARG" ;;
 		(h) exec cat <<EOF
 $SCRIPT_NAME - Make a release
 
@@ -124,7 +117,6 @@ Synopsis:
     $SCRIPT_NAME -h
 
 Options:
-    -d DIR      Save releases in DIR (default: ${RELEASES#"$REPO/"}).
     -f FILTER   The Lua filter. Only needed if there is more
                 than one Lua script in the Manifest.
     -m MANIDEST	The Manifest file (default: ${MANIFEST#"$REPO/"})
@@ -169,9 +161,14 @@ fi
 # ====
 
 cd -P "$REPO" || exit 69
+
 trap cleanup EXIT
 trapf int 1 2 15
-mkdir -p "$RELEASES" || exit 69
+
+TMP_DIR="$(mktemp -d -t mkr-XXXXXX)" && [ "$TMP_DIR" ] ||
+	panic 'failed to make temporary directory.'
+export TMPDIR="$TMP_DIR"
+
 
 # MAIN
 # ====
@@ -227,93 +224,45 @@ name="$(basename "$REPO")" && [ "$name" ] ||
 
 warn 'packing release ...'
 
-RELEASE=
-release="$RELEASES/$name-$tag"
-trapf catch 1 2 15
-set +e
-mkdir "$release" && readonly RELEASE="$release"
-err=$?
-set -e
-trapf int 1 2 15
-[ "${SIG-}" ] && int "$SIG"
-SIG=
-[ "$err" -eq 0 ] || exit 69
-unset release
+(
+	cd -P "$TMP_DIR"
+	relname="$name-$tag"
 
-lineno=0
-# shellcheck disable=2094
-while read -r fname || [ "$fname" ]
-do
-	lineno=$((lineno + 1))
-	case $fname in ('#'*|'')
-		continue
-	esac
-	case $fname in
-		("/$REPO"|"/$REPO/*") : ;;
-		(/*)	panic -s 65 '%s: line %d: %s: not within %s.' \
-			            "$MANIFEST" "$lineno" "$fname" "$REPO" ;;
-		(*)	fname="$REPO/$fname" ;;
-	esac
-	[ -e "$fname" ] ||
-		panic -s 66 '%s: line %d: %s: no such file or directory.' \
-		            "$MANIFEST" "$lineno" "$fname"
-	dirname="$(dirname "$fname")" && [ "$dirname" ] ||
-		panic '%s: line %d: %s: failed to get directory.' \
-		      "$MANIFEST" "$lineno" "$fname"
-	mkdir -p "$RELEASE/${dirname#"$REPO"}"
-	if [ -d "$fname" ]
-		then cp -a "$fname/" "$RELEASE/${fname#"$REPO"}"
-		else cp "$fname" "$RELEASE/${fname#"$REPO"}"
-	fi
-done <"$MANIFEST"
+	lineno=0
+	# shellcheck disable=2094
+	while read -r fname || [ "$fname" ]
+	do
+		lineno=$((lineno + 1))
+		case $fname in ('#'*|'')
+			continue
+		esac
+		case $fname in
+			("/$REPO"|"/$REPO/*") : ;;
+			(/*)	panic -s 65 '%s: line %d: %s: not within %s.' \
+				            "$MANIFEST" "$lineno" "$fname" "$REPO" ;;
+			(*)	fname="$REPO/$fname" ;;
+		esac
+		[ -e "$fname" ] ||
+			panic -s 66 '%s: line %d: %s: no such file or directory.' \
+				    "$MANIFEST" "$lineno" "$fname"
+		dirname="$(dirname "$fname")" && [ "$dirname" ] ||
+			panic '%s: line %d: %s: failed to get directory.' \
+			"$MANIFEST" "$lineno" "$fname"
+		mkdir -p "$relname/${dirname#"$REPO"}"
+		if [ -d "$fname" ]
+			then cp -a "$fname/" "$relname/${fname#"$REPO"}"
+			else cp "$fname" "$relname/${fname#"$REPO"}"
+		fi
+	done <"$MANIFEST"
 
-cd -P "$RELEASES"
+	tar="$relname.tgz"
+	tar --create --gzip --file "$tar" "$relname"
+	gpg --detach-sign --output "$tar.sig" "$tar"
 
-TAR="$RELEASES/$name-$tag.tgz"
-readonly TAR
-trapf catch 1 2 15
-set +e
-: >"$TAR" && CLEANUP="rm -f \"\$TAR\"; ${CLEANUP-}"
-err=$?
-set -e
-trapf int 1 2 15
-[ "${SIG-}" ] && int "$SIG"
-SIG=
-[ "$err" -eq 0 ] || exit 69
-tar --create --gzip --file "$TAR" "$name-$tag"
-
-ZIP="$RELEASES/$name-$tag.zip"
-readonly ZIP
-trapf catch 1 2 15
-set +e
-[ -e "$ZIP" ] && panic '%s: exists.' "$ZIP"
-zip --grow --recurse-paths --test --quiet "$ZIP" "$name-$tag" &&
-	CLEANUP="rm -f \"\$ZIP\"; ${CLEANUP-}"
-err=$?
-set -e
-trapf int 1 2 15
-[ "${SIG-}" ] && int "$SIG"
-SIG=
-[ "$err" -eq 0 ] || exit 69
-
-n=0
-for file in "$TAR" "$ZIP"
-do
-	n=$((n + 1)) signature="$file.sig"
-	eval "FILE_$n=\"$signature\""
-	readonly "FILE_$n"
-	trapf catch 1 2 15
-	set +e
-	: >"$signature" &&
-		CLEANUP="rm -f \"\$FILE_$n\"; ${CLEANUP-}"
-	err=$?
-	set -e
-	trapf int 1 2 15
-	[ "${SIG-}" ] && int "$SIG"
-	SIG=
-	[ "$err" -eq 0 ] || exit 69
-	gpg --detach-sign --output - "$file" >>"$signature"
-done
+	zip="$relname.zip"
+	zip --recurse-paths --test --quiet "$zip" "$relname"
+	gpg --detach-sign --output "$zip.sig" "$zip"
+)
 
 warn 'pushing v%s to github ...' "$tag"
 
@@ -326,4 +275,5 @@ case $tag in (*[a-z]*)
 	pre=--prerelease ;;
 esac
 
-gh release create --draft $pre "$RELEASES/$name-$tag."*
+set +f
+gh release create --draft $pre "v$tag" "$TMP_DIR/$name-$tag."*
