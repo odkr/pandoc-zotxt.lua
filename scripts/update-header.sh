@@ -20,10 +20,10 @@ readonly SCRIPT_NAME
 # FUNCTIONS
 # =========
 
-# shellcheck disable=2059
 warn() (
 	exec >&2
 	printf '%s: ' "$SCRIPT_NAME"
+	# shellcheck disable=2059
 	printf -- "$@"
 	echo
 )
@@ -54,7 +54,6 @@ cleanup() {
 	exit "$__cleanup_status"
 }
 
-
 # ARGUMENTS
 # =========
 
@@ -75,10 +74,10 @@ Synopsis:
     $SCRIPT_NAME [-f FILTER] [-m MANPAGE]
 
 Options:
-    -f FILTER   Use FILTER.
-                Defaults to the Lua script in $repo.
-    -m MANPAGE  Read documentation from MANPAGE.
-                Defaults to $repo/man/<basename of filter>.md.
+    -f FILTER   Use FILTER. Only needed if there is more than one
+                Lua script in the root directory of the repository.
+    -m MANPAGE  Read documentation from MANPAGE
+                (default: man/<basename of filter>.md).
     -h          Show this help screen.
 
 Caveats:
