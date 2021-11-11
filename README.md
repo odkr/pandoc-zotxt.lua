@@ -37,7 +37,7 @@ into a Bourne-compatible shell:
 ```sh
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
-  name=pandoc-zotxt.lua vers=1.0.0
+  name=pandoc-zotxt.lua vers=1.1.0b3
   url="https://github.com/odkr/$name/releases/download/$vers/$name-$vers.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
     [ -d "$data_dir" ] && break
@@ -50,14 +50,15 @@ into a Bourne-compatible shell:
   ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
-You also need to install [zotxt](https://github.com/egh/zotxt/) *and*
-[Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
+If you want to use the copy of the manual that comes with the release, you may
+want to add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b3/man`
+to your `MANPATH`.
 
 
 ## Documentation
 
-See the [manual](man/pandoc-zotxt.lua.md), the
-[source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
+See the [manual](man/man1/pandoc-zotxt.lua.md),
+the [source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
 and the [source code](pandoc-zotxt.lua) itself for details.
 
 
@@ -82,8 +83,8 @@ Simply say:
 ```
 
 Note, some tests report errors even if they succeed. *Not* every error message
-indicates that **pandoc-zotxt.lua** failed a test. If it *did* fail a test,
-`make` exits with a non-zero status.
+indicates that **pandoc-zotxt.lua** failed a test. If it *did*, `make` exits
+with a non-zero status.
 
 ### The real-world test suite
 
