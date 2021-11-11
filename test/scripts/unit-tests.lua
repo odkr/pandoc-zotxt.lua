@@ -1486,7 +1486,7 @@ function test_doc_ckeys ()
     local ckeys, n = M.doc_ckeys(test_file)
     lu.assert_items_equals(ckeys, {
         'dotson:2016word',
-        'díaz-león:2013what',
+        'díaz-león:2015what',
         'díaz-león:2015defence',
         'díaz-león:2016woman',
         'haslanger:2012resisting',
