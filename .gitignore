@@ -8,3 +8,4 @@ test/tmp/*
 /lua_modules
 /.luarocks
 *.bak
+man/man1/pandoc-zotxt.lua.1.gz
