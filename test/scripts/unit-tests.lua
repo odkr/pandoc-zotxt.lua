@@ -1223,7 +1223,7 @@ end
 function test_biblio_write ()
     local fname, ok, fmt, data, err, errno
 
-    fname = M.path_join(TMP_DIR, 'test-bibliography.json')
+    fname = M.path_join(TMP_DIR, 'bibliography.json')
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, {ZOTXT_CSL})
@@ -1234,7 +1234,7 @@ function test_biblio_write ()
     lu.assert_nil(err)
     lu.assert_items_equals(rconv_nums_to_strs(data), {ZOTXT_CSL})
 
-    fname = M.path_join(TMP_DIR, 'test-bibliography.yaml')
+    fname = M.path_join(TMP_DIR, 'bibliography.yaml')
     ok, err = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, ZOTXT_YAML)
@@ -1404,12 +1404,12 @@ function test_walk ()
     end
 
     local fnames = {
-        'test-better-bibtex.md', 'test-biblio-json.md', 'test-biblio-yaml.md',
-        'test-dup-biblio-bib.md', 'test-dup-biblio-yaml.md', 'test-dup.md',
-        'test-easy-citekey.md', 'test-empty.md', 'test-ex-biblio.md',
-        'test-ex-simple.md', 'test-issue-4-2.md', 'test-issue-4.md',
-        'test-merge.md', 'test-nocite.md', 'test-pre-existing-mixed.md',
-        'test-zotero-id.md'
+        'better-bibtex.md', 'biblio-json.md', 'biblio-yaml.md',
+        'dup-biblio-bib.md', 'dup-biblio-yaml.md', 'dup.md',
+        'easy-citekey.md', 'empty.md', 'ex-biblio.md',
+        'ex-simple.md', 'issue-4-2.md', 'issue-4.md',
+        'merge.md', 'nocite.md', 'pre-existing-mixed.md',
+        'zotero-id.md'
     }
 
     for _, v in ipairs(fnames) do
@@ -1445,22 +1445,22 @@ function test_meta_sources ()
         lu.assert_error(M.meta_sources, v)
     end
 
-    local empty_fname = M.path_join(DATA_DIR, 'test-empty.md')
+    local empty_fname = M.path_join(DATA_DIR, 'empty.md')
     local empty, err = read_md_file(empty_fname)
     assert(empty, err)
     lu.assert_equals(M.meta_sources(empty.meta), {})
 
-    local test_fname = M.path_join(DATA_DIR, 'test-dup.md')
+    local test_fname = M.path_join(DATA_DIR, 'dup.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_META)
 
-    test_fname = M.path_join(DATA_DIR, 'test-dup-biblio-yaml.md')
+    test_fname = M.path_join(DATA_DIR, 'dup-biblio-yaml.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_YAML)
 
-    test_fname = M.path_join(DATA_DIR, 'test-dup-biblio-bib.md')
+    test_fname = M.path_join(DATA_DIR, 'dup-biblio-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     local ids = M.csl_items_ids(M.meta_sources(test_file.meta))
@@ -1476,11 +1476,11 @@ function test_doc_ckeys ()
         lu.assert_error(M.doc_ckeys, v)
     end
 
-    local empty_fname = M.path_join(DATA_DIR, 'test-empty.md')
+    local empty_fname = M.path_join(DATA_DIR, 'empty.md')
     local empty = read_md_file(empty_fname)
     lu.assert_equals(M.doc_ckeys(empty), {})
 
-    local test_fname = M.path_join(DATA_DIR, 'test-easy-citekey.md')
+    local test_fname = M.path_join(DATA_DIR, 'easy-citekey.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     local ckeys, n = M.doc_ckeys(test_file)
@@ -1494,7 +1494,7 @@ function test_doc_ckeys ()
     })
     lu.assert_equals(n, 6)
 
-    test_fname = M.path_join(DATA_DIR, 'test-dup.md')
+    test_fname = M.path_join(DATA_DIR, 'dup.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     ckeys, n = M.doc_ckeys(test_file)
@@ -1505,7 +1505,7 @@ function test_doc_ckeys ()
     lu.assert_items_equals(ckeys, {})
     lu.assert_equals(n, 0)
 
-    test_fname = M.path_join(DATA_DIR, 'test-nocite.md')
+    test_fname = M.path_join(DATA_DIR, 'nocite.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.doc_ckeys(test_file),
