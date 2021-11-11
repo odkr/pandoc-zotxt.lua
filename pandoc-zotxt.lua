@@ -363,8 +363,10 @@ Prototype = {}
 Prototype.mt = {}
 setmetatable(Prototype, Prototype.mt)
 
-
 --- Delegate to a prototype.
+--
+-- Sets the table's metatable to a copy of the prototype's metatable
+-- and then sets the metatable's `__index` field to the prototype.
 --
 -- @usage
 --      > ObjA = Prototype()
@@ -404,7 +406,6 @@ function Prototype.mt:__call (tab)
     return setmetatable(tab, mt)
 end
 
-
 --- Prototype for errors.
 --
 -- @type Error
@@ -414,40 +415,45 @@ Error.template = 'something went wrong.'
 --- Metatable for errors.
 Error.mt = getmetatable(Error)
 
-
 --- Convert an error into a string.
 --
 -- Return the error's `template` field but replace every word that is
 -- preceded by a `$` with the value of the field of that name.
 --
 -- @usage
---      > FileOpenError = Error {
---      >     template = '$fname: failed to open.'
+--      > NoSuchFileError = Error {
+--      >     template = '$fname: no such file.'
 --      > }
---      > err = FileOpenError{fname = '/path/to/file'}
+--      > err = NoSuchFileError{fname = '/path/to/file'}
 --      > tostring(err)
---      /path/to/file: failed to open.
+--      /path/to/file: no such file.
 --
 -- @treturn string An error message.
 function Error.mt:__tostring ()
     return self.template:gsub('$([%a%w_]*)', self)
 end
 
-
 --- Prototype for connection errors.
 --
 -- @type ConnectionError
-ConnectionError = Error {
-    template = 'failed to connect to Zotero.'
-}
+-- @usage
+--      > err = ConnectionError()
+ConnectionError = Error()
 
+--- Template for connection error messages.
+ConnectionError.template = 'failed to connect to zotxt.'
 
 --- Prototype for encoding errors.
 --
 -- @type EncodingError
-EncodingError = Error {
-    template = '$id: fetched data is not encoded in UTF-8.'
-}
+-- @usage
+--      > err = EncodingError{id = 'name2019TwoWords'}
+--      > tostring(err)
+--      name2019TwoWords: fetched data is not encoded in UTF-8.
+EncodingError = Error()
+
+--- Template for encoding error messages.
+EncodingError.template = '$id: fetched data is not encoded in UTF-8.'
 
 
 -- FUNCTIONS
@@ -471,7 +477,6 @@ function errf (msg, ...)
     io.stderr:write(SCRIPT_NAME, ': ', msg , EOL)
 end
 
-
 --- Print a warning to STDERR.
 --
 -- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
@@ -483,9 +488,8 @@ function warnf (...)
     if PANDOC_STATE.verbosity ~= 'ERROR' then errf(...) end
 end
 
-
--- Meta-functions
--- --------------
+-- Higher-order functions
+-- ----------------------
 
 --- Run cleanup code after a function.
 --
@@ -531,7 +535,6 @@ function keys (tab)
     return ks, n
 end
 
-
 --- Recursively apply a function to every value of a tree.
 --
 -- The function is applied to *every* node of the data tree.
@@ -567,7 +570,6 @@ function rmap (func, data, _rd)
     return ret
 end
 
-
 do
     local lower = text.lower
 
@@ -589,7 +591,6 @@ do
         return ret
     end
 end
-
 
 --- Iterate over the keys of a table in a given order.
 --
@@ -629,8 +630,6 @@ function path_is_abs (path)
     return path:match('^' .. PATH_SEP) ~= nil
 end
 
-
-
 do
     local get_working_directory
     if pandoc.types and PANDOC_VERSION >= {2, 8} then
@@ -647,7 +646,6 @@ do
         end
     end
 
-
     --- Prettify paths (worker).
     --
     -- Removes the current working directory from the beginning of a path
@@ -656,7 +654,7 @@ do
     -- @string path A path.
     -- @treturn string A prettier path.
     local function prettify (path)
-        assert(path ~= '', 'Path is the empty string ("").')
+        assert(path ~= '', 'path is the empty string ("").')
         path = path_sanitise(path)
         if get_working_directory then
             local wd = get_working_directory()
@@ -674,7 +672,6 @@ do
         return path
     end
 
-
     --- Prettify paths.
     --
     -- Removes the current working directory from the beginning of a path
@@ -685,11 +682,10 @@ do
     -- @within File I/O
     function path_prettify (...)
         local paths = {...}
-        assert(#paths > 0, 'No paths given.')
+        assert(#paths > 0, 'no paths given.')
         return unpack(rmap(prettify, paths))
     end
 end
-
 
 --- Get a directory to use as working directory.
 --
@@ -704,7 +700,6 @@ function wd ()
     local wd = path_split(fname)
     return wd
 end
-
 
 --- Check whether a filename refers to a file.
 --
@@ -721,7 +716,6 @@ function file_exists (fname)
     assert(file:close())
     return true
 end
-
 
 do
     local resource_path = PANDOC_STATE.resource_path
@@ -745,7 +739,6 @@ do
     end
 end
 
-
 --- Read a file.
 --
 -- @string fname The name of the file.
@@ -765,11 +758,9 @@ function file_read (fname)
     return str
 end
 
-
 do
     local with_temporary_directory = pandoc.system.with_temporary_directory
     local get_working_directory = pandoc.system.get_working_directory
-
 
     -- Turn a relative path into an absolute one.
     --
@@ -781,7 +772,6 @@ do
         if path_is_abs(path) then return path end
         return path_join(get_working_directory(), path)
     end
-
 
     -- Write data to a file (worker).
     --
@@ -803,7 +793,6 @@ do
         if not ok then return nil, err, errno end
         return file:close()
     end
-
 
     --- Write data to a file.
     --
@@ -874,7 +863,6 @@ do
     end
 end
 
-
 do
     local alnum = {}
 
@@ -942,7 +930,6 @@ do
         return nil, 'no unused filename.'
     end
 end
-
 
 do
     -- Remove a file unless its second and third argument are `true`.
@@ -1074,8 +1061,7 @@ do
         return str
     end
 
-
-    -- Filter to conver to Markdown text.
+    -- Filter to convert to Markdown text.
     local md = {}
 
     -- Make a function that converts an element to Markdown.
@@ -1089,13 +1075,11 @@ do
         end
     end
 
-
     -- Convert AST elements into Markdown text.
     md.Emph = mk_elem_conv_f '*'
     md.Strong = mk_elem_conv_f '**'
     md.Subscript = mk_elem_conv_f '~'
     md.Superscript = mk_elem_conv_f '^'
-
 
     -- Convert <span> elements to Markdown text.
     --
@@ -1131,7 +1115,6 @@ do
         return Str(str)
     end
 
-
     -- Convert SmallCaps elements to Markdown text.
     --
     -- @tparam pandoc.SmallCaps A SmallCaps element.
@@ -1141,7 +1124,6 @@ do
         span.attributes.style = 'font-variant: small-caps'
         return md.Span(span)
     end
-
 
     --- Convert a Pandoc element to Markdown text.
     --
@@ -1163,7 +1145,6 @@ do
     local char = utf8.char
     local codes = utf8.codes
 
-
     -- Create a number of spaces.
     --
     -- @int n The number of spaces.
@@ -1171,7 +1152,6 @@ do
     local function spaces (n)
         return rep(' ', n)
     end
-
 
     -- Convert a string to a YAML scalar.
     --
@@ -1238,7 +1218,6 @@ do
     converters.number = tostring
     converters.string = scalarify
 
-
     --- Generate a YAML representation of a data tree.
     --
     -- Uses `EOL` to end lines. Only parses UTF-8 encoded strings.
@@ -1297,7 +1276,6 @@ do
     end
 end
 
-
 do
     -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
     --
@@ -1314,7 +1292,6 @@ do
         if m == 0 then return str end
         return ret
     end
-
 
     --- Convert Zotero pseudo-HTML to Markdown.
     --
@@ -1345,22 +1322,19 @@ end
 -- @type Zotxt
 -- @usage
 --      > handle = Zotxt()
---      > handle.citekey_types = List{'betterbibtexkey'}
---      > local csl_item = handle:get_csl_item('@name2019TwoWords')
+--      > handle.citekey_types = pandoc.List{'betterbibtexkey'}
+--      > local csl_item = handle:get_csl_item('name2019TwoWords')
 Zotxt = Prototype()
 
-
---- The URL of the [zotxt](https://github.com/egh/zotxt) endpoint.
+--- The base URL for [zotxt](https://github.com/egh/zotxt) queries.
 Zotxt.base_url = 'http://localhost:23119/zotxt/items?'
 
-
---- Types of citation keys [zotxt](https://github.com/egh/zotxt) supports.
+--- Types of citation keys that [zotxt](https://github.com/egh/zotxt) supports.
 Zotxt.citekey_types = List {
     'key',             -- Zotero item ID
     'betterbibtexkey', -- Better BibTeX citation key
     'easykey',         -- zotxt easy citekey
 }
-
 
 do
     -- luacheck: ignore assert pcall tostring type
@@ -1409,8 +1383,11 @@ do
             local query_url = concat{base_url, ckey_ts[i], '=', id}
             local ok, mt, data = pcall(http_get, query_url)
             assert(ok, ConnectionError())
-            err = match(data, '^<([^>]+)>$')
-            if not err and mt ~= '' then
+            if mt == '' then
+                err = id .. ': zotxt response has no MIME type'
+            elseif data == '' then
+                err = id .. ': zotxt response is empty'
+            else
                 mt = mt:lower()
                 assert(match(mt, utf8_pattern), EncodingError{id = id})
                 -- luacheck: ignore ok
@@ -1421,13 +1398,12 @@ do
                     end
                     return ret
                 else
-                    err = ret
+                    err = 'unparsable zotxt response: ' .. data
                 end
             end
         end
-        return nil, id .. ': ' .. tostring(err) .. '.'
+        return nil, err .. '.'
     end
-
 
     -- Convert numbers to strings.
     --
@@ -1444,7 +1420,6 @@ do
         return tostring(floor(data))
     end
 
-
     --- Convert a CSL JSON string to a Lua data structure.
     --
     -- @string str A CSL JSON string.
@@ -1453,7 +1428,6 @@ do
         assert(str ~= '', 'no data.')
         return rmap(num_to_str, decode(str)[1])
     end
-
 
     --- Retrieve bibliographic data from Zotero as CSL item.
     --
@@ -1476,7 +1450,6 @@ do
         return ref
     end
 
-
     --- Convert a CSL JSON string to Pandoc metadata.
     --
     -- @string str A CSL JSON string.
@@ -1485,7 +1458,6 @@ do
         assert(str ~= '', 'no data.')
         return read(str, 'csljson').meta.references[1]
     end
-
 
     --- Retrieve bibliographic data from Zotero as Pandoc metadata.
     --
@@ -1566,7 +1538,6 @@ CSL_KEY_ORDER = {
     'abstract',                 -- The abstract.
 }
 
-
 --- A mapping of filename suffices to codecs.
 --
 -- If a key is not found, it is looked up again in lowercase.
@@ -1577,11 +1548,9 @@ BIBLIO_TYPES = setmetatable({}, {
     end
 })
 
-
 --- Decode BibLaTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
-
 
 --- Read the IDs from the content of a BibLaTeX file.
 --
@@ -1598,29 +1567,24 @@ function BIBLIO_TYPES.bib.decode (str)
     return ret
 end
 
-
 --- Decode BibTeX.
 -- @within Bibliography files
 BIBLIO_TYPES.bibtex = {}
-
 
 --- Read the IDs from the content of a BibTeX file.
 --
 -- @string str The content of a BibTeX file.
 -- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
-BIBLIO_TYPES.bibtex = BIBLIO_TYPES.bib
-
+BIBLIO_TYPES.bibtex.decode = BIBLIO_TYPES.bib.decode
 
 --- De-/Encode CSL items in JSON.
 -- @within Bibliography files
 BIBLIO_TYPES.json = json
 
-
 --- De-/Encode CSL items in YAML.
 -- @within Bibliography files
 BIBLIO_TYPES.yaml = {}
-
 
 --- Parse a CSL YAML string.
 --
@@ -1637,7 +1601,6 @@ function BIBLIO_TYPES.yaml.decode (str)
     return walk(doc.meta.references, {MetaInlines = markdownify})
 end
 
-
 --- Serialise a list of CSL items to a YAML string.
 --
 -- @tab items A list of CSL items.
@@ -1649,11 +1612,9 @@ function BIBLIO_TYPES.yaml.encode (items)
     return yamlify({references=items}, nil, csl_keys_sort)
 end
 
-
 --- Alternative suffix for YAML files.
 -- @within Bibliography files
 BIBLIO_TYPES.yml = BIBLIO_TYPES.yaml
-
 
 do
     local key_order = {}
@@ -1677,7 +1638,6 @@ do
     end
 end
 
-
 --- Sorting function for CSL items.
 --
 -- @tab a A CSL item.
@@ -1687,7 +1647,6 @@ end
 function csl_items_sort (a, b)
     return a.id < b.id
 end
-
 
 --- Pick the IDs of CSL items out of a list of CSL items.
 --
@@ -1708,7 +1667,6 @@ function csl_items_ids (items)
     end
     return ids
 end
-
 
 --- Read a bibliography file.
 --
@@ -1735,7 +1693,6 @@ function biblio_read (fname)
     if not ok then return nil, fname ..  ': ' .. tostring(ret) end
     return ret
 end
-
 
 --- Write bibliographic data to a bibliography file.
 --
@@ -1768,7 +1725,6 @@ function biblio_write (fname, items)
     if not ok then return nil, err, errno end
     return suffix
 end
-
 
 --- Add items from Zotero to a bibliography file.
 --
@@ -2038,7 +1994,6 @@ do
     end
 end
 
-
 --- Collect bibliographic data from the document's metadata block.
 --
 -- Reads the `references` metafata field and every bibliography file
@@ -2061,7 +2016,7 @@ function meta_sources (meta)
         elseif bibliography.tag == 'MetaList' then
             fnames = bibliography:map(stringify)
         else
-            errf 'cannot parse metadata field "bibliography".'
+            errf 'metadata field "bibliography": cannot parse.'
             return ret
         end
         for i = 1, #fnames do
@@ -2079,7 +2034,6 @@ function meta_sources (meta)
     end
     return ret
 end
-
 
 do
     -- Save IDs that are not in a given set into another.
@@ -2154,9 +2108,10 @@ function add_biblio (handle, meta, ckeys)
     if meta['zotero-bibliography'] == nil then return end
     local ok, fname = pcall(stringify, meta['zotero-bibliography'])
     if not ok or not fname then
-        return nil, 'zotero-bibliography: not a filename.'
+        return nil, 'metadata field "zotero-bibliography": not a filename.'
     elseif fname == '' then
-        return nil, 'zotero-bibliography: filename is the empty string ("").'
+        return nil, 'metadata field "zotero-bibliography": ' ..
+                    'filename is the empty string ("").'
     end
     if not path_is_abs(fname) then fname = path_join(wd(), fname) end
     local ok, err = biblio_update(handle, fname, ckeys)
@@ -2170,7 +2125,6 @@ function add_biblio (handle, meta, ckeys)
     end
     return meta
 end
-
 
 --- Add bibliographic data to the `references` metadata field.
 --
@@ -2202,46 +2156,58 @@ function add_refs (handle, meta, ckeys)
     return meta
 end
 
+do
+    -- Prefix for error messages.
+    local err_pf = SCRIPT_NAME .. ': metadata filed "zotero-citekey-types": '
 
---- Get citation key types to use.
---
--- Returns a list of citation key types from the `zotero-citekey-types`
--- metadata field. If a value of that field does *not* pick out a citation
--- key type listed in `Zotxt.citekey_types`, it is ignored.
---
--- Prints messages to STDERR if it cannot parse the `zotero-citekey-types`
--- metadata field or if a value of that field does not pick out an actual
--- citation key type.
---
--- @tparam pandoc.Meta meta A metadata block.
--- @treturn[1] pandoc.List A list of citation key types.
--- @treturn[2] nil If no valid citation key types were found.
--- @within Main
-function meta_ckey_types (meta)
-    local citekey_types = meta['zotero-citekey-types']
-    if not citekey_types then return end
-    if citekey_types.tag == 'MetaInlines' then
-        citekey_types = MetaList{citekey_types}
-    elseif citekey_types.tag ~= 'MetaList' then
-        errf 'cannot parse metadata field "zotero-citekey-types", ignoring.'
-        return
+    -- Print messages to STDERR
+    --
+    -- Prefixes message with `SCRIPT_NAME` and
+    -- ': metadata filed "zotero-citekey-types": ',
+    -- and appends `EOL`.
+    --
+    -- @tparam string ... Message to print to STDERR.
+    local function err (...)
+        io.stderr:write(err_pf, ..., EOL)
     end
-    local ret = List()
-    local n = 0
-    for i = 1, #citekey_types do
-        local t = stringify(citekey_types[i])
-        if Zotxt.citekey_types:includes(t) then
-            n = n + 1
-            ret[n] = t
-        elseif t == '' then
-            errf 'the empty string ("") is not a citation key type, ignoring.'
-        else
-            errf(t .. ': unknown citation key type, ingoring.')
+
+    --- Get citation key types to use.
+    --
+    -- Returns a list of citation key types from the `zotero-citekey-types`
+    -- metadata field. If a value of that field does *not* pick out a citation
+    -- key type listed in `Zotxt.citekey_types`, it is ignored.
+    --
+    -- Prints messages to STDERR if errors occur.
+    --
+    -- @tparam pandoc.Meta meta A metadata block.
+    -- @treturn[1] pandoc.List A list of citation key types.
+    -- @treturn[2] nil If no valid citation key types were found.
+    -- @within Main
+    function meta_ckey_types (meta)
+        local citekey_types = meta['zotero-citekey-types']
+        if not citekey_types then return end
+        if citekey_types.tag == 'MetaInlines' then
+            citekey_types = MetaList{citekey_types}
+        elseif citekey_types.tag ~= 'MetaList' then
+            err 'cannot parse, ignoring.'
+            return
         end
+        local ret = List()
+        local n = 0
+        for i = 1, #citekey_types do
+            local t = stringify(citekey_types[i])
+            if Zotxt.citekey_types:includes(t) then
+                n = n + 1
+                ret[n] = t
+            elseif t == '' then
+                err 'empty string (""): not a citation key type, ignoring.'
+            else
+                err(t, ': unknown citation key type, ingoring.')
+            end
+        end
+        if n > 0 then return ret end
     end
-    if n > 0 then return ret end
 end
-
 
 --- Collect citations and add bibliographic data to a document.
 --
