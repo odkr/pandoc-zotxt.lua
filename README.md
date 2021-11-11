@@ -73,11 +73,6 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 The test suite may or may not work with other versions of
 Pandoc (and `pandoc-citeproc`).
 
-### Assumptions
-
-You are using the default Citation Style Language stylesheet that ships with
-Pandoc (or `pandoc-citeproc` respectivey), namely, `chicago-author-date.csl`.
-
 ### Running the tests
 
 Simply say:
@@ -85,6 +80,10 @@ Simply say:
 ```sh
     make test
 ```
+
+Note, some tests report errors even if they succeed. *Not* every error message
+indicates that **pandoc-zotxt.lua** failed a test. If it *did* fail a test,
+`make` exits with a non-zero status.
 
 ### The real-world test suite
 
