@@ -2,7 +2,7 @@
 # update-hdr.sh - Update a filters's header from a its manual.
 # See -h for details.
 
-set -Cefu
+set -Ceu
 
 
 # CONSTANTS
@@ -28,10 +28,10 @@ warn() (
 panic() {
 	__panic_status=69
 	OPTIND=1 OPTARG='' __panic_opt=
-	while getopts m: __panic_opt
+	while getopts s: __panic_opt
 	do
 		case $__panic_opt in
-			(m) __panic_status="$OPTARG" ;;
+			(s) __panic_status="$OPTARG" ;;
 			(*) return 70
 		esac
 	done
@@ -55,24 +55,27 @@ cleanup() {
 # ARGUMENTS
 # =========
 
-manpage=
+repo="$(git rev-parse --show-toplevel)" && [ "$repo" ] ||
+	panic 'failed to determine root directory of repository.'
+
+filter='' manpage=
 OPTIND=1 OPTARG='' opt=
-while getopts m:h opt
+while getopts f:m:h opt
 do
 	case $opt in
+		(f) filter="$OPTARG" ;;
 		(m) manpage="$OPTARG" ;;
 		(h) exec cat <<EOF
 $SCRIPT_NAME - Update a Lua filter's header from its manual.
 
 Synopsis:
-    $SCRIPT_NAME [-m MANPAGE] FILTER
-
-Operand:
-    FILTER      Path to the Lua filter.
+    $SCRIPT_NAME [-f FILTER] [-m MANPAGE]
 
 Options:
+    -f FILTER   Use FILTER.
+                Defaults to the Lua script in $repo.
     -m MANPAGE  Read documentation from MANPAGE.
-                Defaults to <root of repository>/man/<basename of filter>.md.
+                Defaults to $repo/man/<basename of filter>.md.
     -h          Show this help screen.
 
 Caveats:
@@ -84,18 +87,32 @@ EOF
 done
 shift $((OPTIND - 1))
 
-[ "${1-}" ] || panic -s 64 'no filter given.'
-[ $# -gt 1 ] && panic -s 64 'too many operands.'
+[ $# -gt 0 ] && panic -s 64 'too many operands.'
 
-filter="$1"
+
+
+if ! [ "$filter" ]
+then
+	n=0
+	for file in "$repo/"*.lua
+	do
+		[ "$file" = "$repo/*" ] && break
+		filter="$file" n=$((n + 1))
+	done
+
+	case $n in
+		(0) panic 'no Lua script found, use -f.' ;;
+		(1) : ;;
+		(*) panic 'too many Lua scripts found, use -f' ;;
+	esac
+fi
 
 if ! [ "$manpage" ]
 then
-	dir="$(git rev-parse --show-toplevel)" && [ "$dir" ] ||
-		panic 'failed to determine root directory of repository.'
+
 	filter_name="$(basename "$filter")" && [ "$filter_name" ] ||
 		panic '%s: failed to determine basename.' "$filter"
-	manpage="$dir/man/$filter_name.md"
+	manpage="$repo/man/man1/$filter_name.md"
 fi
 
 for file in "$filter" "$manpage"

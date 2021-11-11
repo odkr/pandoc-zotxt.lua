@@ -62,7 +62,7 @@ $(TESTS): tmpdir
 	fi
 
 header:
-	sh scripts/update-header-docs.sh
+	sh scripts/update-header.sh
 
 %.1: %.md
 	$(PANDOC) --output $@ --from markdown-smart --to man --standalone \
