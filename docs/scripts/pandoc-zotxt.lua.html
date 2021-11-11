@@ -39,7 +39,6 @@
 <li><a href="#Higher_order_functions">Higher-order functions</a></li>
 <li><a href="#Table_manipulation">Table manipulation</a></li>
 <li><a href="#Networking">Networking</a></li>
-<li><a href="#Bibliography_files">Bibliography files</a></li>
 <li><a href="#Converters">Converters</a></li>
 <li><a href="#Class_Zotxt">Class Zotxt </a></li>
 <li><a href="#Bibliography_files">Bibliography files</a></li>
@@ -126,16 +125,16 @@
 <h2> CITATION KEY TYPES</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> supports multiple types of citation keys, namely,
- &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;easy citekeys&rdquo; and Zotero iterm IDs.</p>
+ &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;easy citekeys&rdquo; and Zotero item IDs.</p>
 
 <p> However, it may happen that a Better BibTeX citation key is interpreted as
  an easy citekey <em>and</em> yet picks out an item, if not the one that it
  actually is the citation key of. That is to say, citation keys may be
  matched with the wrong bibliographic data.</p>
 
-<p> If this happens, you can disable citation keys that you do not use by
- setting the &ldquo;zotero-citekey-types&rdquo; metadata field to the citation key type
- or the list of citation key types that you want to use.</p>
+<p> If this happens, you can disable citation keys by setting the
+ &ldquo;zotero-citekey-types&rdquo; metadata field to the citation key type or to the
+ list of citation key types that you actually use.</p>
 
 <p> You can set the following citation key types:</p>
 
@@ -176,7 +175,7 @@ EOF
 </pre>
 
 
-<p> This will look up &ldquo;doe2020Title&rdquo; in Zotero.</p>
+<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero.</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
@@ -188,9 +187,9 @@ EOF
 </pre>
 
 
-<p> This will look up &ldquo;doe2020Title&rdquo; in Zotero and save its bibliographic data
- into the file &ldquo;bibliography.json&rdquo; in the current working directory. If the
- same command is run again, &ldquo;doe2020Title&rdquo; will <em>not</em> be looked up again.</p>
+<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero and save its bibliographic
+ data into the file &ldquo;bibliography.json&rdquo; in the current working directory. If
+ the same command is run again, &ldquo;doe2020Title&rdquo; will <em>not</em> be looked up again.</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
@@ -202,22 +201,21 @@ EOF
 </pre>
 
 
-<p> This forces <strong>pandoc-zotxt.lua</strong> to interpret &ldquo;doe2020Title&rdquo; as a Better
- BibTeX citation key.</p>
+<p> The above forces <strong>pandoc-zotxt.lua</strong> to interpret &ldquo;doe2020Title&rdquo; as a
+ Better BibTeX citation key.</p>
 
 <h2> KNOWN ISSUES</h2>
 
-<p> Citation keys may, on rare occassions, be matched with the wrong
- bibliographic data. This happens if a citation key picks out a different
- record depending on whether it is interpreted as a Better BibTeX citation
- key or as an easy citekey. See <strong>CITATION KEY TYPES</strong> above on how to fix
- this.</p>
+<p> Citation keys may, on rare occassions, be matched with the wrong Zotero
+ item. This happens if a citation key picks out a different record depending
+ on whether it is interpreted as a Better BibTeX citation key or as an easy
+ citekey. See <strong>CITATION KEY TYPES</strong> above on how to fix this.</p>
 
 <p> <strong>pandoc-zotxt.lua</strong> creates a temporary file when it adds sources to a
  bibliography file. If Pandoc exits because it catches a signal (e.g.,
- because you press <strong>Ctrl</strong>-<strong>c</strong>), then this file will <em>not</em> be deleted.
- This is a bug in Pandoc and in the process of being fixed. Moreover, if you
- are using Pandoc up to v2.7, another process may, mistakenly, use the same
+ because you press <code>Ctrl</code>-<code>c</code>), then this file will <em>not</em> be deleted. This
+ is a bug in Pandoc and in the process of being fixed. Moreover, if you are
+ using Pandoc up to v2.7, another process may, mistakenly, use the same
  temporary file at the same time, though this is highly unlikely.</p>
 
 <p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
@@ -389,10 +387,6 @@ EOF
 <h2><a href="#Table_manipulation">Table manipulation</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#rmap">rmap (func, data)</a></td>
-	<td class="summary">Recursively apply a function to every value of a tree.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#keys">keys (tab)</a></td>
 	<td class="summary">Return the keys and the length of a table.</td>
 	</tr>
@@ -453,6 +447,9 @@ EOF
 	<td class="name" nowrap><a href="#Zotxt:get_source">Zotxt:get_source (id)</a></td>
 	<td class="summary">Retrieve bibliographic data from Zotero as Pandoc metadata.</td>
 	</tr>
+</table>
+<h2><a href="#Bibliography_files">Bibliography files</a></h2>
+<table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#CSL_KEY_ORDER">CSL_KEY_ORDER</a></td>
 	<td class="summary">The preferred order of keys in YAML bibliography files.</td>
@@ -520,52 +517,6 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#biblio_update">biblio_update (handle, fname, ids)</a></td>
 	<td class="summary">Add items from Zotero to a bibliography file.</td>
-	</tr>
-</table>
-<h2><a href="#Converters">Converters</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#esc_md">esc_md (str)</a></td>
-	<td class="summary">Escape Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#markdownify">markdownify (elem)</a></td>
-	<td class="summary">Convert a Pandoc element to Markdown text.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#yamlify">yamlify (data[, ind=4[, sort_f]])</a></td>
-	<td class="summary">Generate a YAML representation of some data.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#conv_html_to_md">conv_html_to_md (html)</a></td>
-	<td class="summary">Convert pseudo-HTML to Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#rconv_html_to_md">rconv_html_to_md (item)</a></td>
-	<td class="summary">Recursively convert pseudo-HTML to Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#rconv_nums_to_strs">rconv_nums_to_strs (data)</a></td>
-	<td class="summary">Recursively convert numbers to strings.</td>
-	</tr>
-</table>
-<h2><a href="#zotxt">zotxt</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_BASE_URL">ZOTXT_BASE_URL</a></td>
-	<td class="summary">The URL to lookup citation data.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_KEYTYPES">ZOTXT_KEYTYPES</a></td>
-	<td class="summary">Types of citation keys.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#zotxt_get_item_csl">zotxt_get_item_csl (id)</a></td>
-	<td class="summary">Retrieve a CSL item (for use in bibliography files).</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#zotxt_get_item">zotxt_get_item (id)</a></td>
-	<td class="summary">Retrieve a CSL item (for use in the <code>references</code> metadata field).</td>
 	</tr>
 </table>
 <h2><a href="#Document_parsing">Document parsing</a></h2>
@@ -1446,41 +1397,6 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
 
     <dl class="function">
     <dt>
-    <a name = "rmap"></a>
-    <strong>rmap (func, data)</strong>
-    </dt>
-    <dd>
-    Recursively apply a function to every value of a tree. </p>
-
-<p> The function is applied to <em>every</em> node of the data tree.
- If a node is a <a href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a>, the function is applied <em>after</em> recursion.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">func</span>
-            <span class="types"><span class="type">func</span></span>
-         A function that takes a value and returns a new one.
-  Receives the value's key as second argument, if applicable.
-        </li>
-        <li><span class="parameter">data</span>
-         A data tree.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        <code>data</code> with <code>func</code> applied.
-    </ol>
-
-    <h3>Raises:</h3>
-    An error if the data is nested too deeply.
-
-
-
-</dd>
-    <dt>
     <a name = "keys"></a>
     <strong>keys (tab)</strong>
     </dt>
@@ -1644,7 +1560,7 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Bibliography_files"></a>Bibliography files</h2>
+    <h2 class="section-header "><a name="Converters"></a>Converters</h2>
 
     <dl class="function">
     <dt>
@@ -1719,49 +1635,21 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
  Does <em>not</em> escape <em>all</em> non-printable characters (because Unicode).
 
 
-    <h3>Fields:</h3>
+    <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">abstract</span>
-        The abstract.
+        <li><span class="parameter">data</span>
+         The data.
         </li>
-        <li><span class="parameter">collection-title</span>
-        E.g., a series.
+        <li><span class="parameter">ind</span>
+            <span class="types"><span class="type">int</span></span>
+         How many spaces to indent blocks.
+         (<em>default</em> 4)
         </li>
-        <li><span class="parameter">collection-title-short</span>
-        A short version of the title.
-        </li>
-        <li><span class="parameter">container-title</span>
-        Publication the item was published in.
-        </li>
-        <li><span class="parameter">container-title-short</span>
-        A short version of that title.
-        </li>
-        <li><span class="parameter">original-publisher</span>
-        Original publisher.
-        </li>
-        <li><span class="parameter">original-publisher-place</span>
-        Place the item was originally published in.
-        </li>
-        <li><span class="parameter">original-title</span>
-        Original title.
-        </li>
-        <li><span class="parameter">publisher</span>
-        Publisher.
-        </li>
-        <li><span class="parameter">publisher-place</span>
-        The city/cities the item was published in.
-        </li>
-        <li><span class="parameter">reviewed-title</span>
-        Title reviewed in the item.
-        </li>
-        <li><span class="parameter">title</span>
-        The title.
-        </li>
-        <li><span class="parameter">title-short</span>
-        A short version of the title.
-        </li>
-        <li><span class="parameter">short-title</span>
-        Ditto.
+        <li><span class="parameter">sort_f</span>
+            <span class="types"><span class="type">func</span></span>
+         A function to sort keys of mappings.
+  Defaults to sorting them lexically.
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -1824,10 +1712,6 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     </ol>
 
 
-    <h3>See also:</h3>
-    <ul>
-         <a href="../index.html#rconv_html_to_md">rconv_html_to_md</a>
-    </ul>
 
 
 </dd>
@@ -2141,16 +2025,8 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">{table,...}</a></span>
-        A list of CSL items
-  if you use Pandoc v2.11 or later.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-
            <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs
-  if you use an earlier version of Pandoc.
+        A list of item IDs.
     </ol>
 
 
@@ -2164,20 +2040,8 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <dd>
     Decode BibTeX.
 
-    <h3>Returns:</h3>
-    <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">{table,...}</a></span>
-        A list of CSL items
-  if you use Pandoc v2.11 or later.
-    </ol>
-     <h3>Or</h3>
-    <ol>
 
-           <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs
-  if you use an earlier version of Pandoc.
-    </ol>
 
 
 
@@ -2548,7 +2412,7 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Converters"></a>Converters</h2>
+    <h2 class="section-header "><a name="Document_parsing"></a>Document parsing</h2>
 
     <dl class="function">
     <dt>
@@ -2640,9 +2504,10 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <dd>
     Collect bibliographic data from the document&rsquo;s metadata block.</p>
 
-<p> Only escapes Markdown that Pandoc recognises in bibliographic data.</p>
+<p> Reads the <code>references</code> metafata field and every bibliography file
+ referenced by the <code>bibliography</code> metadata field.</p>
 
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>.
+<p> Prints errors to STDERR if it cannot parse a bibliography file.
 
 
     <h3>Parameters:</h3>
@@ -2656,8 +2521,8 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        <code>str</code> with Markdown escaped.
+           <span class="types"><span class="type">pandoc.List</span></span>
+        A list of CSL items.
     </ol>
 
 
@@ -2671,16 +2536,14 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <dd>
     Collect the citation keys used in a document.</p>
 
-<p> Only recognises elements that are permitted in bibliographic data.</p>
-
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>.
+<p> Prints errors to STDERR if it cannot parse a bibliography file.
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">elem</span>
-            <span class="types"><span class="type">pandoc.AstElement</span></span>
-         A Pandoc AST element.
+        <li><span class="parameter">doc</span>
+            <span class="types"><span class="type">tab</span></span>
+         A document.
         </li>
         <li><span class="parameter">undef</span>
             <span class="types"><span class="type">bool</span></span>
@@ -2702,11 +2565,15 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     </ol>
 
     <h3>Raises:</h3>
-    An error if the data is nested too deeply.
+    An error if an item ID is of an illegal data type.
 
 
 
 </dd>
+</dl>
+    <h2 class="section-header "><a name="Main"></a>Main</h2>
+
+    <dl class="function">
     <dt>
     <a name = "add_biblio"></a>
     <strong>add_biblio (handle, meta, ckeys)</strong>
@@ -2714,10 +2581,10 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
     <dd>
     Add data to a bibliography file and the file to the document&rsquo;s metadata.</p>
 
-<p> Only supports the HTML tags that Zotero <em>and</em> Pandoc support.</p>
-
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>
- and <a href="https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields">https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields</a>.
+<p> Updates the bibliography file as needed and adds it to the <code>bibliography</code>
+ metadata field. Interpretes a relative filename as relative to the
+ directory of the first input file passed to <strong>pandoc</strong>, <em>not</em> as relative
+ to the current working directory (unless no input files are given).
 
 
     <h3>Parameters:</h3>
@@ -2899,7 +2766,7 @@ name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-11-11 21:17:09 </i>
+<i style="float:right;">Last updated 2021-11-12 00:07:43 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

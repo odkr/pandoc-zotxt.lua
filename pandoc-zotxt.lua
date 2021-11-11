@@ -54,16 +54,16 @@
 -- ==================
 --
 -- **pandoc-zotxt.lua** supports multiple types of citation keys, namely,
--- "Better BibTeX citation keys", "easy citekeys" and Zotero iterm IDs.
+-- "Better BibTeX citation keys", "easy citekeys" and Zotero item IDs.
 --
 -- However, it may happen that a Better BibTeX citation key is interpreted as
 -- an easy citekey *and* yet picks out an item, if not the one that it
 -- actually is the citation key of. That is to say, citation keys may be
 -- matched with the wrong bibliographic data.
 --
--- If this happens, you can disable citation keys that you do not use by
--- setting the "zotero-citekey-types" metadata field to the citation key type
--- or the list of citation key types that you want to use.
+-- If this happens, you can disable citation keys by setting the
+-- "zotero-citekey-types" metadata field to the citation key type or to the
+-- list of citation key types that you actually use.
 --
 -- You can set the following citation key types:
 --
@@ -83,7 +83,7 @@
 --     EOF
 --
 --
--- This will look up "doe2020Title" in Zotero.
+-- The above will look up "doe2020Title" in Zotero.
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
@@ -93,9 +93,9 @@
 --     EOF
 --
 --
--- This will look up "doe2020Title" in Zotero and save its bibliographic data
--- into the file "bibliography.json" in the current working directory. If the
--- same command is run again, "doe2020Title" will *not* be looked up again.
+-- The above will look up "doe2020Title" in Zotero and save its bibliographic
+-- data into the file "bibliography.json" in the current working directory. If
+-- the same command is run again, "doe2020Title" will *not* be looked up again.
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
@@ -105,24 +105,23 @@
 --     EOF
 --
 --
--- This forces **pandoc-zotxt.lua** to interpret "doe2020Title" as a Better
--- BibTeX citation key.
+-- The above forces **pandoc-zotxt.lua** to interpret "doe2020Title" as a
+-- Better BibTeX citation key.
 --
 --
 -- KNOWN ISSUES
 -- ============
 --
--- Citation keys may, on rare occassions, be matched with the wrong
--- bibliographic data. This happens if a citation key picks out a different
--- record depending on whether it is interpreted as a Better BibTeX citation
--- key or as an easy citekey. See **CITATION KEY TYPES** above on how to fix
--- this.
+-- Citation keys may, on rare occassions, be matched with the wrong Zotero
+-- item. This happens if a citation key picks out a different record depending
+-- on whether it is interpreted as a Better BibTeX citation key or as an easy
+-- citekey. See **CITATION KEY TYPES** above on how to fix this.
 --
 -- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
 -- bibliography file. If Pandoc exits because it catches a signal (e.g.,
--- because you press **Ctrl**-**c**), then this file will *not* be deleted.
--- This is a bug in Pandoc and in the process of being fixed. Moreover, if you
--- are using Pandoc up to v2.7, another process may, mistakenly, use the same
+-- because you press `Ctrl`-`c`), then this file will *not* be deleted. This
+-- is a bug in Pandoc and in the process of being fixed. Moreover, if you are
+-- using Pandoc up to v2.7, another process may, mistakenly, use the same
 -- temporary file at the same time, though this is highly unlikely.
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
