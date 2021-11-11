@@ -33,6 +33,8 @@
 <li><a href="#File_I_O">File I/O</a></li>
 <li><a href="#Class_Prototype">Class Prototype </a></li>
 <li><a href="#Class_Error">Class Error </a></li>
+<li><a href="#Class_ConnectionError">Class ConnectionError </a></li>
+<li><a href="#Class_EncodingError">Class EncodingError </a></li>
 <li><a href="#Warnings">Warnings</a></li>
 <li><a href="#Higher_order_functions">Higher-order functions</a></li>
 <li><a href="#Table_manipulation">Table manipulation</a></li>
@@ -351,6 +353,20 @@ EOF
 	<td class="summary">Convert an error into a string.</td>
 	</tr>
 </table>
+<h2><a href="#Class_ConnectionError">Class ConnectionError </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#ConnectionError.template">ConnectionError.template</a></td>
+	<td class="summary">Template for connection error messages.</td>
+	</tr>
+</table>
+<h2><a href="#Class_EncodingError">Class EncodingError </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#EncodingError.template">EncodingError.template</a></td>
+	<td class="summary">Template for encoding error messages.</td>
+	</tr>
+</table>
 <h2><a href="#Warnings">Warnings</a></h2>
 <table class="function_list">
 	<tr>
@@ -418,11 +434,11 @@ EOF
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#Zotxt.base_url">Zotxt.base_url</a></td>
-	<td class="summary">The URL of the <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.</td>
+	<td class="summary">The base URL for <a href="https://github.com/egh/zotxt">zotxt</a> queries.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#Zotxt.citekey_types">Zotxt.citekey_types</a></td>
-	<td class="summary">Types of citation keys <a href="https://github.com/egh/zotxt">zotxt</a> supports.</td>
+	<td class="summary">Types of citation keys that <a href="https://github.com/egh/zotxt">zotxt</a> supports.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#Zotxt:get_csl_item">Zotxt:get_csl_item (id)</a></td>
@@ -456,7 +472,7 @@ EOF
 	<td class="summary">Decode BibTeX.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#BIBLIO_TYPES.bibtex">BIBLIO_TYPES.bibtex</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_TYPES.bibtex.decode">BIBLIO_TYPES.bibtex.decode</a></td>
 	<td class="summary">Read the IDs from the content of a BibTeX file.</td>
 	</tr>
 	<tr>
@@ -1124,7 +1140,10 @@ EOF
     <strong>Prototype.mt:__call (tab)</strong>
     </dt>
     <dd>
-    Delegate to a prototype.
+    Delegate to a prototype.</p>
+
+<p> Sets the table&rsquo;s metatable to a copy of the prototype&rsquo;s metatable
+ and then sets the metatable&rsquo;s <code>__index</code> field to the prototype.
 
 
     <h3>Parameters:</h3>
@@ -1203,7 +1222,7 @@ a <span class="global">string</span></pre>
     <dd>
     Convert an error into a string.</p>
 
-<p> Return the error&rsquo;s <code>template</code> field but replace every word that is
+<p> Return the error&rsquo;s <a href="../index.html#ConnectionError.template">template</a> field but replace every word that is
  preceded by a <code>$</code> with the value of the field of that name.
 
 
@@ -1219,13 +1238,61 @@ a <span class="global">string</span></pre>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">&gt; FileOpenError = Error {
-&gt;     template = <span class="string">'$fname: failed to open.'</span>
+        <pre class="example">&gt; NoSuchFileError = Error {
+&gt;     template = <span class="string">'$fname: no such file.'</span>
 &gt; }
-&gt; err = FileOpenError{fname = <span class="string">'/path/to/file'</span>}
+&gt; err = NoSuchFileError{fname = <span class="string">'/path/to/file'</span>}
 &gt; <span class="global">tostring</span>(err)
-/path/to/file: failed to open.</pre>
+/path/to/file: no such file.</pre>
     </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_ConnectionError"></a>Class ConnectionError </h2>
+
+          <div class="section-description">
+          Prototype for connection errors.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; err = ConnectionError()</pre>
+    <dl class="function">
+    <dt>
+    <a name = "ConnectionError.template"></a>
+    <strong>ConnectionError.template</strong>
+    </dt>
+    <dd>
+    Template for connection error messages.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_EncodingError"></a>Class EncodingError </h2>
+
+          <div class="section-description">
+          Prototype for encoding errors.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; err = EncodingError{id = <span class="string">'name2019TwoWords'</span>}
+&gt; <span class="global">tostring</span>(err)
+name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span class="keyword">in</span> UTF-<span class="number">8.</span></pre>
+    <dl class="function">
+    <dt>
+    <a name = "EncodingError.template"></a>
+    <strong>EncodingError.template</strong>
+    </dt>
+    <dd>
+    Template for encoding error messages.
+
+
+
+
+
+
 
 </dd>
 </dl>
@@ -1657,15 +1724,15 @@ a <span class="global">string</span></pre>
           </div>
             <h3>Usage:</h3>
             <pre class="example">&gt; handle = Zotxt()
-&gt; handle.citekey_types = List{<span class="string">'betterbibtexkey'</span>}
-&gt; <span class="keyword">local</span> csl_item = handle:get_csl_item(<span class="string">'@name2019TwoWords'</span>)</pre>
+&gt; handle.citekey_types = pandoc.List{<span class="string">'betterbibtexkey'</span>}
+&gt; <span class="keyword">local</span> csl_item = handle:get_csl_item(<span class="string">'name2019TwoWords'</span>)</pre>
     <dl class="function">
     <dt>
     <a name = "Zotxt.base_url"></a>
     <strong>Zotxt.base_url</strong>
     </dt>
     <dd>
-    The URL of the <a href="https://github.com/egh/zotxt">zotxt</a> endpoint.
+    The base URL for <a href="https://github.com/egh/zotxt">zotxt</a> queries.
 
 
 
@@ -1679,7 +1746,7 @@ a <span class="global">string</span></pre>
     <strong>Zotxt.citekey_types</strong>
     </dt>
     <dd>
-    Types of citation keys <a href="https://github.com/egh/zotxt">zotxt</a> supports.
+    Types of citation keys that <a href="https://github.com/egh/zotxt">zotxt</a> supports.
 
 
 
@@ -1982,8 +2049,8 @@ a <span class="global">string</span></pre>
 
 </dd>
     <dt>
-    <a name = "BIBLIO_TYPES.bibtex"></a>
-    <strong>BIBLIO_TYPES.bibtex</strong>
+    <a name = "BIBLIO_TYPES.bibtex.decode"></a>
+    <strong>BIBLIO_TYPES.bibtex.decode</strong>
     </dt>
     <dd>
     Read the IDs from the content of a BibTeX file.
@@ -2626,9 +2693,7 @@ a <span class="global">string</span></pre>
  metadata field. If a value of that field does <em>not</em> pick out a citation
  key type listed in <a href="../index.html#Zotxt.citekey_types">Zotxt.citekey_types</a>, it is ignored.</p>
 
-<p> Prints messages to STDERR if it cannot parse the <code>zotero-citekey-types</code>
- metadata field or if a value of that field does not pick out an actual
- citation key type.
+<p> Prints messages to STDERR if errors occur.
 
 
     <h3>Parameters:</h3>
@@ -2702,7 +2767,7 @@ a <span class="global">string</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-11-10 10:02:50 </i>
+<i style="float:right;">Last updated 2021-11-11 21:17:09 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
