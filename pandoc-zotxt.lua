@@ -208,6 +208,7 @@ local M = {}
 local _ENV = M
 
 -- Shorthands.
+local format = string.format
 local concat = table.concat
 local unpack = table.unpack
 
@@ -1140,7 +1141,6 @@ end
 
 do
     local rep = string.rep
-    local format = string.format
     local char = utf8.char
     local codes = utf8.codes
 
@@ -1791,89 +1791,90 @@ end
 -- ======
 
 do
-    if pandoc.types and PANDOC_VERSION > {2, 14} then
-        local super_types = {
-            Pandoc = 'AstElement',
-            Meta = 'AstElement',
-            MetaValue = 'AstElement',
-            MetaBlocks = 'MetaValue',
-            MetaBool = 'MetaValue',
-            MetaInlines = 'MetaValue',
-            MetaList = 'MetaValue',
-            MetaMap = 'MetaValue',
-            MetaString = 'MetaValue',
-            Block = 'AstElement',
-            BlockQuote = 'Block',
-            BulletList = 'Block',
-            CodeBlock = 'Block',
-            DefinitionList = 'Block',
-            Div = 'Block',
-            Header = 'Block',
-            HorizontalRule = 'Block',
-            LineBlock = 'Block',
-            Null = 'Block',
-            OrderedList = 'Block',
-            Para = 'Block',
-            Plain = 'Block',
-            RawBlock = 'Block',
-            Table = 'Block',
-            Inline = 'AstElement',
-            Cite = 'Inline',
-            Code = 'Inline',
-            Emph = 'Inline',
-            Image = 'Inline',
-            LineBreak = 'Inline',
-            Link = 'Inline',
-            Math = 'Inline',
-            Note = 'Inline',
-            Quoted = 'Inline',
-            RawInline = 'Inline',
-            SmallCaps = 'Inline',
-            SoftBreak = 'Inline',
-            Space = 'Inline',
-            Span = 'Inline',
-            Str = 'Inline',
-            Strikeout = 'Inline',
-            Strong = 'Inline',
-            Subscript = 'Inline',
-            Superscript = 'Inline',
-            Underline = 'Inline'
-        }
+    local super_types = {
+        Pandoc = 'AstElement',
+        Meta = 'AstElement',
+        MetaValue = 'AstElement',
+        MetaBlocks = 'MetaValue',
+        MetaBool = 'MetaValue',
+        MetaInlines = 'MetaValue',
+        MetaList = 'MetaValue',
+        MetaMap = 'MetaValue',
+        MetaString = 'MetaValue',
+        Block = 'AstElement',
+        BlockQuote = 'Block',
+        BulletList = 'Block',
+        CodeBlock = 'Block',
+        DefinitionList = 'Block',
+        Div = 'Block',
+        Header = 'Block',
+        HorizontalRule = 'Block',
+        LineBlock = 'Block',
+        Null = 'Block',
+        OrderedList = 'Block',
+        Para = 'Block',
+        Plain = 'Block',
+        RawBlock = 'Block',
+        Table = 'Block',
+        Inline = 'AstElement',
+        Cite = 'Inline',
+        Code = 'Inline',
+        Emph = 'Inline',
+        Image = 'Inline',
+        LineBreak = 'Inline',
+        Link = 'Inline',
+        Math = 'Inline',
+        Note = 'Inline',
+        Quoted = 'Inline',
+        RawInline = 'Inline',
+        SmallCaps = 'Inline',
+        SoftBreak = 'Inline',
+        Space = 'Inline',
+        Span = 'Inline',
+        Str = 'Inline',
+        Strikeout = 'Inline',
+        Strong = 'Inline',
+        Subscript = 'Inline',
+        Superscript = 'Inline',
+        Underline = 'Inline'
+    }
 
-        --- The type of a Pandoc AST element.
-        --
-        -- @tparam pandoc.AstElement elem A Pandoc AST element.
-        -- @treturn[1] string Type
-        --  (e.g., 'MetaMap', 'Plain').
-        -- @treturn[1] string Super-type
-        --  (i.e., 'Block', 'Inline', or 'MetaValue').
-        -- @treturn[1] string 'AstElement'.
-        -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
-        -- @within Document parsing
-        function elem_type (elem)
-            local t = type(elem)
-            if t ~= 'table' and t ~= 'userdata' then return end
-            local et = elem.tag
-            -- There is no better way.
-            if  not et          and
-                elem.meta       and
-                elem.blocks     and
-                t == 'userdata'
-            then
-                et = 'Pandoc'
-            end
-            local ets = {}
-            local n = 0
-            while et do
-                n = n + 1
-                ets[n] = et
-                et = super_types[et]
-            end
-            return unpack(ets)
+    --- The type of a Pandoc AST element.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn[1] string Type
+    --  (e.g., 'MetaMap', 'Plain').
+    -- @treturn[1] string Super-type
+    --  (i.e., 'Block', 'Inline', or 'MetaValue').
+    -- @treturn[1] string 'AstElement'.
+    -- @treturn[2] nil `nil` if `elem` is not a Pandoc AST element.
+    -- @within Document parsing
+    function elem_type (elem)
+        local t = type(elem)
+        if t ~= 'table' and t ~= 'userdata' then return end
+        local et = elem.tag
+        -- There is no better way.
+        if  not et          and
+            elem.meta       and
+            elem.blocks     and
+            t == 'userdata'
+        then
+            et = 'Pandoc'
         end
-    else
+        local ets = {}
+        local n = 0
+        while et do
+            n = n + 1
+            ets[n] = et
+            et = super_types[et]
+        end
+        return unpack(ets)
+    end
+
+    if pandoc.types and PANDOC_VERSION < {2, 15} then
         -- @fixme It's unclear whether this code ignores pandoc.Doc
         --        in favour of pandoc.Pandoc (as it should) for Pandoc <v2.15.
+        -- luacheck: ignore super_types
         local super_types = {}
         for k, v in sorted_pairs(pandoc) do
             if type(v) == 'table' and not super_types[v] and k ~= 'Doc' then
@@ -1900,17 +1901,17 @@ do
 end
 
 do
-    local clone
+    local function clone (elem)
+        assert(type(elem), 'userdata')
+        if elem.clone then return elem:clone() end
+        return Pandoc(elem.blocks:clone(), elem.meta:clone())
+    end
+
     -- @fixme This has not been tested for Pandoc <v2.15.
-    if pandoc.types and PANDOC_VERSION > {2, 14} then
-        function clone (elem)
-            assert(type(elem), 'userdata')
-            if elem.clone then return elem:clone() end
-            return Pandoc(elem.blocks:clone(), elem.meta:clone())
-        end
-    else
+    if pandoc.types and PANDOC_VERSION < {2, 15} then
         function clone (elem)
             assert(type(elem), 'table')
+            if elem.clone then return elem:clone() end
             local ret = setmetatable({}, getmetatable(elem))
             for k, v in next, elem, nil do rawset(ret, k, v) end
             return ret
@@ -2109,8 +2110,7 @@ function add_biblio (handle, meta, ckeys)
     if not ok or not fname then
         return nil, 'metadata field "zotero-bibliography": not a filename.'
     elseif fname == '' then
-        return nil, 'metadata field "zotero-bibliography": ' ..
-                    'filename is the empty string ("").'
+        return nil, 'metadata field "zotero-bibliography": filename is the empty string ("").'
     end
     if not path_is_abs(fname) then fname = path_join(wd(), fname) end
     local ok, err = biblio_update(handle, fname, ckeys)
@@ -2155,57 +2155,40 @@ function add_refs (handle, meta, ckeys)
     return meta
 end
 
-do
-    -- Prefix for error messages.
-    local err_pf = SCRIPT_NAME .. ': metadata filed "zotero-citekey-types": '
-
-    -- Print messages to STDERR
-    --
-    -- Prefixes message with `SCRIPT_NAME` and
-    -- ': metadata filed "zotero-citekey-types": ',
-    -- and appends `EOL`.
-    --
-    -- @tparam string ... Message to print to STDERR.
-    local function err (...)
-        io.stderr:write(err_pf, ..., EOL)
+--- Get citation key types to use.
+--
+-- Returns a list of citation key types from the `zotero-citekey-types`
+-- metadata field. If a value of that field does *not* pick out a citation
+-- key type listed in `Zotxt.citekey_types`, it is ignored.
+--
+-- Prints messages to STDERR if errors occur.
+--
+-- @tparam pandoc.Meta meta A metadata block.
+-- @treturn[1] pandoc.List A list of citation key types.
+-- @treturn[2] nil If no valid citation key types were found.
+-- @treturn[2] string An error message, if applicable.
+-- @within Main
+function meta_ckey_types (meta)
+    local citekey_types = meta['zotero-citekey-types']
+    if not citekey_types then return end
+    if citekey_types.tag == 'MetaInlines' then
+        citekey_types = MetaList{citekey_types}
+    elseif citekey_types.tag ~= 'MetaList' then
+        return nil, 'metadata field "zotero-citekey-types": cannot parse.'
     end
-
-    --- Get citation key types to use.
-    --
-    -- Returns a list of citation key types from the `zotero-citekey-types`
-    -- metadata field. If a value of that field does *not* pick out a citation
-    -- key type listed in `Zotxt.citekey_types`, it is ignored.
-    --
-    -- Prints messages to STDERR if errors occur.
-    --
-    -- @tparam pandoc.Meta meta A metadata block.
-    -- @treturn[1] pandoc.List A list of citation key types.
-    -- @treturn[2] nil If no valid citation key types were found.
-    -- @within Main
-    function meta_ckey_types (meta)
-        local citekey_types = meta['zotero-citekey-types']
-        if not citekey_types then return end
-        if citekey_types.tag == 'MetaInlines' then
-            citekey_types = MetaList{citekey_types}
-        elseif citekey_types.tag ~= 'MetaList' then
-            err 'cannot parse, ignoring.'
-            return
+    local ret = List()
+    local n = 0
+    for i = 1, #citekey_types do
+        local t = stringify(citekey_types[i])
+        if Zotxt.citekey_types:includes(t) then
+            n = n + 1
+            ret[n] = t
+        else
+            if t == '' then t = 'the empty string ("")' end
+            return nil, format('metadata field "zotero-citekey-types": %s: not a citation key type.', t)
         end
-        local ret = List()
-        local n = 0
-        for i = 1, #citekey_types do
-            local t = stringify(citekey_types[i])
-            if Zotxt.citekey_types:includes(t) then
-                n = n + 1
-                ret[n] = t
-            elseif t == '' then
-                err 'empty string (""): not a citation key type, ignoring.'
-            else
-                err(t, ': unknown citation key type, ingoring.')
-            end
-        end
-        if n > 0 then return ret end
     end
+    if n > 0 then return ret end
 end
 
 --- Collect citations and add bibliographic data to a document.
@@ -2224,8 +2207,10 @@ function main (doc)
     if next(ckeys) == nil then return end
     local handle = Zotxt()
     if doc.meta then
-        local ckey_ts = meta_ckey_types(doc.meta)
-        if ckey_ts then handle.citekey_types = ckey_ts end
+        local ckey_ts, err = meta_ckey_types(doc.meta)
+        if     ckey_ts then handle.citekey_types = ckey_ts
+        elseif err     then errf(err)
+        end
     end
     for i = 1, 2 do
         local add_srcs
