@@ -970,10 +970,10 @@ do
     -- @raise An error if `func` raises an error.
     -- @within File I/O
     function with_tmp_file (dir, templ, func, ...)
-        local t_fname, err = tmp_fname(dir, templ)
-        if not t_fname then return nil, err end
-        local function my_clean_up (...) return clean_up(t_fname, ...) end
-        return do_after(my_clean_up, func, t_fname, ...)
+        local tmp_file, err = tmp_fname(dir, templ)
+        if not tmp_file then return nil, err end
+        local function my_clean_up (...) return clean_up(tmp_file, ...) end
+        return do_after(my_clean_up, func, tmp_file, ...)
     end
 end
 
