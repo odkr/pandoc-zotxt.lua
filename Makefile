@@ -34,6 +34,13 @@ DOCS		= $(wildcard $(TEST_DATA_DIR)/*.md)
 TESTS		= $(notdir $(DOCS:.md=))
 
 
+# ZOTERO CREDENTIALS
+# ==================
+
+ZOTERO_USER_ID	= 5763466
+ZOTERO_API_KEY	= MO2GHxbkLnWgCqPtpoewgwIl
+
+
 # TESTS
 # =====
 
@@ -50,13 +57,19 @@ unit-tests: tmpdir
 
 $(TESTS): tmpdir
 	if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
-		--from markdown --to plain /dev/null >/dev/null 2>&1; \
+		--from markdown --to plain /dev/null; \
 	then \
 		"$(PANDOC)" --lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
+			--verbose \
+			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--output "$(TMP_DIR)/$@.html" "$(TEST_DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
 		$(PANDOC) --lua-filter "$(SCRIPT)" --citeproc \
+			--verbose \
+			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--output "$(TMP_DIR)/$@.html" "$(TEST_DATA_DIR)/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
 	fi

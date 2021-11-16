@@ -99,17 +99,19 @@ local M = require 'pandoc-zotxt'
 -- Also prints the requested URL and the file it serves to STDERR.
 --
 -- @tparam string url The URL.
+-- @treturn[1] string The MIME type.
 -- @treturn[1] string The data.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
--- @treturn[3] int An error number.
+-- @treturn[2] int An error number.
 function M.http_get (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     M.warnf('%s -> %s', url, hash)
     local path = M.path_join(CAN_DIR, hash)
-    local data = M.file_read(path)
-    return 'text/plain; charset=utf-8', data or '<not found>'
+    local mt = M.file_read(path .. '.mime') or 'text/plain; charset=utf-8'
+    local data = M.file_read(path) or '<' .. hash .. ': no such file.>'
+    return mt, data
 end
 
 return M

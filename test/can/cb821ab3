@@ -1,0 +1,28 @@
+{
+    "items": [
+        {
+            "id": "6939149/NKWWJ42N",
+            "type": "book",
+            "title": "Resisting Reality: Social Construction and Social Critique",
+            "publisher": "Oxford University Press",
+            "publisher-place": "Oxford",
+            "event-place": "Oxford",
+            "ISBN": "978-0-19-989262-4",
+            "note": "citation key: haslanger2012ResistingRealitySocial",
+            "shortTitle": "Resisting Reality",
+            "author": [
+                {
+                    "family": "Haslanger",
+                    "given": "Sally"
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        2012
+                    ]
+                ]
+            }
+        }
+    ]
+}

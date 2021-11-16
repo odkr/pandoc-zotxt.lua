@@ -239,6 +239,23 @@ ZOTXT_JSON = '[\n  ' ..
     '"type":"book"}' ..
     '\n]\n'
 
+--- API key for the Zotero Web API.
+ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
+
+--- Bibliographic data as returned by the Zotero Web API.
+ZOTWEB_CSL = {
+    ISBN = '978-0-19-989262-4',
+    author = {{family = 'Haslanger', given = 'Sally'}},
+    ['event-place'] = 'Oxford',
+    id = 'haslanger2012ResistingRealitySocial',
+    issued = {['date-parts'] = {{'2012'}}},
+    note = 'citation key: haslanger2012ResistingRealitySocial',
+    publisher = 'Oxford University Press',
+    ['publisher-place'] = 'Oxford',
+    shortTitle = 'Resisting Reality',
+    title = 'Resisting Reality: Social Construction and Social Critique',
+    type = 'book'
+}
 
 -- FUNCTIONS
 -- =========
@@ -1135,11 +1152,27 @@ end
 function test_zotxt_get_csl_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.zotxt_csl_item, v)
+        lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
     end
 
-    local ret = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
     lu.assert_equals(ret, ZOTXT_CSL)
+end
+
+-- Zotero Web API
+-- --------------
+
+function test_zotweb_get_csl_item ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.get_csl_item, zotweb, v)
+    end
+
+    local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
+    lu.assert_equals(ret, ZOTWEB_CSL)
 end
 
 

@@ -1,0 +1,17 @@
+{
+    "key": "MO2GHxbkLnWgCqPtpoewgwIl",
+    "userID": 5763466,
+    "username": "pandoc-zotxt.lua",
+    "access": {
+        "user": {
+            "library": true,
+            "files": true
+        },
+        "groups": {
+            "all": {
+                "library": true,
+                "write": false
+            }
+        }
+    }
+}
