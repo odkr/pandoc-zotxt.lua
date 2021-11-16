@@ -1600,6 +1600,7 @@ function Citekey:search_terms (key)
     if not author then return end
     if words then
         local title = {}
+        local n = 0
         local i, j = words:find('[A-Z]')
         if i ~= 1 then
             if not i then i = 0 end
@@ -1620,13 +1621,10 @@ end
 -- @fixme No unit tests.
 ZotWeb = Prototype()
 
--- @fixme Debugging.
-ZotWeb.api_key = 'MO2GHxbkLnWgCqPtpoewgwIl'
-
 -- @fixme Undocumented.
-ZotWeb.citekey_types = {
-    betterbibtexkey = Citekey{pattern = '^(%a+)(%d%d%d%d)(%w*)'},
-    easykey = Citekey{pattern = '^(%a+)(%d%d%d%d):(%w+)$'}
+ZotWeb.citekey_types = List {
+    'betterbibtexkey',
+    'easykey'
 }
 
 do
@@ -1637,10 +1635,16 @@ do
     -- A connection error.
     local conn_err = ConnectionError{service = 'Zotero Web API'}
 
+    -- A mapping of citation key type names to prototypes.
+    -- The prototypes have to provide a `search_terms` method that
+    -- derives a search term from a citation key of the given type.
+    local ckey_ts = {
+        betterbibtexkey = Citekey{pattern = '^(%a+)(%d%d%d%d)(%w*)'},
+        easykey = Citekey{pattern = '^(%a+):(%d%d%d%d)(%w*)'}
+    }
+
     -- The order in which to test whether a citation key is of a given type.
-    -- 'easykey' goes before 'betterbibtexkey', because the pattern for the
-    -- latter is more permissive. This may become a problem.
-    local ckey_ts_sort = in_order('easykey', 'betterbibtexkey')
+    local ckey_ts_sort = in_order('betterbibtexkey', 'easykey')
 
     -- Zotero Web API base URL.
     local base_url = 'https://api.zotero.org'
@@ -1667,9 +1671,12 @@ do
             return nil, 'Zotero user ID lookup: response has no MIME type.'
         elseif not res or res == '' then
             return nil, 'Zotero user ID lookup: response is empty.'
-        elseif mt == 'text/html' or mt:match '^text/html;' then
+        elseif mt:match '^text/' then
+            -- @fixme Check if the encoding is UTF-8 or none.
             return nil, 'Zotero user ID lookup: ' .. res
-        elseif mt ~= 'application/json' then
+        elseif  mt ~= 'application/json'          and
+                not mt:match '^application/json;'
+        then
             return nil, format('Zotero user ID lookup: response is of type %s.', mt)
         end
         -- luacheck: ignore ok
@@ -1705,14 +1712,14 @@ do
         assert(ok, conn_err)
         if not mt or mt == '' then
             return nil, 'Zotero Web API response has no MIME type.'
-        end
-        if not str or str == '' then
+        elseif not str or str == '' then
             return nil, 'Zotero Web API response is empty.'
-        end
-        if mt == 'text/html' or mt:match '^text/html;' then
+        elseif mt:match '^text/' then
+            -- @fixme Check if the encoding is UTF-8 or none.
             return nil, str
-        end
-        if mt ~= 'application/vnd.citationstyles.csl+json' then
+        elseif  mt ~= 'application/vnd.citationstyles.csl+json' and
+                not mt:match '^application/vnd.citationstyles.csl+json;'
+        then
             return nil, format('Zotero Web API response is of type %s.', mt)
         end
         -- luacheck: ignore ok
@@ -1750,8 +1757,8 @@ do
 
     -- @fixme Undocumented.
     local function derive_search_terms(h, ckey)
-        for _, v in sorted_pairs(h.citekey_types, ckey_ts_sort) do
-            if v then
+        for k, v in sorted_pairs(ckey_ts, ckey_ts_sort) do
+            if h.citekey_types:includes(k) then
                 local c = v()
                 if c then
                     local q = c:search_terms(ckey)
@@ -1764,11 +1771,11 @@ do
     -- @fixme Undocumented.
     local function match (h, parse_f, ckey)
         local q = derive_search_terms(h, ckey)
-        if not q then return nil, ckey .. ': failed to parse.' end
+        if not q then return nil, ckey .. ': cannot parse citation key.' end
         local items, err = search(h, parse_f, q.author, q.year, unpack(q.title))
         if not items then return nil, ckey .. ': ' .. err end
         local n = #items
-        if n == 0 then return nil, ckey .. ': not found.' end
+        if n == 0 then return nil, ckey .. ': no matching items.' end
         if n ~= 1 then
             items = filter_by_ckey(items, ckey)
             if items.n == 0 then
@@ -1793,9 +1800,12 @@ do
             return nil, ckey .. ': Zotero Web API response has no MIME type.'
         elseif not str or str == '' then
             return nil, ckey .. ': Zotero Web API response is empty.'
-        elseif mt == 'text/html' or mt:match '^text/html;' then
+        elseif mt:match '^text/' then
+            -- @fixme Check if the encoding is UTF-8 or none.
             return nil, ckey .. ': ' .. str
-        elseif mt ~= 'application/vnd.citationstyles.csl+json' then
+        elseif  mt ~= 'application/vnd.citationstyles.csl+json' and
+                not mt:match '^application/vnd.citationstyles.csl+json;'
+        then
             -- luacheck: ignore err
             local err = format('%s: Zotero Web API response is of type %s.',
                                ckey, mt)
@@ -1826,7 +1836,6 @@ do
     end
 
     -- @fixme Undocumented.
-    -- @fixme No unit tests.
     function ZotWeb:get_csl_item (ckey)
         local data, err = get(self, csljson_to_lua, ckey)
         if not data then return nil, err end
@@ -1838,13 +1847,18 @@ do
     local function csljson_to_meta_ (str)
         -- This is ugly, but I see no better way to do it.
         local data = decode(str)
-        local nstr = encode(data.items)
-        local meta = csljson_to_meta(nstr)
+        local items = data.items
+        local meta
+        if #items == 0 then
+            meta = csljson_to_meta('[]')
+        else
+            local nstr = encode(items)
+            meta = csljson_to_meta(nstr)
+        end
         return {items = meta}
     end
 
     -- @fixme Undocumented.
-    -- @fixme No unit tests.
     function ZotWeb:get_source (ckey)
         assert(ckey ~= '', 'citation key is the empty string ("").')
         local ref, err, errtype = get(self, csljson_to_meta_, ckey)
@@ -2552,6 +2566,22 @@ function meta_ckey_types (meta)
     if n > 0 then return ckey_ts end
 end
 
+function meta_zotweb (meta)
+    if not meta['zotero-api-key'] then return end
+    local api_key = stringify(meta['zotero-api-key'])
+    if api_key == '' then
+        return nil, 'metadata field "zotero-api-key": the empty string ("") is not an API key.'
+    end
+    local user_id
+    if meta['zotero-user-id'] then
+        user_id = stringify(meta['zotero-user-id'])
+        if user_id == '' then
+            return nil, 'metadata field "zotero-user-id": the empty string ("") is not a user ID.'
+        end
+    end
+    return ZotWeb{api_key = api_key, user_id = user_id}
+end
+
 --- Collect citations and add bibliographic data to a document.
 --
 -- Prints messages to STDERR if errors occur.
@@ -2564,29 +2594,51 @@ end
 -- @raise See `Zotxt:get_csl_item`.
 -- @within Main
 function main (doc)
-    -- @todo add support for differnt types of handles.
-    -- cycle over them, if we catch an error, go to the next.
-    -- provided we can instatitate it!
     local ckeys = doc_ckeys(doc, true)
     if next(ckeys) == nil then return end
-    local handle = Zotxt()
-    if doc.meta then
-        local ckey_ts, err = meta_ckey_types(doc.meta)
-        if     ckey_ts then handle.citekey_types = ckey_ts
-        elseif err     then errf(err)
+    local meta = doc.meta
+
+    -- Some configuration.
+    local zotxt = Zotxt()
+    local zotweb
+    if meta then
+        -- Zotero Web API.
+        local err
+        zotweb, err = meta_zotweb(meta)
+        if not zotweb and err then errf(err) end
+        -- Citation keys.
+        -- luacheck: ignore err
+        local ckey_ts, err = meta_ckey_types(meta)
+        if ckey_ts then
+            zotxt.citekey_types = ckey_ts
+            if zotweb then zotweb.citekey_types = ckey_ts end
+        elseif err then
+            errf(err)
         end
     end
+
     for i = 1, 2 do
         local add_srcs
         if     i == 1 then add_srcs = add_biblio
         elseif i == 2 then add_srcs = add_refs
         end
-        local meta, err = add_srcs(handle, doc.meta, ckeys)
-        if meta then
-            doc.meta = meta
-            return doc
-        elseif err then
-            errf(err)
+        for j = 1, 2 do
+            local handle
+            if     j == 1 then handle = zotxt
+            elseif j == 2 then handle = zotweb
+            end
+            -- @fixme The user should be able to select *which*
+            --        connector they want to use.
+            if handle then
+                -- luacheck: ignore meta
+                local meta, err = add_srcs(handle, doc.meta, ckeys)
+                if meta then
+                    doc.meta = meta
+                    return doc
+                elseif err then
+                    errf(err)
+                end
+            end
         end
     end
 end
