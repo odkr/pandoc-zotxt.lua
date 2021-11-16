@@ -443,9 +443,8 @@ ConnectionError = Error()
 --- Template for connection error messages.
 ConnectionError.template = 'failed to connect to $service.'
 
---- Default service.
+--- A default value for the `service` field.
 ConnectionError.service = 'unspecified service.'
-
 
 --- Prototype for encoding errors.
 --
@@ -458,6 +457,8 @@ EncodingError = Error()
 
 --- Template for encoding error messages.
 EncodingError.template = '$ckey: fetched data is not encoded in UTF-8.'
+
+--- A default value for the `ckey` field.
 EncodingError.ckey = 'unspecified citation key'
 
 
@@ -655,7 +656,7 @@ end
 -- -------
 
 -- @fixme Undocumeted.
--- @fixme Untested.
+-- @fixme No unit tests.
 function split (str, sep, max)
     local n = 0
     local p = 1
@@ -670,17 +671,17 @@ function split (str, sep, max)
                  else s = -1
             end
         end
-        local ret = str:sub(p, s)
+        local sub = str:sub(p, s)
         n = n + 1
         if j then p = j + 1
              else p = nil
         end
-        return ret
+        return sub
     end
 end
 
 -- @fixme Undocumeted.
--- @fixme Untested.
+-- @fixme No unit tests.
 function expand_vars (str, tab)
     local vals = {}
     for k, v in pairs(tab) do vals[k] = tostring(v) end
@@ -1316,16 +1317,16 @@ do
         if t ~= 'table' then error(t .. ': cannot be represented in YAML.') end
         _rd = _rd + 1
         if not _col then _col = 0 end
-        local ret = ''
+        local str = ''
         local n = #data
         local nkeys = select(2, keys(data))
         local sp = spaces(_col)
         if n == nkeys then
             local col = _col + 2
             for i = 1, n do
-                if i > 1 then ret = ret .. sp end
-                ret = ret .. '- ' .. yamlify(data[i], ind, sort_f, col, _rd)
-                if i ~= n then ret = ret .. EOL end
+                if i > 1 then str = str .. sp end
+                str = str .. '- ' .. yamlify(data[i], ind, sort_f, col, _rd)
+                if i ~= n then str = str .. EOL end
             end
         else
             local i = 0
@@ -1334,17 +1335,17 @@ do
                 if type(k) == 'number' then k = tostring(k)
                                        else k = scalarify(k)
                 end
-                if i > 1 then ret = ret .. sp end
-                ret = ret .. k .. ':'
+                if i > 1 then str = str .. sp end
+                str = str .. k .. ':'
                 local col = _col + ind
-                if type(v) == 'table' then ret = ret .. EOL .. spaces(col)
-                                      else ret = ret .. ' '
+                if type(v) == 'table' then str = str .. EOL .. spaces(col)
+                                      else str = str .. ' '
                 end
-                ret = ret .. yamlify(v, ind, sort_f, col, _rd)
-                if i ~= nkeys then ret = ret .. EOL end
+                str = str .. yamlify(v, ind, sort_f, col, _rd)
+                if i ~= nkeys then str = str .. EOL end
             end
         end
-        return ret
+        return str
     end
 end
 
@@ -1409,7 +1410,7 @@ do
     -- @string str A CSL JSON string.
     -- @return A Lua data structure.
     -- @within Converters
-    -- @fixme Unit tests are missing.
+    -- @fixme No unit tests.
     -- @fixme Errors are undocumented.
     function csljson_to_lua (str)
         assert(str ~= '', 'no data.')
@@ -1425,7 +1426,7 @@ do
     -- @string str A CSL JSON string.
     -- @treturn pandoc.MetaMap Pandoc metadata.
     -- @within Converters
-    -- @fixme Unit tests are missing.
+    -- @fixme No unit tests.
     -- @fixme Errors are undocumented.
     function csljson_to_meta (str)
         assert(str ~= '', 'no data.')
@@ -1588,11 +1589,11 @@ end
 -- Zotero Web API
 -----------------
 
--- @fixme Undocumted.
+-- @fixme Undocumented.
 Citekey = Prototype()
 
--- @fixme Undocumted.
--- @fixme Untested.
+-- @fixme Undocumented.
+-- @fixme No unit tests.
 function Citekey:search_terms (key)
     if not key then key = self.key end
     local author, year, words = key:match(self.pattern)
@@ -1615,14 +1616,14 @@ function Citekey:search_terms (key)
     return {author = author, year = year}
 end
 
--- @fixme Undocumted.
--- @fixme Untested.
+-- @fixme Undocumented.
+-- @fixme No unit tests.
 ZotWeb = Prototype()
 
 -- @fixme Debugging.
 ZotWeb.api_key = 'MO2GHxbkLnWgCqPtpoewgwIl'
 
--- @fixme Undocumted.
+-- @fixme Undocumented.
 ZotWeb.citekey_types = {
     betterbibtexkey = Citekey{pattern = '^(%a+)(%d%d%d%d)(%w*)'},
     easykey = Citekey{pattern = '^(%a+)(%d%d%d%d):(%w+)$'}
@@ -1656,7 +1657,7 @@ do
     -- Base URL for item searches.
     local search_url = items_url .. '/?v=3&key=%s&format=csljson&qmode=titleCreatorYear&q=%s'
 
-    -- @fixme Undocumted.
+    -- @fixme Undocumented.
     local function get_user_id (h)
         assert(h.api_key, 'no Zotero API key given.')
         local query_url = user_url:format(h.api_key)
@@ -1681,7 +1682,7 @@ do
         return data.userID
     end
 
-    -- @fixme Undocumted.
+    -- @fixme Undocumented.
     local function set_user_id (h)
         assert(h.api_key, 'no Zotero API key given.')
         if not h.user_id then
@@ -1692,7 +1693,7 @@ do
         return true
     end
 
-    -- @fixme Undocumted.
+    -- @fixme Undocumented.
     local function search (h, parse_f, ...)
         assert(h.api_key, 'no Zotero API key given.')
         local ok, err = set_user_id(h)
@@ -1716,15 +1717,16 @@ do
         end
         -- luacheck: ignore ok
         local ok, recs = pcall(parse_f, str, mt)
-        if not ok or not recs.items then
+        local items = recs.items
+        if not ok or not items then
             return nil, 'got unparsable Zotero Web API response: ' .. str
         end
-        return recs.items
+        return items
     end
 
-    -- @fixme Undocumted.
-    local function filter_by_ckey (items, citekey)
-        local ret = {}
+    -- @fixme Undocumented.
+    local function filter_by_ckey (items, ckey)
+        local filtered = {}
         local n = 0
         for i = 1, #items do
             local item = items[i]
@@ -1734,32 +1736,32 @@ do
                     local k, v = t[1], t[2]
                     if  k and v                     and
                         k:lower() == 'citation key' and
-                        v == citekey
+                        v == ckey
                     then
                         n = n + 1
-                        ret[n] = item
+                        filtered[n] = item
                     end
                 end
             end
         end
-        ret.n = n
-        return ret
+        filtered.n = n
+        return filtered
     end
 
-    -- @fixme Undocumted.
-    local function derive_search_terms(h, citekey)
+    -- @fixme Undocumented.
+    local function derive_search_terms(h, ckey)
         for _, v in sorted_pairs(h.citekey_types, ckey_ts_sort) do
             if v then
                 local c = v()
                 if c then
-                    local q = c:search_terms(citekey)
+                    local q = c:search_terms(ckey)
                     if q then return q end
                 end
             end
         end
     end
 
-    -- @fixme Undocumted.
+    -- @fixme Undocumented.
     local function match (h, parse_f, ckey)
         local q = derive_search_terms(h, ckey)
         if not q then return nil, ckey .. ': failed to parse.' end
@@ -1778,50 +1780,53 @@ do
         return items[1]
     end
 
-    -- @fixme Undocumted.
-    local function lookup (h, parse_f, citekey)
+    -- @fixme Undocumented.
+    local function lookup (h, parse_f, ckey)
         assert(h.api_key, 'no Zotero API key given.')
         local ok, err = set_user_id(h)
         if not ok then return nil, err end
-        local query_url = lookup_url:format(h.user_id, citekey, h.api_key)
-        local ok, mt, data = pcall(http_get, query_url)
+        local query_url = lookup_url:format(h.user_id, ckey, h.api_key)
+        -- luacheck: ignore ok
+        local ok, mt, str = pcall(http_get, query_url)
         assert(ok, conn_err)
         if not mt or mt == '' then
-            return nil, citekey .. ': Zotero Web API response has no MIME type.'
-        end
-        if not data or data == '' then
-            return nil, citekey .. ': Zotero Web API response is empty.'
-        end
-        if mt == 'text/html' or mt:match '^text/html;' then
-            return nil, citekey .. ': ' .. data
-        end
-        if mt ~= 'application/vnd.citationstyles.csl+json' then
-            return nil, format('%s: Zotero Web API response is of type %s.', citekey, mt)
+            return nil, ckey .. ': Zotero Web API response has no MIME type.'
+        elseif not str or str == '' then
+            return nil, ckey .. ': Zotero Web API response is empty.'
+        elseif mt == 'text/html' or mt:match '^text/html;' then
+            return nil, ckey .. ': ' .. str
+        elseif mt ~= 'application/vnd.citationstyles.csl+json' then
+            -- luacheck: ignore err
+            local err = format('%s: Zotero Web API response is of type %s.',
+                               ckey, mt)
+            return nil, err
         end
         -- luacheck: ignore ok
-        local ok, ret = pcall(parse_f, data, mt)
-        local items = ret.items
+        local ok, data = pcall(parse_f, str, mt)
+        local items = data.items
         if not ok or not items then
-            return nil, format('%s: got unparsable Zotero Web API response: %s.', citekey, data)
+            local err = format('%s: got unparsable Zotero Web API response: %s.',
+                               ckey, data)
+            return nil, err
         end
         local n = #items
-        if n == 0 then return nil, citekey .. ': not found'   end
-        if n > 1  then return nil, citekey .. ': not unique.' end
+        if n == 0 then return nil, ckey .. ': not found'   end
+        if n > 1  then return nil, ckey .. ': not unique.' end
         return items[1]
     end
 
-    -- @fixme Undocumted.
-    local function get (h, parse_f, citekey)
+    -- @fixme Undocumented.
+    local function get (h, parse_f, ckey)
         assert(h.api_key)
         set_user_id(h)
-        if citekey:len() ~= 8 or not citekey:match '^[A-Z0-9]+$' then
-            return match(h, parse_f, citekey)
+        if ckey:len() ~= 8 or not ckey:match '^[A-Z0-9]+$' then
+            return match(h, parse_f, ckey)
         end
-        return lookup(h, parse_f, citekey)
+        return lookup(h, parse_f, ckey)
     end
 
-    -- @fixme Undocumted.
-    -- @fixme Untested.
+    -- @fixme Undocumented.
+    -- @fixme No unit tests.
     function ZotWeb:get_csl_item (ckey)
         local data, err = get(self, csljson_to_lua, ckey)
         if not data then return nil, err end
@@ -1829,18 +1834,17 @@ do
         return data
     end
 
-    -- @fixme Undocumted.
-    -- @fixme Untested.
+    -- @fixme Undocumented.
     local function csljson_to_meta_ (str)
-        -- This is ugly, but I see no other way to do it.
+        -- This is ugly, but I see no better way to do it.
         local data = decode(str)
         local nstr = encode(data.items)
         local meta = csljson_to_meta(nstr)
         return {items = meta}
     end
 
-    -- @fixme Undocumted.
-    -- @fixme Untested.
+    -- @fixme Undocumented.
+    -- @fixme No unit tests.
     function ZotWeb:get_source (ckey)
         assert(ckey ~= '', 'citation key is the empty string ("").')
         local ref, err, errtype = get(self, csljson_to_meta_, ckey)
@@ -2269,9 +2273,9 @@ do
         function clone (elem)
             assert(type(elem), 'table')
             if elem.clone then return elem:clone() end
-            local ret = setmetatable({}, getmetatable(elem))
-            for k, v in next, elem, nil do rawset(ret, k, v) end
-            return ret
+            local copy = setmetatable({}, getmetatable(elem))
+            for k, v in next, elem, nil do rawset(copy, k, v) end
+            return copy
         end
     end
 
@@ -2362,9 +2366,9 @@ end
 -- @treturn pandoc.List A list of CSL items.
 -- @within Document parsing
 function meta_sources (meta)
-    local ret = List()
-    if not meta then return ret end
-    if meta.references then ret:extend(meta.references) end
+    local data = List()
+    if not meta then return data end
+    if meta.references then data:extend(meta.references) end
     if meta.bibliography then
         local fnames
         local bibliography = meta.bibliography
@@ -2374,14 +2378,14 @@ function meta_sources (meta)
             fnames = bibliography:map(stringify)
         else
             errf 'metadata field "bibliography": cannot parse.'
-            return ret
+            return data
         end
         for i = 1, #fnames do
             local fname, err = file_locate(fnames[i])
             if fname then
                 -- luacheck: ignore err
                 local items, err = biblio_read(fname)
-                if items then ret:extend(items)
+                if items then data:extend(items)
                          else errf(err)
                 end
             else
@@ -2389,7 +2393,7 @@ function meta_sources (meta)
             end
         end
     end
-    return ret
+    return data
 end
 
 do
@@ -2533,19 +2537,19 @@ function meta_ckey_types (meta)
     elseif citekey_types.tag ~= 'MetaList' then
         return nil, 'metadata field "zotero-citekey-types": cannot parse.'
     end
-    local ret = List()
+    local ckey_ts = List()
     local n = 0
     for i = 1, #citekey_types do
         local t = stringify(citekey_types[i])
         if Zotxt.citekey_types:includes(t) then
             n = n + 1
-            ret[n] = t
+            ckey_ts[n] = t
         else
             if t == '' then t = 'the empty string ("")' end
             return nil, format('metadata field "zotero-citekey-types": %s: not a citation key type.', t)
         end
     end
-    if n > 0 then return ret end
+    if n > 0 then return ckey_ts end
 end
 
 --- Collect citations and add bibliographic data to a document.
