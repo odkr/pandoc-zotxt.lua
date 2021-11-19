@@ -1,8 +1,8 @@
 .DS_Store
-test/biblio.json
-test/tmp/*
 .vscode
-/luarocks
-/lua
-/lua_modules
-/.luarocks
+.luarocks
+release
+test/tmp/*
+*.bak
+man/man1/pandoc-zotxt.lua.1.gz
+man/man1/pandoc-zotxt.lua.1
