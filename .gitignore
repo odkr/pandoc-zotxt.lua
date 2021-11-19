@@ -1,4 +1,5 @@
 .DS_Store
+<<<<<<< HEAD
 release
 test/biblio.json
 test/tmp/*
@@ -9,3 +10,12 @@ test/tmp/*
 /.luarocks
 *.bak
 man/man1/pandoc-zotxt.lua.1.gz
+=======
+.vscode
+.luarocks
+release
+test/tmp/*
+*.bak
+man/man1/pandoc-zotxt.lua.1.gz
+man/man1/pandoc-zotxt.lua.1
+>>>>>>> main

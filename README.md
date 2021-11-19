@@ -138,3 +138,4 @@ SOFTWARE.
 ## Further Information
 
 GitHub: <https://github.com/odkr/pandoc-zotxt.lua>
+

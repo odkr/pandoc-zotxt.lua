@@ -1,0 +1,39 @@
+HTTP/1.1 200 OK
+Date: Fri, 19 Nov 2021 12:26:50 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 1
+Link: <https://www.zotero.org/users/5763466/items/>; rel="alternate"
+Last-Modified-Version: 76
+Vary: Accept-Encoding
+Content-Length: 720
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": [
+        {
+            "id": "6939149/J9NNZP48",
+            "type": "article-journal",
+            "title": "In Defence of Historical Constructivism about Races",
+            "container-title": "Ergo, an Open Access Journal of Philosophy",
+            "volume": "2",
+            "URL": "http://hdl.handle.net/2027/spo.12405314.0002.021",
+            "DOI": "10/gng6nw",
+            "author": [
+                {
+                    "family": "Díaz-León",
+                    "given": "Esa"
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        2015
+                    ]
+                ]
+            }
+        }
+    ]
+}

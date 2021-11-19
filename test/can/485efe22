@@ -1,3 +1,16 @@
+<<<<<<< HEAD
+=======
+HTTP/1.1 200 OK
+Date: Thu, 18 Nov 2021 18:56:44 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Vary: Accept-Encoding
+Content-Length: 336
+Content-Type: application/json
+
+>>>>>>> main
 {
     "key": "MO2GHxbkLnWgCqPtpoewgwIl",
     "userID": 5763466,

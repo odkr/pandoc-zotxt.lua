@@ -1,0 +1,8 @@
+HTTP/1.0 200 OK
+X-Zotero-Version: 5.0.96.3
+X-Zotero-Connector-API-Version: 2
+Content-Type: text/plain; charset=UTF-8
+
+[
+  {"id":"diaz-leonDefenceHistoricalConstructivism2015","author":[{"family":"Diaz-Leon","given":"Esa"}],"container-title":"Ergo","DOI":"10.3998/ergo.12405314.0002.021","ISSN":"2330-4014","issued":{"date-parts":[[2015]]},"title":"In Defence of Historical Constructivism about Races","type":"article-journal","URL":"http://hdl.handle.net/2027/spo.12405314.0002.021","volume":"2"}
+]

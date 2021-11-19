@@ -1,3 +1,8 @@
+HTTP/1.0 200 OK
+X-Zotero-Version: 5.0.96.3
+X-Zotero-Connector-API-Version: 2
+Content-Type: text/plain; charset=UTF-8
+
 [
-  {"id":"haslanger:2012resisting","author":[{"family":"Haslanger","given":"Sally"}],"ISBN":"978-0-19-989262-4","issued":{"date-parts":[[2012]]},"publisher":"Oxford University Press","publisher-place":"Oxford","title":"Resisting Reality: Social Construction and Social Critique","title-short":"Resisting Reality","type":"book"}
+  {"id":"haslanger2012ResistingRealitySocial","author":[{"family":"Haslanger","given":"Sally"}],"event-place":"Oxford","ISBN":"978-0-19-989262-4","issued":{"date-parts":[[2012]]},"publisher":"Oxford University Press","publisher-place":"Oxford","title":"Resisting Reality: Social Construction and Social Critique","title-short":"Resisting Reality","type":"book"}
 ]

@@ -145,24 +145,18 @@ local lu = require 'luaunit'
 local json = require 'lunajson'
 local yaml = require 'tinyyaml'
 
-local M = require 'debug-wrapper'
+local M = require 'test-wrapper'
 
 
 -- CONSTANTS
 -- =========
 
+--- Bibliographic data as JSON string.
+ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
+
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
-ZOTXT_CSL = {
-    id = 'haslanger2012ResistingRealitySocial',
-    type = 'book',
-    author = {{family = 'Haslanger', given = 'Sally'}},
-    title = 'Resisting Reality: Social Construction and Social Critique',
-    ['title-short'] = 'Resisting Reality',
-    publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
-    issued = {['date-parts'] = {{'2012'}}},
-    isbn = '978-0-19-989262-4'
-}
+ZOTXT_CSL = json.decode(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
@@ -226,18 +220,23 @@ else
     }
 end
 
---- Bibliographic data as JSON string.
-ZOTXT_JSON = '[\n  ' ..
-    '{"id":"haslanger2012ResistingRealitySocial",' ..
-    '"author":[{"family":"Haslanger","given":"Sally"}],' ..
-    '"isbn":"978-0-19-989262-4",' ..
-    '"issued":{"date-parts":[[2012]]},' ..
-    '"publisher":"Oxford University Press",' ..
-    '"publisher-place":"Oxford",' ..
-    '"title":"Resisting Reality: Social Construction and Social Critique",' ..
-    '"title-short":"Resisting Reality",' ..
-    '"type":"book"}' ..
-    '\n]\n'
+--- API key for the Zotero Web API.
+ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
+
+--- Bibliographic data as returned by the Zotero Web API.
+ZOTWEB_CSL = {
+    ISBN = '978-0-19-989262-4',
+    author = {{family = 'Haslanger', given = 'Sally'}},
+    ['event-place'] = 'Oxford',
+    id = 'haslanger2012ResistingRealitySocial',
+    issued = {['date-parts'] = {{'2012'}}},
+    note = 'citation key: haslanger2012ResistingRealitySocial',
+    publisher = 'Oxford University Press',
+    ['publisher-place'] = 'Oxford',
+    shortTitle = 'Resisting Reality',
+    title = 'Resisting Reality: Social Construction and Social Critique',
+    type = 'book'
+}
 
 --- API key for the Zotero Web API.
 ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
@@ -1141,7 +1140,11 @@ function test_yamlify ()
     lu.assert_equals(M.yamlify('test' .. utf8.char(0xda99) .. 'test'),
         '"test\\uda99test"')
     local str = M.yamlify(ZOTXT_CSL)
+<<<<<<< HEAD
     local csl = rconv_nums_to_strs(yaml.parse(str))
+=======
+    local csl = yaml.parse(str)
+>>>>>>> main
     lu.assert_equals(csl, ZOTXT_CSL)
 end
 
@@ -1150,6 +1153,7 @@ end
 -- -----
 
 function test_zotxt_get_csl_item ()
+<<<<<<< HEAD
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
@@ -1158,6 +1162,31 @@ function test_zotxt_get_csl_item ()
     local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTXT_CSL)
+=======
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
+    end
+
+    local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
+    lu.assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
+end
+
+-- Zotero Web API
+-- --------------
+
+function test_zotweb_get_csl_item ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.get_csl_item, zotweb, v)
+    end
+
+    local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
+    lu.assert_equals(ret, ZOTWEB_CSL)
+>>>>>>> main
 end
 
 -- Zotero Web API
@@ -1231,7 +1260,11 @@ function test_csl_items_ids ()
     end
 
     lu.assert_equals(M.csl_items_ids({}), {})
+<<<<<<< HEAD
     lu.assert_equals(M.csl_items_ids({ZOTXT_CSL}),
+=======
+    lu.assert_equals(M.csl_items_ids(ZOTXT_CSL),
+>>>>>>> main
         {haslanger2012ResistingRealitySocial=true})
     lu.assert_equals(M.csl_items_ids(ZOTXT_YAML),
         {crenshaw1989DemarginalizingIntersectionRace=true})
@@ -1244,7 +1277,11 @@ function test_biblio_read ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
+<<<<<<< HEAD
     lu.assert_items_equals(rconv_nums_to_strs(data), {ZOTXT_CSL})
+=======
+    lu.assert_items_equals(data, ZOTXT_CSL)
+>>>>>>> main
 
     fname = M.path_join(DATA_DIR, 'bibliography.yaml')
     data, err = M.biblio_read(fname)
@@ -1265,10 +1302,17 @@ function test_biblio_write ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
+<<<<<<< HEAD
     lu.assert_items_equals(rconv_nums_to_strs(data), {ZOTXT_CSL})
 
     fname = M.path_join(TMP_DIR, 'bibliography.yaml')
     ok, err = os.remove(fname)
+=======
+    lu.assert_items_equals(data, {ZOTXT_CSL})
+
+    fname = M.path_join(TMP_DIR, 'bibliography.yaml')
+    ok, err, errno = os.remove(fname)
+>>>>>>> main
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, ZOTXT_YAML)
     lu.assert_equals(fmt, 'yaml')
@@ -1298,7 +1342,7 @@ function test_biblio_codecs_bib_decode ()
     local ids = M.csl_items_ids(bib.decode(str))
     lu.assert_items_equals(ids, {
         ['crenshaw1989DemarginalizingIntersectionRace'] = true,
-        ['diaz-leon2015WhatSocialConstruction'] = true
+        ['díaz-león2015WhatSocialConstruction'] = true
     })
 end
 
@@ -1371,8 +1415,8 @@ function test_biblio_update ()
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     local csl = copy(ZOTXT_CSL)
-    csl.id = 'haslanger:2012resisting'
-    lu.assert_equals(data, {csl})
+    csl[1].id = 'haslanger:2012resisting'
+    lu.assert_equals(data, rconv_nums_to_strs(csl))
 
     -- Checks adding a new citation.
     local new
@@ -1441,8 +1485,12 @@ function test_walk ()
         'dup-biblio-bib.md', 'dup-biblio-yaml.md', 'dup.md',
         'easy-citekey.md', 'empty.md', 'ex-biblio.md',
         'ex-simple.md', 'issue-4-2.md', 'issue-4.md',
+<<<<<<< HEAD
         'merge.md', 'nocite.md', 'pre-existing-mixed.md',
         'zotero-id.md'
+=======
+        'merge.md', 'nocite.md', 'pre-existing-mixed.md'
+>>>>>>> main
     }
 
     for _, v in ipairs(fnames) do
@@ -1499,7 +1547,7 @@ function test_meta_sources ()
     local ids = M.csl_items_ids(M.meta_sources(test_file.meta))
     lu.assert_items_equals(ids, {
         ["crenshaw1989DemarginalizingIntersectionRace"] = true,
-        ["diaz-leon2015WhatSocialConstruction"] = true
+        ["díaz-león2015WhatSocialConstruction"] = true
     })
 end
 
