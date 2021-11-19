@@ -1140,11 +1140,7 @@ function test_yamlify ()
     lu.assert_equals(M.yamlify('test' .. utf8.char(0xda99) .. 'test'),
         '"test\\uda99test"')
     local str = M.yamlify(ZOTXT_CSL)
-<<<<<<< HEAD
-    local csl = rconv_nums_to_strs(yaml.parse(str))
-=======
     local csl = yaml.parse(str)
->>>>>>> main
     lu.assert_equals(csl, ZOTXT_CSL)
 end
 
@@ -1153,16 +1149,6 @@ end
 -- -----
 
 function test_zotxt_get_csl_item ()
-<<<<<<< HEAD
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
-    end
-
-    local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
-    lu.assert_nil(err)
-    lu.assert_equals(ret, ZOTXT_CSL)
-=======
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
@@ -1186,7 +1172,6 @@ function test_zotweb_get_csl_item ()
     local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
->>>>>>> main
 end
 
 -- Zotero Web API
@@ -1260,11 +1245,7 @@ function test_csl_items_ids ()
     end
 
     lu.assert_equals(M.csl_items_ids({}), {})
-<<<<<<< HEAD
-    lu.assert_equals(M.csl_items_ids({ZOTXT_CSL}),
-=======
     lu.assert_equals(M.csl_items_ids(ZOTXT_CSL),
->>>>>>> main
         {haslanger2012ResistingRealitySocial=true})
     lu.assert_equals(M.csl_items_ids(ZOTXT_YAML),
         {crenshaw1989DemarginalizingIntersectionRace=true})
@@ -1277,11 +1258,7 @@ function test_biblio_read ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
-<<<<<<< HEAD
-    lu.assert_items_equals(rconv_nums_to_strs(data), {ZOTXT_CSL})
-=======
     lu.assert_items_equals(data, ZOTXT_CSL)
->>>>>>> main
 
     fname = M.path_join(DATA_DIR, 'bibliography.yaml')
     data, err = M.biblio_read(fname)
@@ -1302,17 +1279,10 @@ function test_biblio_write ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
-<<<<<<< HEAD
-    lu.assert_items_equals(rconv_nums_to_strs(data), {ZOTXT_CSL})
-
-    fname = M.path_join(TMP_DIR, 'bibliography.yaml')
-    ok, err = os.remove(fname)
-=======
     lu.assert_items_equals(data, {ZOTXT_CSL})
 
     fname = M.path_join(TMP_DIR, 'bibliography.yaml')
     ok, err, errno = os.remove(fname)
->>>>>>> main
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, ZOTXT_YAML)
     lu.assert_equals(fmt, 'yaml')
@@ -1485,12 +1455,7 @@ function test_walk ()
         'dup-biblio-bib.md', 'dup-biblio-yaml.md', 'dup.md',
         'easy-citekey.md', 'empty.md', 'ex-biblio.md',
         'ex-simple.md', 'issue-4-2.md', 'issue-4.md',
-<<<<<<< HEAD
-        'merge.md', 'nocite.md', 'pre-existing-mixed.md',
-        'zotero-id.md'
-=======
         'merge.md', 'nocite.md', 'pre-existing-mixed.md'
->>>>>>> main
     }
 
     for _, v in ipairs(fnames) do
