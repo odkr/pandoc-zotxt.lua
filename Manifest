@@ -1,0 +1,11 @@
+# This file lists every file that should be included in a release, one file
+# per line. Every file listed must be placed in the project's git repository.
+# If a filename refers to a directory, that directory is included as a whole.
+# Relative paths are interpreted as relative to the root of that repository.
+# Empty lines and lines that start with a '#' are ignored.
+
+pandoc-zotxt.lua
+README.md
+man/man1/pandoc-zotxt.lua.1.gz
+share/lua/5.4/lunajson.lua
+share/lua/5.4/lunajson
