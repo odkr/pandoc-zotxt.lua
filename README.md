@@ -12,9 +12,9 @@ file, where Pandoc can pick them up. See the
 **pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later,
 [Zotero](https://www.zotero.org/), [zotxt](https://github.com/egh/zotxt/), and
 [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
-It should work under any POSIX-compliant operating system (e.g., Linux, macOS,
-FreeBSD, OpenBSD, NetBSD) as well as under Windows. It has *not* been tested
-under Windows, however.
+It should work under any POSIX-compliant operating system (e.g., \*BSD, Linux,
+macOS) as well as under Windows; it has *not* been tested under Windows,
+however.
 
 
 ## Installation
@@ -24,39 +24,41 @@ You use **pandoc-zotxt.lua** at your own risk.
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack the repository.
-3. Move it to the `filters` sub-directory of your Pandoc data directory \
-   (`pandoc --version` tells you where that is).
-4. Symlink or move the file `pandoc-zotxt.lua` from the repository directory
+3. Move the unpacked repository to the `filters` sub-directory of your Pandoc
+   data directory (`pandoc --version` tells you where that is).
+4. Symlink or move the file `pandoc-zotxt.lua` from the repository
    up into the `filters` directory.
-5. You may also want to copy the manual page from the `man` directory in
-   the repository to wherever your operating system searches for manual pages
-   (e.g., `/usr/local/share/man/man1`, `/usr/share/man/man1`).
 
-If you are using a POSIX-compliant system (e.g., Linux or macOS) and have
+If you are using a POSIX-compliant operating system and have
 [curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
 you can install **pandoc-zotxt.lua** by copy-pasting the following commands
 into a Bourne-compatible shell:
 
 ```sh
-( set -Cefu
-  NAME=pandoc-zotxt.lua VERS=1.0.0
-  URL="https://github.com/odkr/${NAME:?}/archive/v${VERS:?}.tar.gz"
-  FILTERS="${HOME:?}/.pandoc/filters"
-  mkdir -p "${FILTERS:?}"
-  cd -P "$FILTERS" || exit
-  { curl -L "$URL" || ERR=$?
-    [ "${ERR-0}" -eq 127 ] && wget -O - "$URL"; } | tar xz
-  mv "$NAME-$VERS/pandoc-zotxt.lua" .; )
+( set -eu
+  : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
+  name=pandoc-zotxt.lua vers=1.1.0b3
+  url="https://github.com/odkr/$name/releases/download/v$vers/$name-$vers.tgz"
+  for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
+    [ -d "$data_dir" ] && break
+  done
+  filters_dir="$data_dir/filters"
+  mkdir -p "$filters_dir"
+  cd -P "$filters_dir" || exit
+  { curl -L "$url" || err=$?
+    [ "${err-0}" -eq 127 ] && wget -O - "$url"; } | tar -xz
+  ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
-You also need to install [zotxt](https://github.com/egh/zotxt/) *and*
-[Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
+If you want to use the copy of the manual that ships with this release,
+you can add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b3/man`
+to your `MANPATH`.
 
 
 ## Documentation
 
-See the [manual](man/pandoc-zotxt.lua.md), the
-[source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
+See the [manual](man/man1/pandoc-zotxt.lua.md),
+the [source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
 and the [source code](pandoc-zotxt.lua) itself for details.
 
 
@@ -72,11 +74,6 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 The test suite may or may not work with other versions of
 Pandoc (and `pandoc-citeproc`).
 
-### Assumptions
-
-You are using the default Citation Style Language stylesheet that ships with
-Pandoc (or `pandoc-citeproc` respectivey), namely, `chicago-author-date.csl`.
-
 ### Running the tests
 
 Simply say:
@@ -84,6 +81,10 @@ Simply say:
 ```sh
     make test
 ```
+
+Note, some tests report errors even if they succeed. *Not* every error message
+indicates that **pandoc-zotxt.lua** failed a test. If it did fail a test,
+`make` exits with a non-zero status.
 
 ### The real-world test suite
 
@@ -102,12 +103,12 @@ Moreover, you will need:
 
 * Zotero (v5 or newer)
 * zotxt (v5 or newer)
-* Better BibTeX for Zotero
+* Better BibTeX for Zotero (v5 or newer)
 
 
 ## Contact
 
-If there's something wrong with **pandoc-zotxt.lua**,
+If there's something wrong with **pandoc-zotxt.lua**, please
 [open an issue](https://github.com/odkr/pandoc-zotxt.lua/issues).
 
 
@@ -137,3 +138,4 @@ SOFTWARE.
 ## Further Information
 
 GitHub: <https://github.com/odkr/pandoc-zotxt.lua>
+
