@@ -61,6 +61,7 @@ unit-tests: tmpdir
 		--from markdown --to plain -o /dev/null </dev/null
 
 $(COMMON_TESTS): tmpdir
+	set -eu; \
 	for CONNECTOR in zotxt zotweb; do \
 		if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
 			--from markdown --to plain /dev/null; \

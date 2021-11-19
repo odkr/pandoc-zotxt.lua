@@ -1,12 +1,12 @@
 HTTP/1.1 200 OK
-Date: Thu, 18 Nov 2021 19:13:21 GMT
+Date: Fri, 19 Nov 2021 13:32:15 GMT
 Server: Apache/2.4.51 ()
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Zotero-API-Version: 3
 Zotero-Schema-Version: 3
 Total-Results: 1
 Link: <https://www.zotero.org/users/5763466/items/>; rel="alternate"
-Last-Modified-Version: 75
+Last-Modified-Version: 76
 Vary: Accept-Encoding
 Content-Length: 800
 Content-Type: application/vnd.citationstyles.csl+json

@@ -2666,7 +2666,7 @@ function main (doc)
     if conf.bibliography then add_srcs = add_biblio end
 
     if conf.citekey_types then
-        zotxt.citekey_types = conf.citekey_types
+        if zotxt  then zotxt.citekey_types = conf.citekey_types  end
         if zotweb then zotweb.citekey_types = conf.citekey_types end
     end
 

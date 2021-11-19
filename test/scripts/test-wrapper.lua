@@ -109,11 +109,6 @@ function M.http_get (url)
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     M.warnf('%s -> %s', url, hash)
     local path = M.path_join(CAN_DIR, hash)
-<<<<<<< HEAD:test/scripts/debug-wrapper.lua
-    local mt = M.file_read(path .. '.mime') or 'text/plain; charset=utf-8'
-    local data = M.file_read(path) or '<' .. hash .. ': no such file.>'
-    return mt, data
-=======
     local mt = 'text/plain; charset=UTF-8'
     local data, err = M.file_read(path)
     if not data then return mt, err end
@@ -124,7 +119,6 @@ function M.http_get (url)
         if k and k:lower() == 'content-type' and v then mt = v end
     end
     return mt, con
->>>>>>> main:test/scripts/test-wrapper.lua
 end
 
 return M
