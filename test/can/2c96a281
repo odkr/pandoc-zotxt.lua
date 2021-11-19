@@ -1,0 +1,38 @@
+HTTP/1.1 200 OK
+Date: Fri, 19 Nov 2021 12:25:56 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 1
+Link: <https://www.zotero.org/users/5763466/items/>; rel="alternate"
+Last-Modified-Version: 76
+Vary: Accept-Encoding
+Content-Length: 740
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": [
+        {
+            "id": "6939149/QTP6Z5ZQ",
+            "type": "article-journal",
+            "title": "Demarginalizing the intersection of race and sex: a black feminist critique of antidiscrimination doctrine, feminist theory and antiracist politics",
+            "container-title": "University of Chicago Legal Forum",
+            "page": "139-167",
+            "issue": "1",
+            "author": [
+                {
+                    "family": "Crenshaw",
+                    "given": "Kimberlé W."
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        1989
+                    ]
+                ]
+            }
+        }
+    ]
+}

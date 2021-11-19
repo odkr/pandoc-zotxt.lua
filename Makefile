@@ -1,125 +1,150 @@
 # Interpret Makefile according to POSIX standard.
 .POSIX:
 
+
 # DIRECTORIES
 # ===========
 
-BASE_DIR	:= test
-DATA_DIR	:= $(BASE_DIR)/data
-NORM_DIR	:= $(BASE_DIR)/norms
-SCPT_DIR	:= $(BASE_DIR)/scripts
-TMP_DIR		:= $(BASE_DIR)/tmp
+TEST_BASE_DIR	:= test
+TEST_DATA_DIR	:= $(TEST_BASE_DIR)/data
+TEST_NORM_DIR	:= $(TEST_BASE_DIR)/norms
+TEST_SCPT_DIR	:= $(TEST_BASE_DIR)/scripts
+TMP_DIR		:= $(TEST_BASE_DIR)/tmp
 
 
 # FILES
 # =====
 
-SCRIPT		?= $(SCPT_DIR)/debug-wrapper.lua
+SCRIPT		?= $(TEST_SCPT_DIR)/test-wrapper.lua
 
 
 # PROGRAMMES
 # ==========
 
-SHELL		?= sh
-RM		?= rm -f
+MKDIR		?= mkdir
 PANDOC		?= pandoc
-
-# The shells to try to run the installer with.
-# Must be filenames. Order by preference, from best to worst.
-# Change PATH to use different versions of the same shell.
-SHELLS		= oksh ksh bash zsh yash dash mksh $(SHELL)
+RM		?= rm -f
+SHELL		?= sh
 
 
 # TARGETS
 # =======
 
-ISSUE_TESTS	:= test-issue-4 test-issue-4-2
+COMMON_DOCS	= $(wildcard $(TEST_DATA_DIR)/*.md)
+COMMON_TESTS	= $(notdir $(COMMON_DOCS:.md=))
+ZOTXT_DOCS	= $(wildcard $(TEST_DATA_DIR)/zotxt/*.md)
+ZOTXT_TESTS	= $(notdir $(ZOTXT_DOCS:.md=))
+ZOTWEB_DOCS	= $(wildcard $(TEST_DATA_DIR)/zotweb/*.md)
+ZOTWEB_TESTS	= $(notdir $(ZOTWEB_DOCS:.md=))
 
-BEHAVIOUR_TESTS	:= test-easy-citekey test-better-bibtex \
-		   test-zotero-id test-bibliography-json \
-		   test-bibliography-yaml test-merge \
-		   test-duplicate-bibliography-bib \
-		   test-duplicate-bibliography-yaml \
-		   test-example-simple test-example-bibliography \
-		   $(ISSUE_TESTS)
 
-OTHER_TESTS	:= test-resource-path
+# ZOTERO CREDENTIALS
+# ==================
+
+ZOTERO_USER_ID	= 5763466
+ZOTERO_API_KEY	= MO2GHxbkLnWgCqPtpoewgwIl
 
 
 # TESTS
 # =====
 
-test: unit-tests behaviour-tests $(OTHER_TESTS)
+test: unit-tests $(COMMON_TESTS) $(ZOTXT_TESTS) $(ZOTWEB_TESTS)
 
-behaviour-tests: $(BEHAVIOUR_TESTS)
+tmpdir:
+	$(MKDIR) -p "$(TMP_DIR)"
+	$(RM) -r "$(TMP_DIR)"/*
 
-install-luaunit:
-	[ -e share/lua/*/luaunit.lua ] || \
-		luarocks install --tree=. luaunit
-
-prepare-tmpdir:
-	mkdir -p "$(TMP_DIR)"
-	$(RM) "$(TMP_DIR)"/*
-	cp "$(DATA_DIR)/bibliography.json" \
-	   "$(TMP_DIR)/update-bibliography.json"
-
-unit-tests: install-luaunit prepare-tmpdir
-	"$(PANDOC)" --lua-filter "$(SCPT_DIR)/unit-tests.lua" \
+unit-tests: tmpdir
+	[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
+	"$(PANDOC)" $(PANDOC_ARGS) \
+		--lua-filter "$(TEST_SCPT_DIR)/unit-tests.lua" \
 		--from markdown --to plain -o /dev/null </dev/null
 
-$(BEHAVIOUR_TESTS): prepare-tmpdir
-	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
-		--from markdown --to plain /dev/null >/dev/null 2>&1; \
-	then \
-		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
-			--filter pandoc-citeproc \
-			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
-		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
-	else \
-		$(PANDOC) --lua-filter "$(SCRIPT)" \
-			--citeproc \
-			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
-		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
-	fi
-
-test-resource-path:
-	if "$(PANDOC)" --lua-filter "$(SCPT_DIR)/pre-v2_11.lua" \
-		--from markdown --to plain /dev/null >/dev/null 2>&1; \
-	then \
-		"$(PANDOC)" --lua-filter "$(SCRIPT)" \
-			--resource-path "$(DATA_DIR)" \
-			--filter pandoc-citeproc \
-			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
-		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/pre-v2_11/$@.html"; \
-	else \
-		$(PANDOC) --lua-filter "$(SCRIPT)" \
-			--resource-path "$(DATA_DIR)" \
-			--citeproc \
-			--output "$(TMP_DIR)/$@.html" "$(DATA_DIR)/$@.md"; \
-		cmp "$(TMP_DIR)/$@.html" "$(NORM_DIR)/$@.html"; \
-	fi
-
-prologue:
-	@sed '/^=*$$/ {s/=/-/g;}; s/^\(.\)/-- \1/; s/^$$/--/;' \
-		man/pandoc-zotxt.lua.md
-
-manual:
-	$(PANDOC) -o man/pandoc-zotxt.lua.1 -f markdown-smart -t man -s \
-		-M title=pandoc-zotxt.lua  \
-		-M date="$$(date '+%B %d, %Y')" \
-		-M section=1 \
-		man/man1/pandoc-zotxt.lua.md
-
-docs: manual
-	ldoc . 
-
-install:
-	@PATH="`getconf PATH`:$$PATH"; \
-	for SHELL in $(SHELLS); do \
-		"$$SHELL" install.sh; \
-		[ "$$?" -eq 127 ] || break; \
+$(COMMON_TESTS): tmpdir
+	for CONNECTOR in zotxt zotweb; do \
+		if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
+			--from markdown --to plain /dev/null; \
+		then \
+			"$(PANDOC)" $(PANDOC_ARGS) \
+				--metadata zotero-connector="$$CONNECTOR" \
+				--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
+				--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
+				--output "$(TMP_DIR)/$@.html" \
+				"$(TEST_DATA_DIR)/$@.md"; \
+			cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
+		else \
+			$(PANDOC) $(PANDOC_ARGS) \
+				--metadata zotero-connector="$$CONNECTOR" \
+				--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
+				--lua-filter "$(SCRIPT)" --citeproc \
+				--output "$(TMP_DIR)/$@.html" \
+				"$(TEST_DATA_DIR)/$@.md"; \
+			cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
+		fi \
 	done
 
-.PHONY: install-luaunit prepare-tmpdir test unit-tests behaviour-tests \
-	$(BEHAVIOUR_TESTS) $(OTHER_TESTS) unit-tests \
-	prologue manual developer-documenation docs
+$(ZOTXT_TESTS): tmpdir
+	if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
+		--from markdown --to plain /dev/null; \
+	then \
+		"$(PANDOC)" $(PANDOC_ARGS) \
+			--metadata zotero-connector=zotxt \
+			--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
+			--output "$(TMP_DIR)/$@.html" \
+			"$(TEST_DATA_DIR)/zotxt/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
+	else \
+		$(PANDOC) $(PANDOC_ARGS) \
+			--metadata zotero-connector=zotxt \
+			--lua-filter "$(SCRIPT)" --citeproc \
+			--output "$(TMP_DIR)/$@.html" \
+			"$(TEST_DATA_DIR)/zotxt/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
+	fi
+
+
+$(ZOTWEB_TESTS): tmpdir
+	if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
+		--from markdown --to plain /dev/null; \
+	then \
+		"$(PANDOC)" $(PANDOC_ARGS) \
+			--metadata zotero-connector=zotweb \
+			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
+			--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
+			--output "$(TMP_DIR)/$@.html" \
+			"$(TEST_DATA_DIR)/zotweb/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
+	else \
+		$(PANDOC) $(PANDOC_ARGS) \
+			--metadata zotero-connector=zotweb \
+			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
+			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
+			--lua-filter "$(SCRIPT)" --citeproc \
+			--output "$(TMP_DIR)/$@.html" \
+			"$(TEST_DATA_DIR)/zotweb/$@.md"; \
+		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
+	fi
+
+%.1: %.md
+	$(PANDOC) \ 
+		--from markdown-smart --to man --standalone \
+		--metadata $(notdir $*) \
+		--metadata section=1 \
+		--metadata date="$$(date '+%B %d, %Y')" \
+		--output $@ $*.md
+%.gz: %.1
+	gzip $@
+
+header:
+	sh scripts/update-header.sh
+
+ldoc: header
+	ldoc -c ldoc/config.ld .
+
+docs: header ldoc man/man1/pandoc-zotxt.lua.1.gz
+
+.PHONY: docs header ldoc unit-tests test tmpdir \
+        $(COMMON_TESTS) $(ZOTXT_TESTS) $(ZOTWEB_TESTS)

@@ -1,3 +1,8 @@
+HTTP/1.0 200 OK
+X-Zotero-Version: 5.0.96.3
+X-Zotero-Connector-API-Version: 2
+Content-Type: text/plain; charset=UTF-8
+
 [
-  {"id":"diaz-leon2015DefenceHistoricalConstructivism","type":"article-journal","title":"In Defence of Historical Constructivism about Races","container-title":"Ergo, an Open Access Journal of Philosophy","volume":"2","URL":"http://hdl.handle.net/2027/spo.12405314.0002.021","DOI":"10.3998/ergo.12405314.0002.021","ISSN":"2330-4014","author":[{"family":"Díaz-León","given":"Esa"}],"issued":{"date-parts":[[2015]]}}
+  {"id":"diaz-leon2015DefenceHistoricalConstructivism","author":[{"family":"Díaz-León","given":"Esa"}],"container-title":"Ergo, an Open Access Journal of Philosophy","DOI":"10/gng6nw","ISSN":"2330-4014","issued":{"date-parts":[[2015]]},"title":"In Defence of Historical Constructivism about Races","type":"article-journal","URL":"http://hdl.handle.net/2027/spo.12405314.0002.021","volume":"2"}
 ]

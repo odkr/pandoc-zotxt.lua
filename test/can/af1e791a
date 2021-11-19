@@ -1,3 +1,8 @@
+HTTP/1.0 200 OK
+X-Zotero-Version: 5.0.96.3
+X-Zotero-Connector-API-Version: 2
+Content-Type: text/plain; charset=UTF-8
+
 [
   {"id":"crenshaw1989DemarginalizingIntersectionRace","author":[{"family":"Crenshaw","given":"Kimberlé W."}],"container-title":"University of Chicago Legal Forum","issue":"1","issued":{"date-parts":[[1989]]},"page":"139-167","title":"Demarginalizing the intersection of race and sex: a black feminist critique of antidiscrimination doctrine, feminist theory and antiracist politics","type":"article-journal"}
 ]

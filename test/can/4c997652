@@ -1,0 +1,54 @@
+HTTP/1.1 200 OK
+Date: Fri, 19 Nov 2021 12:53:50 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 1
+Link: <https://www.zotero.org/users/5763466/items/>; rel="alternate"
+Last-Modified-Version: 76
+Vary: Accept-Encoding
+Content-Length: 1504
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": [
+        {
+            "id": "6939149/KW9E7WQK",
+            "type": "article-journal",
+            "title": "What Is Social Construction?",
+            "container-title": "European Journal of Philosophy",
+            "page": "1137-1152",
+            "volume": "23",
+            "issue": "4",
+            "abstract": "In this paper I discuss the question of what it means to say that a property is socially constructed. I focus on an influential project that many social constructivists are engaged in, namely, arguing against the inevitability of a trait, and I examine several recent characterizations of social construction, with the aim of assessing which one is more suited to the task.",
+            "URL": "http://onlinelibrary.wiley.com/doi/10.1111/ejop.12033/abstract",
+            "DOI": "10/gh868s",
+            "note": "original-date: 2013",
+            "journalAbbreviation": "Eur J Philos",
+            "language": "en",
+            "author": [
+                {
+                    "family": "Díaz-León",
+                    "given": "Esa"
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        2015
+                    ]
+                ]
+            },
+            "accessed": {
+                "date-parts": [
+                    [
+                        2015,
+                        11,
+                        14
+                    ]
+                ]
+            }
+        }
+    ]
+}

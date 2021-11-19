@@ -63,6 +63,13 @@ local stringify = pandoc.utils.stringify
 -- luacheck: pop
 
 
+local MetaInlines = pandoc.MetaInlines
+local Null = pandoc.Null
+local Para = pandoc.Para
+local Space = pandoc.Space
+local Str = pandoc.Str
+
+
 -- LIBRARIES
 -- =========
 
@@ -92,7 +99,6 @@ do
     -- @treturn[2] nil `nil` if `path` is the empty string ('').
     -- @treturn[2] string An error message.
     -- @raise An error if `path` is not a `string`.
-    -- @within File I/O
     function path_split (path)
         assert(type(path) == 'string', 'Path is not a string.')
         if path == '' then return nil, 'Path is the empty string ("").' end
@@ -139,24 +145,18 @@ local lu = require 'luaunit'
 local json = require 'lunajson'
 local yaml = require 'tinyyaml'
 
-local M = require 'debug-wrapper'
+local M = require 'test-wrapper'
 
 
 -- CONSTANTS
 -- =========
 
+--- Bibliographic data as JSON string.
+ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
+
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
-ZOTXT_CSL = {
-    id = 'haslanger2012ResistingRealitySocial',
-    type = 'book',
-    author = {{family = 'Haslanger', given = 'Sally'}},
-    title = 'Resisting Reality: Social Construction and Social Critique',
-    ['title-short'] = 'Resisting Reality',
-    publisher = 'Oxford University Press', ['publisher-place'] = 'Oxford',
-    issued = {['date-parts'] = {{'2012'}}},
-    isbn = '978-0-19-989262-4'
-}
+ZOTXT_CSL = json.decode(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
@@ -170,57 +170,86 @@ ZOTXT_YAML = {
 }
 
 --- Bibliographic data as stored in the metadata block.
-ZOTXT_META = {
-    {
-        author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
-        id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
-        issued={["date-parts"]={{{{text="1989"}}}}},
-        title={
-            {text="Demarginalizing"},
-            {},
-            {text="the"},
-            {},
-            {text="intersection"},
-            {},
-            {text="of"},
-            {},
-            {text="race"},
-            {},
-            {text="and"},
-            {},
-            {text="sex"}
-        },
-        type={{text="paper"}}
+if pandoc.types and PANDOC_VERSION <= {2, 14} then
+    ZOTXT_META = {
+        {
+            author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
+            id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
+            issued={["date-parts"]={{{{text="1989"}}}}},
+            title={
+                {text="Demarginalizing"},
+                {},
+                {text="the"},
+                {},
+                {text="intersection"},
+                {},
+                {text="of"},
+                {},
+                {text="race"},
+                {},
+                {text="and"},
+                {},
+                {text="sex"}
+            },
+            type={{text="paper"}}
+        }
     }
-}
+else
+    ZOTXT_META = {
+        {
+            author={Str "Kimberlé", Space(), Str "Crenshaw"},
+            id={Str "crenshaw1989DemarginalizingIntersectionRace"},
+            issued={["date-parts"]={{{Str "1989"}}}},
+            title={
+                Str "Demarginalizing",
+                Space(),
+                Str "the",
+                Space(),
+                Str "intersection",
+                Space(),
+                Str "of",
+                Space(),
+                Str "race",
+                Space(),
+                Str "and",
+                Space(),
+                Str "sex"
+            },
+            type={Str "paper"}
+        }
+    }
+end
 
---- Bibliographic data as JSON string.
-ZOTXT_JSON = '[\n  ' ..
-    '{"id":"haslanger2012ResistingRealitySocial",' ..
-    '"author":[{"family":"Haslanger","given":"Sally"}],' ..
-    '"isbn":"978-0-19-989262-4",' ..
-    '"issued":{"date-parts":[[2012]]},' ..
-    '"publisher":"Oxford University Press",' ..
-    '"publisher-place":"Oxford",' ..
-    '"title":"Resisting Reality: Social Construction and Social Critique",' ..
-    '"title-short":"Resisting Reality",' ..
-    '"type":"book"}' ..
-    '\n]\n'
+--- API key for the Zotero Web API.
+ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
+
+--- Bibliographic data as returned by the Zotero Web API.
+ZOTWEB_CSL = {
+    ISBN = '978-0-19-989262-4',
+    author = {{family = 'Haslanger', given = 'Sally'}},
+    ['event-place'] = 'Oxford',
+    id = 'haslanger2012ResistingRealitySocial',
+    issued = {['date-parts'] = {{'2012'}}},
+    note = 'citation key: haslanger2012ResistingRealitySocial',
+    publisher = 'Oxford University Press',
+    ['publisher-place'] = 'Oxford',
+    shortTitle = 'Resisting Reality',
+    title = 'Resisting Reality: Social Construction and Social Critique',
+    type = 'book'
+}
 
 
 -- FUNCTIONS
 -- =========
 
--- luacheck: globals copy
---- Copies tables recursively.
+--- Copy a data tree.
 --
 -- Handles metatables, recursive structures, tables as keys, and
 -- avoids the `__pairs` and `__newindex` metamethods.
 -- Copies are deep.
 --
--- @param orig The original.
---
--- @return A copy.
+-- @param data Arbitrary data.
+-- @return A deep copy of `data`.
 --
 -- @usage
 --      > x = {1, 2, 3}
@@ -236,17 +265,17 @@ function copy (data, s)
     if type(data) ~= 'table' then return data end
     if s and s[data] then return s[data] end
     local copy = copy
-    local res = setmetatable({}, getmetatable(data))
+    local ret = setmetatable({}, getmetatable(data))
     s = s or {}
-    s[data] = res
+    s[data] = ret
     for k, v in next, data, nil do
-        rawset(res, copy(k, s), copy(v, s))
+        rawset(ret, copy(k, s), copy(v, s))
     end
-    return res
+    return ret
 end
 
 
---- Reads a Markdown file.
+--- Read a Markdown file.
 --
 -- @tparam string fname Name of the file.
 -- @return The parsed data, `nil` if an error occurred.
@@ -267,7 +296,8 @@ function read_md_file (fname)
     return pandoc.read(md, 'markdown')
 end
 
---- Reads a JSON file.
+
+--- Read a JSON file.
 --
 -- @string fname The name of the file.
 -- @return[1] The parsed data.
@@ -285,11 +315,83 @@ function read_json_file (fname)
 end
 
 
+do
+    function conv (data)
+        if type(data) ~= 'number' then return data end
+        return tostring(math.floor(data))
+    end
+
+    --- Recursively convert numbers to strings.
+    --
+    -- Also converts floating point numbers to integers. This is needed
+    -- because all numbers are floating point numbers in JSON, but some
+    -- versions of Pandoc expect integers.
+    --
+    -- @tab data The data.
+    -- @return A copy of `data` with numbers converted to strings.
+    -- @raise An error if the data is nested too deeply.
+    function rconv_nums_to_strs (data)
+        return M.rmap(conv, data)
+    end
+end
+
+
 -- TESTS
 -- =====
 
 -- File I/O
 -- --------
+
+function test_path_sanitise ()
+    local invalid = {nil, false, '', 0, {}, function () end}
+
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_sanitise, v)
+    end
+
+    local ok, err = M.path_split('')
+    lu.assert_nil(ok)
+    lu.assert_not_nil(err)
+
+    local tests = {
+        ['.']                   = '.',
+        ['..']                  = '..',
+        ['/']                   = '/',
+        ['//']                  = '/',
+        ['/////////']           = '/',
+        ['/.//////']            = '/',
+        ['/.////.//']           = '/',
+        ['/.//..//.//']         = '/..',
+        ['/.//..//.//../']      = '/../..',
+        ['a']                   = 'a',
+        ['./a']                 = 'a',
+        ['../a']                = '../a',
+        ['/a']                  = '/a',
+        ['//a']                 = '/a',
+        ['//////////a']         = '/a',
+        ['/.//////a']           = '/a',
+        ['/.////.//a']          = '/a',
+        ['/.//..//.//a']        = '/../a',
+        ['/.//..//.//../a']     = '/../../a',
+        ['a/b']                 = 'a/b',
+        ['./a/b']               = 'a/b',
+        ['../a/b']              = '../a/b',
+        ['/a/b']                = '/a/b',
+        ['//a/b']               = '/a/b',
+        ['///////a/b']          = '/a/b',
+        ['/.//////a/b']         = '/a/b',
+        ['/.////.//a/b']        = '/a/b',
+        ['/.//..//.//a/b']      = '/../a/b',
+        ['/.//..//.//../a/b']   = '/../../a/b',
+        ['/a/b/c/d']            = '/a/b/c/d',
+        ['a/b/c/d']             = 'a/b/c/d',
+        ['a/../.././c/d']       = 'a/../../c/d'
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.path_prettify(k), v)
+    end
+end
 
 function test_path_split ()
     local invalid = {nil, false, 0, {}, function () end}
@@ -408,6 +510,36 @@ function test_path_is_abs ()
     M.PATH_SEP = original_path_sep
 end
 
+function test_path_prettify ()
+    lu.assert_error(M.path_prettify)
+
+    local invalid = {nil, false, 0, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_prettify, v)
+    end
+
+    if M.PATH_SEP ~= '/' then return end
+    local home = os.getenv('HOME')
+
+    local tests = {
+        [home .. 'x'] = home .. 'x',
+        [M.path_join(home, 'test')] = '~/test'
+    }
+
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        local wd = pandoc.system.get_working_directory()
+        local home_wd = M.path_prettify(wd)
+        lu.assert_not_nil(home_wd)
+        lu.assert_not_equals(home_wd, '')
+        tests[M.path_join(wd, 'test')] = 'test'
+        tests[M.path_join(wd .. 'test')] = home_wd .. 'test'
+    end
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.path_prettify(k), v)
+    end
+end
+
 function test_wd ()
     lu.assert_equals(M.wd(), '.')
 end
@@ -421,7 +553,9 @@ function test_file_exists ()
     end
 
     lu.assert_true(M.file_exists(PANDOC_SCRIPT_FILE))
-    lu.assert_false(M.file_exists('<does not exist>'))
+    local ok, _, errno = M.file_exists('<does not exist>')
+    lu.assert_nil(ok)
+    lu.assert_equals(errno, 2)
 end
 
 function test_file_read ()
@@ -497,10 +631,10 @@ function test_tmp_fname ()
     end
 
     local tests = {
-        [{nil, nil}] = '^tmp_%w%w%w%w%w%w$',
+        [{nil, nil}] = '^pdz%-%w%w%w%w%w%w$',
         [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
-        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'tmp_%w%w%w%w%w%w$',
-        [{'/tmp', 'XXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w$'
+        [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'pdz%-%w%w%w%w%w%w$',
+        [{'/tmp', 'XXXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w%w$'
     }
 
     for k, v in pairs(tests) do
@@ -514,24 +648,30 @@ function test_tmp_fname ()
     lu.assert_not_equals(f1, f2)
 end
 
-function test_tmp_file ()
+function test_with_tmp_file ()
     local invalid = {false, 0, {}, '', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.tmp_file, nil, v)
-        lu.assert_error(M.tmp_file, v, nil)
+        lu.assert_error(M.with_tmp_file, nil, v)
+        lu.assert_error(M.with_tmp_file, v, nil)
     end
 
-    local tmp_fname
-    do
-        local tmp, err = M.tmp_file(TMP_DIR)
-        tmp_fname = tmp.fname
-        lu.assert_not_nil(tmp)
-        lu.assert_nil(err)
-        lu.assert_true(M.file_exists(tmp.fname))
-        lu.assert_not_nil(tmp.file:write('test'))
-    end
-    collectgarbage()
-    lu.assert_false(M.file_exists(tmp_fname))
+    local tmp_file_copy
+    M.with_tmp_file(nil, nil, function (tmp_file)
+        tmp_file_copy = tmp_file
+        return os.remove(tmp_file)
+    end)
+
+    lu.assert_not_nil(tmp_file_copy)
+    lu.assert_nil(M.file_exists(tmp_file_copy))
+
+    tmp_file_copy = nil
+    pcall(M.with_tmp_file, nil, nil, function (tmp_file)
+        tmp_file_copy = tmp_file
+        error 'test'
+    end)
+
+    lu.assert_not_nil(tmp_file_copy)
+    lu.assert_nil(M.file_exists(tmp_file_copy))
 end
 
 
@@ -543,31 +683,44 @@ function test_printf ()
 end
 
 
+-- Higher-order functions
+-- ----------------------
+
+function test_do_after ()
+    local invalid = {nil, false, 0, {}, ''}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.do_after, function () end, v)
+        lu.assert_error(M.do_after, v, function () end)
+    end
+
+    local vs
+    local function cleanup (...)
+        vs = table.pack(...)
+    end
+
+    vs = nil
+    M.do_after(cleanup, function ()
+        return 1, 2, 3
+    end)
+    lu.assert_equals(vs, {true, 1, 2, 3, n = 4})
+
+    vs = nil
+    pcall(M.do_after, cleanup, function ()
+        error 'err'
+    end)
+    lu.assert_equals(vs[1], false)
+    lu.assert_str_contains(tostring(vs[2]), 'err')
+    lu.assert_equals(vs.n, 2)
+end
+
+
 -- Table manipulation
 -- ------------------
-
-function test_rmap ()
-    local invalid = {nil, true, 0, 'string', {}}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.rmap(v, 0))
-    end
-
-    local function id (...) return ... end
-
-    local tests = {
-        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
-        false, {['false']=1}, {{{[false]=true}, 0}}, 'string'
-    }
-
-    for _, v in ipairs(tests) do
-        lu.assert_equals(M.rmap(id, v), v)
-    end
-end
 
 function test_keys ()
     local invalid = {nil, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.keys(v))
+        lu.assert_error(M.keys, v)
     end
 
     local tests = {
@@ -575,7 +728,8 @@ function test_keys ()
         [{1, 2, 3}] = {{1, 2, 3}, 3},
         [{a=1, b=2, c=3}] = {{'a', 'b', 'c'}, 3},
         [{a=1, [{}]=2}] = {{'a', {}}, 2},
-        [{[{}]='a'}] = {{{}}, 1}
+        [{[{}]='a'}] = {{{}}, 1},
+        [{[{}]='a', [false]='b'}] = {{{}, false}, 2}
     }
 
     for k, v in pairs(tests) do
@@ -585,10 +739,116 @@ function test_keys ()
     end
 end
 
+function test_copy ()
+    -- Test simple copies.
+    local simple = {
+        nil, false, true, 0, 1, '', 'test', {},
+        {1, 2, 3},
+        {5, 2, 3, 9},
+        {1, 2, 3, 'b', true, false},
+        {1, 2, 'x', false, 3, true},
+        (function ()
+            local t = {}
+            for i = 1, 1000 do t[i] = i end
+            return t
+            end)(),
+        {true},
+        {false},
+        {true, false, true},
+        {'a', 'b', 'c'},
+        (function ()
+            local t = {}
+            for i = 33, 126 do t[i-32] = string.char(i) end
+            return t
+            end)(),
+    }
+
+    for _, v in ipairs(simple) do
+        local t = M.copy(v)
+        lu.assert_items_equals(t, v)
+    end
+
+    -- Test a nested table.
+    local t = {1, 2, 3, {1, 2, 3, {4, 5, 6}}}
+    local c = copy(t)
+    lu.assert_items_equals(c, t)
+
+    -- Test a self-referential table.
+    t = {1, 2, 3}
+    t.t = t
+    c = copy(t)
+    lu.assert_items_equals(c, t)
+
+    -- Test a table that has another table as key.
+    t = {1, 2, 3}
+    local u = {1, 2, 3, {4, 5, 6}}
+    u[t] = 7
+    c = copy(u)
+    lu.assert_items_equals(c, u)
+
+    -- Test a table that overrides `__pairs`.
+    local single = {__pairs = function ()
+        return function () end
+    end}
+    t = setmetatable({1, 2, 3}, single)
+    c = copy(t)
+    lu.assert_items_equals(c, t)
+
+    -- Test a table that does all of this.
+    t = setmetatable({1, 2, 3, {4, 5}}, single)
+    u = {1, 2, 3, {4, 5, 6}}
+    t[u] = {1, 2, 3, {4, 5}}
+    t.t = t
+    c = copy(t)
+    lu.assert_items_equals(c, t)
+end
+
+function test_rmap ()
+    local invalid = {nil, true, 0, 'string', {}}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.rmap, v, 0)
+    end
+
+    local function id (...) return ... end
+    local function nilify () return nil end
+
+    local tests = {
+        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
+        false, {['false']=1}, {{{[false]=true}, 0}}, 'string'
+    }
+
+    for _, v in ipairs(tests) do
+        lu.assert_equals(M.rmap(id, v), v)
+        lu.assert_equals(M.rmap(nilify, v), v)
+    end
+
+    local function inc (v)
+        if type(v) ~= 'number' then return v end
+        return v + 1
+    end
+
+    tests = {
+        [{{}}] = {{}},
+        [1] = 2,
+        [false] = false,
+        [{['false'] = 1}] = {['false'] = 2},
+        [{{{[false] = true}, 0}}] = {{{[false] = true}, 1}},
+        ['string'] = 'string',
+        [{1}] = {2},
+        [{2}] = {3},
+        [{1, {2}}] = {2, {3}},
+        [{dont = 3, 3}] = {dont = 4, 4}
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.rmap(inc, k), v)
+    end
+end
+
 function test_lower_keys ()
     local invalid = {nil, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.lower_keys(v))
+        lu.assert_error(M.lower_keys, v)
     end
 
     local tests = {
@@ -596,7 +856,8 @@ function test_lower_keys ()
         [{1, 2, 3}] = {1, 2, 3},
         [{A=1, b=2, C=3}] = {a=1, b=2, c=3},
         [{nil}] = {nil},
-        [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}}
+        [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}},
+        [{A=1, B={C=2, [false]=3}}] = {a=1, b={c=2, [false]=3}}
     }
 
     for k, v in pairs(tests) do
@@ -604,11 +865,10 @@ function test_lower_keys ()
     end
 end
 
-
 function test_sorted_pairs ()
     local invalid = {nil, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.sorted_pairs(v))
+        lu.assert_error(M.sorted_pairs, v)
     end
 
     local unsorted = {c=3, F=9, another=1}
@@ -638,7 +898,7 @@ end
 function test_esc_md ()
     local invalid = {nil, 0, false, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_md(v))
+        lu.assert_error(M.esc_md, v)
     end
 
     local tests = {
@@ -767,10 +1027,10 @@ function test_esc_md ()
     end
 end
 
-function test_conv_html_to_md ()
-    local invalid = {nil, 0, false, {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_md(v))
+function test_html_to_md ()
+    local pt = {nil, 0, false, {}, function () end}
+    for _, v in ipairs(pt) do
+        lu.assert_equals(M.html_to_md(v), v)
     end
 
     local tests = {
@@ -808,41 +1068,29 @@ function test_conv_html_to_md ()
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.conv_html_to_md(i), o)
-
-        -- Spans are translated differently for HTML and Markdown,
-        -- so they cannot be tested.
-        if  not i:match '<sc>' and not i:match '<span>' and
-            -- Pandoc splits up the text differently for this one.
-            not i:match '*\\*\\*test***'
-        then
-            local idoc = pandoc.read(i, 'html')
-            local odoc = pandoc.read(o, 'markdown-smart')
-            -- pandoc.utils.equals reports them as different.
-            lu.assert_items_equals(idoc, odoc)
-        end
+        lu.assert_equals(M.html_to_md(i), o)
     end
 end
 
-function test_rconv_nums_to_strs ()
-    local a = {}
-    a.a = a
-    lu.assert_error(M.rconv_nums_to_strs, a)
-    lu.assert_nil(M.rconv_nums_to_strs())
+function test_markdownify ()
+    local invalid = {nil, true, 1, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.markdownify, v)
+    end
 
     local tests = {
-        [true] = true, [1] = '1', [1.1] = '1', ['a'] = 'a', [{}] = {},
-        [{nil, true, 1, 1.12, 'a', {}}] = {nil, true, '1', '1', 'a', {}},
-        [{a = nil, b = true, c = 1, d = 1.12, e = 'a', f = {}}] =
-            {a = nil, b = true, c = '1', d = '1', e = 'a', f = {}},
-        [{a = nil, b = true, c = 1, d = 1.12, e = 'a',
-            f = {nil, true, 1, 1.12, 'a', {}}}] =
-                {a = nil, b = true, c = '1', d = '1', e = 'a',
-                    f = {nil, true, '1', '1', 'a', {}}}
+        '' ,'test',
+        '*test*', '**test**', '***test***',
+        '^test^', '~test~',
+        '[test]{.test}',
+        '[*test*^2^]{.nocase}',
+        '***test***^[ABC]{.class}^'
     }
 
-    for k, v in pairs(tests) do
-        lu.assert_equals(M.rconv_nums_to_strs(k), v)
+    for i = 1, #tests do
+        local md = tests[i]
+        local conv = M.markdownify(pandoc.read(md))
+        lu.assert_true(conv == md or conv == '\\' .. md)
     end
 end
 
@@ -857,17 +1105,25 @@ function test_yamlify ()
         lu.assert_error(M.yamlify, 'test', v)
     end
 
-    invalid = {nil, 3, 'x', {}}
+    invalid = {nil, 3, 'x', {},
+        {[{}] = 0}, [function () end] = 0, {test = function () end}}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.yamlify, 'test', nil, v)
     end
 
     lu.assert_equals(M.yamlify(3), '3')
-    lu.assert_equals(M.yamlify('test'), '"test"')
-    lu.assert_equals(M.yamlify({'test'}), '- "test"')
-
+    lu.assert_equals(M.yamlify('test'), 'test')
+    lu.assert_equals(M.yamlify({'test'}), '- test')
+    lu.assert_equals(M.yamlify('test test'), '"test test"')
+    lu.assert_equals(M.yamlify({['test test'] = 0}), '"test test": 0')
+    lu.assert_equals(M.yamlify('test\ntest'), '"test' .. M.EOL .. 'test"')
+    lu.assert_equals(M.yamlify('test\r\ntest'), '"test' .. M.EOL .. 'test"')
+    lu.assert_equals(M.yamlify('test' .. utf8.char(0x7f) .. 'test'),
+        '"test\\x7ftest"')
+    lu.assert_equals(M.yamlify('test' .. utf8.char(0xda99) .. 'test'),
+        '"test\\uda99test"')
     local str = M.yamlify(ZOTXT_CSL)
-    local csl = M.rconv_nums_to_strs(yaml.parse(str))
+    local csl = yaml.parse(str)
     lu.assert_equals(csl, ZOTXT_CSL)
 end
 
@@ -875,14 +1131,30 @@ end
 -- zotxt
 -- -----
 
-function test_zotxt_get_item_csl ()
+function test_zotxt_get_csl_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.zotxt_get_item_csl, v)
+        lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
     end
 
-    local ret = M.zotxt_get_item_csl('haslanger2012ResistingRealitySocial')
-    lu.assert_equals(ret, ZOTXT_CSL)
+    local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
+    lu.assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
+end
+
+-- Zotero Web API
+-- --------------
+
+function test_zotweb_get_csl_item ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.get_csl_item, zotweb, v)
+    end
+
+    local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
+    lu.assert_nil(err)
+    lu.assert_equals(ret, ZOTWEB_CSL)
 end
 
 
@@ -892,8 +1164,8 @@ end
 function test_csl_keys_sort ()
     local invalid = {nil, false, 0, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.csl_keys_sort(v, 'string'))
-        lu.assert_error(M.csl_keys_sort('string', v))
+        lu.assert_error(M.csl_keys_sort, v, 'string')
+        lu.assert_error(M.csl_keys_sort, 'string', v)
     end
 
     lu.assert_true(M.csl_keys_sort('a', 'b'))
@@ -931,19 +1203,19 @@ function test_csl_items_sort ()
     end
 end
 
-function test_csl_items_get_ids ()
+function test_csl_items_ids ()
     local invalid = {nil, 0, false, 'string', function () end,
         {'this'}, {0},
         {{id=0}}, {{id=false}}, {{id={}}}, {{id=function () end}}
     }
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.csl_items_get_ids, v)
+        lu.assert_error(M.csl_items_ids, v)
     end
 
-    lu.assert_equals(M.csl_items_get_ids({}), {})
-    lu.assert_equals(M.csl_items_get_ids({ZOTXT_CSL}),
+    lu.assert_equals(M.csl_items_ids({}), {})
+    lu.assert_equals(M.csl_items_ids(ZOTXT_CSL),
         {haslanger2012ResistingRealitySocial=true})
-    lu.assert_equals(M.csl_items_get_ids(ZOTXT_YAML),
+    lu.assert_equals(M.csl_items_ids(ZOTXT_YAML),
         {crenshaw1989DemarginalizingIntersectionRace=true})
 end
 
@@ -954,7 +1226,7 @@ function test_biblio_read ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
-    lu.assert_items_equals(M.rconv_nums_to_strs(data), {ZOTXT_CSL})
+    lu.assert_items_equals(data, ZOTXT_CSL)
 
     fname = M.path_join(DATA_DIR, 'bibliography.yaml')
     data, err = M.biblio_read(fname)
@@ -966,7 +1238,7 @@ end
 function test_biblio_write ()
     local fname, ok, fmt, data, err, errno
 
-    fname = M.path_join(TMP_DIR, 'test-bibliography.json')
+    fname = M.path_join(TMP_DIR, 'bibliography.json')
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, {ZOTXT_CSL})
@@ -975,10 +1247,10 @@ function test_biblio_write ()
     data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
-    lu.assert_items_equals(M.rconv_nums_to_strs(data), {ZOTXT_CSL})
+    lu.assert_items_equals(data, {ZOTXT_CSL})
 
-    fname = M.path_join(TMP_DIR, 'test-bibliography.yaml')
-    ok, err = os.remove(fname)
+    fname = M.path_join(TMP_DIR, 'bibliography.yaml')
+    ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio_write(fname, ZOTXT_YAML)
     lu.assert_equals(fmt, 'yaml')
@@ -999,16 +1271,16 @@ function test_biblio_codecs_bib_decode ()
 
     local invalid = {nil, false, 0, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(bib.decode(v))
+        lu.assert_error(bib.decode, v)
     end
 
     local fname = M.path_join(DATA_DIR, 'bibliography.bib')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    local ids = M.csl_items_get_ids(bib.decode(str))
+    local ids = M.csl_items_ids(bib.decode(str))
     lu.assert_items_equals(ids, {
         ['crenshaw1989DemarginalizingIntersectionRace'] = true,
-        ['diaz-leon2015WhatSocialConstruction'] = true
+        ['díaz-león2015WhatSocialConstruction'] = true
     })
 end
 
@@ -1019,7 +1291,7 @@ function test_biblio_codecs_yaml_decode ()
 
     local invalid = {nil, false, 0, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(yaml.decode(v))
+        lu.assert_error(yaml.decode, v)
     end
 
     local fname = M.path_join(DATA_DIR, 'bibliography.yaml')
@@ -1034,7 +1306,7 @@ function test_biblio_types_yaml_encode ()
 
     local invalid = {nil, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(yaml.encode(v))
+        lu.assert_error(yaml.encode, v)
     end
 
     local fname = M.path_join(DATA_DIR, 'bibliography.yaml')
@@ -1046,12 +1318,12 @@ end
 function test_biblio_update ()
     local invalid = {nil, false, 0, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.biblio_update, v, {'<n/a>'})
+        lu.assert_error(M.biblio_update, M.Zotxt, v, {'<n/a>'})
     end
 
     local wrong = {'nosuffix', 'n.', 'n.wrongformat'}
     for _, v in ipairs(wrong) do
-        local ok, err =  M.biblio_update(v, {'<n/a>'})
+        local ok, err =  M.biblio_update(M.Zotxt, v, {'<n/a>'})
         lu.assert_nil(ok)
         lu.assert_not_nil(err)
     end
@@ -1059,7 +1331,7 @@ function test_biblio_update ()
     local fname = M.path_join(TMP_DIR, 'update-biblio.json')
     invalid = {nil, false, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.biblio_update, fname, v)
+        lu.assert_error(M.biblio_update, M.Zotxt, fname, v)
     end
 
     -- Remove file, just in case.
@@ -1068,26 +1340,26 @@ function test_biblio_update ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.biblio_update(fname, {})
+    ok, err = M.biblio_update(M.Zotxt, fname, {})
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.biblio_update(fname, {'haslanger:2012resisting'})
+    ok, err = M.biblio_update(M.Zotxt, fname, {'haslanger:2012resisting'})
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
     local csl = copy(ZOTXT_CSL)
-    csl.id = 'haslanger:2012resisting'
-    lu.assert_equals(data, {csl})
+    csl[1].id = 'haslanger:2012resisting'
+    lu.assert_equals(data, rconv_nums_to_strs(csl))
 
     -- Checks adding a new citation.
     local new
     ckeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1095,7 +1367,7 @@ function test_biblio_update ()
     lu.assert_not_nil(data)
     lu.assert_equals(#data, 2)
 
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = read_json_file(fname)
@@ -1105,7 +1377,7 @@ function test_biblio_update ()
 
     -- This should not change the file.
     local post
-    ok, err = M.biblio_update(fname, ckeys)
+    ok, err = M.biblio_update(M.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = read_json_file(fname)
@@ -1118,60 +1390,142 @@ end
 -- Pandoc
 -- ------
 
-function test_meta_get_sources ()
+function test_elem_type ()
+    local non_pandoc = {nil, true, 1, 'string', {}, function () end}
+    for _, v in ipairs(non_pandoc) do
+        lu.assert_nil(M.elem_type(v))
+    end
+
+    local tests = {
+        [Str 'test'] = {'Str', 'Inline', 'AstElement', n = 3},
+        [Para{Str ''}] = {'Para', 'Block', 'AstElement', n = 3},
+        [MetaInlines{Str ''}] =
+            {'MetaInlines', 'MetaValue', 'AstElement', n = 3}
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(table.pack(M.elem_type(k)), v)
+    end
+end
+
+function test_walk ()
+    local id = {AstElement = function (...) return ... end}
+    local nilify = {AstElement = function () return end}
+    local nullify = {AstElement = function () return Null() end}
+    local pt = {nil, false, 0, '', {}, function () end}
+
+    for _, v in ipairs(pt) do
+        lu.assert_equals(M.walk(v, del), v)
+    end
+
+    local fnames = {
+        'better-bibtex.md', 'biblio-json.md', 'biblio-yaml.md',
+        'dup-biblio-bib.md', 'dup-biblio-yaml.md', 'dup.md',
+        'easy-citekey.md', 'empty.md', 'ex-biblio.md',
+        'ex-simple.md', 'issue-4-2.md', 'issue-4.md',
+        'merge.md', 'nocite.md', 'pre-existing-mixed.md'
+    }
+
+    for _, v in ipairs(fnames) do
+        local fname = M.path_join(DATA_DIR, v)
+        local doc, err = read_md_file(fname)
+        assert(doc, err)
+        lu.assert_equals(doc, M.walk(doc, id))
+        lu.assert_equals(doc, M.walk(doc, nilify))
+        lu.assert_equals(M.walk(doc, nullify).tag, 'Null')
+    end
+
+    local yesify = {Str = function (s)
+        if stringify(s) == 'no' then return Str 'yes' end
+    end}
+    local yes = M.walk(Str 'no', yesify)
+    lu.assert_equals(stringify(yes), 'yes')
+    local no = M.walk(Str 'no!', yesify)
+    lu.assert_equals(stringify(no), 'no!')
+
+    local elem = Para{Str 'no'}
+    local walked = M.walk(elem, {
+        Str = function () return Str 'yes' end,
+        Para = function (p) if stringify(p) == 'no' then return Null() end end
+    })
+    lu.assert_equals(stringify(walked), 'yes')
+    lu.assert_false(pandoc.utils.equals(elem, walked))
+end
+
+function test_meta_sources ()
     -- luacheck: ignore err
     local invalid = {nil, false, 0, 'string', function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.meta_get_sources, v)
+        lu.assert_error(M.meta_sources, v)
     end
 
-    local empty_fname = M.path_join(DATA_DIR, 'test-empty.md')
+    local empty_fname = M.path_join(DATA_DIR, 'empty.md')
     local empty, err = read_md_file(empty_fname)
     assert(empty, err)
-    lu.assert_equals(M.meta_get_sources(empty.meta), {})
+    lu.assert_equals(M.meta_sources(empty.meta), {})
 
-    local test_fname = M.path_join(DATA_DIR, 'test-duplicate.md')
+    local test_fname = M.path_join(DATA_DIR, 'dup.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.meta_get_sources(test_file.meta), ZOTXT_META)
+    lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_META)
 
-    test_fname = M.path_join(DATA_DIR,
-        'test-duplicate-bibliography-yaml.md')
+    test_fname = M.path_join(DATA_DIR, 'dup-biblio-yaml.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    lu.assert_items_equals(M.meta_get_sources(test_file.meta), ZOTXT_YAML)
+    lu.assert_items_equals(M.meta_sources(test_file.meta), ZOTXT_YAML)
 
-    test_fname = M.path_join(DATA_DIR,
-        'test-duplicate-bibliography-bib.md')
+    test_fname = M.path_join(DATA_DIR, 'dup-biblio-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    local ids = M.csl_items_get_ids(M.meta_get_sources(test_file.meta))
+    local ids = M.csl_items_ids(M.meta_sources(test_file.meta))
     lu.assert_items_equals(ids, {
         ["crenshaw1989DemarginalizingIntersectionRace"] = true,
-        ["diaz-leon2015WhatSocialConstruction"] = true
+        ["díaz-león2015WhatSocialConstruction"] = true
     })
 end
 
-function test_doc_get_ckeys ()
+function test_doc_ckeys ()
     local invalid = {nil, false, 0, '', {}, function () end}
     for _, v in pairs(invalid) do
-        lu.assert_error(M.doc_get_ckeys, v)
+        lu.assert_error(M.doc_ckeys, v)
     end
 
-    local empty_fname = M.path_join(DATA_DIR, 'test-empty.md')
+    local empty_fname = M.path_join(DATA_DIR, 'empty.md')
     local empty = read_md_file(empty_fname)
-    lu.assert_equals(M.doc_get_ckeys(empty), {})
+    lu.assert_equals(M.doc_ckeys(empty), {})
 
-    local test_fname = M.path_join(DATA_DIR, 'test-easy-citekey.md')
-    local test_file = read_md_file(test_fname)
-    lu.assert_items_equals(M.doc_get_ckeys(test_file), {
+    local test_fname = M.path_join(DATA_DIR, 'easy-citekey.md')
+    local test_file, err = read_md_file(test_fname)
+    assert(test_file, err)
+    local ckeys, n = M.doc_ckeys(test_file)
+    lu.assert_items_equals(ckeys, {
         'dotson:2016word',
-        'díaz-león:2013what',
+        'díaz-león:2015what',
         'díaz-león:2015defence',
         'díaz-león:2016woman',
         'haslanger:2012resisting',
         'nobody:0000nothing'
     })
+    lu.assert_equals(n, 6)
+
+    test_fname = M.path_join(DATA_DIR, 'dup.md')
+    test_file, err = read_md_file(test_fname)
+    assert(test_file, err)
+    ckeys, n = M.doc_ckeys(test_file)
+    lu.assert_items_equals(ckeys,
+        {'crenshaw1989DemarginalizingIntersectionRace'})
+    lu.assert_equals(n, 1)
+    ckeys, n = M.doc_ckeys(test_file, true)
+    lu.assert_items_equals(ckeys, {})
+    lu.assert_equals(n, 0)
+
+    test_fname = M.path_join(DATA_DIR, 'nocite.md')
+    test_file, err = read_md_file(test_fname)
+    assert(test_file, err)
+    lu.assert_items_equals(M.doc_ckeys(test_file),
+        {'crenshaw1989DemarginalizingIntersectionRace'})
+    lu.assert_items_equals(M.doc_ckeys(test_file, true),
+    {'crenshaw1989DemarginalizingIntersectionRace'})
 end
 
 
@@ -1183,8 +1537,10 @@ end
 --
 -- Looks up the `tests` metadata field in the current Pandoc document
 -- and passes it to `lu.LuaUnit.run`, as is. Also configures tests.
-function run ()
-    os.exit(lu.LuaUnit.run(), true)
+function run (doc)
+    local tests = nil
+    if doc.meta.tests then tests = stringify(doc.meta.tests) end
+    os.exit(lu.LuaUnit.run(tests), true)
 end
 
 -- 'Pandoc', rather than 'Meta', because there's always a Pandoc document.
