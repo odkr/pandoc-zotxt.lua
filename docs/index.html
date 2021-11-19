@@ -31,12 +31,17 @@
 <ul>
 <li><a href="#Metadata">Metadata</a></li>
 <li><a href="#File_I_O">File I/O</a></li>
+<li><a href="#Class_Prototype">Class Prototype </a></li>
+<li><a href="#Class_Error">Class Error </a></li>
+<li><a href="#Class_ConnectionError">Class ConnectionError </a></li>
+<li><a href="#Class_EncodingError">Class EncodingError </a></li>
 <li><a href="#Warnings">Warnings</a></li>
+<li><a href="#Higher_order_functions">Higher-order functions</a></li>
 <li><a href="#Table_manipulation">Table manipulation</a></li>
 <li><a href="#Networking">Networking</a></li>
-<li><a href="#Bibliography_files">Bibliography files</a></li>
 <li><a href="#Converters">Converters</a></li>
-<li><a href="#zotxt">zotxt</a></li>
+<li><a href="#Class_Zotxt">Class Zotxt </a></li>
+<li><a href="#Bibliography_files">Bibliography files</a></li>
 <li><a href="#Document_parsing">Document parsing</a></li>
 <li><a href="#Main">Main</a></li>
 </ul>
@@ -56,55 +61,112 @@
 <div id="content">
 
 <h1>Script <code>pandoc-zotxt.lua</code></h1>
-<p>
-<h2>SYNOPSIS</h2>
+<p><h2>SYNOPSIS</h2>
 
 <p> <strong>pandoc</strong> <strong>-L</strong> <em>pandoc-zotxt.lua</em> <strong>-C</strong></p>
 
-
 <h2> DESCRIPTION</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> looks up sources of citations in Zotero and
- adds them either to a document's "references" metadata field or
- to a bibliography file, where Pandoc can pick them up.</p>
-</p>
-<p> You cite your sources using "easy citekeys" (provided by <em>zotxt</em>) or
- "Better BibTeX Citation Keys" (provided by Better BibTeX for Zotero).
- You then then tell <strong>pandoc</strong> to filter your document through
- <strong>pandoc-zotxt.lua</strong> before processing citations (Zotero must be
- running). That's all there is to it.</p>
+<p> <strong>pandoc-zotxt.lua</strong> is a Lua filter for Pandoc that looks up citations in
+ Zotero and adds their bibliographic data to a document&rsquo;s &ldquo;references&rdquo;
+ metadata field or to a bibliography file, where Pandoc can pick it up.</p></p>
+<p> Cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo; (provided
+ by Better BibTeX for Zotero) or &ldquo;easy citekeys&rdquo; (provided by zotxt). Then,
+ while Zotero is running, tell <strong>pandoc</strong> to filter your document through
+ <strong>pandoc-zotxt.lua</strong> before processing citations. That&rsquo;s all there is to it.</p>
 
-<p> <strong>pandoc-zotxt.lua</strong> only looks up sources that are defined neither
- in the "references" metadata field nor in any bibliography file.</p>
-
+<p> If a document&rsquo;s &ldquo;references&rdquo; metadata field or a bibliography file already
+ has bibliographic data for a citation, that citation will be ignored.</p>
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
-<p> If you set the "zotero-bibliography" metadata field to a filename,
- then <strong>pandoc-zotxt.lua</strong> adds sources to that file, rather than to
- the "references" metadata field. It also adds the path of that file to
- the document's "bibliography" metadata field, so that Pandoc picks up
- the bibliographic data of those sources (you can safely set
- "zotero-bibliography" and "bibliography" at the same time).
- This speeds up subsequent processing of the same document, because
- <strong>pandoc-zotxt.lua</strong> will only fetch those sources from Zotero that
- are not yet in that file.</p>
+<p> <strong>pandoc-zotxt.lua</strong> can add bibliographic data to a bibliography file,
+ rather than to the &ldquo;references&rdquo; metadata field. This speeds up subsequent
+ processing of the same document, because that data need not be fetched
+ again from Zotero.</p>
 
-<p> The biblography is stored as a CSL JSON file, so the bibliography
- file's name must end with ".json".</p>
+<p> To use such a bibliography file, set the &ldquo;zotero-bibliography&rdquo; metadata
+ field to a filename. If the filename is relative, it is interpreted as
+ relative to the directory of the first input file passed to <strong>pandoc</strong> or,
+ if no input file was given, as relative to the current working directory.
+ The format of the file is determined by its filename ending:</p>
 
-<p> <strong>pandoc-zotxt.lua</strong> interprets relative filenames as relative to the
- directory of the first input file that you pass to <strong>pandoc</strong> or, if you
- do not pass any input file, as relative to the current working directory.</p>
+<table>
+<thead>
+<tr>
+<th> <strong>Ending</strong> </th>
+<th> <strong>Format</strong> </th>
+<th> <strong>Feature</strong>     </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> <code>.json</code>    </td>
+<td> CSL JSON   </td>
+<td> More reliable.  </td>
+</tr>
+<tr>
+<td> <code>.yaml</code>    </td>
+<td> CSL YAML   </td>
+<td> Easier to edit. </td>
+</tr>
+</tbody>
+</table>
 
-<p> <strong>pandoc-zotxt.lua</strong> only ever adds sources to its bibliography file.
- It does <em>not</em> update or delete them. If you want to update the sources
- in your bibliography file, delete it. <strong>pandoc-zotxt.lua</strong> will then
- regenerate it from scratch.</p>
+
+<p> The bibliography file is added to the &ldquo;bibliography&rdquo; metadata field
+ automatically. You can safely set &ldquo;zotero-bibliography&rdquo; and &ldquo;bibliography&rdquo;
+ at the same time.</p>
+
+<p> <strong>pandoc-zotxt.lua</strong> only adds bibliographic records to that file; it does
+ <em>not</em> change, update, or delete them. If you need to update or delete
+ records, delete the file; <strong>pandoc-zotxt.lua</strong> will then regenerate it.</p>
+
+<h2> CITATION KEY TYPES</h2>
+
+<p> <strong>pandoc-zotxt.lua</strong> supports multiple types of citation keys, namely,
+ &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;easy citekeys&rdquo; and Zotero item IDs.</p>
+
+<p> However, it may happen that a Better BibTeX citation key is interpreted as
+ an easy citekey <em>and</em> yet picks out an item, if not the one that it
+ actually is the citation key of. That is to say, citation keys may be
+ matched with the wrong bibliographic data.</p>
+
+<p> If this happens, you can disable citation keys by setting the
+ &ldquo;zotero-citekey-types&rdquo; metadata field to the citation key type or to the
+ list of citation key types that you actually use.</p>
+
+<p> You can set the following citation key types:</p>
+
+<table>
+<thead>
+<tr>
+<th> <strong>Key</strong>           </th>
+<th> <strong>Type</strong>                   </th>
+<th> <strong>Comments</strong> </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> <code>betterbibtexkey</code> </td>
+<td> Better BibTeX citation key </td>
+<td> -            </td>
+</tr>
+<tr>
+<td> <code>easykey</code>         </td>
+<td> easy citekey               </td>
+<td> Deprecated.  </td>
+</tr>
+<tr>
+<td> <code>key</code>             </td>
+<td> Zotero item ID             </td>
+<td> Hard to use. </td>
+</tr>
+</tbody>
+</table>
 
 
-<h2> EXAMPLE</h2>
-
+<h2> EXAMPLES</h2>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
@@ -112,34 +174,79 @@ See @doe2020Title <span class="keyword">for</span> details.
 EOF
 </pre>
 
-<p> This will look up "doe2020Title" in Zotero.</p>
 
+<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero.</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+<span class="comment">---
+</span>zotero-bibliography: bibliography.json
+...
+See @doe2020Title <span class="keyword">for</span> details.
+EOF
+</pre>
+
+
+<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero and save its bibliographic
+ data into the file &ldquo;bibliography.json&rdquo; in the current working directory. If
+ the same command is run again, &ldquo;doe2020Title&rdquo; will <em>not</em> be looked up again.</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+<span class="comment">---
+</span>zotero-citekey-types: betterbibtexkey
+...
+See @doe2020Title <span class="keyword">for</span> details.
+EOF
+</pre>
+
+
+<p> The above forces <strong>pandoc-zotxt.lua</strong> to interpret &ldquo;doe2020Title&rdquo; as a
+ Better BibTeX citation key.</p>
 
 <h2> KNOWN ISSUES</h2>
 
-<p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
- that do not set the "User Agent" HTTP header. And <strong>pandoc</strong> does not.
- As a consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these
- versions of Zotero unless you tell <strong>pandoc</strong> to set that header.</p>
+<p> Citation keys may, on rare occassions, be matched with the wrong Zotero
+ item. This happens if a citation key picks out a different record depending
+ on whether it is interpreted as a Better BibTeX citation key or as an easy
+ citekey. See <strong>CITATION KEY TYPES</strong> above on how to fix this.</p>
 
+<p> <strong>pandoc-zotxt.lua</strong> creates a temporary file when it adds sources to a
+ bibliography file. If Pandoc exits because it catches a signal (e.g.,
+ because you press <code>Ctrl</code>-<code>c</code>), then this file will <em>not</em> be deleted. This
+ is a bug in Pandoc and in the process of being fixed. Moreover, if you are
+ using Pandoc up to v2.7, another process may, mistakenly, use the same
+ temporary file at the same time, though this is highly unlikely.</p>
+
+<p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
+ that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does not. As a
+ consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these versions
+ of Zotero unless you tell <strong>pandoc</strong> to set that header.</p>
+
+<h2> SECURITY</h2>
+
+<p> If you are using Pandoc up to v2.7 and place the auto-generated
+ bibliography file in a directory that other users have write access to,
+ then they can read and change the content of that file, regardless of
+ whether they have permission to read or write the file itself.</p>
 
 <h2> CAVEATS</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
 
-
 <h2> SEE ALSO</h2>
 
 <ul>
-    <li><a href="https://github.com/egh/zotxt">zotxt</a></li>
-    <li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
+<li><a href="https://github.com/egh/zotxt">zotxt</a></li>
+<li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX</a></li>
 </ul>
+
 
 <p> pandoc(1)</p>
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020, 2021 Odin Kroeger</li>
-        <li><strong>Release</strong>: 1.1.0b</li>
+        <li><strong>Release</strong>: 1.1.0b3</li>
         <li><strong>License</strong>: MIT</li>
         <li><strong>Author</strong>: Odin Kroeger</li>
     </ul>
@@ -156,11 +263,11 @@ EOF
 	<td class="summary">The version of this script.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#SCPT_DIR">SCPT_DIR</a></td>
+	<td class="name" nowrap><a href="#SCRIPT_DIR">SCRIPT_DIR</a></td>
 	<td class="summary">The directory the script is in.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#SCPT_NAME">SCPT_NAME</a></td>
+	<td class="name" nowrap><a href="#SCRIPT_NAME">SCRIPT_NAME</a></td>
 	<td class="summary">The filename of the script.</td>
 	</tr>
 </table>
@@ -168,15 +275,19 @@ EOF
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#PATH_SEP">PATH_SEP</a></td>
-	<td class="summary">The path segment seperator of the OS.</td>
+	<td class="summary">The path segment seperator of your OS.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#EOL">EOL</a></td>
-	<td class="summary">The end of line sequence of the OS.</td>
+	<td class="summary">The end of line sequence of your OS.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#path_sanitise">path_sanitise (path)</a></td>
+	<td class="summary">Sanitise a path.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#path_split">path_split (path)</a></td>
-	<td class="summary">Split a file's path into a directory and a filename part.</td>
+	<td class="summary">Split a path into a directory and a filename.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#path_join">path_join (...)</a></td>
@@ -185,6 +296,10 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#path_is_abs">path_is_abs (path)</a></td>
 	<td class="summary">Check whether a path is absolute.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#path_prettify">path_prettify (...)</a></td>
+	<td class="summary">Prettify paths.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#wd">wd ()</a></td>
@@ -196,7 +311,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#file_locate">file_locate (fname)</a></td>
-	<td class="summary">Locate a file in Pandoc's resource path.</td>
+	<td class="summary">Locate a file in Pandoc&rsquo;s resource path.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#file_read">file_read (fname)</a></td>
@@ -207,34 +322,77 @@ EOF
 	<td class="summary">Write data to a file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='tmp_XXXXXX']])</a></td>
+	<td class="name" nowrap><a href="#tmp_fname">tmp_fname ([dir[, templ='pdz-XXXXXX']])</a></td>
 	<td class="summary">Generate a name for a temporary file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tmp_file">tmp_file (...)</a></td>
-	<td class="summary">Create a temporary file.</td>
+	<td class="name" nowrap><a href="#with_tmp_file">with_tmp_file ([dir[, templ='pdz-XXXXXX']], func, ...)</a></td>
+	<td class="summary">Run a function with a temporary file.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Prototype">Class Prototype </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Prototype.mt">Prototype.mt</a></td>
+	<td class="summary">Metatable for prototypes.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Prototype.mt:__call">Prototype.mt:__call (tab)</a></td>
+	<td class="summary">Delegate to a prototype.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Error">Class Error </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Error.mt">Error.mt</a></td>
+	<td class="summary">Metatable for errors.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Error.mt:__tostring">Error.mt:__tostring ()</a></td>
+	<td class="summary">Convert an error into a string.</td>
+	</tr>
+</table>
+<h2><a href="#Class_ConnectionError">Class ConnectionError </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#ConnectionError.template">ConnectionError.template</a></td>
+	<td class="summary">Template for connection error messages.</td>
+	</tr>
+</table>
+<h2><a href="#Class_EncodingError">Class EncodingError </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#EncodingError.template">EncodingError.template</a></td>
+	<td class="summary">Template for encoding error messages.</td>
 	</tr>
 </table>
 <h2><a href="#Warnings">Warnings</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#printf">printf ([msg], ...)</a></td>
-	<td class="summary">Print a message to STDERR.</td>
+	<td class="name" nowrap><a href="#errf">errf (msg, ...)</a></td>
+	<td class="summary">Print an error message to STDERR.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#warnf">warnf (...)</a></td>
 	<td class="summary">Print a warning to STDERR.</td>
 	</tr>
 </table>
+<h2><a href="#Higher_order_functions">Higher-order functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#do_after">do_after (ex, func, ...)</a></td>
+	<td class="summary">Run cleanup code after a function.</td>
+	</tr>
+</table>
 <h2><a href="#Table_manipulation">Table manipulation</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#rmap">rmap (func, data)</a></td>
-	<td class="summary">Recursively apply a function to every value of a tree.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#keys">keys (tab)</a></td>
 	<td class="summary">Return the keys and the length of a table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#rmap">rmap (func, data)</a></td>
+	<td class="summary">Recursively apply a function to every value of a tree.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lower_keys">lower_keys (tab)</a></td>
@@ -248,16 +406,50 @@ EOF
 <h2><a href="#Networking">Networking</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#url_read">url_read (url)</a></td>
+	<td class="name" nowrap><a href="#http_get">http_get (url)</a></td>
 	<td class="summary">Retrieve data from a URL via an HTTP GET request.</td>
+	</tr>
+</table>
+<h2><a href="#Converters">Converters</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#esc_md">esc_md (str)</a></td>
+	<td class="summary">Escape Markdown.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#markdownify">markdownify (elem)</a></td>
+	<td class="summary">Convert a Pandoc element to Markdown text.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#yamlify">yamlify (data[, ind=4[, sort_f]])</a></td>
+	<td class="summary">Generate a YAML representation of a data tree.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#html_to_md">html_to_md (html)</a></td>
+	<td class="summary">Convert Zotero pseudo-HTML to Markdown.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Zotxt">Class Zotxt </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Zotxt.base_url">Zotxt.base_url</a></td>
+	<td class="summary">The base URL for <a href="https://github.com/egh/zotxt">zotxt</a> queries.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Zotxt.citekey_types">Zotxt.citekey_types</a></td>
+	<td class="summary">Types of citation keys that <a href="https://github.com/egh/zotxt">zotxt</a> supports.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Zotxt:get_csl_item">Zotxt:get_csl_item (id)</a></td>
+	<td class="summary">Retrieve bibliographic data from Zotero as CSL item.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Zotxt:get_source">Zotxt:get_source (id)</a></td>
+	<td class="summary">Retrieve bibliographic data from Zotero as Pandoc metadata.</td>
 	</tr>
 </table>
 <h2><a href="#Bibliography_files">Bibliography files</a></h2>
 <table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#CSL_KEYS_FORMATTABLE">CSL_KEYS_FORMATTABLE</a></td>
-	<td class="summary">The list of CSL fields that can be formatted.</td>
-	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#CSL_KEY_ORDER">CSL_KEY_ORDER</a></td>
 	<td class="summary">The preferred order of keys in YAML bibliography files.</td>
@@ -268,19 +460,19 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#BIBLIO_TYPES.bib">BIBLIO_TYPES.bib</a></td>
-	<td class="summary">Parse BibLaTeX.</td>
+	<td class="summary">Decode BibLaTeX.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#BIBLIO_TYPES.bib.decode">BIBLIO_TYPES.bib.decode (str)</a></td>
-	<td class="summary">Parse the content of a BibLaTeX file.</td>
+	<td class="summary">Read the IDs from the content of a BibLaTeX file.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#BIBLIO_TYPES.bibtex">BIBLIO_TYPES.bibtex</a></td>
-	<td class="summary">Parse BibTeX.</td>
+	<td class="summary">Decode BibTeX.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#BIBLIO_TYPES.bibtex.decode">BIBLIO_TYPES.bibtex.decode (str)</a></td>
-	<td class="summary">Parse the content of a BibTeX file</td>
+	<td class="name" nowrap><a href="#BIBLIO_TYPES.bibtex.decode">BIBLIO_TYPES.bibtex.decode</a></td>
+	<td class="summary">Read the IDs from the content of a BibTeX file.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#BIBLIO_TYPES.json">BIBLIO_TYPES.json</a></td>
@@ -311,7 +503,7 @@ EOF
 	<td class="summary">Sorting function for CSL items.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#csl_items_get_ids">csl_items_get_ids (items)</a></td>
+	<td class="name" nowrap><a href="#csl_items_ids">csl_items_ids (items)</a></td>
 	<td class="summary">Pick the IDs of CSL items out of a list of CSL items.</td>
 	</tr>
 	<tr>
@@ -320,57 +512,11 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio_write">biblio_write (fname[, items])</a></td>
-	<td class="summary">Write sources to a bibliography file.</td>
+	<td class="summary">Write bibliographic data to a bibliography file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio_update">biblio_update (fname, ids)</a></td>
+	<td class="name" nowrap><a href="#biblio_update">biblio_update (handle, fname, ids)</a></td>
 	<td class="summary">Add items from Zotero to a bibliography file.</td>
-	</tr>
-</table>
-<h2><a href="#Converters">Converters</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#esc_md">esc_md (str)</a></td>
-	<td class="summary">Escape Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#markdownify">markdownify (elem)</a></td>
-	<td class="summary">Convert a Pandoc element to Markdown text.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#yamlify">yamlify (data[, ind=4[, sort_f]])</a></td>
-	<td class="summary">Generate a YAML representation of some data.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#conv_html_to_md">conv_html_to_md (html)</a></td>
-	<td class="summary">Convert pseudo-HTML to Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#rconv_html_to_md">rconv_html_to_md (item)</a></td>
-	<td class="summary">Recursively convert pseudo-HTML to Markdown.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#rconv_nums_to_strs">rconv_nums_to_strs (data)</a></td>
-	<td class="summary">Recursively convert numbers to strings.</td>
-	</tr>
-</table>
-<h2><a href="#zotxt">zotxt</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_BASE_URL">ZOTXT_BASE_URL</a></td>
-	<td class="summary">The URL to lookup citation data.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ZOTXT_KEYTYPES">ZOTXT_KEYTYPES</a></td>
-	<td class="summary">Types of citation keys.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#zotxt_get_item_csl">zotxt_get_item_csl (id)</a></td>
-	<td class="summary">Retrieve a CSL item (for use in bibliography files).</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#zotxt_get_item">zotxt_get_item (id)</a></td>
-	<td class="summary">Retrieve a CSL item (for use in the <code>references</code> metadata field).</td>
 	</tr>
 </table>
 <h2><a href="#Document_parsing">Document parsing</a></h2>
@@ -384,27 +530,31 @@ EOF
 	<td class="summary">Walk the AST and apply functions to matching elements.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#meta_get_sources">meta_get_sources (meta)</a></td>
-	<td class="summary">Collect sources from the document's metadata block.</td>
+	<td class="name" nowrap><a href="#meta_sources">meta_sources (meta)</a></td>
+	<td class="summary">Collect bibliographic data from the document&rsquo;s metadata block.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#doc_get_ckeys">doc_get_ckeys (doc[, flags])</a></td>
+	<td class="name" nowrap><a href="#doc_ckeys">doc_ckeys (doc[, undef=false])</a></td>
 	<td class="summary">Collect the citation keys used in a document.</td>
 	</tr>
 </table>
 <h2><a href="#Main">Main</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#add_biblio">add_biblio (meta, ckeys)</a></td>
-	<td class="summary">Add sources to a bibliography file and the file to the document's metadata.</td>
+	<td class="name" nowrap><a href="#add_biblio">add_biblio (handle, meta, ckeys)</a></td>
+	<td class="summary">Add data to a bibliography file and the file to the document&rsquo;s metadata.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#add_refs">add_refs (meta, ckeys)</a></td>
-	<td class="summary">Add sources to the <code>references</code> metadata field.</td>
+	<td class="name" nowrap><a href="#add_refs">add_refs (handle, meta, ckeys)</a></td>
+	<td class="summary">Add bibliographic data to the <code>references</code> metadata field.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#meta_ckey_types">meta_ckey_types (meta)</a></td>
+	<td class="summary">Get citation key types to use.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#main">main (doc)</a></td>
-	<td class="summary">Collect sources and adds bibliographic data to a document.</td>
+	<td class="summary">Collect citations and add bibliographic data to a document.</td>
 	</tr>
 </table>
 
@@ -444,8 +594,8 @@ EOF
 
 </dd>
     <dt>
-    <a name = "SCPT_DIR"></a>
-    <strong>SCPT_DIR</strong>
+    <a name = "SCRIPT_DIR"></a>
+    <strong>SCRIPT_DIR</strong>
     </dt>
     <dd>
     The directory the script is in.
@@ -458,8 +608,8 @@ EOF
 
 </dd>
     <dt>
-    <a name = "SCPT_NAME"></a>
-    <strong>SCPT_NAME</strong>
+    <a name = "SCRIPT_NAME"></a>
+    <strong>SCRIPT_NAME</strong>
     </dt>
     <dd>
     The filename of the script.
@@ -480,7 +630,7 @@ EOF
     <strong>PATH_SEP</strong>
     </dt>
     <dd>
-    The path segment seperator of the OS.
+    The path segment seperator of your OS.
 
 
 
@@ -494,10 +644,37 @@ EOF
     <strong>EOL</strong>
     </dt>
     <dd>
-    The end of line sequence of the OS.
+    The end of line sequence of your OS.
 
 
 
+
+
+
+
+</dd>
+    <dt>
+    <a name = "path_sanitise"></a>
+    <strong>path_sanitise (path)</strong>
+    </dt>
+    <dd>
+    Sanitise a path.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         The path.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A sanitised path.
+    </ol>
 
 
 
@@ -508,14 +685,14 @@ EOF
     <strong>path_split (path)</strong>
     </dt>
     <dd>
-    Split a file's path into a directory and a filename part.
+    Split a path into a directory and a filename.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">path</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         The file's path.
+         The file&rsquo;s path.
         </li>
     </ul>
 
@@ -526,13 +703,13 @@ EOF
         The directory the file is in.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The file's name.</li>
+        The file&rsquo;s name.</li>
     </ol>
      <h3>Or</h3>
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if <code>path</code> is the empty string ('').</li>
+        <code>nil</code> if <code>path</code> is the empty string (&lsquo;&rsquo;).</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
@@ -569,7 +746,7 @@ EOF
 
     <h3>Raises:</h3>
     An error if no path segments are given or if
-  a path segment is the empty string ('').
+  a path segment is the empty string (&lsquo;&rsquo;).
 
 
 
@@ -598,7 +775,37 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    An error if the path is the empty string ('').
+    An error if the path is the empty string (&lsquo;&rsquo;).
+
+
+
+</dd>
+    <dt>
+    <a name = "path_prettify"></a>
+    <strong>path_prettify (...)</strong>
+    </dt>
+    <dd>
+    Prettify paths.</p>
+
+<p> Removes the current working directory from the beginning of a path
+ and, on POSIX systems, replaces the user&rsquo;s home directory with &lsquo;~&rsquo;.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Paths.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Prettier paths.
+    </ol>
+
 
 
 
@@ -617,7 +824,7 @@ EOF
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         The directory of the first input file
-  or '.' if none was given.
+  or &lsquo;.&rsquo; if none was given.
     </ol>
 
 
@@ -643,8 +850,20 @@ EOF
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">bool</span></span>
-        Whether the file exists.
+           <span class="types"><span class="type">boolean</span></span>
+        <code>true</code> if the file exists.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the file does not exist.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        The error number 2.</li>
     </ol>
 
 
@@ -656,7 +875,7 @@ EOF
     <strong>file_locate (fname)</strong>
     </dt>
     <dd>
-    Locate a file in Pandoc's resource path. </p>
+    Locate a file in Pandoc&rsquo;s resource path.</p>
 
 <p> Absolute filenames are returned as they are.
 
@@ -733,12 +952,19 @@ EOF
     <strong>file_write (fname, ...)</strong>
     </dt>
     <dd>
-    Write data to a file. </p>
+    Write data to a file.</p>
 
-<p> The data is first written to a temporary file,
- that file is then renamed to the given name.
- If the file exists, it is overwritten.
- Tries to print a warning to STDERR if that happens
+<p> If a file of that name already exists, it is overwritten.
+ <a href="index.html#file_write">file_write</a> <em>tries</em> to print a warning to STDERR if that happens,
+ but another process may create a file between the time <a href="index.html#file_write">file_write</a>
+ checks whether a filename is in use and the time it starts writing.</p>
+
+<p> Prints warnings and errors to STDERR.</p>
+
+<p> <strong>Caveats:</strong> Data is first written to a temporary file, that file is
+ then renamed to the given filename. This is safe and secure starting
+ with Pandoc v2.8. If you are using an older version of Pandoc, then
+ the caveats of <a href="index.html#with_tmp_file">with_tmp_file</a> apply.
 
 
     <h3>Parameters:</h3>
@@ -778,12 +1004,13 @@ EOF
 </dd>
     <dt>
     <a name = "tmp_fname"></a>
-    <strong>tmp_fname ([dir[, templ='tmp_XXXXXX']])</strong>
+    <strong>tmp_fname ([dir[, templ='pdz-XXXXXX']])</strong>
     </dt>
     <dd>
-    Generate a name for a temporary file. </p>
+    Generate a name for a temporary file.</p>
 
 <p> Tries to make sure that there is no file with that name already.
+ This is subject to race conditions.
 
 
     <h3>Parameters:</h3>
@@ -791,15 +1018,15 @@ EOF
         <li><span class="parameter">dir</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A directory to prefix the filename with.
-  Cannot be the empty string ('').
+  Must not be the empty string (&lsquo;&rsquo;).
          (<em>optional</em>)
         </li>
         <li><span class="parameter">templ</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A template for the filename.
-  'X's are replaced with random alphanumeric characters.
-  Must contain at least six 'X's.
-         (<em>default</em> 'tmp_XXXXXX')
+  &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
+  Must contain at least six 'X&rsquo;s.
+         (<em>default</em> 'pdz-XXXXXX')
         </li>
     </ul>
 
@@ -821,82 +1048,250 @@ EOF
 
     <h3>Raises:</h3>
     An error if the template or the directory is
-  not a string or the empty string ('').
+  not a string or the empty string (&lsquo;&rsquo;).
 
 
 
 </dd>
     <dt>
-    <a name = "tmp_file"></a>
-    <strong>tmp_file (...)</strong>
+    <a name = "with_tmp_file"></a>
+    <strong>with_tmp_file ([dir[, templ='pdz-XXXXXX']], func, ...)</strong>
     </dt>
     <dd>
-    Create a temporary file. </p>
+    Run a function with a temporary file.</p>
 
-<p> The temporary file is removed when its file handle/filename pair is
- garbage-collected. If the file should <em>not</em> be removed, set <code>fname</code>
- to <code>nil</code>. Prints errors that occur during garbage collection to STDERR.
- If you call <a href="https://www.lua.org/manual/5.1/manual.html#pdf-os.exit">os.exit</a> tell it to close the Lua state, so that Lua runs
- the garbage collector before exiting the script.</p>
+<p> If the function raises an error or returns <code>nil</code> or <code>false</code>, then the
+ temporary file is deleted. Prints an error to STDERR if the file could
+ not be removed.</p>
 
-<p> Tries not to overwrite existing files.
+<p> The function passed to <a href="index.html#with_tmp_file">with_tmp_file</a> must <em>not</em> change the working
+ directory, say, by invoking, <code>pandoc.system.with_working_directory</code>.
+ This could cause an abitrary file to be deleted instead of the
+ temporary one; it could also cause the automatic deletion of the
+ temporary file to fail.</p>
+
+<p> <strong>Caveats:</strong> Any temporary file you <a href="https://www.lua.org/manual/5.1/manual.html#pdf-io.open">io.open</a> may have been created
+ by <em>another</em> process. If you create a temporary file in a directory
+ that others users have write access to, <code>/tmp</code>, for example, then
+ this is a security issue.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">dir</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A directory to prefix the name of the temporary
+  file with. Must not be the empty string (&lsquo;&rsquo;). See <a href="index.html#tmp_fname">tmp_fname</a>.
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">templ</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A template for the name of the
+  temporary file. &lsquo;X&rsquo;s are replaced with random alphanumeric characters.
+  Must contain at least six 'X&rsquo;s. See <a href="index.html#tmp_fname">tmp_fname</a>.
+         (<em>default</em> 'pdz-XXXXXX')
+        </li>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">func</span></span>
+         The function to run.
+  Passed the name of the temporary file as first argument.
+        </li>
         <li><span class="parameter">...</span>
-         Takes the same arguments as <a href="index.html#tmp_fname">tmp_fname</a>.
+         Passed on to <code>func</code>.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{file=FILE*,fname=string}</span></span>
-        A file handle/filename pair.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if an error occurs.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-        <li>
-           <span class="types">optional <span class="type">int</span></span>
-        An error number if the error is an I/O error.</li>
+        The values that <code>func</code> returns.
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#tmp_fname">tmp_fname</a>.
+    An error if <code>func</code> raises an error.
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_Prototype"></a>Class Prototype </h2>
+
+          <div class="section-description">
+          Prototype for prototypes.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Prototype.mt"></a>
+    <strong>Prototype.mt</strong>
+    </dt>
+    <dd>
+    Metatable for prototypes.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Prototype.mt:__call"></a>
+    <strong>Prototype.mt:__call (tab)</strong>
+    </dt>
+    <dd>
+    Delegate to a prototype.</p>
+
+<p> Sets the table&rsquo;s metatable to a copy of the prototype&rsquo;s metatable
+ and then sets the metatable&rsquo;s <code>__index</code> field to the prototype.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">tab</span>
+            <span class="types"><span class="type">tab</span></span>
+         A table.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">tab</span></span>
+        A prototype.
+    </ol>
+
 
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example"><span class="keyword">do</span>
-    <span class="keyword">local</span> tmp, ok, err
-    <span class="comment">-- Creates the fiele.
-</span>    tmp, err = tmp_file()
-    <span class="keyword">if</span> tmp <span class="keyword">then</span>
-        ok, err = tmp.file:write(data)
-        <span class="keyword">if</span> ok <span class="keyword">then</span> ok, err = tmp.file:close() <span class="keyword">end</span>
-        <span class="keyword">if</span> ok <span class="keyword">then</span> ok, err = <span class="global">os</span>.rename(tmp.fname, fname) <span class="keyword">end</span>
-        <span class="keyword">if</span> ok <span class="keyword">then</span>
-            <span class="comment">-- The temporary file was renamed,
-</span>            <span class="comment">-- so disable deletion (which would fail).
-</span>            tmp.fname = <span class="keyword">nil</span>
-        <span class="keyword">else</span>
-            <span class="global">print</span>(err)
-        <span class="keyword">end</span>
-    <span class="keyword">else</span>
-        <span class="global">print</span>(err)
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-<span class="comment">-- If writing and renaming the temporary file has not succeeded,
-</span><span class="comment">-- then the garbage collector will delete the file after
-</span><span class="comment">-- (not "at") this point.</span></pre>
+        <pre class="example">&gt; ObjA = Prototype()
+&gt; mt = <span class="global">getmetatable</span>(ObjA)
+&gt; <span class="keyword">function</span> mt:__tostring ()
+&gt;     <span class="keyword">return</span> <span class="string">'a string'</span>
+&gt; <span class="keyword">end</span>
+&gt; ObjA.key = <span class="string">'value'</span>
+&gt; ObjB = ObjA()
+&gt; ObjB.key
+value
+&gt; <span class="comment">-- This syntax is less pretty, but permissible.
+</span>&gt; ObjB = {}
+&gt; ObjA(ObjB)
+&gt; ObjB.key
+value
+&gt; <span class="comment">-- <code>ObjB</code> can override properties.
+</span>&gt; ObjB.key = <span class="string">'another value'</span>
+&gt; ObjC = ObjB()
+&gt; ObjC.key
+another value
+&gt; <span class="comment">-- A more consise way to define objects.
+</span>&gt; ObjD = ObjC { key = <span class="string">'yet another value'</span> }
+&gt; ObjD.key
+yet another value
+&gt; <span class="comment">-- Metatables are copied, save for "__index".
+</span>&gt; <span class="global">tostring</span>(ObjD)
+a <span class="global">string</span></pre>
     </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_Error"></a>Class Error </h2>
+
+          <div class="section-description">
+          Prototype for errors.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Error.mt"></a>
+    <strong>Error.mt</strong>
+    </dt>
+    <dd>
+    Metatable for errors.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Error.mt:__tostring"></a>
+    <strong>Error.mt:__tostring ()</strong>
+    </dt>
+    <dd>
+    Convert an error into a string.</p>
+
+<p> Return the error&rsquo;s <a href="index.html#ConnectionError.template">template</a> field but replace every word that is
+ preceded by a <code>$</code> with the value of the field of that name.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; NoSuchFileError = Error {
+&gt;     template = <span class="string">'$fname: no such file.'</span>
+&gt; }
+&gt; err = NoSuchFileError{fname = <span class="string">'/path/to/file'</span>}
+&gt; <span class="global">tostring</span>(err)
+/path/to/file: no such file.</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_ConnectionError"></a>Class ConnectionError </h2>
+
+          <div class="section-description">
+          Prototype for connection errors.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; err = ConnectionError()</pre>
+    <dl class="function">
+    <dt>
+    <a name = "ConnectionError.template"></a>
+    <strong>ConnectionError.template</strong>
+    </dt>
+    <dd>
+    Template for connection error messages.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_EncodingError"></a>Class EncodingError </h2>
+
+          <div class="section-description">
+          Prototype for encoding errors.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; err = EncodingError{id = <span class="string">'name2019TwoWords'</span>}
+&gt; <span class="global">tostring</span>(err)
+name2019TwoWords: fetched data is <span class="keyword">not</span> encoded <span class="keyword">in</span> UTF-<span class="number">8.</span></pre>
+    <dl class="function">
+    <dt>
+    <a name = "EncodingError.template"></a>
+    <strong>EncodingError.template</strong>
+    </dt>
+    <dd>
+    Template for encoding error messages.
+
+
+
+
+
+
 
 </dd>
 </dl>
@@ -904,24 +1299,23 @@ EOF
 
     <dl class="function">
     <dt>
-    <a name = "printf"></a>
-    <strong>printf ([msg], ...)</strong>
+    <a name = "errf"></a>
+    <strong>errf (msg, ...)</strong>
     </dt>
     <dd>
-    Print a message to STDERR. </p>
+    Print an error message to STDERR.</p>
 
-<p> Prefixes the message with <code>PRINTF_PREFIX</code> and appends <a href="index.html#EOL">EOL</a>.
+<p> Prefixes the message with <a href="index.html#SCRIPT_NAME">SCRIPT_NAME</a> and &lsquo;: &rsquo;, and appends <a href="index.html#EOL">EOL</a>.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">msg</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         The message.
-         (<em>optional</em>)
+         The message. Coerced to <a href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a>.
         </li>
         <li><span class="parameter">...</span>
          Arguments to that message (think <a href="https://www.lua.org/manual/5.1/manual.html#pdf-string.format">string.format</a>).
+  Only applied if <code>msg</code> is a <a href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a>.
         </li>
     </ul>
 
@@ -935,16 +1329,16 @@ EOF
     <strong>warnf (...)</strong>
     </dt>
     <dd>
-    Print a warning to STDERR. </p>
+    Print a warning to STDERR.</p>
 
-<p> Only prints values if <code>PANDOC_STATE.verbosity</code> is <em>not</em> 'ERROR'.
- Otherwise the same as <a href="index.html#printf">printf</a>.
+<p> Only prints values if <code>PANDOC_STATE.verbosity</code> is <em>not</em> &lsquo;ERROR&rsquo;.
+ Otherwise the same as <a href="index.html#errf">errf</a>.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">...</span>
-         Takes the same arguments as <a href="index.html#printf">printf</a>.
+         Takes the same arguments as <a href="index.html#errf">errf</a>.
         </li>
     </ul>
 
@@ -954,44 +1348,54 @@ EOF
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Table_manipulation"></a>Table manipulation</h2>
+    <h2 class="section-header "><a name="Higher_order_functions"></a>Higher-order functions</h2>
 
     <dl class="function">
     <dt>
-    <a name = "rmap"></a>
-    <strong>rmap (func, data)</strong>
+    <a name = "do_after"></a>
+    <strong>do_after (ex, func, ...)</strong>
     </dt>
     <dd>
-    Recursively apply a function to every value of a tree. </p>
+    Run cleanup code after a function.</p>
 
-<p> The function is applied to <em>every</em> node of the data tree.
- If a node is a <a href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a>, the function is applied <em>after</em> recursion.
+<p> The cleanup code runs regardless of whether an error occurs
+ in the function. However, Lua filters cannot respond to signals,
+ so it is <em>not</em> run if Pandoc exits because it catches a signal.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">ex</span>
+            <span class="types"><span class="type">func</span></span>
+         The cleanup code. Its first argument indicates whether
+  the protected call to <code>func</code> exited with an error. The remaining
+  arguments are the values returned by <code>func</code>.
+        </li>
         <li><span class="parameter">func</span>
             <span class="types"><span class="type">func</span></span>
-         A function that takes a value and returns a new one.
-  Receives the value's key as second argument, if applicable.
+         The code itself. Called in protected mode.
         </li>
-        <li><span class="parameter">data</span>
-         A data tree.
+        <li><span class="parameter">...</span>
+         Passed on to <code>func</code>.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-        <code>data</code> with <code>func</code> applied.
+        The values that <code>func</code> returns.
     </ol>
 
     <h3>Raises:</h3>
-    An error if the data is nested too deeply.
+    An error if <code>func</code> raises an error.
 
 
 
 </dd>
+</dl>
+    <h2 class="section-header "><a name="Table_manipulation"></a>Table manipulation</h2>
+
+    <dl class="function">
     <dt>
     <a name = "keys"></a>
     <strong>keys (tab)</strong>
@@ -1015,9 +1419,44 @@ EOF
         The keys of <code>tab</code>.</li>
         <li>
            <span class="types"><span class="type">int</span></span>
-        <code>tab</code>'s length.</li>
+        <code>tab</code>&rsquo;s length.</li>
     </ol>
 
+
+
+
+</dd>
+    <dt>
+    <a name = "rmap"></a>
+    <strong>rmap (func, data)</strong>
+    </dt>
+    <dd>
+    Recursively apply a function to every value of a tree.</p>
+
+<p> The function is applied to <em>every</em> node of the data tree.
+ The tree is parsed bottom-up.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">func</span></span>
+         A function that takes a value and returns a new one.
+  If the function returns <code>nil</code>, the original value is kept.
+        </li>
+        <li><span class="parameter">data</span>
+         A data tree.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>data</code> with <code>func</code> applied.
+    </ol>
+
+    <h3>Raises:</h3>
+    An error if the data is nested too deeply.
 
 
 
@@ -1088,8 +1527,8 @@ EOF
 
     <dl class="function">
     <dt>
-    <a name = "url_read"></a>
-    <strong>url_read (url)</strong>
+    <a name = "http_get"></a>
+    <strong>http_get (url)</strong>
     </dt>
     <dd>
     Retrieve data from a URL via an HTTP GET request.
@@ -1114,8 +1553,289 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    An error if no data can be retrieved. This error can only be
-  caught in Pandoc v2.11 or later.
+    An error if no data can be retrieved.
+  This error can only be caught since Pandoc v2.11.
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Converters"></a>Converters</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "esc_md"></a>
+    <strong>esc_md (str)</strong>
+    </dt>
+    <dd>
+    Escape Markdown.</p>
+
+<p> Only escapes <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">Markdown that Pandoc recognises in bibliographic
+ data</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">str</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A string.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        <code>str</code> with Markdown escaped.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "markdownify"></a>
+    <strong>markdownify (elem)</strong>
+    </dt>
+    <dd>
+    Convert a Pandoc element to Markdown text.</p>
+
+<p> Only recognises <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">elements Pandoc permits in bibliographic
+ data</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">elem</span>
+            <span class="types"><span class="type">pandoc.AstElement</span></span>
+         A Pandoc AST element.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Markdown text.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "yamlify"></a>
+    <strong>yamlify (data[, ind=4[, sort_f]])</strong>
+    </dt>
+    <dd>
+    Generate a YAML representation of a data tree.</p>
+
+<p> Uses <a href="index.html#EOL">EOL</a> to end lines. Only parses UTF-8 encoded strings.
+ Strings in other encodings will be mangled.
+ Does <em>not</em> escape <em>all</em> non-printable characters (because Unicode).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+         The data.
+        </li>
+        <li><span class="parameter">ind</span>
+            <span class="types"><span class="type">int</span></span>
+         How many spaces to indent blocks.
+         (<em>default</em> 4)
+        </li>
+        <li><span class="parameter">sort_f</span>
+            <span class="types"><span class="type">func</span></span>
+         A function to sort keys of mappings.
+  Defaults to sorting them lexically.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A YAML string.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the data cannot be represented in YAML.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+    <h3>Raises:</h3>
+    An error if the data cannot be expressed in YAML
+  or is nested too deeply.
+
+
+
+</dd>
+    <dt>
+    <a name = "html_to_md"></a>
+    <strong>html_to_md (html)</strong>
+    </dt>
+    <dd>
+    Convert Zotero pseudo-HTML to Markdown.</p>
+
+<p> Only supports <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">pseudo-HTML that Pandoc recognises in bibliographic
+ data</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">html</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Pseudo-HTML code.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        Text formatted in Markdown.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if <code>html</code> is not a <a href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a>.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_Zotxt"></a>Class Zotxt </h2>
+
+          <div class="section-description">
+          Interface to zotxt.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; handle = Zotxt()
+&gt; handle.citekey_types = pandoc.List{<span class="string">'betterbibtexkey'</span>}
+&gt; <span class="keyword">local</span> csl_item = handle:get_csl_item(<span class="string">'name2019TwoWords'</span>)</pre>
+    <dl class="function">
+    <dt>
+    <a name = "Zotxt.base_url"></a>
+    <strong>Zotxt.base_url</strong>
+    </dt>
+    <dd>
+    The base URL for <a href="https://github.com/egh/zotxt">zotxt</a> queries.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Zotxt.citekey_types"></a>
+    <strong>Zotxt.citekey_types</strong>
+    </dt>
+    <dd>
+    Types of citation keys that <a href="https://github.com/egh/zotxt">zotxt</a> supports.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Zotxt:get_csl_item"></a>
+    <strong>Zotxt:get_csl_item (id)</strong>
+    </dt>
+    <dd>
+    Retrieve bibliographic data from Zotero as CSL item.</p>
+
+<p> Returns bibliographic data as a Lua table. That table can be
+ passed to <a href="index.html#biblio_write">biblio_write</a>; it should <em>not</em> be used in the <code>references</code>
+ metadata field (unless you are using Pandoc prior to v2.11).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         An item ID, e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        A CSL item.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if an error occurred.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+    <h3>Raises:</h3>
+     An error if the data retrieved from <em>zotxt</em> is <em>not</em> encoded
+  in UTF-8 or if no data can be retrieved from <em>zotxt</em> at all.
+  The latter error can only be caught since Pandoc v2.11.
+
+
+
+</dd>
+    <dt>
+    <a name = "Zotxt:get_source"></a>
+    <strong>Zotxt:get_source (id)</strong>
+    </dt>
+    <dd>
+    Retrieve bibliographic data from Zotero as Pandoc metadata.</p>
+
+<p> Returns bibliographic data as a Pandoc metadata value. That value
+ can be used in the <code>references</code> metadata field; it should <em>not</em> be
+ passed to <a href="index.html#biblio_write">biblio_write</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         An item ID, e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">pandoc.MetaMap</span></span>
+        Bibliographic data for that source.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if an error occurred.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+    <h3>Raises:</h3>
+    See <a href="index.html#Zotxt:get_csl_item">Zotxt:get_csl_item</a>.
 
 
 
@@ -1125,79 +1845,11 @@ EOF
 
     <dl class="function">
     <dt>
-    <a name = "CSL_KEYS_FORMATTABLE"></a>
-    <strong>CSL_KEYS_FORMATTABLE</strong>
-    </dt>
-    <dd>
-    The list of CSL fields that can be formatted. </p>
-
-<p> This list is a guess!</p>
-
-<p> <a href="https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables">Appendix IV</a>
- of the CSL specification lists all field names.
-
-
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">abstract</span>
-        The abstract.
-        </li>
-        <li><span class="parameter">collection-title</span>
-        E.g., a series.
-        </li>
-        <li><span class="parameter">collection-title-short</span>
-        A short version of the title.
-        </li>
-        <li><span class="parameter">container-title</span>
-        Publication the item was published in.
-        </li>
-        <li><span class="parameter">container-title-short</span>
-        A short version of that title.
-        </li>
-        <li><span class="parameter">original-publisher</span>
-        Original publisher.
-        </li>
-        <li><span class="parameter">original-publisher-place</span>
-        Place the item was originally published in.
-        </li>
-        <li><span class="parameter">original-title</span>
-        Original title.
-        </li>
-        <li><span class="parameter">publisher</span>
-        Publisher.
-        </li>
-        <li><span class="parameter">publisher-place</span>
-        The city/cities the item was published in.
-        </li>
-        <li><span class="parameter">reviewed-title</span>
-        Title reviewed in the item.
-        </li>
-        <li><span class="parameter">title</span>
-        The title.
-        </li>
-        <li><span class="parameter">title-short</span>
-        A short version of the title.
-        </li>
-        <li><span class="parameter">short-title</span>
-        Ditto.
-        </li>
-    </ul>
-
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="index.html#rconv_html_to_md">rconv_html_to_md</a>
-    </ul>
-
-
-</dd>
-    <dt>
     <a name = "CSL_KEY_ORDER"></a>
     <strong>CSL_KEY_ORDER</strong>
     </dt>
     <dd>
-    The preferred order of keys in YAML bibliography files. </p>
+    The preferred order of keys in YAML bibliography files.</p>
 
 <p> <a href="https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables">Appendix IV</a>
  of the CSL specification lists all field names.
@@ -1209,7 +1861,7 @@ EOF
         Item ID.
         </li>
         <li><span class="parameter">type</span>
-        For example, 'paper', 'book'.
+        For example, &lsquo;paper&rsquo;, &lsquo;book&rsquo;.
         </li>
         <li><span class="parameter">author</span>
         Author(s).
@@ -1218,7 +1870,7 @@ EOF
         Recipient of the document.
         </li>
         <li><span class="parameter">status</span>
-        Publication status (e.g., 'forthcoming').
+        Publication status (e.g., &lsquo;forthcoming&rsquo;).
         </li>
         <li><span class="parameter">issued</span>
         When the item was published.
@@ -1239,7 +1891,7 @@ EOF
         Translator(s).
         </li>
         <li><span class="parameter">editor</span>
-        Editor(s).
+        The editor(s).
         </li>
         <li><span class="parameter">container-title</span>
         Publication the item was published in.
@@ -1248,7 +1900,7 @@ EOF
         A short version of that title.
         </li>
         <li><span class="parameter">collection-editor</span>
-        E.g., series editor(s).
+        E.g., the series editor(s).
         </li>
         <li><span class="parameter">collection-title</span>
         E.g., a series.
@@ -1257,7 +1909,7 @@ EOF
         A short version of the title.
         </li>
         <li><span class="parameter">edition</span>
-        Container's edition.
+        Container&rsquo;s edition.
         </li>
         <li><span class="parameter">volume</span>
         Volume no.
@@ -1329,7 +1981,7 @@ EOF
     <strong>BIBLIO_TYPES</strong>
     </dt>
     <dd>
-    A mapping of filename suffices to codecs. </p>
+    A mapping of filename suffices to codecs.</p>
 
 <p> If a key is not found, it is looked up again in lowercase.
 
@@ -1345,7 +1997,7 @@ EOF
     <strong>BIBLIO_TYPES.bib</strong>
     </dt>
     <dd>
-    Parse BibLaTeX.
+    Decode BibLaTeX.
 
 
 
@@ -1359,7 +2011,7 @@ EOF
     <strong>BIBLIO_TYPES.bib.decode (str)</strong>
     </dt>
     <dd>
-    Parse the content of a BibLaTeX file.
+    Read the IDs from the content of a BibLaTeX file.
 
 
     <h3>Parameters:</h3>
@@ -1373,16 +2025,8 @@ EOF
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">{table,...}</a></span>
-        A list of CSL items
-  if you use Pandoc v2.11 or later.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-
            <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs
-  if you use an earlier version of Pandoc.
+        A list of item IDs.
     </ol>
 
 
@@ -1394,7 +2038,7 @@ EOF
     <strong>BIBLIO_TYPES.bibtex</strong>
     </dt>
     <dd>
-    Parse BibTeX.
+    Decode BibTeX.
 
 
 
@@ -1405,13 +2049,12 @@ EOF
 </dd>
     <dt>
     <a name = "BIBLIO_TYPES.bibtex.decode"></a>
-    <strong>BIBLIO_TYPES.bibtex.decode (str)</strong>
+    <strong>BIBLIO_TYPES.bibtex.decode</strong>
     </dt>
     <dd>
-    Parse the content of a BibTeX file
+    Read the IDs from the content of a BibTeX file.
 
 
-    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">str</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -1419,20 +2062,6 @@ EOF
         </li>
     </ul>
 
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">{table,...}</a></span>
-        A list of CSL items
-  if you use Pandoc v2.11 or later.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-
-           <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs
-  if you use an earlier version of Pandoc.
-    </ol>
 
 
 
@@ -1541,7 +2170,7 @@ EOF
     <strong>csl_keys_sort (a, b)</strong>
     </dt>
     <dd>
-    Sorting function for CSL field names. </p>
+    Sorting function for CSL field names.</p>
 
 <p> Sorts field in the order in which they are listed in <a href="index.html#CSL_KEY_ORDER">CSL_KEY_ORDER</a>.
  Unlisted fields are placed after listed ones in lexical order.
@@ -1602,8 +2231,8 @@ EOF
 
 </dd>
     <dt>
-    <a name = "csl_items_get_ids"></a>
-    <strong>csl_items_get_ids (items)</strong>
+    <a name = "csl_items_ids"></a>
+    <strong>csl_items_ids (items)</strong>
     </dt>
     <dd>
     Pick the IDs of CSL items out of a list of CSL items.
@@ -1636,7 +2265,7 @@ EOF
     <strong>biblio_read (fname)</strong>
     </dt>
     <dd>
-    Read a bibliography file. </p>
+    Read a bibliography file.</p>
 
 <p> The filename suffix determines what format the contents of the file are
  parsed as. There must be a decoder for that suffix in <a href="index.html#BIBLIO_TYPES">BIBLIO_TYPES</a>.
@@ -1678,13 +2307,11 @@ EOF
     <strong>biblio_write (fname[, items])</strong>
     </dt>
     <dd>
-    Write sources to a bibliography file. </p>
+    Write bibliographic data to a bibliography file.</p>
 
 <p> The filename suffix determins what format the data is written as.
  There must be an encoder for that suffix in <a href="index.html#BIBLIO_TYPES">BIBLIO_TYPES</a>.
- If the file exists, it is overwritten.
- Tries to print a warning to STDERR if that happens.
- Ends every file with <a href="index.html#EOL">EOL</a>.
+ Ends every file with <a href="index.html#EOL">EOL</a>. The caveats of <a href="index.html#file_write">file_write</a> apply.
 
 
     <h3>Parameters:</h3>
@@ -1728,18 +2355,26 @@ EOF
 </dd>
     <dt>
     <a name = "biblio_update"></a>
-    <strong>biblio_update (fname, ids)</strong>
+    <strong>biblio_update (handle, fname, ids)</strong>
     </dt>
     <dd>
-    Add items from Zotero to a bibliography file. </p>
+    Add items from Zotero to a bibliography file.</p>
 
-<p> If an item is already in the bibliography file, it won't be added again.
- Prints a warning to STDERR if it overwrites an existing file.
- Also prints an error to STDERR for every item that cannot be found.
+<p> If an item is already in the bibliography file, it won&rsquo;t be added again.
+ Prints errors to STDERR if items cannot be found.</p>
+
+<p> <a href="https://github.com/jgm/citeproc">Citeproc</a> appears to recognise
+ formatting in <em>every</em> CSL field, so <a href="index.html#">pandoc-zotxt.lua</a> does the same.</p>
+
+<p> The caveats of <a href="index.html#file_write">file_write</a> apply.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">fname</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          The name of the bibliography file.
@@ -1771,352 +2406,7 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
-
-
-
-</dd>
-</dl>
-    <h2 class="section-header "><a name="Converters"></a>Converters</h2>
-
-    <dl class="function">
-    <dt>
-    <a name = "esc_md"></a>
-    <strong>esc_md (str)</strong>
-    </dt>
-    <dd>
-    Escape Markdown. </p>
-
-<p> Only escapes Markdown that Pandoc recognises in bibliographic data.</p>
-
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">str</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A string.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        <code>str</code> with Markdown escaped.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "markdownify"></a>
-    <strong>markdownify (elem)</strong>
-    </dt>
-    <dd>
-    Convert a Pandoc element to Markdown text. </p>
-
-<p> Only recognises elements that are permitted in bibliographic data.</p>
-
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">elem</span>
-            <span class="types"><span class="type">pandoc.AstElement</span></span>
-         A Pandoc AST element.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        Markdown text.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "yamlify"></a>
-    <strong>yamlify (data[, ind=4[, sort_f]])</strong>
-    </dt>
-    <dd>
-    Generate a YAML representation of some data. </p>
-
-<p> Uses <a href="index.html#EOL">EOL</a> to end lines.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">data</span>
-         The data.
-        </li>
-        <li><span class="parameter">ind</span>
-            <span class="types"><span class="type">int</span></span>
-         How many spaces to indent blocks.
-         (<em>default</em> 4)
-        </li>
-        <li><span class="parameter">sort_f</span>
-            <span class="types"><span class="type">func</span></span>
-         A function to sort keys of mappings.
-  Defaults to sorting them lexically.
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A YAML string.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the data cannot be represented in YAML.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    An error if the data is nested too deeply.
-
-
-
-</dd>
-    <dt>
-    <a name = "conv_html_to_md"></a>
-    <strong>conv_html_to_md (html)</strong>
-    </dt>
-    <dd>
-    Convert pseudo-HTML to Markdown. </p>
-
-<p> Only supports the HTML tags that Zotero <em>and</em> Pandoc support.</p>
-
-<p> See <a href="https://pandoc.org/MANUAL.html#specifying-bibliographic-data">https://pandoc.org/MANUAL.html#specifying-bibliographic-data</a>
- and <a href="https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields">https://docs.citationstyles.org/en/1.0/release-notes.html#rich-text-markup-within-fields</a>.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">html</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Text that contains pseudo-HTML tags.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        Text formatted in Markdown.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "rconv_html_to_md"></a>
-    <strong>rconv_html_to_md (item)</strong>
-    </dt>
-    <dd>
-    Recursively convert pseudo-HTML to Markdown. </p>
-
-<p> Only changes fields listed in <a href="index.html#CSL_KEYS_FORMATTABLE">CSL_KEYS_FORMATTABLE</a>.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">item</span>
-            <span class="types"><span class="type">tab</span></span>
-         A CSL item.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">tab</span></span>
-        The CSL item, with pseudo-HTML replaced with Markdown.
-    </ol>
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="index.html#conv_html_to_md">conv_html_to_md</a>
-    </ul>
-
-
-</dd>
-    <dt>
-    <a name = "rconv_nums_to_strs"></a>
-    <strong>rconv_nums_to_strs (data)</strong>
-    </dt>
-    <dd>
-    Recursively convert numbers to strings. </p>
-
-<p> Also converts floating point numbers to integers. This is needed
- because all numbers are floating point numbers in JSON, but some
- versions of Pandoc expect integers.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">data</span>
-            <span class="types"><span class="type">tab</span></span>
-         The data.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        A copy of <code>data</code> with numbers converted to strings.
-    </ol>
-
-    <h3>Raises:</h3>
-    An error if the data is nested too deeply.
-
-
-
-</dd>
-</dl>
-    <h2 class="section-header "><a name="zotxt"></a>zotxt</h2>
-
-    <dl class="function">
-    <dt>
-    <a name = "ZOTXT_BASE_URL"></a>
-    <strong>ZOTXT_BASE_URL</strong>
-    </dt>
-    <dd>
-    The URL to lookup citation data. </p>
-
-<p> See <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
-
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "ZOTXT_KEYTYPES"></a>
-    <strong>ZOTXT_KEYTYPES</strong>
-    </dt>
-    <dd>
-    Types of citation keys. </p>
-
-<p> See <a href="https://github.com/egh/zotxt">https://github.com/egh/zotxt</a> for details.
-
-
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">key</span>
-        Zotero item ID
-        </li>
-        <li><span class="parameter">betterbibtexkey</span>
-        Better BibTeX citation key
-        </li>
-        <li><span class="parameter">easykey</span>
-        zotxt easy citekey
-        </li>
-    </ul>
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "zotxt_get_item_csl"></a>
-    <strong>zotxt_get_item_csl (id)</strong>
-    </dt>
-    <dd>
-    Retrieve a CSL item (for use in bibliography files). </p>
-
-<p> Returns bibliographic data as a Lua table. The retrieved item can be
- passed to <a href="index.html#biblio_write">biblio_write</a>; it should <em>not</em> be used in the <code>references</code>
- metadata field (unless you are using Pandoc prior to v2.11).
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
-        A CSL item.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if an error occurred.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
-
-
-
-</dd>
-    <dt>
-    <a name = "zotxt_get_item"></a>
-    <strong>zotxt_get_item (id)</strong>
-    </dt>
-    <dd>
-    Retrieve a CSL item (for use in the <code>references</code> metadata field). </p>
-
-<p> Returns bibliographic data as Pandoc metadata. That retrieved item
- can be used in the <code>references</code> metadata field; it should <em>not</em> be
- passed to <a href="index.html#biblio_write">biblio_write</a>.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         An item ID, e.g., 'name:2019word', 'name2019TwoWords'.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">pandoc.MetaMap</span></span>
-        A CSL item.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if an error occurred.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
+    See <a href="index.html#Zotxt:get_csl_item">Zotxt:get_csl_item</a>.
 
 
 
@@ -2145,15 +2435,15 @@ EOF
     <ol>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The type
-  (e.g., 'MetaMap', 'Plain').</li>
+        Type
+  (e.g., &lsquo;MetaMap&rsquo;, &lsquo;Plain&rsquo;).</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The high-order kind
-  (i.e., 'Block', 'Inline', or 'MetaValue').</li>
+        Super-type
+  (i.e., &lsquo;Block&rsquo;, &lsquo;Inline&rsquo;, or &lsquo;MetaValue&rsquo;).</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The literal 'AstElement'.</li>
+        &lsquo;AstElement&rsquo;.</li>
     </ol>
      <h3>Or</h3>
     <ol>
@@ -2171,16 +2461,18 @@ EOF
     <strong>walk (elem, filter)</strong>
     </dt>
     <dd>
-    Walk the AST and apply functions to matching elements. </p>
+    Walk the AST and apply functions to matching elements.</p>
 
-<p> Differs from <code>pandoc.walk_block</code> and <code>pandoc.walk_inline</code> by accepting
- AST elements of <em>any</em> type (i.e., including documents as a whole, the
- metadata block, and metadata fields), by applying the filter to the
- given element itself, by walking the AST bottom-up (which implies that
- the filter is applied to every node, regardless of whether any of that
- node's ancestors matches it), and by allowing the functions in the
- filter to return arbitrary data (as opposed to either a Pandoc AST
- element type or <code>nil</code>). Use with caution.
+<p> Differs from <code>pandoc.walk_block</code> and <code>pandoc.walk_inline</code> by never
+ modifying the original element, by accepting AST elements of <em>any</em>
+ type (including documents as a whole, the metadata block, and metadata
+ fields), by accepting the higher-order type <code>AstElement</code>, by <em>not</em>
+ accepting the filter keywords <code>Blocks</code> and <code>Inlines</code>, by walking
+ the AST bottom-up (which implies that the filter is applied to every
+ element, regardless of whether any of that elements&rsquo;s ancestors
+ matches), by applying the filter to the given element itself, and by
+ allowing the functions in the filter to return data of arbitrary types
+ (as opposed to either a Pandoc AST element or <code>nil</code>).
 
 
     <h3>Parameters:</h3>
@@ -2206,11 +2498,11 @@ EOF
 
 </dd>
     <dt>
-    <a name = "meta_get_sources"></a>
-    <strong>meta_get_sources (meta)</strong>
+    <a name = "meta_sources"></a>
+    <strong>meta_sources (meta)</strong>
     </dt>
     <dd>
-    Collect sources from the document's metadata block. </p>
+    Collect bibliographic data from the document&rsquo;s metadata block.</p>
 
 <p> Reads the <code>references</code> metafata field and every bibliography file
  referenced by the <code>bibliography</code> metadata field.</p>
@@ -2221,7 +2513,7 @@ EOF
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">tab</span></span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
          A metadata block.
         </li>
     </ul>
@@ -2238,11 +2530,11 @@ EOF
 
 </dd>
     <dt>
-    <a name = "doc_get_ckeys"></a>
-    <strong>doc_get_ckeys (doc[, flags])</strong>
+    <a name = "doc_ckeys"></a>
+    <strong>doc_ckeys (doc[, undef=false])</strong>
     </dt>
     <dd>
-    Collect the citation keys used in a document. </p>
+    Collect the citation keys used in a document.</p>
 
 <p> Prints errors to STDERR if it cannot parse a bibliography file.
 
@@ -2253,20 +2545,23 @@ EOF
             <span class="types"><span class="type">tab</span></span>
          A document.
         </li>
-        <li><span class="parameter">flags</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         If the flag 'u' is given, collects only citation keys
-  of sources that are neither defined in the <code>references</code> metadata field
-  nor in any bibliography file.
-         (<em>optional</em>)
+        <li><span class="parameter">undef</span>
+            <span class="types"><span class="type">bool</span></span>
+         Whether to collect only the citation keys of
+  sources that are defined neither in the <code>references</code> metadata field
+  nor in a bibliography file.
+         (<em>default</em> false)
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
-
+        <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        A list of citation keys.
+        A list of citation keys.</li>
+        <li>
+           <span class="types"><span class="type">int</span></span>
+        The number of citation keys found.</li>
     </ol>
 
     <h3>Raises:</h3>
@@ -2281,10 +2576,10 @@ EOF
     <dl class="function">
     <dt>
     <a name = "add_biblio"></a>
-    <strong>add_biblio (meta, ckeys)</strong>
+    <strong>add_biblio (handle, meta, ckeys)</strong>
     </dt>
     <dd>
-    Add sources to a bibliography file and the file to the document's metadata. </p>
+    Add data to a bibliography file and the file to the document&rsquo;s metadata.</p>
 
 <p> Updates the bibliography file as needed and adds it to the <code>bibliography</code>
  metadata field. Interpretes a relative filename as relative to the
@@ -2294,8 +2589,12 @@ EOF
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">tab</span></span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
          A metadata block, with the field
   <code>zotero-bibliography</code> set to the filename of the bibliography file.
         </li>
@@ -2310,7 +2609,7 @@ EOF
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">tab</span></span>
+           <span class="types"><span class="type">pandoc.Meta</span></span>
         An updated metadata block, with the field
   <code>bibliography</code> added if needed.
     </ol>
@@ -2326,23 +2625,27 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
+    See <a href="index.html#Zotxt:get_csl_item">Zotxt:get_csl_item</a>.
 
 
 
 </dd>
     <dt>
     <a name = "add_refs"></a>
-    <strong>add_refs (meta, ckeys)</strong>
+    <strong>add_refs (handle, meta, ckeys)</strong>
     </dt>
     <dd>
-    Add sources to the <code>references</code> metadata field. </p>
+    Add bibliographic data to the <code>references</code> metadata field.</p>
 
 <p> Prints an error message to STDERR for every source that cannot be found.
 
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">handle</span>
+            <span class="types"><a class="type" href="index.html#Zotxt">Zotxt</a></span>
+         A interface to Zotero.
+        </li>
         <li><span class="parameter">meta</span>
             <span class="types"><span class="type">tab</span></span>
          A metadata block.
@@ -2373,7 +2676,46 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
+    See <a href="index.html#Zotxt:get_csl_item">Zotxt:get_csl_item</a>.
+
+
+
+</dd>
+    <dt>
+    <a name = "meta_ckey_types"></a>
+    <strong>meta_ckey_types (meta)</strong>
+    </dt>
+    <dd>
+    Get citation key types to use.</p>
+
+<p> Returns a list of citation key types from the <code>zotero-citekey-types</code>
+ metadata field. If a value of that field does <em>not</em> pick out a citation
+ key type listed in <a href="index.html#Zotxt.citekey_types">Zotxt.citekey_types</a>, it is ignored.</p>
+
+<p> Prints messages to STDERR if errors occur.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">meta</span>
+            <span class="types"><span class="type">pandoc.Meta</span></span>
+         A metadata block.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">pandoc.List</span></span>
+        A list of citation key types.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+           <span class="types"><span class="type">nil</span></span>
+        If no valid citation key types were found.
+    </ol>
+
 
 
 
@@ -2383,7 +2725,7 @@ EOF
     <strong>main (doc)</strong>
     </dt>
     <dd>
-    Collect sources and adds bibliographic data to a document. </p>
+    Collect citations and add bibliographic data to a document.</p>
 
 <p> Prints messages to STDERR if errors occur.</p>
 
@@ -2412,7 +2754,7 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="index.html#zotxt_get_item">zotxt_get_item</a>.
+    See <a href="index.html#Zotxt:get_csl_item">Zotxt:get_csl_item</a>.
 
 
 
@@ -2424,7 +2766,7 @@ EOF
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-05-30 13:19:10 </i>
+<i style="float:right;">Last updated 2021-11-12 00:07:43 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
