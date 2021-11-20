@@ -214,6 +214,7 @@ local stringify = pandoc.utils.stringify
 local List = pandoc.List
 local MetaInlines = pandoc.MetaInlines
 local MetaList = pandoc.MetaList
+local MetaMap = pandoc.MetaMap
 local Str = pandoc.Str
 local Span = pandoc.Span
 local Pandoc = pandoc.Pandoc
@@ -509,21 +510,20 @@ function keys (tab)
     return ks, n
 end
 
---- Recursively apply a function to every value of a tree.
+--- Recursively apply a function to every node of a graph.
 --
--- The function is applied to *every* node of the data tree.
--- The tree is parsed bottom-up.
+-- The graph is walked bottom-up.
 --
--- @func func A function that takes a value and returns a new one.
---  If the function returns `nil`, the original value is kept.
--- @param data A data tree.
--- @return `data` with `func` applied.
--- @raise An error if the data is nested too deeply.
+-- @func func A function that takes a value and returns a another one.
+--  If the function returns `nil`, the node is not changed.
+-- @param data A graph.
+-- @return `graph` with `func` applied.
+-- @raise An error if the graph is too high.
 -- @within Table manipulation
-function rmap (func, data, _rd)
-    if type(data) ~= 'table' then
-        local nv = func(data)
-        if nv == nil then return data end
+function rmap (func, graph, _rd)
+    if type(graph) ~= 'table' then
+        local nv = func(graph)
+        if nv == nil then return graph end
         return nv
     end
     if not _rd then _rd = 0
@@ -531,15 +531,15 @@ function rmap (func, data, _rd)
     end
     assert(_rd < 512, 'too much recursion.')
     local ret = {}
-    local k = next(data, nil)
+    local k = next(graph, nil)
     while k ~= nil do
-        local v = data[k]
+        local v = graph[k]
         if type(v) == 'table' then v = rmap(func, v, _rd) end
         local nv = func(v)
         if nv == nil then ret[k] = v
                      else ret[k] = nv
         end
-        k = next(data, k)
+        k = next(graph, k)
     end
     return ret
 end
@@ -562,27 +562,27 @@ function tabulate (iter, val)
     return unpack(tab)
 end
 
-do
-    local lower = text.lower
+-- do
+--     local lower = text.lower
 
-    --- Recursively convert table keys to lowercase.
-    --
-    -- @tab tab The table.
-    -- @return A copy of `tab` with keys in lowercase.
-    -- @raise An error if the data is nested too deeply.
-    -- @within Table manipulation
-    function lower_keys (tab, _rd)
-        if not _rd then _rd = 0 end
-        assert(_rd < 512, 'too much recursion.')
-        local ret = {}
-        for k, v in pairs(tab) do
-            if type(k) == 'string' then k = lower(k)               end
-            if type(v) == 'table'  then v = lower_keys(v, _rd + 1) end
-            ret[k] = v
-        end
-        return ret
-    end
-end
+--     --- Recursively convert table keys to lowercase.
+--     --
+--     -- @tab tab The table.
+--     -- @return A copy of `tab` with keys in lowercase.
+--     -- @raise An error if the data is nested too deeply.
+--     -- @within Table manipulation
+--     function lower_keys (tab, _rd)
+--         if not _rd then _rd = 0 end
+--         assert(_rd < 512, 'too much recursion.')
+--         local ret = {}
+--         for k, v in pairs(tab) do
+--             if type(k) == 'string' then k = lower(k)               end
+--             if type(v) == 'table'  then v = lower_keys(v, _rd + 1) end
+--             ret[k] = v
+--         end
+--         return ret
+--     end
+-- end
 
 --- Iterate over the keys of a table in a given order.
 --
@@ -1333,47 +1333,45 @@ do
     end
 end
 
-do
-    -- Replace '<sc>...</sc>' pseudo-HTML with <span> tags.
-    --
-    -- Zotero supports using '<sc>...</sc>' to set text in small caps.
-    -- Pandoc throws those tags out.
-    --
-    -- @string str A string.
-    -- @treturn string `str` with `<sc>...</sc>` replaced with <span> tags.
-    local function sc_to_span (str)
-        local tmp, n = str:gsub('<sc>',
-            '<span style="font-variant: small-caps">')
-        if n == 0 then return str end
-        local ret, m = tmp:gsub('</sc>', '</span>')
-        if m == 0 then return str end
-        return ret
+--- Replace `<sc>` with `<span style="font-variant: small-caps">`.
+--
+-- @string str A string.
+-- @treturn string `str` with `<sc>...</sc>` replaced by <span> tags.
+-- @within Converters
+function sc_to_span (str)
+    if type(str) ~= 'string' then
+        return nil, 'given pseudo-HTML code is not a string.'
     end
+    local op, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
+    if n == 0 then return str end
+    local cl, m = op:gsub('</sc>', '</span>')
+    if m == 0 then return str end
+    return cl
+end
 
-    --- Convert Zotero pseudo-HTML to Markdown.
-    --
-    -- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
-    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
-    --
-    -- @string html Pseudo-HTML code.
-    -- @treturn[1] string Text formatted in Markdown.
-    -- @treturn[2] nil `nil` if `html` is not a `string`.
-    -- @treturn[2] string An error message.
-    -- @within Converters
-    function html_to_md (html)
-        if type(html) ~= 'string' then
-            return nil, 'given pseudo-HTML code is not a string.'
-        end
-        local sc_replaced = sc_to_span(html)
-        local doc = pandoc.read(sc_replaced, 'html')
-        return markdownify(doc)
+--- Convert Zotero pseudo-HTML to Markdown.
+--
+-- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
+-- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
+--
+-- @string str Pseudo-HTML code.
+-- @treturn[1] string Text formatted in Markdown.
+-- @treturn[2] nil `nil` if `html` is not a `string`.
+-- @treturn[2] string An error message.
+-- @within Converters
+function html_to_md (str)
+    if type(str) ~= 'string' then
+        return nil, 'given pseudo-HTML code is not a string.'
     end
+    local html = sc_to_span(str)
+    local doc = pandoc.read(html, 'html')
+    return markdownify(doc)
 end
 
 do
     local floor = math.floor
     local decode = json.decode
-    
+
     -- Convert numbers to strings.
     --
     -- Also converts floating point numbers to integers. This is needed
@@ -1384,6 +1382,7 @@ do
     -- @return A copy of `data` with numbers converted to strings.
     -- @raise An error if the data is nested too deeply.
     -- @within Converters
+    -- fixme this doc is wrong
     local function num_to_str (data)
         if type(data) ~= 'number' then return data end
         return tostring(floor(data))
@@ -1402,29 +1401,26 @@ do
     end
 end
 
-do
-    local read = pandoc.read
+-- do
+--     local read = pandoc.read
 
-    --- Convert a CSL JSON string to Pandoc metadata.
-    --
-    -- @string str A CSL JSON string.
-    -- @treturn pandoc.MetaMap Pandoc metadata.
-    -- @within Converters
-    -- @fixme No unit tests.
-    -- @fixme Errors are undocumented.
-    function csljson_to_meta (str)
-        assert(str ~= '', 'no data.')
-        local doc = read(str, 'csljson')
-        local meta = doc.meta
-        assert(meta, 'no metadata block.')
-        local refs = meta.references
-        assert(refs, 'no references.')
-        return refs
-    end
-end
-
-
-
+--     --- Convert a CSL JSON string to Pandoc metadata.
+--     --
+--     -- @string str A CSL JSON string.
+--     -- @treturn pandoc.MetaMap Pandoc metadata.
+--     -- @within Converters
+--     -- @fixme No unit tests.
+--     -- @fixme Errors are undocumented.
+--     function csljson_to_meta (str)
+--         assert(str ~= '', 'no data.')
+--         local doc = read(str, 'csljson')
+--         local meta = doc.meta
+--         assert(meta, 'no metadata block.')
+--         local refs = meta.references
+--         assert(refs, 'no references.')
+--         return refs
+--     end
+-- end
 
 do
     local work_arounds = {}
@@ -1460,16 +1456,59 @@ do
 end
 
 -- @fixme Undocumented.
-function zot_csljson_to_meta (str)
-    -- This is ugly, but I see no better way.
-    local _, i = str:find '^%s*{%s*(["\'])items%1%s*:%s*'
-    assert(i, 'failed to parse: ' .. str)
-    local _, j = str:find '%s*}%s*$'
-    assert(j, 'failed to parse: ' .. str)
-    local nstr = str:sub(i + 1, j - 1)
-    assert(nstr and nstr ~= '', 'failed to parse: ' .. str)
-    return csljson_to_meta(nstr)
+-- function zot_csljson_to_meta (str)
+--     -- This is ugly, but I see no better way.
+--     local _, i = str:find '^%s*{%s*(["\'])items%1%s*:%s*'
+--     assert(i, 'failed to parse: ' .. str)
+--     local _, j = str:find '%s*}%s*$'
+--     assert(j, 'failed to parse: ' .. str)
+--     local nstr = str:sub(i + 1, j - 1)
+--     assert(nstr and nstr ~= '', 'failed to parse: ' .. str)
+--     return csljson_to_meta(nstr)
+-- end
+
+do
+    local converters = {}
+
+    function converters.boolean (...)
+        return ...
+    end
+
+    function converters.number (n)
+        return MetaInlines(List{Str(tostring(n))})
+    end
+
+    function converters.string (s)
+        local html = sc_to_span(s)
+        local inlines = pandoc.read(html, 'html').blocks[1].content
+        return MetaInlines(inlines)
+    end
+
+    function pandocify (item)
+        local t = type(item)
+        local conv = converters[t]
+        if conv then return conv(item) end
+        if t ~= 'table' then
+            error(t .. ': cannot be converted to a Pandoc metadata type.')
+        end
+        local nkeys = select(2, keys(item))
+        local n = #item
+        if n == nkeys then
+            local list = MetaList{}
+            for i = 1, n do
+                list[i] = pandocify(item[i])
+            end
+            return list
+        else
+            local map = MetaMap{}
+            for k, v in pairs(item) do
+                map[k] = pandocify(v)
+            end
+            return map
+        end
+    end
 end
+
 
 
 -- zotxt
@@ -1505,28 +1544,81 @@ do
     -- A connection error.
     local conn_err = Error{message='failed to connect to zotxt.'}
 
-    -- Retrieve bibliographic data from zotxt and hand it to a parser.
+    -- -- Retrieve bibliographic data from zotxt and hand it to a parser.
+    -- --
+    -- -- Takes a citation key and a parsing function, queries *zotxt* for that
+    -- -- citation key, passes whatever *zotxt* returns to the parsing function,
+    -- -- and then returns whatever the parsing function returns.
+    -- --
+    -- -- The parsing function should raise an error if its argument cannot be
+    -- -- interpreted as bibliographic data.
+    -- --
+    -- -- Tries every citation key type defined in `Zotxt.citekey_types` until
+    -- -- the query is successful or no more citation key types are left.
+    -- --
+    -- -- @func parse_f A function that takes an HTTP GET response and a MIME
+    -- --  type, returns a CSL item, and raises an error if, and only if,
+    -- --  it cannot convert the response to a CSL item.
+    -- -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+    -- -- @treturn[1] table A CSL item.
+    -- -- @treturn[2] nil `nil` if an error occurred.
+    -- -- @treturn[2] string An error message.
+    -- -- @raise An error if connecing to *zotxt* fails.
+    -- --  This error can only be caught since Pandoc v2.11.
+    -- function Zotxt:query (parse_f, ckey)
+    --     local citekey_types = self.citekey_types
+    --     local err = nil
+    --     for i = 1, #citekey_types do
+    --         -- zotxt supports searching for multiple citation keys at once,
+    --         -- but if a single one cannot be found, it replies with a cryptic
+    --         -- error message (for easy citekeys) or an empty response
+    --         -- (for Better BibTeX citation keys).
+    --         local query_url = lookup_url:format(citekey_types[i], ckey)
+    --         local ok, mt, str = pcall(http_get, query_url)
+    --         assert(ok, conn_err)
+    --         if not mt or mt == '' then
+    --             err = ckey .. ': response has no MIME type.'
+    --         elseif not str or str == '' then
+    --             err = ckey .. ': response is empty.'
+    --         elseif not mt:match '^text/plain%f[%A]' then
+    --             err = format('%s: response is of wrong type %s.', ckey, mt)
+    --         elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
+    --             err = ckey .. ': response is not encoded in UTF-8'
+    --         else
+    --             -- luacheck: ignore ok
+    --             local ok, data = pcall(csljson_to_lua, str, mt)
+    --             if ok then
+    --                 if i ~= 1 then
+    --                     citekey_types[1], citekey_types[i] =
+    --                     citekey_types[i], citekey_types[1]
+    --                 end
+    --                 return data
+    --             else
+    --                 err = 'Zotero responded: ' .. str
+    --             end
+    --         end
+    --     end
+    --     return nil, err
+    -- end
+
+    --- Retrieve bibliographic data from zotxt as CSL item.
     --
-    -- Takes a citation key and a parsing function, queries *zotxt* for that
-    -- citation key, passes whatever *zotxt* returns to the parsing function,
-    -- and then returns whatever the parsing function returns.
+    -- Returns bibliographic data as a Lua table. That table can be
+    -- passed to `biblio_write`; it should *not* be used in the `references`
+    -- metadata field (unless you are using Pandoc prior to v2.11).
     --
-    -- The parsing function should raise an error if its argument cannot be
-    -- interpreted as bibliographic data.
-    --
-    -- Tries every citation key type defined in `Zotxt.citekey_types` until
-    -- the query is successful or no more citation key types are left.
-    --
-    -- @func parse_f A function that takes an HTTP GET response and a MIME
-    --  type, returns a CSL item, and raises an error if, and only if,
-    --  it cannot convert the response to a CSL item.
     -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise An error if connecing to *zotxt* fails.
-    --  This error can only be caught since Pandoc v2.11.
-    function Zotxt:query (parse_f, ckey)
+    -- @raise See `Zotxt:query`.
+    function Zotxt:get_csl_item (ckey)
+        -- assert(ckey ~= '', 'citation key is the empty string ("").')
+        -- local data, err = self:query(csljson_to_lua, ckey)
+        -- if not data then return nil, err end
+        -- local csl_item = data[1]
+        -- csl_item.id = ckey
+        -- return csl_item
         local citekey_types = self.citekey_types
         local err = nil
         for i = 1, #citekey_types do
@@ -1547,13 +1639,15 @@ do
                 err = ckey .. ': response is not encoded in UTF-8'
             else
                 -- luacheck: ignore ok
-                local ok, data = pcall(parse_f, str, mt)
+                local ok, data = pcall(csljson_to_lua, str, mt)
                 if ok then
                     if i ~= 1 then
                         citekey_types[1], citekey_types[i] =
                         citekey_types[i], citekey_types[1]
                     end
-                    return data
+                    local csl_item = data[1]
+                    csl_item.id = ckey
+                    return csl_item
                 else
                     err = 'Zotero responded: ' .. str
                 end
@@ -1562,54 +1656,34 @@ do
         return nil, err
     end
 
-    --- Retrieve bibliographic data from zotxt as CSL item.
-    --
-    -- Returns bibliographic data as a Lua table. That table can be
-    -- passed to `biblio_write`; it should *not* be used in the `references`
-    -- metadata field (unless you are using Pandoc prior to v2.11).
-    --
-    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] table A CSL item.
-    -- @treturn[2] nil `nil` if an error occurred.
-    -- @treturn[2] string An error message.
-    -- @raise See `Zotxt:query`.
-    function Zotxt:get_csl_item (ckey)
-        assert(ckey ~= '', 'citation key is the empty string ("").')
-        local data, err = self:query(csljson_to_lua, ckey)
-        if not data then return nil, err end
-        local csl_item = data[1]
-        csl_item.id = ckey
-        return csl_item
-    end
+    -- --- Retrieve bibliographic data from Zotero as Pandoc metadata.
+    -- --
+    -- -- Returns bibliographic data as a Pandoc metadata value. That value
+    -- -- can be used in the `references` metadata field; it should *not* be
+    -- -- passed to `biblio_write`.
+    -- --
+    -- -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+    -- -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
+    -- -- @treturn[2] nil `nil` if an error occurred.
+    -- -- @treturn[2] string An error message.
+    -- -- @raise See `Zotxt:query`.
+    -- function Zotxt:get_source (ckey)
+    --     assert(ckey ~= '', 'citation key is the empty string ("").')
+    --     local meta, err, errtype = self:query(csljson_to_meta, ckey)
+    --     if not meta then return nil, err, errtype end
+    --     local ref = meta[1]
+    --     ref.id = MetaInlines{Str(ckey)}
+    --     return ref
+    -- end
 
-    --- Retrieve bibliographic data from Zotero as Pandoc metadata.
-    --
-    -- Returns bibliographic data as a Pandoc metadata value. That value
-    -- can be used in the `references` metadata field; it should *not* be
-    -- passed to `biblio_write`.
-    --
-    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
-    -- @treturn[2] nil `nil` if an error occurred.
-    -- @treturn[2] string An error message.
-    -- @raise See `Zotxt:query`.
-    function Zotxt:get_source (ckey)
-        assert(ckey ~= '', 'citation key is the empty string ("").')
-        local meta, err, errtype = self:query(csljson_to_meta, ckey)
-        if not meta then return nil, err, errtype end
-        local ref = meta[1]
-        ref.id = MetaInlines{Str(ckey)}
-        return ref
-    end
-
-    -- (a) The CSL JSON reader is only available since Pandoc v2.11.
-    -- (b) However, pandoc-citeproc has a (useful) bug and parses formatting
-    --     tags in metadata fields, so there is no need to treat metadata
-    --     fields and bibliography files differently before Pandoc v2.11.
-    -- See <https://github.com/jgm/pandoc/issues/6722> for details.
-    if not pandoc.types or PANDOC_VERSION < {2, 11} then
-        Zotxt.get_source = Zotxt.get_csl_item
-    end
+    -- -- (a) The CSL JSON reader is only available since Pandoc v2.11.
+    -- -- (b) However, pandoc-citeproc has a (useful) bug and parses formatting
+    -- --     tags in metadata fields, so there is no need to treat metadata
+    -- --     fields and bibliography files differently before Pandoc v2.11.
+    -- -- See <https://github.com/jgm/pandoc/issues/6722> for details.
+    -- if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    --     Zotxt.get_source = Zotxt.get_csl_item
+    -- end
 end
 
 
@@ -1794,6 +1868,7 @@ do
 
     -- @fixme Undocumented.
     -- @todo Allow Lua expressions.
+    -- @todo Turn this into an iterator-like thingy.
     function ZotWeb:guess_search_terms(ckey)
         local citekey_types = self.citekey_types
         for i = 1, #citekey_types do
@@ -1825,8 +1900,6 @@ do
         elseif n == 1 then
             return items[1]
         end
-        -- @fixme filtering by year may make a difference
-        -- because title's can contain years!
         local f = filter_by_ckey(items, ckey)
         if not f or f.n == 0 then
             return nil, ckey .. ': too many matches.'
@@ -1852,16 +1925,16 @@ do
         return items[1]
     end
 
-    -- @fixme Undocumented.
-    function ZotWeb:query (parse_f, ckey)
-        if  self.citekey_types:includes 'key' and
-            len(ckey) == 8                    and
-            ckey:match '^[%u%d]+$'
-        then
-            return self:lookup(parse_f, ckey)
-        end
-        return self:match(parse_f, ckey)
-    end
+    -- -- @fixme Undocumented.
+    -- function ZotWeb:query (parse_f, ckey)
+    --     if  self.citekey_types:includes 'key' and
+    --         len(ckey) == 8                    and
+    --         ckey:match '^[%u%d]+$'
+    --     then
+    --         return self:lookup(parse_f, ckey)
+    --     end
+    --     return self:match(parse_f, ckey)
+    -- end
 
     -- @fixme Undocumented.
     function ZotWeb:get_csl_item (ckey)
@@ -1870,28 +1943,37 @@ do
         local ok, err = self:set_user_id()
         if not ok then return nil, err end
         -- luacheck: ignore err
-        local data, err = self:query(zot_csljson_to_lua, ckey)
+        local data, err
+        if  self.citekey_types:includes 'key' and
+        len(ckey) == 8                        and
+        ckey:match '^[%u%d]+$'
+        then
+            data, err = self:lookup(zot_csljson_to_lua, ckey)
+        else
+            data, err = self:match(zot_csljson_to_lua, ckey)
+        end
+        -- local data, err = self:query(zot_csljson_to_lua, ckey)
         if not data then return nil, err end
         data.id = ckey
         return data
     end
 
-    -- @fixme Undocumented.
-    function ZotWeb:get_source (ckey)
-        assert(ckey ~= '', 'citation key is the empty string ("").')
-        local ok, err = self:set_user_id()
-        if not ok then return nil, err end
-        -- luacheck: ignore err
-        local ref, err, errtype = self:query(zot_csljson_to_meta, ckey)
-        if not ref then return nil, err, errtype end
-        ref.id = MetaInlines{Str(ckey)}
-        return ref
-    end
+    -- -- @fixme Undocumented.
+    -- function ZotWeb:get_source (ckey)
+    --     assert(ckey ~= '', 'citation key is the empty string ("").')
+    --     local ok, err = self:set_user_id()
+    --     if not ok then return nil, err end
+    --     -- luacheck: ignore err
+    --     local ref, err, errtype = self:query(zot_csljson_to_meta, ckey)
+    --     if not ref then return nil, err, errtype end
+    --     ref.id = MetaInlines{Str(ckey)}
+    --     return ref
+    -- end
 
-    -- See `Zotxt` above.
-    if not pandoc.types or PANDOC_VERSION < {2, 11} then
-        ZotWeb.get_source = ZotWeb.get_csl_item
-    end
+    -- -- See `Zotxt` above.
+    -- if not pandoc.types or PANDOC_VERSION < {2, 11} then
+    --     ZotWeb.get_source = ZotWeb.get_csl_item
+    -- end
 end
 
 
@@ -2535,10 +2617,10 @@ function add_refs (handle, meta, ckeys)
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ret, err = pcall(handle.get_source, handle, ckeys[i])
+        local ok, ret, err = pcall(handle.get_csl_item, handle, ckeys[i])
         if not ok  then return nil, tostring(ret)
         elseif ret then n = n + 1
-                        meta.references[n] = ret
+                        meta.references[n] = pandocify(ret)
                    else errf(err)
         end
     end
@@ -2675,8 +2757,6 @@ function main (doc)
         if     i == 1 then handle = zotxt
         elseif i == 2 then handle = zotweb
         end
-        -- @fixme The user should be able to select *which*
-        --        connector they want to use.
         if handle then
             -- luacheck: ignore err
             local meta, err = add_srcs(handle, doc.meta, ckeys)

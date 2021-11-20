@@ -862,25 +862,25 @@ function test_rmap ()
     end
 end
 
-function test_lower_keys ()
-    local invalid = {nil, 0, 'string', function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(M.lower_keys, v)
-    end
+-- function test_lower_keys ()
+--     local invalid = {nil, 0, 'string', function () end}
+--     for _, v in ipairs(invalid) do
+--         lu.assert_error(M.lower_keys, v)
+--     end
 
-    local tests = {
-        [{}] = {},
-        [{1, 2, 3}] = {1, 2, 3},
-        [{A=1, b=2, C=3}] = {a=1, b=2, c=3},
-        [{nil}] = {nil},
-        [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}},
-        [{A=1, B={C=2, [false]=3}}] = {a=1, b={c=2, [false]=3}}
-    }
+--     local tests = {
+--         [{}] = {},
+--         [{1, 2, 3}] = {1, 2, 3},
+--         [{A=1, b=2, C=3}] = {a=1, b=2, c=3},
+--         [{nil}] = {nil},
+--         [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}},
+--         [{A=1, B={C=2, [false]=3}}] = {a=1, b={c=2, [false]=3}}
+--     }
 
-    for k, v in pairs(tests) do
-        lu.assert_items_equals(M.lower_keys(k), v)
-    end
-end
+--     for k, v in pairs(tests) do
+--         lu.assert_items_equals(M.lower_keys(k), v)
+--     end
+-- end
 
 function test_sorted_pairs ()
     local invalid = {nil, 0, 'string', function () end}
