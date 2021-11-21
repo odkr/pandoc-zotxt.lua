@@ -155,22 +155,21 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.1.0b3
+-- @release 1.1.0b4
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021 Odin Kroeger
 -- @license MIT
 
+-- luacheck: allow defined top
+
 
 -- INITIALISATION
 -- ==============
---
--- luacheck: allow defined top
 
 -- Built-in functions.
 local assert = assert
 local error = error
 local getmetatable = getmetatable
-local ipairs = ipairs
 local next = next
 local pairs = pairs
 local pcall = pcall
@@ -184,6 +183,7 @@ local tostring = tostring
 local type = type
 
 -- Modules.
+local debug = debug
 local io = io
 local math = math
 local os = os
@@ -229,7 +229,7 @@ NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
 -- @within Metadata
-VERSION = '1.1.0b3'
+VERSION = '1.1.0b4'
 
 
 -- Operating system
@@ -245,28 +245,50 @@ EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
 
 
--- Modules
--- -------
+-- Path operations
+-- ---------------
+
+--- Check if values could represent path segments.
+--
+-- @string ... Values.
+-- @treturn[1] boolean `true` if the values could represent path segments.
+-- @treturn[2] nil `nil` otherwise.
+-- @treturn[3] string An error message.
+-- @within File I/O
+-- @fixme No unit test.
+function path_verify (val, ...)
+    if type(val) ~= 'string' then
+        return nil, 'path is not a string.'
+    elseif val == '' then
+        return nil, 'path is the empty string.'
+    elseif ... then
+        return path_verify(...)
+    end
+    return true
+end
 
 do
     -- Patterns that sanitise directory paths.
+    -- Note, the order of these patterns is significant.
     local sanitisation_patterns = {
         -- Replace '/./' with '/'.
         {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
         -- Replace a sequence of '/'s with a single '/'.
         {PATH_SEP .. '+', PATH_SEP},
-        -- Remove './' at the beginning of a path.
-        {'^%.' .. PATH_SEP, ''},
         -- Remove trailing '/'s, but not for the root node.
-        {'(.)' .. PATH_SEP .. '$', '%1'}
+        {'(.)' .. PATH_SEP .. '$', '%1'},
+        -- Remove './' at the beginning of a path.
+        {'^%.' .. PATH_SEP, ''}
     }
 
     --- Sanitise a path.
     --
     -- @string path The path.
     -- @treturn string A sanitised path.
+    -- @raise An error if no path is given or if the path is the empty string.
     -- @within File I/O
     function path_sanitise (path)
+        assert(path_verify(path))
         for i = 1, #sanitisation_patterns do
             local pattern, repl = unpack(sanitisation_patterns[i])
             path = path:gsub(pattern, repl)
@@ -282,47 +304,34 @@ do
     --- Split a path into a directory and a filename.
     --
     -- @string path The file's path.
-    -- @treturn[1] string The directory the file is in.
-    -- @treturn[1] string The file's name.
-    -- @treturn[2] nil `nil` if `path` is the empty string ('').
-    -- @treturn[2] string An error message.
-    -- @raise An error if the path is the empty string.
+    -- @treturn string The directory the file is in.
+    -- @treturn string The file's name.
+    -- @raise An error if no path is given or if the path is the empty string.
     -- @within File I/O
     function path_split (path)
-        if path == '' then return nil, 'path is the empty string ("").' end
+        assert(path_verify(path))
         local dir, fname = path:match(split_pattern)
-        dir = path_sanitise(dir)
         if     dir == ''   then dir = '.'
         elseif fname == '' then fname = '.' end
-        assert(dir ~= '')
-        assert(fname ~= '')
-        return dir, fname
+        return path_sanitise(dir), fname
     end
 end
 
-do
-    -- Join path segments (worker)
-    --
-    -- Has the same function signature as `path_join`.
-    -- Does not sanitise the path it returns.
-    local function join (a, b, ...)
-        assert(type(a == 'string'), 'path segment is not a string.')
-        assert(a ~= '', 'path segment is the empty string.')
-        if not b then return a end
-        return a .. PATH_SEP .. path_join(b, ...)
-    end
-
-    --- Join multiple path segments.
-    --
-    -- @string ... Path segments.
-    -- @treturn string The complete path.
-    -- @raise An error if no path segments are given or if
-    --  a path segment is the empty string ('').
-    -- @within File I/O
-    function path_join (...)
-        return path_sanitise(join(...))
-    end
+--- Join multiple path segments.
+--
+-- @string ... Path segments.
+-- @treturn string The complete path.
+-- @raise An error if no path segments are given or if
+--  a path segment is the empty string.
+-- @within File I/O
+function path_join (...)
+    assert(path_verify(...))
+    return path_sanitise(concat({...}, PATH_SEP))
 end
+
+
+-- Modules
+-- -------
 
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
@@ -345,7 +354,6 @@ do
     }, ';')
 end
 
-local text = require 'text'
 local json = require 'lunajson'
 
 
@@ -355,17 +363,6 @@ local json = require 'lunajson'
 --- Prototype for prototypes.
 --
 -- @type Prototype
-Prototype = {}
-
---- Metatable for prototypes.
-Prototype.mt = {}
-setmetatable(Prototype, Prototype.mt)
-
---- Delegate to a prototype.
---
--- Sets the table's metatable to a copy of the prototype's metatable
--- and then sets the metatable's `__index` field to the prototype.
---
 -- @usage
 --      > ObjA = Prototype()
 --      > mt = getmetatable(ObjA)
@@ -374,11 +371,6 @@ setmetatable(Prototype, Prototype.mt)
 --      > end
 --      > ObjA.key = 'value'
 --      > ObjB = ObjA()
---      > ObjB.key
---      value
---      > -- Not pretty, but permissible.
---      > ObjB = {}
---      > ObjA(ObjB)
 --      > ObjB.key
 --      value
 --      > -- `ObjB` can override properties.
@@ -393,6 +385,16 @@ setmetatable(Prototype, Prototype.mt)
 --      > -- Metatables are copied, save for "__index".
 --      > tostring(ObjD)
 --      a string
+Prototype = {}
+
+--- Metatable for prototypes.
+Prototype.mt = {}
+setmetatable(Prototype, Prototype.mt)
+
+--- Delegate to a prototype.
+--
+-- Sets the table's metatable to a copy of the prototype's metatable
+-- and then sets the metatable's `__index` field to the prototype.
 --
 -- @tab tab A table.
 -- @treturn tab A prototype.
@@ -407,7 +409,11 @@ end
 --- Prototype for errors.
 --
 -- @type Error
+-- @usage
+--      FileOpenError = Error { message = 'failed to open $file.' }
 Error = Prototype()
+
+--- Default for error messages.
 Error.message = 'something went wrong.'
 
 --- Metatable for errors.
@@ -415,15 +421,63 @@ Error.mt = getmetatable(Error)
 
 --- Convert an error into a string.
 --
--- @usage
---      > err = Error{message = 'an error occurred.'}
---      > assert(false, err)
---      an error occurred.
+-- If the message contains variable names, they are replaced with the values
+-- of the fields with those names. See `exapnd vars` for the syntax.
 --
--- @treturn string The error's `message` field.
+-- @usage
+--      > err = Error {
+--      >     message = 'Semething went $severity wrong.',
+--      >     severity = 'terribly'
+--      > }
+--      > assert(false, err{severity = 'slightly'})
+--      Something went slightly wrong.
+--
+-- @treturn string The error message.
 function Error.mt:__tostring ()
-    return self.message
+    return expand_vars(self.message, self)
 end
+
+--- Prototype for connection errors.
+--
+-- @type ConnectionError
+-- @usage
+--      > ok, mt, data = pcall(pandoc.mediabag.fetch, url)
+--      > assert(ok, ConnectionError{host = url})
+ConnectionError = Error()
+
+--- Error message for connection errors.
+ConnectionError.message = 'failed to connect to $host.'
+
+--- Stand-in value for the host.
+ConnectionError.host = '<unspecified host>'
+
+--- Prototype for Zotero user ID lookup errors.
+--
+-- @type UIDLookupError
+-- @usage
+--      > ok, data = pcall(json.decode, str)
+--      > assert(ok, UIDLookupError{err = 'failed to parse: ' .. str})
+UIDLookupError = Error()
+
+--- Error message for user ID lookup errors.
+UIDLookupError.message = 'Zotero user ID lookup: $err.'
+
+--- Stand-in value for the error.
+UIDLookupError.err = 'something went wrong.'
+
+--- Prototype for Zotero group lookup errors.
+--
+-- @type GroupLookupError
+-- @usage
+--      > ok, data = pcall(json.decode, str)
+--      > assert(ok, GroupLookupError{err = 'failed to parse: ' .. str})
+GroupLookupError = Error()
+
+--- Error message for user ID lookup errors.
+GroupLookupError.message = 'Zotero group lookup: $err.'
+
+--- Stand-in value for the error.
+GroupLookupError.err = 'something went wrong.'
 
 
 -- FUNCTIONS
@@ -432,34 +486,90 @@ end
 -- Warnings
 -- --------
 
---- Print an error message to STDERR.
+--- Print a value to STDERR.
 --
--- Prefixes the message with `SCRIPT_NAME` and ': ', and appends `EOL`.
+-- `SCRIPT_NAME` and ': ' are printed before and `EOL` after the value.
 --
--- @param msg The message. Coerced to `string`.
--- @param ... Arguments to that message (think `string.format`).
---  Only applied if `msg` is a `string`.
+-- If the value is a string and contains variable names, they are replaced
+-- with the values of those variables as seen by the calling function.
+-- See `expand_vars` for the syntax.
+--
+-- If the value is of another type, it is coerced to a string before printing.
+--
+-- @param val The value.
 -- @within Warnings
-function errf (msg, ...)
-    if type(msg) ~= 'string' then msg = tostring(msg)
-                             else msg = msg:format(...)
+function log (val, _lvl)
+    local msg
+    if type(val) == 'string' then
+        if not _lvl then _lvl = 3 end
+        local ns = vars(_lvl)
+        msg = expand_vars(val, ns)
+    else
+        msg = tostring(val)
     end
-    io.stderr:write(SCRIPT_NAME, ': ', msg , EOL)
+    io.stderr:write(SCRIPT_NAME, ': ', msg, EOL)
 end
 
---- Print a warning to STDERR.
+--- Print a value to STDERR unless the user has requested less output.
 --
--- Only prints values if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
--- Otherwise the same as `errf`.
+-- The value is only printed if `PANDOC_STATE.verbosity` is *not* 'ERROR'.
+-- Otherwise the same as `log`.
 --
--- @param ... Takes the same arguments as `errf`.
+-- @string val The value.
 -- @within Warnings
-function warnf (...)
-    if PANDOC_STATE.verbosity ~= 'ERROR' then errf(...) end
+function warn (val)
+    if PANDOC_STATE.verbosity ~= 'ERROR' then log(val, 4) end
 end
 
-function infof (...)
-    if PANDOC_STATE.verbosity == 'INFO' then errf(...) end
+--- Print a value to STDERR if the user has requested more output.
+--
+-- The value is only printed if `PANDOC_STATE.verbosity` is 'INFO'.
+-- Otherwise the same as `log`.
+--
+-- @string val The value.
+-- @within Warnings
+function info (val)
+    if PANDOC_STATE.verbosity == 'INFO' then log(val, 4) end
+end
+
+
+-- Meta-programming
+-- ----------------
+
+--- Get the variables a function can access.
+--
+-- @int[opt=2] lvl A stack level, where
+--  1 points to the current function (i.e., `vars`),
+--  2 to that function's caller, and so on.
+-- @treturn table A mapping of variable names to values.
+-- @raise An error if there is no function at the given stack level.
+-- @within Meta-programming
+function vars (lvl)
+    if not lvl then lvl = 2 end
+    local vars = {}
+
+    for k, v in pairs(_ENV) do vars[k] = v end
+
+    local info = debug.getinfo(lvl)
+    if not info then return nil, lvl .. ': no such function.' end
+    local func = info.func
+    local i = 1
+    while true do
+        local k, v = debug.getupvalue(func, i)
+        if not k then break end
+        vars[k] = v
+        i = i + 1
+    end
+
+    i = 1
+    while true do
+        local k, v = debug.getlocal(lvl, i)
+        if not k then break end
+        vars[k] = v
+        i = i + 1
+    end
+
+    return vars
 end
 
 
@@ -468,17 +578,16 @@ end
 
 --- Run cleanup code after a function.
 --
--- The cleanup code runs regardless of whether an error occurs
--- in the function. However, Lua filters cannot respond to signals,
--- so it is *not* run if Pandoc exits because it catches a signal.
+-- The cleanup code runs regardless of whether an error occurs. However, Lua
+-- filters cannot respond to signals, so it is *not* run if Pandoc exits
+-- because it catches a signal.
 --
 -- @func ex The cleanup code. Its first argument indicates whether
 --  the protected call to `func` exited with an error. The remaining
 --  arguments are the values returned by `func`.
 -- @func func The code itself. Called in protected mode.
 -- @param ... Passed on to `func`.
--- @return The values that `func` returns.
--- @raise An error if `func` raises an error.
+-- @return What the given functions returns.
 -- @within Higher-order functions
 function do_after (ex, func, ...)
     local vs = {pcall(func, ...)}
@@ -489,10 +598,142 @@ function do_after (ex, func, ...)
 end
 
 
+-- Strings
+-- -------
+
+--- Iterate over substrings of a string.
+--
+-- @string str The string.
+-- @string pattern A pattern that matches the sequence of characters that
+--  separates substrings. Must *not* contain frontier patterns (`%f`).
+-- @int[opt] max Split up the string into at most that many substrings.
+-- @string[opt] inc Whether to include the seperator in the substring.
+--  `l` includes the seperator on the left, `r` on the right.
+--  By default, the seperator is *not* included.
+-- @treturn func A *stateful* iterator.
+-- @usage
+--      > for s in split('CamelCase', '%u', nil, 'l') do
+--      >   print(s)
+--      > end
+--      Camel
+--      Case
+--
+-- @within String manipulation
+-- @fixme What does split do if the seperator is the last character?
+-- @fixme No unit test.
+function split (str, pattern, max, inc)
+    local pos = 1
+    local n = 0
+    local i, j
+    return function ()
+        local sep, last
+        if not pos then return end
+        if inc == 'l' and i then sep = str:sub(i, j) end
+        if max and n == max then
+            last = -1
+        else
+            i, j = str:find(pattern, pos)
+            if     not i      then last = -1
+            elseif inc == 'r' then last = j
+                              else last = i - 1
+            end
+        end
+        local sub = str:sub(pos, last)
+        if sep then sub = sep .. sub end
+        n = n + 1
+        if j then pos = j + 1
+             else pos = nil
+        end
+        return sub
+    end
+end
+
+do
+    -- Lookup a variable from a variable expression.
+    --
+    -- See `expand_vars` for the expression syntax.
+    --
+    -- @tab ns A mapping of variable names to values.
+    -- @string var The name of the variable to look up.
+    -- @string _ If the value of the variable should be passed on to a
+    --  function, the literal `|`. Otherwise, the empty string.
+    -- @string func If the value of the variable should be passed on to a
+    --  function, the name of that function. Otherwise the empty string.
+    -- @treturn string The value of the expression.
+    -- @raise See `expand_vars`.
+    local function eval (ns, var, _, func)
+        local v = ns
+        for n in split(var, '%.') do
+            if type(v) ~= 'table' then break end
+            v = v[n]
+        end
+        if func ~= '' then
+            local f = ns[func]
+            assert(f, format('$%s%s%s: no such function.', var, _, func))
+            v = f(v)
+        end
+        local s = tostring(v)
+        assert(s, format('$%s%s%s: cannot coerce to a string.', var, _, func))
+        return s
+    end
+
+    --- Expand variables in strings.
+    --
+    -- If a word is preceded by a single "$" sign, that word is interpreted as
+    -- a variable name, and the "$" sign and the word are replaced with the
+    -- value of that variable.
+    --
+    --      > return expand_vars(
+    --      >     '$v1 is $v2.',
+    --      >     {v1 = 'foo', v2 = 'bar'}
+    --      > )
+    --      foo is bar.
+    --
+    -- If a word is preceded by two or more "$" signs, it is *not* replaced.
+    -- And any series of *n* "$" signs is replaced with *n* -- 1 "$" signs.
+    --
+    --      > expand_vars(
+    --      >   '$$v1 costs $$23 (and $- is just a dash).',
+    --      >   {v1 = 'foo'}
+    --      > )
+    --      $v1 costs $23 (and - is just a dash).
+    --
+    -- If a `$<variable>` expression is followed by a "|" character and
+    -- another word, the second word is interpreted as a function name;
+    -- the value of the given variable is then passed to that function,
+    -- and the whole expression `$<variable>|$<function>` is replaced
+    -- with the first value that this function returns.
+    --
+    --      > expand_vars(
+    --      >   '$v1|barify is bar!', {
+    --      >       v1 = 'foo',
+    --      >       barify = function (s)
+    --      >           return s:gsub('foo', 'bar')
+    --      >       end
+    --      >   }
+    --      > )
+    --      bar is bar!
+    --
+    -- @string str A string.
+    -- @tab ns A mapping of variable names to values.
+    -- @treturn string A transformed string.
+    -- @raise An error if there is no function of the given name or
+    --  if the value of the expression cannot be coerced to a string.
+    -- @within String manipulation
+    function expand_vars (str, ns)
+        assert(str, 'no string given.')
+        assert(ns, 'no namespace given.')
+        local function e (...) return eval(ns, ...) end
+        return str:gsub('%f[%$]%$([%w_%.]+)%f[%A](|?)([%w_]*)', e):
+                   gsub('%$(%$*)', '%1')
+    end
+end
+
+
 -- Tables
 -- ------
 
---- Return the keys and the length of a table.
+--- Get the keys and the length of a table.
 --
 -- @tab tab The table.
 -- @treturn tab The keys of `tab`.
@@ -501,26 +742,27 @@ end
 function keys (tab)
     local ks = {}
     local n = 0
-    local k = next(tab, nil)
-    while k ~= nil do
+    local k
+    while true do
+        k = next(tab, k)
+        if k == nil then break end
         n = n + 1
         ks[n] = k
-        k = next(tab, k)
     end
     return ks, n
 end
 
---- Recursively apply a function to every node of a graph.
+--- Apply a function to every node of a graph.
 --
 -- The graph is walked bottom-up.
 --
 -- @func func A function that takes a value and returns a another one.
---  If the function returns `nil`, the node is not changed.
--- @param data A graph.
--- @return `graph` with `func` applied.
+--  The node is *not* changed if the function returns `nil`.
+-- @param graph A graph.
+-- @treturn table A new graph.
 -- @raise An error if the graph is too high.
 -- @within Table manipulation
-function rmap (func, graph, _rd)
+function mapr (func, graph, _rd)
     if type(graph) ~= 'table' then
         local nv = func(graph)
         if nv == nil then return graph end
@@ -531,21 +773,33 @@ function rmap (func, graph, _rd)
     end
     assert(_rd < 512, 'too much recursion.')
     local ret = {}
-    local k = next(graph, nil)
-    while k ~= nil do
+    local k
+    while true do
+        k = next(graph, k)
+        if k == nil then break end
         local v = graph[k]
-        if type(v) == 'table' then v = rmap(func, v, _rd) end
+        if type(v) == 'table' then v = mapr(func, v, _rd) end
         local nv = func(v)
         if nv == nil then ret[k] = v
                      else ret[k] = nv
         end
-        k = next(graph, k)
     end
     return ret
 end
 
--- @fixme Undocumented.
--- @fixme No unit tests.
+--- Expand the values of an iterator.
+--
+-- @func iter An iterator.
+-- @param[opt] val The value to start iterating with.
+-- @treturn table The values generated by the iterator.
+-- @usage
+--      > str = 'key: value'
+--      > k, v = tabulate(split(str, '%s*:%s*', 2))
+--      > print(k, v)
+--      key     value
+--
+-- @within Table manipulation
+-- @fixme No unit test.
 -- @todo Check if that function may be useful elsewhere.
 function tabulate (iter, val)
     local tab = {}
@@ -562,34 +816,12 @@ function tabulate (iter, val)
     return unpack(tab)
 end
 
--- do
---     local lower = text.lower
-
---     --- Recursively convert table keys to lowercase.
---     --
---     -- @tab tab The table.
---     -- @return A copy of `tab` with keys in lowercase.
---     -- @raise An error if the data is nested too deeply.
---     -- @within Table manipulation
---     function lower_keys (tab, _rd)
---         if not _rd then _rd = 0 end
---         assert(_rd < 512, 'too much recursion.')
---         local ret = {}
---         for k, v in pairs(tab) do
---             if type(k) == 'string' then k = lower(k)               end
---             if type(v) == 'table'  then v = lower_keys(v, _rd + 1) end
---             ret[k] = v
---         end
---         return ret
---     end
--- end
-
 --- Iterate over the keys of a table in a given order.
 --
 -- @tab tab A table.
 -- @func[opt] func A sorting function.
---  If no function is given, sorts by number.
--- @treturn func A *stateful* iterator over `tab`.
+--  If no function is given, sorts lexically.
+-- @treturn func A *stateful* iterator over the table.
 -- @within Table manipulation
 function sorted_pairs (tab, func)
     local ks = keys(tab)
@@ -606,8 +838,25 @@ function sorted_pairs (tab, func)
     return iter, tab, nil
 end
 
--- @fixme Undocumented.
--- @fixme No unit tests.
+--- Define a sorting function from a list of values.
+--
+-- The sorting function will sort the given values in the order in which
+-- they were passed. Unlisted values are sorted lexically.
+--
+-- @param ... Values.
+-- @treturn func A sorting function.
+-- @usage
+--      > tab = {a = 3, b = 4, c = 2, d = 1}
+--      > for k, v in sorted_pairs(tab, in_order{'d', 'c'}) do
+--      >>  print(k, v)
+--      > end
+--      d   1
+--      c   2
+--      a   3
+--      b   4
+--
+-- @within Table manipulation
+-- @fixme No unit test.
 function in_order(...)
     local order = {}
     local list = {...}
@@ -623,46 +872,62 @@ function in_order(...)
 end
 
 
--- Strings
--- -------
-
--- @fixme Undocumented.
--- NB: Does not support %f.
--- @fixme No unit tests.
-function split (str, pattern, max, inc)
-    local pos = 1
-    local n = 0
-    local i, j
-    return function ()
-        local sep, last
-        if not pos then return end
-        if inc == 's' and i then sep = str:sub(i, j) end
-        if max and n == max then
-            last = -1
-        else
-            i, j = str:find(pattern, pos)
-            if     not i      then last = -1
-            elseif inc == 'e' then last = j
-                              else last = i - 1
-            end
-        end
-        local sub = str:sub(pos, last)
-        if sep then sub = sep .. sub end
-        n = n + 1
-        if j then pos = j + 1
-             else pos = nil
-        end
-        return sub
-    end
-end
-
-
 -- CSL items
 -- ---------
 
-local function extras (item)
+--- The preferred order of keys in YAML bibliography files.
+--
+-- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
+-- of the CSL specification lists all field names.
+--
+-- @see csl_keys_sort
+-- @within CSL items
+CSL_KEY_ORDER = {
+    'id',                       -- Item ID.
+    'type',                     -- For example, 'paper', 'book'.
+    'author',                   -- Author(s).
+    'recipient',                -- Recipient of the document.
+    'status',                   -- Publication status (e.g., 'forthcoming').
+    'issued',                   -- When the item was published.
+    'title',                    -- The title.
+    'title-short',              -- A short version of the title.
+    'short-title',              -- Ditto.
+    'original-title',           -- Original title.
+    'translator',               -- Translator(s).
+    'editor',                   -- The editor(s).
+    'container-title',          -- Publication the item was published in.
+    'container-title-short',    -- A short version of that title.
+    'collection-editor',        -- E.g., the series editor(s).
+    'collection-title',         -- E.g., a series.
+    'collection-title-short',   -- A short version of the title.
+    'edition',                  -- Container's edition.
+    'volume',                   -- Volume no.
+    'issue',                    -- Issue no.
+    'page-first',               -- First page.
+    'page',                     -- Pages or page range *or* number of pages.
+    'publisher',                -- Publisher.
+    'publisher-place',          -- City/cities the item was published in.
+    'original-publisher',       -- Original publisher.
+    'original-publisher-place', -- Place the item was originally published in.
+    'doi',                      -- The DOI.
+    'pmcid',                    -- PubMed Central reference number.
+    'pmid',                     -- PubMed reference number.
+    'url',                      -- The URL.
+    'accessed',                 -- When the URL was last accessed.
+    'isbn',                     -- The ISBN of the item.
+    'issn',                     -- The ISSN of the container.
+    'call-number',              -- Call number (of a library).
+    'language',                 -- Language the item is in.
+    'abstract',                 -- The abstract.
+}
+
+--- Iterate over key-value pairs in the "note" field of CSL items.
+--
+-- @tab item A CSL item.
+-- @treturn func A *stateful* iterator.
+-- @within CSL items
+function csl_item_extras (item)
     if not item.note then return function () return end end
-    -- @fixme this would require stringification for metadata right?
     local next_ln = split(item.note, '\r?\n')
     return function ()
         local ln = next_ln()
@@ -673,6 +938,49 @@ local function extras (item)
     end
 end
 
+--- Sorting function for CSL field names.
+--
+-- Sorts field in the order in which they are listed in `CSL_KEY_ORDER`.
+-- Unlisted fields are placed after listed ones in lexical order.
+--
+-- @string a A CSL fieldname.
+-- @string b Another CSL fieldname.
+-- @treturn bool Whether `a` should come before `b`.
+-- @within CSL items
+-- @function csl_keys_sort
+csl_keys_sort = in_order(unpack(CSL_KEY_ORDER))
+
+--- Sorting function for CSL items.
+--
+-- @tab a A CSL item.
+-- @tab b Another CSL item.
+-- @treturn bool Whether `a` should come before `b`.
+-- @within CSL items
+function csl_items_sort (a, b)
+    return a.id < b.id
+end
+
+--- Pick the IDs of CSL items out of a list of CSL items.
+--
+-- @tab items A list of CSL items.
+-- @treturn {[string]=true,...} A [set](https://www.lua.org/pil/11.5.html)
+--  of item IDs.
+-- @raise An error if an item has an ID that cannot be coerced to a string.
+-- @within CSL items
+function csl_items_ids (items)
+    local ids = {}
+    for i = 1, #items do
+        local id = items[i].id
+        local t = type(id)
+        if     t == 'string' then ids[id] = true
+        elseif t == 'table'  then ids[stringify(id)] = true
+        elseif t ~= 'nil'    then error 'cannot parse item ID.'
+        end
+    end
+    return ids
+end
+
+
 -- File I/O
 -- --------
 
@@ -680,10 +988,10 @@ end
 --
 -- @string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
--- @raise An error if the path is the empty string ('').
+-- @raise An error if no path is given or if the path is the empty string.
 -- @within File I/O
 function path_is_abs (path)
-    assert(path ~= '', 'path is the empty string ("").')
+    assert(path_verify(path))
     if PATH_SEP == '\\' and path:match '^.:\\' then return true end
     return path:match('^' .. PATH_SEP) ~= nil
 end
@@ -704,15 +1012,18 @@ do
         end
     end
 
-    --- Prettify paths (worker).
+    --- Prettify paths.
     --
-    -- Removes the current working directory from the beginning of a path
-    -- and, on POSIX systems, replaces the user's home directory with '~'.
+    -- More precisely, remove the current working directory from the
+    -- beginning of a path and, on POSIX systems, replace the user's
+    -- home directory with '~'.
     --
-    -- @string path A path.
-    -- @treturn string A prettier path.
-    local function prettify (path)
-        assert(path ~= '', 'path is the empty string ("").')
+    -- @string ... Paths.
+    -- @treturn string Prettier paths.
+    -- @raise An error if no path is given or if the path is the empty string.
+    -- @within File I/O
+    function path_prettify (path, ...)
+        assert(path_verify(path))
         path = path_sanitise(path)
         if get_working_directory then
             local wd = get_working_directory()
@@ -727,21 +1038,8 @@ do
                 return '~' .. path:sub(last)
             end
         end
+        if ... then return path, path_prettify(...) end
         return path
-    end
-
-    --- Prettify paths.
-    --
-    -- Removes the current working directory from the beginning of a path
-    -- and, on POSIX systems, replaces the user's home directory with '~'.
-    --
-    -- @string ... Paths.
-    -- @treturn[...] string Prettier paths.
-    -- @within File I/O
-    function path_prettify (...)
-        local paths = {...}
-        assert(#paths > 0, 'no paths given.')
-        return unpack(rmap(prettify, paths))
     end
 end
 
@@ -749,26 +1047,27 @@ end
 --
 -- @treturn string The directory of the first input file
 --  or '.' if none was given.
+-- @raise An error if no path is given or if the path is the empty string.
 -- @within File I/O
 function wd ()
     local fname = PANDOC_STATE.input_files[1]
     if not fname then return '.' end
-    assert(type(fname) == 'string', 'filename is not a string.')
-    assert(fname ~= '', 'filename is the empty string ("").')
+    assert(path_verify(fname))
     local wd = path_split(fname)
     return wd
 end
 
---- Check whether a filename refers to a file.
+--- Check whether a file exists.
 --
--- @string fname The filename.
+-- @string fname A filename.
 -- @treturn[1] boolean `true` if the file exists.
 -- @treturn[2] nil `nil` if the file does not exist.
 -- @treturn[2] string An error message.
 -- @treturn[2] int The error number 2.
+-- @raise An error if no path is given or if the path is the empty string.
 -- @within File I/O
 function file_exists (fname)
-    assert(fname ~= '', 'filename is the empty string ("").')
+    assert(path_verify(fname))
     local file, err, errno = io.open(fname, 'r')
     if not file then return nil, err, errno end
     assert(file:close())
@@ -786,6 +1085,7 @@ do
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the file could not be found.
     -- @treturn[2] string An error message.
+    -- @raise An error if no path is given or if the path is the empty string.
     -- @within File I/O
     function file_locate (fname)
         if not resource_path or file_exists(fname) then return fname end
@@ -799,8 +1099,8 @@ end
 
 --- Read a file.
 --
--- @string fname The name of the file.
--- @treturn[1] string The content of the file.
+-- @string fname A filename.
+-- @treturn[1] string The contents of the file.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] int An error number.
@@ -826,7 +1126,7 @@ do
     --
     -- @string path The path.
     -- @treturn string An absolute path.
-    local function path_mk_abs (path)
+    local function path_make_abs (path)
         if path_is_abs(path) then return path end
         return path_join(get_working_directory(), path)
     end
@@ -839,9 +1139,7 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] int An error number.
-    -- @raise An error if `file` is neither a `string` nor a file handle.
     local function write_to_file (fname, ...)
-        assert(fname ~= '', 'filename is the empty string.')
         local file, ok, err, errno
         file, err, errno = io.open(fname, 'w')
         if not file then return nil, err, errno end
@@ -859,62 +1157,64 @@ do
     -- but another process may create a file between the time `file_write`
     -- checks whether a filename is in use and the time it starts writing.
     --
-    -- Prints warnings and errors to STDERR.
+    -- Some errors and warnings may be printed to STDERR.
     --
-    -- **Caveats:** Data is first written to a temporary file, that file is
-    -- then renamed to the given filename. This is safe and secure starting
-    -- with Pandoc v2.8. If you are using an older version of Pandoc, then
-    -- the caveats of `with_tmp_file` apply.
+    -- <h3>Caveats:</h3>
     --
-    -- @string fname The name of the file.
+    -- Data is first written to a temporary file, that file is then renamed to
+    -- the given filename. This is safe and secure starting with Pandoc v2.8.
+    -- If you are using an older version of Pandoc, then the caveats of
+    -- `with_tmp_file` apply.
+    --
+    -- @string fname A filename.
     -- @string ... The data.
     -- @treturn[1] bool `true` if the data was written to the given file.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] int An error number.
+    -- @raise An error if no filename is given or
+    --  if the filename is the empty string.
     -- @within File I/O
-    function file_write(fname, ...)
-        assert(fname ~= '', 'filename is the empty string.')
-        local dir, base = path_split(path_mk_abs(fname))
+    function file_write (fname, ...)
+        assert(path_verify(fname))
+        local dir, base = path_split(path_make_abs(fname))
         local data = {...}
         local tmp_dir
         local vs = {with_temporary_directory(dir, 'pdz', function (td)
             tmp_dir = td
-            warnf('created temporary directory %s.', path_prettify(td))
+            warn 'created temporary directory $td|path_prettify.'
             local tmp_file = path_join(td, base)
             local ok, err, errno = write_to_file(tmp_file, unpack(data))
             if not ok then return nil, err, errno end
             if file_exists(fname) then
-                warnf('replacing %s.', path_prettify(fname))
+                warn 'replacing $fname|path_prettify ...'
             end
             return os.rename(tmp_file, fname)
         end)}
         if tmp_dir and not file_exists(tmp_dir) then
-            warnf('removed %s.', path_prettify(tmp_dir))
+            warn 'removed $fname|path_prettify.'
         end
         return unpack(vs)
     end
 
     if not pandoc.types or PANDOC_VERSION < {2, 8} then
-        function file_write(fname, ...)
-            -- luacheck: ignore err
-            assert(fname ~= '', 'filename is the empty string ("").')
+        function file_write (fname, ...)
+            assert(path_verify(fname))
             local dir = path_split(fname)
             local data = {...}
-            local tmp_file_copy
-            local vs = {with_tmp_file(dir, nil, function(tmp_file)
-                tmp_file_copy = tmp_file
-                warnf('writing data to temporary file %s.',
-                      path_prettify(tmp_file))
-                local ok, err, errno = write_to_file(tmp_file, unpack(data))
+            local tmp_file
+            local vs = {with_tmp_file(dir, nil, function(tf)
+                tmp_file = tf
+                warn 'writing data to temporary file $tf|path_prettify'
+                local ok, err, errno = write_to_file(tf, unpack(data))
                 if not ok then return nil, err, errno end
                 if file_exists(fname) then
-                    warnf('replacing %s.', path_prettify(fname))
+                    warn 'replacing $fname|path_prettify'
                 end
-                return os.rename(tmp_file, fname)
+                return os.rename(tf, fname)
             end)}
-            if tmp_file_copy and not file_exists(tmp_file_copy) then
-               warnf('%s renamed to %s.', path_prettify(tmp_file_copy, fname))
+            if tmp_file and not file_exists(tmp_file) then
+                warn '$tmp_file|path_prettify renamed to $fname|path_prettify'
             end
             return unpack(vs)
         end
@@ -952,7 +1252,7 @@ do
     -- This is subject to race conditions.
     --
     -- @string[opt] dir A directory to prefix the filename with.
-    --  Must not be the empty string ('').
+    --  Must not be the empty string.
     -- @string[optchain='pdz-XXXXXX'] templ A template for the filename.
     --  'X's are replaced with random alphanumeric characters.
     --  Must contain at least six 'X's.
@@ -960,7 +1260,7 @@ do
     -- @treturn[2] nil `nil` if the generated filename is in use.
     -- @treturn[2] string An error message.
     -- @raise An error if the template or the directory is
-    --  not a string or the empty string ('').
+    --  not a string or the empty string.
     -- @within File I/O
     function tmp_fname (dir, templ)
         if templ == nil then
@@ -992,41 +1292,45 @@ end
 do
     -- Remove a file unless its second and third argument are `true`.
     --
-    -- Prints an error to STDERR if the file could not be removed.
+    -- If the file could not be removed, an error message is printed to STDERR.
+    --
+    -- @string fname A filename.
+    -- @bool Whether a function call succeeded.
+    -- @param The return value of that function call.
     local function clean_up (fname, status, result)
         if status and result then return end
-        warnf('removing %s.', fname)
+        warn 'removing $fname|path_prettify.'
         local ok, err, errno = os.remove(fname)
-        if not ok and errno ~= 2 then errf(err) end
+        if not ok and errno ~= 2 then log(err) end
     end
 
     --- Run a function with a temporary file.
     --
     -- If the function raises an error or returns `nil` or `false`, then the
-    -- temporary file is deleted. Prints an error to STDERR if the file could
-    -- not be removed.
+    -- temporary file is deleted. If the file could not be removed, an error
+    -- message is printed to STDERR.
     --
     -- The function passed to `with_tmp_file` must *not* change the working
-    -- directory, say, by invoking, `pandoc.system.with_working_directory`.
-    -- This could cause an abitrary file to be deleted instead of the
-    -- temporary one; it could also cause the automatic deletion of the
-    -- temporary file to fail.
+    -- directory. This could cause an abitrary file to be deleted instead of
+    -- the temporary one. And it would likely cause the automatic deletion
+    -- of the temporary file to fail.
     --
-    -- **Caveats:** Any temporary file you `io.open` may have been created
-    -- by *another* process. If you create a temporary file in a directory
-    -- that others users have write access to, `/tmp`, for example, then
-    -- this is a security issue.
+    -- <h3>Caveats:</h3>
     --
-    -- @string[opt] dir A directory to prefix the name of the temporary
-    --  file with. Must not be the empty string (''). See `tmp_fname`.
-    -- @string[optchain='pdz-XXXXXX'] templ A template for the name of the
-    --  temporary file. 'X's are replaced with random alphanumeric characters.
-    --  Must contain at least six 'X's. See `tmp_fname`.
+    -- The temporary file may have been created by *another* process. If that
+    -- file is located within a directory that users other than the one
+    -- running this script have write access to (e.g., `/tmp`), then this
+    -- is a security issue.
+    --
+    -- @string[opt] dir A directory to prefix the name
+    --  of the temporary file with. See `tmp_fname`.
+    -- @string[optchain='pdz-XXXXXX'] templ A template for the name
+    --  of the temporary file. 'X's are replaced with random
+    --  alphanumeric characters. See `tmp_fname`.
     -- @func func The function to run.
     --  Passed the name of the temporary file as first argument.
-    -- @param ... Passed on to `func`.
-    -- @return The values that `func` returns.
-    -- @raise An error if `func` raises an error.
+    -- @param ... Passed on to the function.
+    -- @return The values that the function returns.
     -- @within File I/O
     function with_tmp_file (dir, templ, func, ...)
         local tmp_file, err = tmp_fname(dir, templ)
@@ -1034,22 +1338,6 @@ do
         local function my_clean_up (...) return clean_up(tmp_file, ...) end
         return do_after(my_clean_up, func, tmp_file, ...)
     end
-end
-
-
--- Networking
--- ----------
-
---- Retrieve data from a URL via an HTTP GET request.
---
--- @string url The URL.
--- @treturn string The MIME type of the HTTP content.
--- @treturn string The HTTP content itself.
--- @raise An error if no data can be retrieved.
---  This error can only be caught since Pandoc v2.11.
--- @within Networking
-function http_get (url)
-    return pandoc.mediabag.fetch(url, '.')
 end
 
 
@@ -1072,7 +1360,7 @@ do
         return '\\[' .. char:sub(2, -2) .. '\\]' .. tail
     end
 
-    -- Pairs of expressions and replacements to escape Markdown.
+    -- Pairs of expressions and replacement functions.
     local esc_patterns = {
         -- Backslashes.
         {'(\\+)', '\\%1'},
@@ -1087,15 +1375,15 @@ do
         {'(%b[])([%({])', esc_brackets}
     }
 
-    --- Escape Markdown.
+    --- Escape Markdown syntax.
     --
-    -- Only escapes [Markdown that Pandoc recognises in bibliographic
+    -- Only escapes [Markdown Pandoc recognises in bibliographic
     -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
-    -- @string str A string.
-    -- @treturn string `str` with Markdown escaped.
+    -- @string str Non-markdown text.
+    -- @treturn string Text with markdown syntax escaped.
     -- @within Converters
-    function esc_md (str)
+    function escape_markdown (str)
         for i = 1, #esc_patterns do
             local pattern, repl = unpack(esc_patterns[i])
             str = str:gsub(pattern, repl)
@@ -1110,12 +1398,12 @@ do
 
     -- Escape Markdown in a string element.
     --
-    -- Works like `esc_md` but for Pandoc string elements.
+    -- Works like `escape_markdown` but for Pandoc string elements.
     --
     -- @tparam pandoc.Str str A string element.
-    -- @treturn pandoc.Str A string with Markdown markup escaped.
+    -- @treturn pandoc.Str A string with all Markdown syntax escaped.
     function esc.Str (str)
-        str.text = esc_md(str.text)
+        str.text = escape_markdown(str.text)
         return str
     end
 
@@ -1124,9 +1412,9 @@ do
 
     -- Make a function that converts an element to Markdown.
     --
-    -- @string char The Markdown markup character for that element.
-    -- @treturn func The conversion function.
-    local function mk_elem_conv_f (char)
+    -- @string char A Markdown markup character.
+    -- @treturn func A conversion function.
+    local function make_conv_f (char)
         return function (elem)
             local str = stringify(pandoc.walk_inline(elem, md))
             return Str(char .. str .. char)
@@ -1134,10 +1422,10 @@ do
     end
 
     -- Convert AST elements into Markdown text.
-    md.Emph = mk_elem_conv_f '*'
-    md.Strong = mk_elem_conv_f '**'
-    md.Subscript = mk_elem_conv_f '~'
-    md.Superscript = mk_elem_conv_f '^'
+    md.Emph = make_conv_f '*'
+    md.Strong = make_conv_f '**'
+    md.Subscript = make_conv_f '~'
+    md.Superscript = make_conv_f '^'
 
     -- Convert <span> elements to Markdown text.
     --
@@ -1195,7 +1483,6 @@ do
         return stringify(walk(walk(elem, esc), md))
     end
 end
-
 
 do
     local rep = string.rep
@@ -1275,46 +1562,46 @@ do
     converters.number = tostring
     converters.string = scalarify
 
-    --- Generate a YAML representation of a data tree.
+    --- Generate a YAML representation of a graph.
     --
-    -- Uses `EOL` to end lines. Only parses UTF-8 encoded strings.
-    -- Strings in other encodings will be mangled.
+    -- Lines are termined with `EOL` to end lines.
+    -- Strings in other encodings other than UTF-8 will be mangled.
     -- Does *not* escape *all* non-printable characters (because Unicode).
     --
-    -- @param data The data.
+    -- @param graph A graph.
     -- @int[opt=4] ind How many spaces to indent blocks.
     -- @func[optchain] sort_f A function to sort keys of mappings.
     --  Defaults to sorting them lexically.
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
     -- @treturn[2] string An error message.
-    -- @raise An error if the data cannot be expressed in YAML
-    --  or is nested too deeply.
+    -- @raise An error if data cannot be expressed in YAML
+    --  or if the graph is too high.
     -- @within Converters
-    function yamlify (data, ind, sort_f, _col, _rd)
+    function yamlify (graph, ind, sort_f, _col, _rd)
         if not _rd then _rd = 0 end
         assert(_rd < 1024, 'too much recursion.')
         if not ind then ind = 4 end
-        local t = type(data)
+        local t = type(graph)
         local conv = converters[t]
-        if conv then return conv(data) end
+        if conv then return conv(graph) end
         if t ~= 'table' then error(t .. ': cannot be expressed in YAML.') end
         _rd = _rd + 1
         if not _col then _col = 0 end
         local str = ''
-        local n = #data
-        local nkeys = select(2, keys(data))
+        local n = #graph
+        local nkeys = select(2, keys(graph))
         local sp = spaces(_col)
         if n == nkeys then
             local col = _col + 2
             for i = 1, n do
                 if i > 1 then str = str .. sp end
-                str = str .. '- ' .. yamlify(data[i], ind, sort_f, col, _rd)
+                str = str .. '- ' .. yamlify(graph[i], ind, sort_f, col, _rd)
                 if i ~= n then str = str .. EOL end
             end
         else
             local i = 0
-            for k, v in sorted_pairs(data, sort_f) do
+            for k, v in sorted_pairs(graph, sort_f) do
                 i = i + 1
                 if type(k) == 'number' then k = tostring(k)
                                        else k = scalarify(k)
@@ -1333,158 +1620,43 @@ do
     end
 end
 
---- Replace `<sc>` with `<span style="font-variant: small-caps">`.
---
--- @string str A string.
--- @treturn string `str` with `<sc>...</sc>` replaced by <span> tags.
--- @within Converters
-function sc_to_span (str)
-    if type(str) ~= 'string' then
-        return nil, 'given pseudo-HTML code is not a string.'
-    end
-    local op, n = str:gsub('<sc>', '<span style="font-variant: small-caps">')
-    if n == 0 then return str end
-    local cl, m = op:gsub('</sc>', '</span>')
-    if m == 0 then return str end
-    return cl
-end
-
---- Convert Zotero pseudo-HTML to Markdown.
---
--- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
--- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
---
--- @string str Pseudo-HTML code.
--- @treturn[1] string Text formatted in Markdown.
--- @treturn[2] nil `nil` if `html` is not a `string`.
--- @treturn[2] string An error message.
--- @within Converters
-function html_to_md (str)
-    if type(str) ~= 'string' then
-        return nil, 'given pseudo-HTML code is not a string.'
-    end
-    local html = sc_to_span(str)
-    local doc = pandoc.read(html, 'html')
-    return markdownify(doc)
-end
-
-do
-    local floor = math.floor
-    local decode = json.decode
-
-    -- Convert numbers to strings.
-    --
-    -- Also converts floating point numbers to integers. This is needed
-    -- because all numbers are floating point numbers in JSON, but some
-    -- versions of Pandoc expect integers.
-    --
-    -- @tab data The data.
-    -- @return A copy of `data` with numbers converted to strings.
-    -- @raise An error if the data is nested too deeply.
-    -- @within Converters
-    -- fixme this doc is wrong
-    local function num_to_str (data)
-        if type(data) ~= 'number' then return data end
-        return tostring(floor(data))
-    end
-
-    --- Convert a CSL JSON string to a Lua data structure.
-    --
-    -- @string str A CSL JSON string.
-    -- @return A Lua data structure.
-    -- @within Converters
-    -- @fixme No unit tests.
-    -- @fixme Errors are undocumented.
-    function csljson_to_lua (str)
-        assert(str ~= '', 'no data.')
-        return rmap(num_to_str, decode(str))
-    end
-end
-
--- do
---     local read = pandoc.read
-
---     --- Convert a CSL JSON string to Pandoc metadata.
---     --
---     -- @string str A CSL JSON string.
---     -- @treturn pandoc.MetaMap Pandoc metadata.
---     -- @within Converters
---     -- @fixme No unit tests.
---     -- @fixme Errors are undocumented.
---     function csljson_to_meta (str)
---         assert(str ~= '', 'no data.')
---         local doc = read(str, 'csljson')
---         local meta = doc.meta
---         assert(meta, 'no metadata block.')
---         local refs = meta.references
---         assert(refs, 'no references.')
---         return refs
---     end
--- end
-
-do
-    local work_arounds = {}
-
-    work_arounds['original-date'] = function (v)
-            return {['date-parts'] = {{v}}}
-    end
-
-    -- The extra field may contain data, for example, the original
-    -- publication date, that should go into the main body of the
-    -- CSL item (or else it will not be picked up). This may be a bug
-    -- in Pandoc or in Zotero. Funnily enough, Pandoc catches this
-    -- in the `references` metadata field, but not in bibliography files.
-    -- @fixme Rewrite the above.
-    local function apply_workarounds (items)
-        for i = 1, #items do
-            local item = items[i]
-            for k, v in extras(item) do
-                local f = work_arounds[k]
-                if f then item[k] = f(v) end
-            end
-        end
-        return items
-    end
-
-    -- @fixme Undocumented.
-    function zot_csljson_to_lua (str)
-        local data = csljson_to_lua(str)
-        local items = data.items
-        assert(items, 'nothing found.')
-        return apply_workarounds(items)
-    end
-end
-
--- @fixme Undocumented.
--- function zot_csljson_to_meta (str)
---     -- This is ugly, but I see no better way.
---     local _, i = str:find '^%s*{%s*(["\'])items%1%s*:%s*'
---     assert(i, 'failed to parse: ' .. str)
---     local _, j = str:find '%s*}%s*$'
---     assert(j, 'failed to parse: ' .. str)
---     local nstr = str:sub(i + 1, j - 1)
---     assert(nstr and nstr ~= '', 'failed to parse: ' .. str)
---     return csljson_to_meta(nstr)
--- end
-
 do
     local converters = {}
 
-    function converters.boolean (...)
-        return ...
+    -- Convert a Lua boolean to a pandoc.MetaBool
+    --
+    -- @bool b A boolean value.
+    -- @treturn pandoc.MetaBool The same boolean value.
+    function converters.boolean (x)
+        return pandoc.MetaBool(x)
     end
 
+    -- Convert a Lua number to a pandoc.MetaInlines string.
+    --
+    -- @bool n A number.
+    -- @treturn pandoc.MetaInlines The same number.
     function converters.number (n)
         return MetaInlines(List{Str(tostring(n))})
     end
 
+    -- Convert a Lua string to a pandoc.MetaInlines string.
+    --
+    -- Zotero pseudo-HTML formatting is kept.
+    --
+    -- @string s A string.
+    -- @treturn pandoc.MetaInlines The same string.
     function converters.string (s)
-        local html = sc_to_span(s)
+        local html = zot_to_html(s)
         local inlines = pandoc.read(html, 'html').blocks[1].content
         return MetaInlines(inlines)
     end
 
-    function pandocify (item)
+    --- Convert a CSL item to a Pandoc metadata value.
+    --
+    -- @tab item A CSL item.
+    -- @treturn pandoc.MetaMap A Pandoc metadata value.
+    -- @within Converters
+    function csl_item_to_meta (item)
         local t = type(item)
         local conv = converters[t]
         if conv then return conv(item) end
@@ -1496,19 +1668,110 @@ do
         if n == nkeys then
             local list = MetaList{}
             for i = 1, n do
-                list[i] = pandocify(item[i])
+                list[i] = csl_item_to_meta(item[i])
             end
             return list
         else
             local map = MetaMap{}
             for k, v in pairs(item) do
-                map[k] = pandocify(v)
+                map[k] = csl_item_to_meta(v)
             end
             return map
         end
     end
 end
 
+--- Convert Zotero pseudo-HTML to HTML.
+--
+-- @string zot Zotero pseudo-HTML code.
+-- @treturn string HTML code.
+-- @within Converters
+function zot_to_html (zot)
+    if type(zot) ~= 'string' then return nil, 'given code is not a string.' end
+    local op, n = zot:gsub('<sc>', '<span style="font-variant: small-caps">')
+    if n == 0 then return zot end
+    local cl, m = op:gsub('</sc>', '</span>')
+    if m == 0 then return zot end
+    return cl
+end
+
+--- Convert Zotero pseudo-HTML to Markdown.
+--
+-- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
+-- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
+--
+-- @string zot Zotero pseudo-HTML code.
+-- @treturn[1] string Markdown text.
+-- @treturn[2] nil `nil` if `html` is not a `string`.
+-- @treturn[2] string An error message.
+-- @within Converters
+function zot_to_md (zot)
+    if type(zot) ~= 'string' then return nil, 'given code is not a string.' end
+    local html = zot_to_html(zot)
+    local doc = pandoc.read(html, 'html')
+    return markdownify(doc)
+end
+
+do
+    local floor = math.floor
+    local decode = json.decode
+
+    -- Convert numbers to strings.
+    --
+    -- Floating point numbers are converted to integers.
+    -- Data of other types is returned as is.
+    --
+    -- @tab data The data.
+    -- @return The converted data.
+    local function num_to_str (data)
+        if type(data) ~= 'number' then return data end
+        return tostring(floor(data))
+    end
+
+    --- Parse a CSL JSON string.
+    --
+    -- @string str A CSL JSON string.
+    -- @treturn[1] tab A CSL item.
+    -- @treturn[2] nil `nil` if the string cannot be parsed.
+    -- @treturn[2] string An error message.
+    -- @within Converters
+    -- @fixme No unit test.
+    function parse_csl_json (str)
+        if str == '' then return nil, 'got the empty string.' end
+        local ok, data = pcall(decode, str)
+        if not ok then return nil, 'cannot parse: ' .. str end
+        return mapr(num_to_str, data)
+    end
+end
+
+
+-- Networking
+-- ----------
+
+do
+    -- luacheck: ignore pcall
+    local pcall = pcall
+    local fetch = pandoc.mediabag.fetch
+
+    --- Retrieve data from a URL via an HTTP GET request.
+    --
+    -- @string url The URL.
+    -- @treturn string The MIME type of the HTTP content.
+    -- @treturn string The HTTP content itself.
+    -- @raise An error if the host cannot be reached. If you are running
+    --  Pandoc v2.11 or later, this is a `ConnectionError`, which can be
+    --  caught. If you a running an older version of Pandoc it is a
+    --  Pandoc exception, which cannot be caught.
+    -- @within Networking
+    function http_get (url)
+        local ok, mt, data = pcall(fetch, url, '.')
+        if not ok then
+            local host = url:match '(.-)%f[:/]/+' or url
+            error(ConnectionError{host = host})
+        end
+        return mt, data
+    end
+end
 
 
 -- zotxt
@@ -1520,10 +1783,10 @@ end
 -- @usage
 --      > handle = Zotxt()
 --      > handle.citekey_types = pandoc.List{'betterbibtexkey'}
---      > local csl_item = handle:get_csl_item('name2019TwoWords')
+--      > csl_item = handle:csl_item 'name2019TwoWords'
 Zotxt = Prototype()
 
---- Types of citation keys that [zotxt](https://github.com/egh/zotxt) supports.
+--- What types of citation keys to support.
 Zotxt.citekey_types = List {
     'key',             -- Zotero item ID
     'betterbibtexkey', -- Better BibTeX citation key
@@ -1541,84 +1804,14 @@ do
     -- URL template for looking up items.
     local lookup_url = 'http://localhost:23119/zotxt/items?%s=%s'
 
-    -- A connection error.
-    local conn_err = Error{message='failed to connect to zotxt.'}
-
-    -- -- Retrieve bibliographic data from zotxt and hand it to a parser.
-    -- --
-    -- -- Takes a citation key and a parsing function, queries *zotxt* for that
-    -- -- citation key, passes whatever *zotxt* returns to the parsing function,
-    -- -- and then returns whatever the parsing function returns.
-    -- --
-    -- -- The parsing function should raise an error if its argument cannot be
-    -- -- interpreted as bibliographic data.
-    -- --
-    -- -- Tries every citation key type defined in `Zotxt.citekey_types` until
-    -- -- the query is successful or no more citation key types are left.
-    -- --
-    -- -- @func parse_f A function that takes an HTTP GET response and a MIME
-    -- --  type, returns a CSL item, and raises an error if, and only if,
-    -- --  it cannot convert the response to a CSL item.
-    -- -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- -- @treturn[1] table A CSL item.
-    -- -- @treturn[2] nil `nil` if an error occurred.
-    -- -- @treturn[2] string An error message.
-    -- -- @raise An error if connecing to *zotxt* fails.
-    -- --  This error can only be caught since Pandoc v2.11.
-    -- function Zotxt:query (parse_f, ckey)
-    --     local citekey_types = self.citekey_types
-    --     local err = nil
-    --     for i = 1, #citekey_types do
-    --         -- zotxt supports searching for multiple citation keys at once,
-    --         -- but if a single one cannot be found, it replies with a cryptic
-    --         -- error message (for easy citekeys) or an empty response
-    --         -- (for Better BibTeX citation keys).
-    --         local query_url = lookup_url:format(citekey_types[i], ckey)
-    --         local ok, mt, str = pcall(http_get, query_url)
-    --         assert(ok, conn_err)
-    --         if not mt or mt == '' then
-    --             err = ckey .. ': response has no MIME type.'
-    --         elseif not str or str == '' then
-    --             err = ckey .. ': response is empty.'
-    --         elseif not mt:match '^text/plain%f[%A]' then
-    --             err = format('%s: response is of wrong type %s.', ckey, mt)
-    --         elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
-    --             err = ckey .. ': response is not encoded in UTF-8'
-    --         else
-    --             -- luacheck: ignore ok
-    --             local ok, data = pcall(csljson_to_lua, str, mt)
-    --             if ok then
-    --                 if i ~= 1 then
-    --                     citekey_types[1], citekey_types[i] =
-    --                     citekey_types[i], citekey_types[1]
-    --                 end
-    --                 return data
-    --             else
-    --                 err = 'Zotero responded: ' .. str
-    --             end
-    --         end
-    --     end
-    --     return nil, err
-    -- end
-
-    --- Retrieve bibliographic data from zotxt as CSL item.
-    --
-    -- Returns bibliographic data as a Lua table. That table can be
-    -- passed to `biblio_write`; it should *not* be used in the `references`
-    -- metadata field (unless you are using Pandoc prior to v2.11).
+    --- Retrieve a CSL item from zotxt.
     --
     -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See `Zotxt:query`.
-    function Zotxt:get_csl_item (ckey)
-        -- assert(ckey ~= '', 'citation key is the empty string ("").')
-        -- local data, err = self:query(csljson_to_lua, ckey)
-        -- if not data then return nil, err end
-        -- local csl_item = data[1]
-        -- csl_item.id = ckey
-        -- return csl_item
+    -- @raise See `http_get`.
+    function Zotxt:csl_item (ckey)
         local citekey_types = self.citekey_types
         local err = nil
         for i = 1, #citekey_types do
@@ -1627,8 +1820,7 @@ do
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
             local query_url = lookup_url:format(citekey_types[i], ckey)
-            local ok, mt, str = pcall(http_get, query_url)
-            assert(ok, conn_err)
+            local mt, str = http_get(query_url)
             if not mt or mt == '' then
                 err = ckey .. ': response has no MIME type.'
             elseif not str or str == '' then
@@ -1639,15 +1831,16 @@ do
                 err = ckey .. ': response is not encoded in UTF-8'
             else
                 -- luacheck: ignore ok
-                local ok, data = pcall(csljson_to_lua, str, mt)
-                if ok then
+                local data = parse_csl_json(str)
+                if data then
                     if i ~= 1 then
                         citekey_types[1], citekey_types[i] =
                         citekey_types[i], citekey_types[1]
                     end
-                    local csl_item = data[1]
-                    csl_item.id = ckey
-                    return csl_item
+                    -- @fixme check the number of items!
+                    local item = data[1]
+                    item.id = ckey
+                    return item
                 else
                     err = 'Zotero responded: ' .. str
                 end
@@ -1655,47 +1848,32 @@ do
         end
         return nil, err
     end
-
-    -- --- Retrieve bibliographic data from Zotero as Pandoc metadata.
-    -- --
-    -- -- Returns bibliographic data as a Pandoc metadata value. That value
-    -- -- can be used in the `references` metadata field; it should *not* be
-    -- -- passed to `biblio_write`.
-    -- --
-    -- -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- -- @treturn[1] pandoc.MetaMap Bibliographic data for that source.
-    -- -- @treturn[2] nil `nil` if an error occurred.
-    -- -- @treturn[2] string An error message.
-    -- -- @raise See `Zotxt:query`.
-    -- function Zotxt:get_source (ckey)
-    --     assert(ckey ~= '', 'citation key is the empty string ("").')
-    --     local meta, err, errtype = self:query(csljson_to_meta, ckey)
-    --     if not meta then return nil, err, errtype end
-    --     local ref = meta[1]
-    --     ref.id = MetaInlines{Str(ckey)}
-    --     return ref
-    -- end
-
-    -- -- (a) The CSL JSON reader is only available since Pandoc v2.11.
-    -- -- (b) However, pandoc-citeproc has a (useful) bug and parses formatting
-    -- --     tags in metadata fields, so there is no need to treat metadata
-    -- --     fields and bibliography files differently before Pandoc v2.11.
-    -- -- See <https://github.com/jgm/pandoc/issues/6722> for details.
-    -- if not pandoc.types or PANDOC_VERSION < {2, 11} then
-    --     Zotxt.get_source = Zotxt.get_csl_item
-    -- end
 end
 
 
 -- Zotero Web API
 -----------------
 
+--- A mapping of citation key types to functions that guess search terms.
+--
+-- @within ZotWeb
 local CITEKEY_TYPES = {}
 
 do
     local codes = utf8.codes
     local len = utf8.len
 
+    --- Guess search terms from a BetterBibTeX citation key.
+    --
+    -- Splits up a BetterBibTeX citation key at each uppercase letter and
+    -- each start of a string of digits.
+    --
+    -- BetterBibTeX citation keys must be encoded in ASCII.
+    --
+    -- @string ckey A BetterBibTeX citation key.
+    -- @treturn {string,...} A list of search terms.
+    -- @within ZotWeb
+    -- @fixme No unit test.
     function CITEKEY_TYPES.betterbibtexkey (ckey)
         local terms = {}
         local n = 0
@@ -1705,7 +1883,7 @@ do
         end
         for str, num in ckey:gmatch '([%a%p]*)(%d*)' do
             if str and str ~= '' then
-                for term in split(str, '%u', nil, 's') do
+                for term in split(str, '%u', nil, 'l') do
                     local l = len(term)
                     if l and l > 3 then add(term) end
                 end
@@ -1719,6 +1897,17 @@ do
         return terms
     end
 
+    --- Guess search terms from a zotxt Easy Citekey.
+    --
+    -- Splits up a zotxt Easy Citekey into an author, a year,
+    -- and a title.
+    --
+    -- zotxt Easy Citekeys must be encoded in UTF-8.
+    --
+    -- @string ckey A zotxt Easy Citekey.
+    -- @treturn {string,...} A list of search terms.
+    -- @within ZotWeb
+    -- @fixme No unit test.
     function CITEKEY_TYPES.easykey (ckey)
         local terms = {}
         local n = 0
@@ -1751,58 +1940,77 @@ do
     end
 end
 
-
-
--- @fixme Undocumented.
--- @fixme No unit tests.
+--- Interface to the [Zotero Web API](https://www.zotero.org/support/dev/web_api/)
+--
+-- @type ZotWeb
+-- @usage
+--      > handle = ZotWeb{api_key = 'alongstringoflettersandnumbers'}
+--      > handle.citekey_types = pandoc.List{'betterbibtexkey'}
+--      > csl_item = handle:csl_item 'name2019TwoWords'
 ZotWeb = Prototype()
 
--- @fixme Undocumented.
+--- What types of citation keys to support.
 ZotWeb.citekey_types = List {
-    -- 'easykey' must go first, because it's more specific.
+    -- 'easykey' must go first, because it's unlikely that that the
+    -- citekey parser parses a Better BibTeX citation key (most BetterBibTeX
+    -- citation keys don't contain colons), but the BetterBibTeX citation key
+    -- parser will happily parse an Easy Citekey, and it will do it wrong.
     'easykey',
     'betterbibtexkey',
     'key'
-    -- @todo it'd be great if we would try to next interpretation if the search
-    --       was unsuccessful.
 }
-
 
 do
     -- Shorthands.
     local len = utf8.len
     local decode = json.decode
 
-    -- A connection error.
-    local conn_err = Error{template = 'failed to connect to Zotero Web API.'}
-
+    -- @todo Make expand_vars recursive and use it here!
     -- Zotero Web API base URL.
     local base_url = 'https://api.zotero.org'
 
     -- URL template for user ID lookups.
-    local user_url = base_url .. '/keys/%s'
+    -- %s is replaced with the API key.
+    local user_id_url = base_url .. '/keys/%s'
 
-    -- URL template for item queries.
-    local items_url = base_url .. '/users/%s/items'
+    -- URL template for group membership lookups.
+    -- %s is replaced with the user ID,
+    -- the second with the API key.
+    local group_url = base_url .. '/users/%s/groups?v=3&key=%s'
 
-    -- URL template for item lookups.
-    local lookup_url = items_url .. '/%s?v=3&key=%s&format=csljson'
+    -- User prefix.
+    -- %s is replaced with the user ID.
+    local user_prefix = '/users/%s'
 
-    -- URL template for item searches.
-    local search_url = items_url .. '/?v=3&key=%s&format=csljson&qmode=titleCreatorYear&q=%s&itemType=-attachment'
+    -- Group prefix.
+    -- %s is replaced with the group ID.
+    local group_prefix = '/groups/%s'
 
-    local function get (parse_f, query_url)
-        local ok, mt, str = pcall(http_get, query_url)
-        assert(ok, conn_err)
+    -- Path for item lookups (relative to prefix).
+    -- The first %s is replaced with the item ID,
+    -- the second with the API key.
+    local lookup_path = '/items/%s?v=3&key=%s&format=csljson'
+
+    -- Path for item searches (relative to prefix).
+    -- The first %s is replaced with the API key,
+    -- the second with the search terms.
+    local search_path = '/items/?v=3&key=%s&format=csljson&qmode=titleCreatorYear&q=%s&itemType=-attachment'
+
+    -- Retrieve and parse data from the Zotero Web API.
+    --
+    -- @string query_url A URL.
+    -- @return[1] The response of the Zotero WEB API.
+    -- @treturn[2] nil `nil` if an error occurred.
+    -- @treturn[2] string An error message.
+    -- @raises See `http_get`
+    local function get (query_url)
+        local mt, str = http_get(query_url)
         if not mt or mt == '' then
             return nil, 'response has no MIME type.'
         elseif not str or str == '' then
             return nil, 'response is empty.'
         elseif mt:match '%f[%a]json%f[%A]' then
-            -- luacheck: ignore ok
-            local ok, data = pcall(parse_f, str)
-            if ok then return data end
-            return nil, 'cannot parse Zotero response: ' .. str
+            return str
         elseif not mt:match '^text/' then
             return nil, 'response is of wrong type ' .. mt .. '.'
         elseif not mt:lower():match ';%s*charset="?utf%-?8"?%s*$' then
@@ -1811,13 +2019,167 @@ do
         return nil, 'got error: ' .. str
     end
 
+    --- Get the user ID for the given API key.
+    --
+    -- @treturn string A Zotero user ID.
+    -- @raise An error if the `api_key` field is not set, the Zotero Web API
+    --  could not be reached, or if no Zotero user ID could be found.
+    --  See `http_get` for details on the second error.
+    -- @fixme No unit test.
+    function ZotWeb:user_id ()
+        if self._user_id then return self._user_id end
+        assert(self.api_key, 'no Zotero API key given.')
+        local query_url = user_id_url:format(self.api_key)
+        local str, err = get(query_url)
+        assert(str, UIDLookupError{err = err})
+        local ok, data = pcall(decode, str)
+        assert(ok, UIDLookupError{err = 'cannot parse response: ' .. str})
+        local user_id = data.userID
+        assert(user_id, UIDLookupError{err = 'no user ID found.'})
+        self._user_id = user_id
+        return user_id
+    end
+
     -- @fixme Undocumented.
+    -- @fixme No unit test.
+    function ZotWeb:group_ids ()
+        if self._group_ids then return self._group_ids end
+        assert(self.api_key, 'no Zotero API key given.')
+        local query_url = group_url:format(self:user_id(), self.api_key)
+        local str, err = get(query_url)
+        assert(str, GroupLookupError{err = err})
+        local ok, groups = pcall(decode, str)
+        assert(ok, GroupLookupError{err = 'cannot parse response: ' .. str})
+        local ids = {}
+        local n = 0
+        for i = 1, #groups do
+            if groups[i] and groups[i].data and groups[i].data.id then
+                n = n + 1
+                ids[n] = groups[i].data.id
+            end
+        end
+        self._group_ids = ids
+        return ids
+    end
+
+    -- Search items by their author, publication year, and title (worker).
+    --
+    -- @string scope Where to search.
+    --  'u' for in the user library,
+    --  'g' for in a group library.
+    -- @string id Depending on the scope, a user or a group ID.
+    -- @string api_key A Zotero API key.
+    -- @string ... Search terms.
+    -- @treturn[1] tab A list of CSL items that match the given search terms.
+    -- @treturn[2] nil `nil` if no items were found or an error occurred.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number:
+    --  0 if no items match the search terms,
+    --  1 for fetch errors, and
+    --  2 for parse errors.
+    -- @raise An error if the given scope is neither 'u' nor 'g'.
+    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    -- @fixme No unit test.
+    local function search (scope, id, api_key, ...)
+        -- luacheck: ignore err
+        local prefix
+        if     scope == 'u' then prefix = user_prefix
+        elseif scope == 'g' then prefix = group_prefix
+        else                error(scope .. ': no such scope.')
+        end
+        local q = concat({...}, '+')
+        local query_url = format(base_url .. prefix .. search_path,
+                                 id, api_key, q)
+        local str, err = get(query_url)
+        if not str then return nil, err, 1 end
+        local data, err = parse_csl_json(str)
+        if not data then return nil, err, 2 end
+        local items = data.items
+        if not items or #items == 0 then return nil, 'no matches.', 0 end
+        return items
+    end
+
+    --- Search items by their author, publication year, and title.
+    --
+    -- <h3>Caveats:</h3>
+    --
+    -- Does *not* correct Zotero's CSL JSON export.
+    --
+    -- @string scope Where to search.
+    --  'u' for in the user's library,
+    --  'g' for in group libraries, and
+    --  'a' for both.
+    -- @string ... Search terms.
+    -- @treturn[1] tab A list of CSL items that match the given search terms.
+    -- @treturn[2] nil `nil` if no items were found or an error occurred.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number:
+    --  0 if no items match the search terms,
+    --  1 for fetch errors, and
+    --  2 for parse errors.
+    -- @treturn[2] An error message.
+    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
+    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    -- @fixme No unit test (test should include abort on, e.g., parse errors).
+    function ZotWeb:search (scope, ...)
+        -- luacheck: ignore err
+        assert(self.api_key, 'no Zotero API key given.')
+        if scope == 'a' or scope == 'u' then
+            local items, err, errno = search('u', self:user_id(), self.api_key, ...)
+            if items then return items end
+            if errno > 0 then return nil, err, errno end
+        end
+        if scope == 'a' or scope == 'g' then
+            local group_ids = self:group_ids()
+            for i = 1, #group_ids do
+                local items, err, errno = search('g', group_ids[i], self.api_key, ...)
+                if items then return items end
+                if errno > 0 then return nil, err, errno end
+            end
+        else
+            error(scope .. ': no such scope.')
+        end
+        return nil, 'no matches.', 0
+    end
+
+    --- Guess search terms from a citation key.
+    --
+    -- The terms guessed are printed to STDERR
+    -- if the user has requested more output.
+    --
+    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] {string,...} A list of search terms.
+    -- @treturn[2] nil `nil` if no search terms could be derived.
+    -- @treturn[2] string An error message.
+    -- @fixme No unit test.
+    -- @todo Allow Lua expressions.
+    function ZotWeb:search_terms(ckey)
+        assert(self.citekey_types, 'no citation key types given.')
+        local citekey_types = self.citekey_types
+        for i = 1, #citekey_types do
+            local f = CITEKEY_TYPES[citekey_types[i]]
+            if f then
+                local terms = f(ckey)
+                if terms then
+                    info('$ckey: searching for: ' .. concat(terms, ', '))
+                    return terms
+                end
+            end
+        end
+        return nil, ckey .. ': failed to guess search terms.'
+    end
+
+    -- Filter items by their citation key.
+    --
+    -- @tab items A list of CSL items.
+    -- @string A citation key.
+    -- @treturn A list of those items that have that citation key.
     local function filter_by_ckey (items, ckey)
         local filtered = {}
         local n = 0
         for i = 1, #items do
             local item = items[i]
-            for k, v in extras(item) do
+            for k, v in csl_item_extras(item) do
                 if (k == 'citation key' or k == 'citekey') and v == ckey then
                     n = n + 1
                     filtered[n] = item
@@ -1829,202 +2191,199 @@ do
         return filtered
     end
 
-    -- @fixme Undocumented.
-    function ZotWeb:get_user_id ()
-        assert(self.api_key, 'no Zotero API key given.')
-        local query_url = user_url:format(self.api_key)
-        local data, err = get(decode, query_url)
-        if not data then return nil, 'Zotero user ID lookup: ' .. err end
-        local user_id = data.userID
-        if not user_id then
-            return nil, 'found no user ID for API key ' .. self.api_key .. '.'
-        end
-        return user_id
-    end
-
-    -- @fixme Undocumented.
-    function ZotWeb:set_user_id ()
-        if not self.user_id then
-            local user_id, err = self:get_user_id()
-            if not user_id then return nil, err end
-            self.user_id = user_id
-        end
-        return true
-    end
-
-    -- @fixme Undocumented.
-    function ZotWeb:search (parse_f, ...)
-        assert(self.api_key, 'no Zotero API key given.')
-        local ok, err = self:set_user_id()
-        if not ok then return nil, err end
-        local q = concat({...}, '+')
-        local query_url = search_url:format(self.user_id, self.api_key, q)
+    --- Searches for a CSL item that matches a citation key.
+    --
+    -- Search terms are printed to STDERR if
+    -- if the user has requested more output.
+    --
+    -- <h3>Caveats:</h3>
+    --
+    -- Does *not* correct Zotero's CSL JSON export.
+    --
+    -- @string scope Where to search.
+    --  'u' for in the user's library,
+    --  'g' for in group libraries, and
+    --  'a' for both.
+    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] tab A CSL item.
+    -- @treturn[2] nil `nil` if less or more than one item was found or
+    --  if an error occurred.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number:
+    --  0 if no items match the citation key,
+    --  1 for fetch errors,
+    --  2 for parse errors,
+    --  3 if more than one item matches the citation key, and
+    --  4 if the citation key is not unique.
+    -- @fixme No unit test.
+    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
+    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    function ZotWeb:match (scope, ckey)
         -- luacheck: ignore err
-        local recs, err = get(parse_f, query_url)
-        if not recs then return nil, err end
-        return recs
-    end
-
-
-    -- @fixme Undocumented.
-    -- @todo Allow Lua expressions.
-    -- @todo Turn this into an iterator-like thingy.
-    function ZotWeb:guess_search_terms(ckey)
-        local citekey_types = self.citekey_types
-        for i = 1, #citekey_types do
-            local f = CITEKEY_TYPES[citekey_types[i]]
-            if f then
-                local terms = f(ckey)
-                if terms then
-                    infof('%s: searching for: %s.', ckey, concat(terms, ', '))
-                    return terms
-                end
-            end
-        end
-        return nil, ckey .. 'failed to guess search terms.'
-    end
-
-    -- @fixme Undocumented.
-    function ZotWeb:match (parse_f, ckey)
         assert(self.api_key, 'no Zotero API key given.')
-        local ok, err = self:set_user_id()
-        if not ok then return nil, err end
-        local terms = self:guess_search_terms(ckey)
+        local terms = self:search_terms(ckey)
         if not terms then return nil, 'failed to parse "' .. ckey .. '".' end
-        -- luacheck: ignore err
-        local items, err = self:search(parse_f, unpack(terms))
+        local items, err = self:search(scope, unpack(terms))
         if not items then return nil, ckey .. ': ' .. err end
         local n = #items
         if n == 0 then
-            return nil, ckey .. ': nothing found.'
-        elseif n == 1 then
-            return items[1]
-        end
-        local f = filter_by_ckey(items, ckey)
-        if not f or f.n == 0 then
-            return nil, ckey .. ': too many matches.'
-        elseif f.n > 1 then
-            return nil, ckey .. ': citation key is not unique.'
-        end
-        return f[1]
-    end
-
-    -- @fixme Undocumented.
-    function ZotWeb:lookup (parse_f, ckey)
-        assert(self.api_key, 'no Zotero API key given.')
-        local ok, err = self:set_user_id()
-        if not ok then return nil, err end
-        local query_url = lookup_url:format(self.user_id, ckey, self.api_key)
-        -- luacheck: ignore err
-        local items, err = get(parse_f, query_url)
-        if not items then return nil, ckey .. ': ' .. err end
-        local n = #items
-        if     n == 0 then return nil, ckey .. ': no such item.'
-        elseif n > 1  then return nil, ckey .. ': citation key is not unique.'
+            return nil, ckey .. ': no matches.', 0
+        elseif n > 1 then
+            items = filter_by_ckey(items, ckey)
+            if not items or items.n == 0 then
+                return nil, ckey .. ': too many matches.', 3
+            elseif items.n > 1 then
+                return nil, ckey .. ': citation key is not unique.', 4
+            end
         end
         return items[1]
     end
 
-    -- -- @fixme Undocumented.
-    -- function ZotWeb:query (parse_f, ckey)
-    --     if  self.citekey_types:includes 'key' and
-    --         len(ckey) == 8                    and
-    --         ckey:match '^[%u%d]+$'
-    --     then
-    --         return self:lookup(parse_f, ckey)
-    --     end
-    --     return self:match(parse_f, ckey)
-    -- end
-
-    -- @fixme Undocumented.
-    function ZotWeb:get_csl_item (ckey)
-        assert(ckey ~= '', 'citation key is the empty string ("").')
-        assert(self.api_key, 'no Zotero API key given.')
-        local ok, err = self:set_user_id()
-        if not ok then return nil, err end
+    --- Look up a CSL item by its Zotero ID (worker).
+    --
+    -- @string scope Where to look for items.
+    --  'u' for in the user library,
+    --  'g' for in a group library.
+    -- @string id Depending on the scope, a user or a group ID.
+    -- @string api_key A Zotero API key.
+    -- @string zot_id A Zotero item ID.
+    -- @treturn[1] tab A CSL item.
+    -- @treturn[2] nil `nil` if no item was found or if an error occurred.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number:
+    --  0 if there is no item with that item ID,
+    --  1 for fetch errors,
+    --  2 for parse errors, and
+    --  5 if the item ID is not unique.
+    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
+    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    -- @fixme No unit test.
+    local function lookup (scope, id, api_key, zot_id)
         -- luacheck: ignore err
-        local data, err
-        if  self.citekey_types:includes 'key' and
-        len(ckey) == 8                        and
-        ckey:match '^[%u%d]+$'
-        then
-            data, err = self:lookup(zot_csljson_to_lua, ckey)
-        else
-            data, err = self:match(zot_csljson_to_lua, ckey)
+        local prefix
+        if     scope == 'u' then prefix = user_prefix
+        elseif scope == 'g' then prefix = group_prefix
+        else                error(scope .. ': no such scope.')
         end
-        -- local data, err = self:query(zot_csljson_to_lua, ckey)
-        if not data then return nil, err end
-        data.id = ckey
-        return data
+        local query_url = format(base_url .. prefix .. lookup_path,
+                                 id, zot_id, api_key)
+        local str, err = get(query_url)
+        if not str then return nil, zot_id .. ': ' .. err, 1 end
+        local data, err = parse_csl_json(str)
+        if not data then return nil, zot_id .. ': ' .. err, 2 end
+        local items = data.items
+        if items then
+            local n = #items
+            if n == 1    then return items[1]
+            elseif n > 1 then return nil, zot_id .. ': ID is not unique.', 5
+            end
+        end
+        return nil, zot_id .. ': no such item.', 0
     end
 
-    -- -- @fixme Undocumented.
-    -- function ZotWeb:get_source (ckey)
-    --     assert(ckey ~= '', 'citation key is the empty string ("").')
-    --     local ok, err = self:set_user_id()
-    --     if not ok then return nil, err end
-    --     -- luacheck: ignore err
-    --     local ref, err, errtype = self:query(zot_csljson_to_meta, ckey)
-    --     if not ref then return nil, err, errtype end
-    --     ref.id = MetaInlines{Str(ckey)}
-    --     return ref
-    -- end
+    --- Look up a CSL item by its Zotero ID.
+    --
+    -- <h3>Caveats:</h3>
+    --
+    -- Does *not* correct Zotero's CSL JSON export.
+    --
+    -- @string scope Where to look for items.
+    --  'u' for in the user's library,
+    --  'g' for in group libraries,
+    --  and 'a' for both.
+    -- @string id A Zotero item ID.
+    -- @treturn[1] tab A CSL item.
+    -- @treturn[2] nil `nil` if no or more than one item has been found.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] int An error number:
+    --  0 if there is no item with that item ID,
+    --  2 for parse errors, and
+    --  5 if the item ID is not unique.
+    -- @fixme No unit test.
+    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
+    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    function ZotWeb:lookup (scope, id)
+        -- luacheck: ignore err
+        assert(self.api_key, 'no Zotero API key given.')
+        if scope == 'a' or scope == 'u' then
+            local items, err, errno = lookup('u', self:user_id(), self.api_key, id)
+            if items then return items end
+            if errno > 1 then return nil, err, errno end
+        end
+        if scope == 'a' or scope == 'g' then
+            local group_ids = self:group_ids()
+            for i = 1, #group_ids do
+                local items, err, errno = lookup('g', group_ids[i], self.api_key, id)
+                if items then return items end
+                if errno > 1 then return nil, err, errno end
+            end
+        else
+            error(scope .. ': no such scope.')
+        end
+        return nil, id .. ': no such item.', 0
+    end
 
-    -- -- See `Zotxt` above.
-    -- if not pandoc.types or PANDOC_VERSION < {2, 11} then
-    --     ZotWeb.get_source = ZotWeb.get_csl_item
-    -- end
+    -- Zotero's CSL JSON export leaves CSL fields that have been entered
+    -- into its "extra" field in the CSL "note" field, rather than including
+    -- them as CSL fields proper. This table maps CSL field names to functions
+    -- that take the value of an "extra" field and return a value that can
+    -- be used as CSL field.
+    local work_arounds = {}
+
+    -- Work around for 'original-date'.
+    work_arounds['original-date'] = function (v)
+            return {['date-parts'] = {{v}}}
+    end
+
+    -- Convert sub-fields of Zotero's "extra" field to proper CSL fields.
+    --
+    -- Note, the given item is changed in-place.
+    -- See `work_arounds` above for more details.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab The same CSL item.
+    local function apply_workarounds (item)
+        for k, v in csl_item_extras(item) do
+            local f = work_arounds[k]
+            if f then
+                v = f(v)
+                if v then item[k] = v end
+            end
+        end
+        return item
+    end
+
+    --- Retrieve a CSL item from Zotero.
+    --
+    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+    -- @treturn[1] table A CSL item.
+    -- @treturn[2] nil `nil` if an error occurred.
+    -- @treturn[2] string An error message.
+    -- @fixme No unit test.
+    -- @raise See `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    function ZotWeb:csl_item (ckey)
+        -- luacheck: ignore err
+        assert(ckey ~= '', 'citation key is the empty string.')
+        assert(self.api_key, 'no Zotero API key given.')
+        local item, err
+        if  self.citekey_types:includes 'key' and
+            len(ckey) == 8                    and
+            ckey:match '^[%u%d]+$'
+        then
+            item, err = self:lookup('a', ckey)
+        else
+            item, err = self:match('a', ckey)
+        end
+        if not item then return nil, err end
+        apply_workarounds(item)
+        item.id = ckey
+        return item
+    end
 end
 
 
 -- Bibliography files
 -- ------------------
-
---- The preferred order of keys in YAML bibliography files.
---
--- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
--- of the CSL specification lists all field names.
---
--- @see csl_keys_sort
--- @within Bibliography files
-CSL_KEY_ORDER = {
-    'id',                       -- Item ID.
-    'type',                     -- For example, 'paper', 'book'.
-    'author',                   -- Author(s).
-    'recipient',                -- Recipient of the document.
-    'status',                   -- Publication status (e.g., 'forthcoming').
-    'issued',                   -- When the item was published.
-    'title',                    -- The title.
-    'title-short',              -- A short version of the title.
-    'short-title',              -- Ditto.
-    'original-title',           -- Original title.
-    'translator',               -- Translator(s).
-    'editor',                   -- The editor(s).
-    'container-title',          -- Publication the item was published in.
-    'container-title-short',    -- A short version of that title.
-    'collection-editor',        -- E.g., the series editor(s).
-    'collection-title',         -- E.g., a series.
-    'collection-title-short',   -- A short version of the title.
-    'edition',                  -- Container's edition.
-    'volume',                   -- Volume no.
-    'issue',                    -- Issue no.
-    'page-first',               -- First page.
-    'page',                     -- Pages or page range *or* number of pages.
-    'publisher',                -- Publisher.
-    'publisher-place',          -- City/cities the item was published in.
-    'original-publisher',       -- Original publisher.
-    'original-publisher-place', -- Place the item was originally published in.
-    'doi',                      -- The DOI.
-    'pmcid',                    -- PubMed Central reference number.
-    'pmid',                     -- PubMed reference number.
-    'url',                      -- The URL.
-    'accessed',                 -- When the URL was last accessed.
-    'isbn',                     -- The ISBN of the item.
-    'issn',                     -- The ISSN of the container.
-    'call-number',              -- Call number (of a library).
-    'language',                 -- Language the item is in.
-    'abstract',                 -- The abstract.
-}
 
 --- A mapping of filename suffices to codecs.
 --
@@ -2040,9 +2399,9 @@ BIBLIO_TYPES = setmetatable({}, {
 -- @within Bibliography files
 BIBLIO_TYPES.bib = {}
 
---- Read the IDs from the content of a BibLaTeX file.
+--- Read the IDs from the contents of a BibLaTeX file.
 --
--- @string str The content of a BibLaTeX file.
+-- @string str The contents of a BibLaTeX file.
 -- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
 function BIBLIO_TYPES.bib.decode (str)
@@ -2059,11 +2418,12 @@ end
 -- @within Bibliography files
 BIBLIO_TYPES.bibtex = {}
 
---- Read the IDs from the content of a BibTeX file.
+--- Read the IDs from the contents of a BibTeX file.
 --
--- @string str The content of a BibTeX file.
+-- @string str The contents of a BibTeX file.
 -- @treturn {{id=string},...} A list of item IDs.
 -- @within Bibliography files
+-- @function BIBLIO_TYPES.bibtex.decode
 BIBLIO_TYPES.bibtex.decode = BIBLIO_TYPES.bib.decode
 
 --- De-/Encode CSL items in JSON.
@@ -2104,53 +2464,12 @@ end
 -- @within Bibliography files
 BIBLIO_TYPES.yml = BIBLIO_TYPES.yaml
 
---- Sorting function for CSL field names.
---
--- Sorts field in the order in which they are listed in `CSL_KEY_ORDER`.
--- Unlisted fields are placed after listed ones in lexical order.
---
--- @string a A CSL fieldname.
--- @string b Another CSL fieldname.
--- @treturn bool Whether `a` should come before `b`.
--- @within Bibliography files
-csl_keys_sort = in_order(unpack(CSL_KEY_ORDER))
-
---- Sorting function for CSL items.
---
--- @tab a A CSL item.
--- @tab b Another CSL item.
--- @treturn bool Whether `a` should come before `b`.
--- @within Bibliography files
-function csl_items_sort (a, b)
-    return a.id < b.id
-end
-
---- Pick the IDs of CSL items out of a list of CSL items.
---
--- @tab items A list of CSL items.
--- @treturn {[string]=true,...} A [set](https://www.lua.org/pil/11.5.html)
---  of item IDs.
--- @raise An error if an item has an ID that cannot be coerced to a string.
--- @within Bibliography files
-function csl_items_ids (items)
-    local ids = {}
-    for i = 1, #items do
-        local id = items[i].id
-        local t = type(id)
-        if     t == 'string' then ids[id] = true
-        elseif t == 'table'  then ids[stringify(id)] = true
-        elseif t ~= 'nil'    then error 'cannot parse item ID.'
-        end
-    end
-    return ids
-end
-
 --- Read a bibliography file.
 --
 -- The filename suffix determines what format the contents of the file are
 -- parsed as. There must be a decoder for that suffix in `BIBLIO_TYPES`.
 --
--- @string fname The filename.
+-- @string fname A filename.
 -- @treturn[1] tab A list of CSL items.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
@@ -2206,14 +2525,14 @@ end
 --- Add items from Zotero to a bibliography file.
 --
 -- If an item is already in the bibliography file, it won't be added again.
--- Prints errors to STDERR if items cannot be found.
+-- If items cannot be found, an error is printed to STDERR.
 --
 -- [Citeproc](https://github.com/jgm/citeproc) appears to recognise
 -- formatting in *every* CSL field, so `pandoc-zotxt.lua` does the same.
 --
 -- The caveats of `file_write` apply.
 --
--- @tparam Zotxt handle A interface to Zotero.
+-- @param handle A interface to Zotero or the Zotero Web API.
 -- @string fname The name of the bibliography file.
 -- @tab ckeys The citation keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
@@ -2221,7 +2540,7 @@ end
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number if the error is a file I/O error.
--- @raise See `Zotxt:query`.
+-- @raise See `http_get`.
 -- @within Bibliography files
 function biblio_update (handle, fname, ckeys)
     -- luacheck: ignore ok fmt err errno
@@ -2231,7 +2550,7 @@ function biblio_update (handle, fname, ckeys)
     -- @todo Remove this warning once the script has been dogfooded,
     --       and was out in the open for a while.
     if fmt == 'yaml' or fmt == 'yml' then
-        warnf 'YAML bibliography file support is experimental!'
+        warn 'YAML bibliography file support is experimental!'
     end
     local items, err, errno = biblio_read(fname)
     if not items then
@@ -2244,17 +2563,17 @@ function biblio_update (handle, fname, ckeys)
     for i = 1, #ckeys do
         local ckey = ckeys[i]
         if not item_ids[ckey] then
-            local ok, ret, err = pcall(handle.get_csl_item, handle, ckey)
+            local ok, ret, err = pcall(handle.csl_item, handle, ckey)
             if not ok then
                 return nil, tostring(ret)
             elseif ret then
                 if fmt == 'yaml' or fmt == 'yml' then
-                    ret = rmap(html_to_md, ret)
+                    ret = mapr(zot_to_md, ret)
                 end
                 n = n + 1
                 items[n] = ret
             else
-                errf(err)
+                log(err)
             end
         end
     end
@@ -2267,6 +2586,9 @@ end
 
 -- PANDOC
 -- ======
+
+-- Document parsing
+-- ----------------
 
 do
     local super_types = {
@@ -2351,7 +2673,7 @@ do
 
     if pandoc.types and PANDOC_VERSION < {2, 15} then
         -- @fixme It's unclear whether this code ignores pandoc.Doc
-        --        in favour of pandoc.Pandoc (as it should) for Pandoc <v2.15.
+        --        in favour of pandoc.Pandoc (as it should) in Pandoc <v2.15.
         -- luacheck: ignore super_types
         local super_types = {}
         for k, v in sorted_pairs(pandoc) do
@@ -2379,8 +2701,12 @@ do
 end
 
 do
+    -- Clone a Pandoc AST element.
+    --
+    -- @tparam pandoc.AstElement elem The original.
+    -- @treturn pandoc.AstElement The copy.
     local function clone (elem)
-        assert(type(elem), 'userdata')
+        assert(type(elem), 'userdata', 'element is not a Pandoc AST element.')
         if elem.clone then return elem:clone() end
         return Pandoc(elem.blocks:clone(), elem.meta:clone())
     end
@@ -2388,7 +2714,7 @@ do
     -- @fixme This has not been tested for Pandoc <v2.15.
     if pandoc.types and PANDOC_VERSION < {2, 15} then
         function clone (elem)
-            assert(type(elem), 'table')
+            assert(type(elem), 'table', 'element is not a Pandoc AST element.')
             if elem.clone then return elem:clone() end
             local copy = setmetatable({}, getmetatable(elem))
             for k, v in next, elem, nil do rawset(copy, k, v) end
@@ -2474,12 +2800,10 @@ end
 
 --- Collect bibliographic data from the document's metadata block.
 --
--- Reads the `references` metafata field and every bibliography file
--- referenced by the `bibliography` metadata field.
+-- If a metadata field or a bibliography file cannot be parsed,
+-- an error is printed to STDERR.
 --
--- Prints errors to STDERR if it cannot parse a bibliography file.
---
--- @tparam pandoc.Meta meta A metadata block.
+-- @tparam pandoc.MetaMap meta A metadata block.
 -- @treturn pandoc.List A list of CSL items.
 -- @within Document parsing
 function meta_sources (meta)
@@ -2494,7 +2818,7 @@ function meta_sources (meta)
         elseif bibliography.tag == 'MetaList' then
             fnames = bibliography:map(stringify)
         else
-            errf 'cannot parse metadata field "bibliography".'
+            log 'cannot parse metadata field "bibliography".'
             return data
         end
         for i = 1, #fnames do
@@ -2503,10 +2827,10 @@ function meta_sources (meta)
                 -- luacheck: ignore err
                 local items, err = biblio_read(fname)
                 if items then data:extend(items)
-                         else errf(err)
+                         else log(err)
                 end
             else
-                errf(err)
+                log(err)
             end
         end
     end
@@ -2514,10 +2838,10 @@ function meta_sources (meta)
 end
 
 do
-    -- Save citation keys that are not in one given set into another one.
+    -- Save citation keys that are not in one set into another one.
     --
-    -- @tparen pandoc.Cite A citation.
-    -- @tab old A set of IDs that should be ignroed.
+    -- @tparam pandoc.Cite A citation.
+    -- @tab old A set of IDs that should be ignored.
     -- @tab new The set to save the IDs in.
     local function ids (cite, old, new)
         local citations = cite.citations
@@ -2529,7 +2853,7 @@ do
 
     --- Collect the citation keys used in a document.
     --
-    -- Prints errors to STDERR if it cannot parse a bibliography file.
+    -- If it cannot parse a bibliography file, an error is printed to STDERR.
     --
     -- @tab doc A document.
     -- @bool[opt=false] undef Whether to collect only the citation keys of
@@ -2537,7 +2861,7 @@ do
     --  nor in a bibliography file.
     -- @treturn {string,...} A list of citation keys.
     -- @treturn int The number of citation keys found.
-    -- @raise An error if an item ID is of an illegal data type.
+    -- @raise An error if an item ID is of a wrong data type.
     -- @within Document parsing
     function doc_ckeys (doc, undef)
         local meta = doc.meta
@@ -2564,27 +2888,26 @@ end
 --
 -- Updates the bibliography file as needed and adds it to the `bibliography`
 -- metadata field. Interpretes a relative filename as relative to the
--- directory of the first input file passed to **pandoc**, *not* as relative
--- to the current working directory (unless no input files are given).
+-- directory of the first input file passed to **pandoc**, or, if not input
+-- files were given, as relative to the current working directory.
 --
--- @tparam Zotxt handle A interface to Zotero.
--- @tparam pandoc.Meta meta A metadata block, with the field
+-- @param handle A interface to Zotero or the Zotero Web API.
+-- @tparam pandoc.MetaMap meta A metadata block, with the field
 --  `zotero-bibliography` set to the filename of the bibliography file.
 -- @tab ckeys The citaton keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
---  Citation keys are just item IDs.
 -- @treturn[1] pandoc.Meta An updated metadata block, with the field
 --  `bibliography` added if needed.
 -- @treturn[2] nil `nil` if no sources were found,
 --  `zotero-bibliography` is not set, or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `Zotxt:query`.
+-- @raise See `http_get`.
 -- @within Main
 function add_biblio (handle, meta, ckeys)
+    -- luacheck: ignore err
     if #ckeys == 0 then return end
     local fname, err = meta_param(meta, 'bibliography')
     if not fname then return nil, err end
-    -- luacheck: ignore err
     local ok, err = biblio_update(handle, fname, ckeys)
     if not ok then return nil, err end
     if not meta.bibliography then
@@ -2599,44 +2922,48 @@ end
 
 --- Add bibliographic data to the `references` metadata field.
 --
--- Prints an error message to STDERR for every source that cannot be found.
+-- If a source cannot be found, an error is printed to STDERR.
 --
--- @tparam Zotxt handle A interface to Zotero.
--- @tab meta A metadata block.
+-- @param handle A interface to Zotero or the Zotero Web API.
+-- @tparam pandoc.MetaMap meta A metadata block.
 -- @tab ckeys The citation keys of the items that should be added,
 --  e.g., `{'name:2019word', 'name2019WordWordWord'}`.
---  Citation keys are just item IDs.
 -- @treturn[1] table An updated metadata block,
 --  with the field `references` added if needed.
 -- @treturn[2] nil `nil` if no sources were found or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See `Zotxt:query`.
+-- @raise See `http_get`.
 -- @within Main
 function add_refs (handle, meta, ckeys)
     if #ckeys == 0 then return end
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ret, err = pcall(handle.get_csl_item, handle, ckeys[i])
+        local ok, ret, err = pcall(handle.csl_item, handle, ckeys[i])
         if not ok  then return nil, tostring(ret)
         elseif ret then n = n + 1
-                        meta.references[n] = pandocify(ret)
-                   else errf(err)
+                        meta.references[n] = csl_item_to_meta(ret)
+                   else log(err)
         end
     end
     return meta
 end
 
 do
+    -- Convert a Pandoc metadata value to a string.
+    --
+    -- @param pandoc.MetaValue v The value.
     function from_string (v)
         local ok, str = pcall(stringify, v)
         if not ok then return nil, str end
-        if str == '' then return nil, 'is the empty string ("").' end
+        if str == '' then return nil, 'is the empty string.' end
         return str
     end
 
+    -- A mapping of key names to functions that parse and verify values.
     local keys = {}
 
+    -- Get the bibliography file to use.
     function keys.bibliography (v)
         local fname, err = from_string(v)
         if not fname then return nil, err end
@@ -2646,13 +2973,11 @@ do
 
     -- Get citation key types to use.
     --
-    -- Returns a list of citation key types from the `zotero-citekey-types`
-    -- metadata field. If a value of that field does *not* pick out a citation
-    -- key type listed in `Zotxt.citekey_types`, it is ignored.
+    -- Citation key types are taken from the `zotero-citekey-types`
+    -- metadata field. If a value of that field does *not* pick out a
+    -- citation key type listed in `Zotxt.citekey_types`, it is ignored.
     --
-    -- Prints messages to STDERR if errors occur.
-    --
-    -- @tparam pandoc.Meta meta A metadata block.
+    -- @tparam pandoc.MetaMap meta A metadata block.
     -- @treturn[1] pandoc.List A list of citation key types.
     -- @treturn[2] nil If no valid citation key types were found.
     -- @treturn[2] string An error message, if applicable.
@@ -2676,14 +3001,31 @@ do
         if n > 0 then return citekey_types end
     end
 
+    -- Get the Zotero API key to use.
     keys.api_key = from_string
-    keys.connector = from_string
+
+    -- Get the Zotero user ID to use.
     keys.user_id = from_string
 
+    -- Get the Zotero Connector to use.
+    keys.connector = from_string
+
+    --- Lookup a parameter in the document's metadata field.
+    --
+    -- Parameter names are translated to metadata field names by
+    -- prefixing them with 'zotero-' and by replacing underscores
+    -- with dashes.
+    --
+    -- @tparam pandoc.MetaMap meta A metadata block.
+    -- @string key A parameter name.
+    -- @return[1] The value of that parameter.
+    -- @treturn[2] nil `nil` if there is no such parameter.
+    -- @treturn[2] string An error message.
+    -- @within Main
     function meta_param(meta, key)
         local f = keys[key]
         local mk = 'zotero-' .. key:gsub('_', '-')
-        if not f then return nil, mk .. ': not a configuration setting.' end
+        if not f then return nil, mk .. ': no such parameter.' end
         local mv = meta[mk]
         if not mv then return end
         local v, err = f(mv)
@@ -2691,6 +3033,14 @@ do
         return v
     end
 
+    --- Get parameters from the document's metadata field.
+    --
+    -- See `meta_param` on how parameter names are translated to
+    -- metadata field names.
+    --
+    -- @tparam pandoc.MetaMap meta A metadata block.
+    -- @treturn {string=tab,...} A mapping of keys to values.
+    -- @within Main
     function meta_params (meta)
         local conf = {}
         for k in pairs(keys) do
@@ -2704,14 +3054,14 @@ end
 
 --- Collect citations and add bibliographic data to a document.
 --
--- Prints messages to STDERR if errors occur.
+-- If errors occur, error messages are printed to STDERR.
 --
 -- See the manual for details.
 --
 -- @tparam table doc A document.
 -- @treturn[1] table `doc`, but with bibliographic data added.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @raise See `Zotxt:query`.
+-- @raise See `http_get`.
 -- @within Main
 function main (doc)
     local ckeys = doc_ckeys(doc, true)
@@ -2719,7 +3069,7 @@ function main (doc)
 
     local conf, err = meta_params(doc.meta)
     if not conf then
-        errf(err)
+        log(err)
         return
     end
 
@@ -2727,19 +3077,19 @@ function main (doc)
     if not conf.connector then
         zotxt = Zotxt()
         if conf.api_key then
-            zotweb = ZotWeb{api_key = conf.api_key, user_id = conf.user_id}
+            zotweb = ZotWeb{api_key = conf.api_key, _user_id = conf.user_id}
         end
     else
         if conf.connector == 'zotxt' then
             zotxt = Zotxt()
         elseif conf.connector == 'zotweb' then
             if not conf.api_key then
-                errf 'you need to set an API key to use the Zotero Web API.'
+                log 'you need to set an API key to use the Zotero Web API.'
                 return
             end
-            zotweb = ZotWeb{api_key = conf.api_key, user_id = conf.user_id}
+            zotweb = ZotWeb{api_key = conf.api_key, _user_id = conf.user_id}
         else
-            errf ('%s: no such Zotero connector.', conf.connector)
+            log '$conf.connector: no such Zotero connector.'
             return
         end
     end
@@ -2758,13 +3108,20 @@ function main (doc)
         elseif i == 2 then handle = zotweb
         end
         if handle then
+            -- @todo Remove this warning once:
+            --       (1) The test suite is complete.
+            --       (2) The script has been out for a while.
+            --       (3) The script has been dogfooded.
+            if handle == zotweb then
+                warn 'fetching data from the Zotero Web API is experimental!'
+            end
             -- luacheck: ignore err
             local meta, err = add_srcs(handle, doc.meta, ckeys)
             if meta then
                 doc.meta = meta
                 return doc
             elseif err then
-                errf(err)
+                log(err)
             end
         end
     end
