@@ -41,7 +41,6 @@ ZOTWEB_TESTS	= $(notdir $(ZOTWEB_DOCS:.md=))
 # ZOTERO CREDENTIALS
 # ==================
 
-ZOTERO_USER_ID	= 5763466
 ZOTERO_API_KEY	= MO2GHxbkLnWgCqPtpoewgwIl
 
 
@@ -56,7 +55,7 @@ tmpdir:
 
 unit-tests: tmpdir
 	[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
-	"$(PANDOC)" $(PANDOC_ARGS) \
+	"$(PANDOC)" --quiet $(PANDOC_ARGS) \
 		--lua-filter "$(TEST_SCPT_DIR)/unit-tests.lua" \
 		--from markdown --to plain -o /dev/null </dev/null
 
@@ -68,7 +67,6 @@ $(COMMON_TESTS): tmpdir
 		then \
 			"$(PANDOC)" $(PANDOC_ARGS) \
 				--metadata zotero-connector="$$CONNECTOR" \
-				--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
 				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 				--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
 				--output "$(TMP_DIR)/$@.html" \
@@ -77,7 +75,6 @@ $(COMMON_TESTS): tmpdir
 		else \
 			$(PANDOC) $(PANDOC_ARGS) \
 				--metadata zotero-connector="$$CONNECTOR" \
-				--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
 				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 				--lua-filter "$(SCRIPT)" --citeproc \
 				--output "$(TMP_DIR)/$@.html" \
@@ -112,7 +109,6 @@ $(ZOTWEB_TESTS): tmpdir
 	then \
 		"$(PANDOC)" $(PANDOC_ARGS) \
 			--metadata zotero-connector=zotweb \
-			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
 			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
 			--output "$(TMP_DIR)/$@.html" \
@@ -121,7 +117,6 @@ $(ZOTWEB_TESTS): tmpdir
 	else \
 		$(PANDOC) $(PANDOC_ARGS) \
 			--metadata zotero-connector=zotweb \
-			--metadata zotero-user-id="$(ZOTERO_USER_ID)" \
 			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--lua-filter "$(SCRIPT)" --citeproc \
 			--output "$(TMP_DIR)/$@.html" \
@@ -140,7 +135,7 @@ $(ZOTWEB_TESTS): tmpdir
 	gzip $@
 
 header:
-	sh scripts/update-header.sh
+	sh scripts/update-header.sh -f pandoc-zotxt.lua
 
 ldoc: header
 	ldoc -c ldoc/config.ld .
