@@ -107,7 +107,7 @@ local M = require 'pandoc-zotxt'
 function M.http_get (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
-    M.warnf('%s -> %s', url, hash)
+    M.warn '$url -> $hash'
     local path = M.path_join(CAN_DIR, hash)
     local mt = 'text/plain; charset=UTF-8'
     local data, err = M.file_read(path)

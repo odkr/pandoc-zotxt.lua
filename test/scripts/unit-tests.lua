@@ -348,7 +348,7 @@ do
     -- @return A copy of `data` with numbers converted to strings.
     -- @raise An error if the data is nested too deeply.
     function rconv_nums_to_strs (data)
-        return M.rmap(conv, data)
+        return M.mapr(conv, data)
     end
 end
 
@@ -365,10 +365,6 @@ function test_path_sanitise ()
     for _, v in ipairs(invalid) do
         lu.assert_error(M.path_sanitise, v)
     end
-
-    local ok, err = M.path_split('')
-    lu.assert_nil(ok)
-    lu.assert_not_nil(err)
 
     local tests = {
         ['.']                   = '.',
@@ -411,15 +407,11 @@ function test_path_sanitise ()
 end
 
 function test_path_split ()
-    local invalid = {nil, false, 0, {}, function () end}
+    local invalid = {nil, false, 0, '', {}, function () end}
 
     for _, v in ipairs(invalid) do
         lu.assert_error(M.path_split, v)
     end
-
-    local ok, err = M.path_split('')
-    lu.assert_nil(ok)
-    lu.assert_not_nil(err)
 
     local tests = {
         ['.']                   = {'.',         '.' },
@@ -820,10 +812,10 @@ function test_copy ()
     lu.assert_items_equals(c, t)
 end
 
-function test_rmap ()
+function test_mapr ()
     local invalid = {nil, true, 0, 'string', {}}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.rmap, v, 0)
+        lu.assert_error(M.mapr, v, 0)
     end
 
     local function id (...) return ... end
@@ -835,8 +827,8 @@ function test_rmap ()
     }
 
     for _, v in ipairs(tests) do
-        lu.assert_equals(M.rmap(id, v), v)
-        lu.assert_equals(M.rmap(nilify, v), v)
+        lu.assert_equals(M.mapr(id, v), v)
+        lu.assert_equals(M.mapr(nilify, v), v)
     end
 
     local function inc (v)
@@ -858,29 +850,9 @@ function test_rmap ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(M.rmap(inc, k), v)
+        lu.assert_equals(M.mapr(inc, k), v)
     end
 end
-
--- function test_lower_keys ()
---     local invalid = {nil, 0, 'string', function () end}
---     for _, v in ipairs(invalid) do
---         lu.assert_error(M.lower_keys, v)
---     end
-
---     local tests = {
---         [{}] = {},
---         [{1, 2, 3}] = {1, 2, 3},
---         [{A=1, b=2, C=3}] = {a=1, b=2, c=3},
---         [{nil}] = {nil},
---         [{A=1, B={C=2, D=3}}] = {a=1, b={c=2, d=3}},
---         [{A=1, B={C=2, [false]=3}}] = {a=1, b={c=2, [false]=3}}
---     }
-
---     for k, v in pairs(tests) do
---         lu.assert_items_equals(M.lower_keys(k), v)
---     end
--- end
 
 function test_sorted_pairs ()
     local invalid = {nil, 0, 'string', function () end}
@@ -912,10 +884,10 @@ end
 -- Converters
 -- ----------
 
-function test_esc_md ()
+function test_escape_markdown ()
     local invalid = {nil, 0, false, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.esc_md, v)
+        lu.assert_error(M.escape_markdown, v)
     end
 
     local tests = {
@@ -1028,7 +1000,7 @@ function test_esc_md ()
     }
 
     for i, o in pairs(tests) do
-        local ret = M.esc_md(i)
+        local ret = M.escape_markdown(i)
         lu.assert_equals(ret, o)
         -- luacheck: ignore ret
         local doc = pandoc.read(ret, 'markdown-smart')
@@ -1044,10 +1016,10 @@ function test_esc_md ()
     end
 end
 
-function test_html_to_md ()
+function test_zot_to_md ()
     local pt = {nil, 0, false, {}, function () end}
     for _, v in ipairs(pt) do
-        lu.assert_equals(M.html_to_md(v), v)
+        lu.assert_equals(M.zot_to_md(v), v)
     end
 
     local tests = {
@@ -1085,7 +1057,7 @@ function test_html_to_md ()
     }
 
     for i, o in pairs(tests) do
-        lu.assert_equals(M.html_to_md(i), o)
+        lu.assert_equals(M.zot_to_md(i), o)
     end
 end
 
@@ -1148,13 +1120,13 @@ end
 -- zotxt
 -- -----
 
-function test_zotxt_get_csl_item ()
+function test_zotxt_csl_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.Zotxt.get_csl_item, M.Zotxt, v)
+        lu.assert_error(M.Zotxt.csl_item, M.Zotxt, v)
     end
 
-    local ret, err = M.Zotxt:get_csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = M.Zotxt:csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
 end
@@ -1162,14 +1134,14 @@ end
 -- Zotero Web API
 -- --------------
 
-function test_zotweb_get_csl_item ()
+function test_zotweb_csl_item ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(zotweb.get_csl_item, zotweb, v)
+        lu.assert_error(zotweb.csl_item, zotweb, v)
     end
 
-    local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = zotweb:csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
 end
@@ -1177,14 +1149,14 @@ end
 -- Zotero Web API
 -- --------------
 
-function test_zotweb_get_csl_item ()
+function test_zotweb_csl_item ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(zotweb.get_csl_item, zotweb, v)
+        lu.assert_error(zotweb.csl_item, zotweb, v)
     end
 
-    local ret, err = zotweb:get_csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = zotweb:csl_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
 end
