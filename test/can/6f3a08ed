@@ -1,11 +1,10 @@
-HTTP/1.1 400 Bad Request
-Date: Fri, 19 Nov 2021 14:04:04 GMT
+HTTP/1.1 404 Not Found
+Date: Sat, 20 Nov 2021 23:57:53 GMT
 Server: Apache/2.4.51 ()
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Zotero-API-Version: 3
 Zotero-Schema-Version: 3
-Content-Length: 44
-Connection: close
+Content-Length: 19
 Content-Type: text/html; charset=UTF-8
 
-Invalid itemType 'attachment -&gt; 34864858'
+Item does not exist

@@ -1,0 +1,48 @@
+HTTP/1.1 200 OK
+Date: Sat, 20 Nov 2021 23:04:48 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 1
+Link: <https://www.zotero.org/users/5763466/groups>; rel="alternate"
+Vary: Accept-Encoding
+Content-Length: 945
+Content-Type: application/json
+
+[
+    {
+        "id": 4513095,
+        "version": 3,
+        "links": {
+            "self": {
+                "href": "https://api.zotero.org/groups/4513095",
+                "type": "application/json"
+            },
+            "alternate": {
+                "href": "https://www.zotero.org/groups/4513095",
+                "type": "text/html"
+            }
+        },
+        "meta": {
+            "created": "2021-11-16T19:15:11Z",
+            "lastModified": "2021-11-16T19:16:05Z",
+            "numItems": 68
+        },
+        "data": {
+            "id": 4513095,
+            "version": 3,
+            "name": "pandoc-zotxt.lua",
+            "owner": 28839,
+            "type": "Private",
+            "description": "",
+            "url": "",
+            "libraryEditing": "admins",
+            "libraryReading": "members",
+            "fileEditing": "none",
+            "members": [
+                5763466
+            ]
+        }
+    }
+]
