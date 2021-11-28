@@ -61,12 +61,12 @@ unit-tests: tmpdir
 
 $(COMMON_TESTS): tmpdir
 	set -eu; \
-	for CONNECTOR in zotxt zotweb; do \
+	for CONNECTOR in Zotxt ZotWeb; do \
 		if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
 			--from markdown --to plain /dev/null; \
 		then \
 			"$(PANDOC)" $(PANDOC_ARGS) \
-				--metadata zotero-connector="$$CONNECTOR" \
+				--metadata zotero-connectors="$$CONNECTOR" \
 				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 				--lua-filter "$(SCRIPT)" \
 				--filter pandoc-citeproc \
@@ -76,7 +76,7 @@ $(COMMON_TESTS): tmpdir
 			    "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
 		else \
 			$(PANDOC) $(PANDOC_ARGS) \
-				--metadata zotero-connector="$$CONNECTOR" \
+				--metadata zotero-connectors="$$CONNECTOR" \
 				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 				--lua-filter "$(SCRIPT)" --citeproc \
 				--output "$(TMP_DIR)/$@.html" \
@@ -91,14 +91,14 @@ $(ZOTXT_TESTS): tmpdir
 		--from markdown --to plain /dev/null; \
 	then \
 		"$(PANDOC)" $(PANDOC_ARGS) \
-			--metadata zotero-connector=zotxt \
+			--metadata zotero-connectors=Zotxt \
 			--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
 			--output "$(TMP_DIR)/$@.html" \
 			"$(TEST_DATA_DIR)/zotxt/$@.md"; \
 		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
 		$(PANDOC) $(PANDOC_ARGS) \
-			--metadata zotero-connector=zotxt \
+			--metadata zotero-connectors=Zotxt \
 			--lua-filter "$(SCRIPT)" --citeproc \
 			--output "$(TMP_DIR)/$@.html" \
 			"$(TEST_DATA_DIR)/zotxt/$@.md"; \
@@ -111,7 +111,7 @@ $(ZOTWEB_TESTS): tmpdir
 		--from markdown --to plain /dev/null; \
 	then \
 		"$(PANDOC)" $(PANDOC_ARGS) \
-			--metadata zotero-connector=zotweb \
+			--metadata zotero-connectors=ZotWeb \
 			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
 			--output "$(TMP_DIR)/$@.html" \
@@ -119,7 +119,7 @@ $(ZOTWEB_TESTS): tmpdir
 		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
 	else \
 		$(PANDOC) $(PANDOC_ARGS) \
-			--metadata zotero-connector=zotweb \
+			--metadata zotero-connectors=ZotWeb \
 			--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
 			--lua-filter "$(SCRIPT)" --citeproc \
 			--output "$(TMP_DIR)/$@.html" \
