@@ -32,6 +32,8 @@
 <li><a href="#Metadata">Metadata</a></li>
 <li><a href="#File_I_O">File I/O</a></li>
 <li><a href="#Class_Prototype">Class Prototype </a></li>
+<li><a href="#Class_Table">Class Table </a></li>
+<li><a href="#Class_Connector">Class Connector </a></li>
 <li><a href="#Class_Error">Class Error </a></li>
 <li><a href="#Class_ConnectionError">Class ConnectionError </a></li>
 <li><a href="#Class_UIDLookupError">Class UIDLookupError </a></li>
@@ -43,9 +45,9 @@
 <li><a href="#Table_manipulation">Table manipulation</a></li>
 <li><a href="#CSL_items">CSL items</a></li>
 <li><a href="#Converters">Converters</a></li>
+<li><a href="#Citation_key_types">Citation key types</a></li>
 <li><a href="#Networking">Networking</a></li>
 <li><a href="#Class_Zotxt">Class Zotxt </a></li>
-<li><a href="#ZotWeb">ZotWeb</a></li>
 <li><a href="#Class_ZotWeb">Class ZotWeb </a></li>
 <li><a href="#Bibliography_files">Bibliography files</a></li>
 <li><a href="#Document_parsing">Document parsing</a></li>
@@ -154,12 +156,12 @@
 </thead>
 <tbody>
 <tr>
-<td> <a href="../index.html#CITEKEY_TYPES.betterbibtexkey">betterbibtexkey</a> </td>
+<td> <a href="../index.html#CITEKEY_PARSERS.betterbibtexkey">betterbibtexkey</a> </td>
 <td> Better BibTeX citation key </td>
 <td> -            </td>
 </tr>
 <tr>
-<td> <a href="../index.html#CITEKEY_TYPES.easykey">easykey</a>         </td>
+<td> <a href="../index.html#CITEKEY_PARSERS.easykey">easykey</a>         </td>
 <td> easy citekey               </td>
 <td> Deprecated.  </td>
 </tr>
@@ -351,6 +353,28 @@ EOF
 	<td class="summary">Delegate to a prototype.</td>
 	</tr>
 </table>
+<h2><a href="#Class_Table">Class Table </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Table.n">Table.n</a></td>
+	<td class="summary">The number of items in the table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Table:add">Table:add (...)</a></td>
+	<td class="summary">Add items to the table.</td>
+	</tr>
+</table>
+<h2><a href="#Class_Connector">Class Connector </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Connector.parameters">Connector.parameters</a></td>
+	<td class="summary">Configuration parameters.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Connector:configure">Connector:configure (A)</a></td>
+	<td class="summary">Configure the connector.</td>
+	</tr>
+</table>
 <h2><a href="#Class_Error">Class Error </a></h2>
 <table class="function_list">
 	<tr>
@@ -370,7 +394,7 @@ EOF
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#ConnectionError.message">ConnectionError.message</a></td>
-	<td class="summary">Error message for connection errors.</td>
+	<td class="summary">Message for connection errors.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#ConnectionError.host">ConnectionError.host</a></td>
@@ -381,22 +405,22 @@ EOF
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#UIDLookupError.message">UIDLookupError.message</a></td>
-	<td class="summary">Error message for user ID lookup errors.</td>
+	<td class="summary">Message for user ID lookup errors.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#UIDLookupError.err">UIDLookupError.err</a></td>
-	<td class="summary">Stand-in value for the error.</td>
+	<td class="summary">Stand-in value for the error description.</td>
 	</tr>
 </table>
 <h2><a href="#Class_GroupLookupError">Class GroupLookupError </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#GroupLookupError.message">GroupLookupError.message</a></td>
-	<td class="summary">Error message for user ID lookup errors.</td>
+	<td class="summary">Message for group lookup errors.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#GroupLookupError.err">GroupLookupError.err</a></td>
-	<td class="summary">Stand-in value for the error.</td>
+	<td class="summary">Stand-in value for the error description.</td>
 	</tr>
 </table>
 <h2><a href="#Warnings">Warnings</a></h2>
@@ -407,11 +431,11 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#warn">warn (val)</a></td>
-	<td class="summary">Print a value to STDERR unless the user has requested less output.</td>
+	<td class="summary">Print a value to STDERR unless the user has requested quietness.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#info">info (val)</a></td>
-	<td class="summary">Print a value to STDERR if the user has requested more output.</td>
+	<td class="summary">Print a value to STDERR if the user has requested verbosity.</td>
 	</tr>
 </table>
 <h2><a href="#Meta_programming">Meta-programming</a></h2>
@@ -435,7 +459,7 @@ EOF
 	<td class="summary">Iterate over substrings of a string.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#expand_vars">expand_vars (str, ns)</a></td>
+	<td class="name" nowrap><a href="#expand_vars">expand_vars (str, vars)</a></td>
 	<td class="summary">Expand variables in strings.</td>
 	</tr>
 </table>
@@ -451,7 +475,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#tabulate">tabulate (iter[, val])</a></td>
-	<td class="summary">Expand the values of an iterator.</td>
+	<td class="summary">Tabulate the values that an iterator returns.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#sorted_pairs">sorted_pairs (tab[, func])</a></td>
@@ -516,64 +540,92 @@ EOF
 	<td class="summary">Parse a CSL JSON string.</td>
 	</tr>
 </table>
+<h2><a href="#Citation_key_types">Citation key types</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#CITEKEY_PARSERS">CITEKEY_PARSERS</a></td>
+	<td class="summary">A mapping of citation key types to functions that guess search terms.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CITEKEY_PARSERS.betterbibtexkey">CITEKEY_PARSERS.betterbibtexkey (ckey)</a></td>
+	<td class="summary">Guess search terms from a BetterBibTeX citation key.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CITEKEY_PARSERS.easykey">CITEKEY_PARSERS.easykey (ckey)</a></td>
+	<td class="summary">Guess search terms from an Easy Citekey.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#guess_search_terms">guess_search_terms (ckey, citekey_types)</a></td>
+	<td class="summary">Guess search terms from a citation key.</td>
+	</tr>
+</table>
 <h2><a href="#Networking">Networking</a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#http_get">http_get (url)</a></td>
 	<td class="summary">Retrieve data from a URL via an HTTP GET request.</td>
 	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#url_query">url_query (url, params)</a></td>
+	<td class="summary">Query a URL via an HTTP GET request.</td>
+	</tr>
 </table>
 <h2><a href="#Class_Zotxt">Class Zotxt </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#Zotxt.citekey_types">Zotxt.citekey_types</a></td>
-	<td class="summary">What types of citation keys to support.</td>
+	<td class="summary">What types of citation keys to expect.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Zotxt:csl_item">Zotxt:csl_item (ckey)</a></td>
+	<td class="name" nowrap><a href="#Zotxt.parameters">Zotxt.parameters</a></td>
+	<td class="summary">The names of the configuration parameters to process.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Zotxt:get_item">Zotxt:get_item (ckey)</a></td>
 	<td class="summary">Retrieve a CSL item from zotxt.</td>
-	</tr>
-</table>
-<h2><a href="#ZotWeb">ZotWeb</a></h2>
-<table class="function_list">
-	<tr>
-	<td class="name" nowrap><a href="#CITEKEY_TYPES.betterbibtexkey">CITEKEY_TYPES.betterbibtexkey (ckey)</a></td>
-	<td class="summary">Guess search terms from a BetterBibTeX citation key.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#CITEKEY_TYPES.easykey">CITEKEY_TYPES.easykey (ckey)</a></td>
-	<td class="summary">Guess search terms from a zotxt Easy Citekey.</td>
 	</tr>
 </table>
 <h2><a href="#Class_ZotWeb">Class ZotWeb </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#ZotWeb.citekey_types">ZotWeb.citekey_types</a></td>
-	<td class="summary">What types of citation keys to support.</td>
+	<td class="summary">What types of citation keys to expect.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:user_id">ZotWeb:user_id ()</a></td>
+	<td class="name" nowrap><a href="#ZotWeb.parameters">ZotWeb.parameters</a></td>
+	<td class="summary">The names of the configuration parameters to process.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ZotWeb:get_user_id">ZotWeb:get_user_id ()</a></td>
 	<td class="summary">Get the user ID for the given API key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:search">ZotWeb:search (scope, ...)</a></td>
+	<td class="name" nowrap><a href="#ZotWeb:get_groups">ZotWeb:get_groups ()</a></td>
+	<td class="summary">Get the IDs of the groups the current user is a member of.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ZotWeb:endpoints">ZotWeb:endpoints ([item_id])</a></td>
+	<td class="summary">Iterate over item endpoint URLs.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ZotWeb:search">ZotWeb:search (...)</a></td>
 	<td class="summary">Search items by their author, publication year, and title.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:search_terms">ZotWeb:search_terms (ckey)</a></td>
-	<td class="summary">Guess search terms from a citation key.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:match">ZotWeb:match (scope, ckey)</a></td>
+	<td class="name" nowrap><a href="#ZotWeb:match">ZotWeb:match (ckey)</a></td>
 	<td class="summary">Searches for a CSL item that matches a citation key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:lookup">ZotWeb:lookup (scope, id)</a></td>
+	<td class="name" nowrap><a href="#ZotWeb:lookup">ZotWeb:lookup (id)</a></td>
 	<td class="summary">Look up a CSL item by its Zotero ID.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:csl_item">ZotWeb:csl_item (ckey)</a></td>
+	<td class="name" nowrap><a href="#ZotWeb:get_item">ZotWeb:get_item (ckey)</a></td>
 	<td class="summary">Retrieve a CSL item from Zotero.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ZotWeb:configure">ZotWeb:configure (A)</a></td>
+	<td class="summary">Configure the connector.</td>
 	</tr>
 </table>
 <h2><a href="#Bibliography_files">Bibliography files</a></h2>
@@ -653,15 +705,15 @@ EOF
 <h2><a href="#Main">Main</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#add_biblio">add_biblio (handle, meta, ckeys)</a></td>
+	<td class="name" nowrap><a href="#add_biblio">add_biblio (handle, doc)</a></td>
 	<td class="summary">Add data to a bibliography file and the file to the document&rsquo;s metadata.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#add_refs">add_refs (handle, meta, ckeys)</a></td>
+	<td class="name" nowrap><a href="#add_refs">add_refs (handle, doc)</a></td>
 	<td class="summary">Add bibliographic data to the <code>references</code> metadata field.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#meta_param">meta_param (meta, key)</a></td>
+	<td class="name" nowrap><a href="#meta_param">meta_param (meta, name)</a></td>
 	<td class="summary">Lookup a parameter in the document&rsquo;s metadata field.</td>
 	</tr>
 	<tr>
@@ -1348,6 +1400,127 @@ a <span class="global">string</span></pre>
 
 </dd>
 </dl>
+    <h2 class="section-header has-description"><a name="Class_Table"></a>Class Table </h2>
+
+          <div class="section-description">
+          A simple list.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">&gt; list = Table()
+&gt; list:add <span class="string">'a string'</span>
+&gt; list.n
+<span class="number">1</span></pre>
+    <dl class="function">
+    <dt>
+    <a name = "Table.n"></a>
+    <strong>Table.n</strong>
+    </dt>
+    <dd>
+    The number of items in the table.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Table:add"></a>
+    <strong>Table:add (...)</strong>
+    </dt>
+    <dd>
+    Add items to the table.</p>
+
+<p> <h3>Side-effects:</h3></p>
+
+<p> Sets <a href="../index.html#Table.n">Table.n</a> to the number of items in the table.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         Items.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Class_Connector"></a>Class Connector </h2>
+
+          <div class="section-description">
+          Abstract prototype for connectors.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Connector.parameters"></a>
+    <strong>Connector.parameters</strong>
+    </dt>
+    <dd>
+    Configuration parameters.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Connector:configure"></a>
+    <strong>Connector:configure (A)</strong>
+    </dt>
+    <dd>
+    Configure the connector.</p>
+
+<p> Takes a list of key-value pairs. If one of those keys is listed in
+ <a href="../index.html#Connector.parameters">Connector.parameters</a> property, copies its value to the the field of
+ the same name of the connector.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">A</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
+         list of key-value pairs.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        <code>true</code> If the configuration is valid.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> Otherwise.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; conn = Connector()
+&gt; conn.parameters = { <span class="string">'key'</span> }
+&gt; conn:configure{key = <span class="string">'value'</span>, nada = <span class="string">'ignored'</span>}
+&gt; conn.key
+value
+&gt; conn.nada
+<span class="keyword">nil</span></pre>
+    </ul>
+
+</dd>
+</dl>
     <h2 class="section-header has-description"><a name="Class_Error"></a>Class Error </h2>
 
           <div class="section-description">
@@ -1392,7 +1565,7 @@ a <span class="global">string</span></pre>
     Convert an error into a string.</p>
 
 <p> If the message contains variable names, they are replaced with the values
- of the fields with those names. See <code>exapnd vars</code> for the syntax.
+ of the fields with those names. See <a href="../index.html#expand_vars">expand_vars</a> for the syntax.
 
 
 
@@ -1431,7 +1604,7 @@ Something went slightly wrong.</pre>
     <strong>ConnectionError.message</strong>
     </dt>
     <dd>
-    Error message for connection errors.
+    Message for connection errors.
 
 
 
@@ -1469,7 +1642,7 @@ Something went slightly wrong.</pre>
     <strong>UIDLookupError.message</strong>
     </dt>
     <dd>
-    Error message for user ID lookup errors.
+    Message for user ID lookup errors.
 
 
 
@@ -1483,7 +1656,7 @@ Something went slightly wrong.</pre>
     <strong>UIDLookupError.err</strong>
     </dt>
     <dd>
-    Stand-in value for the error.
+    Stand-in value for the error description.
 
 
 
@@ -1507,7 +1680,7 @@ Something went slightly wrong.</pre>
     <strong>GroupLookupError.message</strong>
     </dt>
     <dd>
-    Error message for user ID lookup errors.
+    Message for group lookup errors.
 
 
 
@@ -1521,7 +1694,7 @@ Something went slightly wrong.</pre>
     <strong>GroupLookupError.err</strong>
     </dt>
     <dd>
-    Stand-in value for the error.
+    Stand-in value for the error description.
 
 
 
@@ -1541,7 +1714,7 @@ Something went slightly wrong.</pre>
     <dd>
     Print a value to STDERR.</p>
 
-<p> <a href="../index.html#SCRIPT_NAME">SCRIPT_NAME</a> and &lsquo;: &rsquo; are printed before and <a href="../index.html#EOL">EOL</a> after the value.</p>
+<p> Prefixes the value with <a href="../index.html#SCRIPT_NAME">SCRIPT_NAME</a> and &lsquo;:&rsquo;, appends <a href="../index.html#EOL">EOL</a>.</p>
 
 <p> If the value is a string and contains variable names, they are replaced
  with the values of those variables as seen by the calling function.
@@ -1567,7 +1740,7 @@ Something went slightly wrong.</pre>
     <strong>warn (val)</strong>
     </dt>
     <dd>
-    Print a value to STDERR unless the user has requested less output.</p>
+    Print a value to STDERR unless the user has requested quietness.</p>
 
 <p> The value is only printed if <code>PANDOC_STATE.verbosity</code> is <em>not</em> &lsquo;ERROR&rsquo;.
  Otherwise the same as <a href="../index.html#log">log</a>.
@@ -1591,7 +1764,7 @@ Something went slightly wrong.</pre>
     <strong>info (val)</strong>
     </dt>
     <dd>
-    Print a value to STDERR if the user has requested more output.</p>
+    Print a value to STDERR if the user has requested verbosity.</p>
 
 <p> The value is only printed if <code>PANDOC_STATE.verbosity</code> is &lsquo;INFO&rsquo;.
  Otherwise the same as <a href="../index.html#log">log</a>.
@@ -1747,7 +1920,7 @@ Case</pre>
 </dd>
     <dt>
     <a name = "expand_vars"></a>
-    <strong>expand_vars (str, ns)</strong>
+    <strong>expand_vars (str, vars)</strong>
     </dt>
     <dd>
     <p>Expand variables in strings.</p>
@@ -1756,7 +1929,7 @@ Case</pre>
  a variable name, and the &ldquo;$&rdquo; sign and the word are replaced with the
  value of that variable.</p>
 
-<pre><code>  &gt; return expand_vars(
+<pre><code>  &gt; expand_vars(
   &gt;     '$v1 is $v2.',
   &gt;     {v1 = 'foo', v2 = 'bar'}
   &gt; )
@@ -1764,7 +1937,7 @@ Case</pre>
 </code></pre>
 
 <p> If a word is preceded by two or more &ldquo;$&rdquo; signs, it is <em>not</em> replaced.
- And any series of <em>n</em> &ldquo;$&rdquo; signs is replaced with <em>n</em> &ndash; 1 &ldquo;$&rdquo; signs.</p>
+ Any series of <em>n</em> &ldquo;$&rdquo; signs is replaced with <em>n</em> &ndash; 1 &ldquo;$&rdquo; signs.</p>
 
 <pre><code>  &gt; expand_vars(
   &gt;   '$$v1 costs $$23 (and $- is just a dash).',
@@ -1773,11 +1946,11 @@ Case</pre>
   $v1 costs $23 (and - is just a dash).
 </code></pre>
 
-<p> If a <code>$&lt;variable&gt;</code> expression is followed by a &ldquo;|&rdquo; character and
- another word, the second word is interpreted as a function name;
- the value of the given variable is then passed to that function,
- and the whole expression <code>$&lt;variable&gt;|$&lt;function&gt;</code> is replaced
- with the first value that this function returns.</p>
+<p> If a variable expression is followed by a &ldquo;|&rdquo; character and another
+ word, the second word is interpreted as a function name; the value of
+ the given variable is then passed to that function, and the whole
+ expression <code>$&lt;variable&gt;|&lt;function&gt;</code> is replaced with the first value
+ that this function returns.</p>
 
 <pre><code>  &gt; expand_vars(
   &gt;   '$v1|barify is bar!', {
@@ -1790,6 +1963,17 @@ Case</pre>
   bar is bar!
 </code></pre>
 
+<p> Expressions are evaluated recursively.</p>
+
+<pre><code>  &gt; expand_vars(
+  &gt;   '$v1 is bar.', {
+  &gt;       v1 = '$v2',
+  &gt;       v2 = 'foo'
+  &gt;   }
+  &gt; )
+  foo is bar.
+</code></pre>
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -1797,7 +1981,7 @@ Case</pre>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A string.
         </li>
-        <li><span class="parameter">ns</span>
+        <li><span class="parameter">vars</span>
             <span class="types"><span class="type">tab</span></span>
          A mapping of variable names to values.
         </li>
@@ -1812,7 +1996,7 @@ Case</pre>
 
     <h3>Raises:</h3>
     An error if there is no function of the given name or
-  if the value of the expression cannot be coerced to a string.
+  if the value of an expression cannot be coerced to a string.
 
 
 
@@ -1865,8 +2049,8 @@ Case</pre>
     <ul>
         <li><span class="parameter">func</span>
             <span class="types"><span class="type">func</span></span>
-         A function that takes a value and returns a another one.
-  The node is <em>not</em> changed if the function returns <code>nil</code>.
+         A function that transforms a value.
+  A node is <em>not</em> changed if that function returns <code>nil</code>.
         </li>
         <li><span class="parameter">graph</span>
          A graph.
@@ -1891,7 +2075,7 @@ Case</pre>
     <strong>tabulate (iter[, val])</strong>
     </dt>
     <dd>
-    Expand the values of an iterator.
+    Tabulate the values that an iterator returns.
 
 
     <h3>Parameters:</h3>
@@ -1988,7 +2172,7 @@ key     value</pre>
     <ul>
         <pre class="example">&gt; tab = {a = <span class="number">3</span>, b = <span class="number">4</span>, c = <span class="number">2</span>, d = <span class="number">1</span>}
 &gt; <span class="keyword">for</span> k, v <span class="keyword">in</span> sorted_pairs(tab, in_order{<span class="string">'d'</span>, <span class="string">'c'</span>}) <span class="keyword">do</span>
-&gt;&gt;  <span class="global">print</span>(k, v)
+&gt;     <span class="global">print</span>(k, v)
 &gt; <span class="keyword">end</span>
 d   <span class="number">1</span>
 c   <span class="number">2</span>
@@ -2326,8 +2510,11 @@ b   <span class="number">4</span></pre>
     <dd>
     Generate a YAML representation of a graph.</p>
 
-<p> Lines are termined with <a href="../index.html#EOL">EOL</a> to end lines.
- Strings in other encodings other than UTF-8 will be mangled.
+<p> Lines are termined with <a href="../index.html#EOL">EOL</a>.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> Strings in other encodings other than UTF-8 will be mangled.
  Does <em>not</em> escape <em>all</em> non-printable characters (because Unicode).
 
 
@@ -2502,6 +2689,132 @@ b   <span class="number">4</span></pre>
 
 </dd>
 </dl>
+    <h2 class="section-header "><a name="Citation_key_types"></a>Citation key types</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "CITEKEY_PARSERS"></a>
+    <strong>CITEKEY_PARSERS</strong>
+    </dt>
+    <dd>
+    A mapping of citation key types to functions that guess search terms.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CITEKEY_PARSERS.betterbibtexkey"></a>
+    <strong>CITEKEY_PARSERS.betterbibtexkey (ckey)</strong>
+    </dt>
+    <dd>
+    Guess search terms from a BetterBibTeX citation key.</p>
+
+<p> Splits up a BetterBibTeX citation key at each uppercase letter
+ and at each start of a string of digits.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> BetterBibTeX citation keys must be encoded in ASCII.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A BetterBibTeX citation key.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+        A list of search terms.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CITEKEY_PARSERS.easykey"></a>
+    <strong>CITEKEY_PARSERS.easykey (ckey)</strong>
+    </dt>
+    <dd>
+    Guess search terms from an Easy Citekey.</p>
+
+<p> Splits up an Easy Citekey into an author, a year, and a title.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> Easy Citekeys must be encoded in UTF-8.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A zotxt Easy Citekey.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+        A list of search terms.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "guess_search_terms"></a>
+    <strong>guess_search_terms (ckey, citekey_types)</strong>
+    </dt>
+    <dd>
+    Guess search terms from a citation key.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key, e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
+        </li>
+        <li><span class="parameter">citekey_types</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         What types of citation keys to expect.
+  Must correspond to keys in <a href="../index.html#CITEKEY_PARSERS">CITEKEY_PARSERS</a>.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+        A list of search terms.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if no search terms could be derived.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+</dl>
     <h2 class="section-header "><a name="Networking"></a>Networking</h2>
 
     <dl class="function">
@@ -2540,6 +2853,42 @@ b   <span class="number">4</span></pre>
 
 
 </dd>
+    <dt>
+    <a name = "url_query"></a>
+    <strong>url_query (url, params)</strong>
+    </dt>
+    <dd>
+    Query a URL via an HTTP GET request.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">url</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         The URL.
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
+         Request parameters.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The MIME type of the HTTP content.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The HTTP content itself.</li>
+    </ol>
+
+    <h3>Raises:</h3>
+    See <a href="../index.html#http_get">http_get</a>.
+
+
+
+</dd>
 </dl>
     <h2 class="section-header has-description"><a name="Class_Zotxt"></a>Class Zotxt </h2>
 
@@ -2549,14 +2898,14 @@ b   <span class="number">4</span></pre>
             <h3>Usage:</h3>
             <pre class="example">&gt; handle = Zotxt()
 &gt; handle.citekey_types = pandoc.List{<span class="string">'betterbibtexkey'</span>}
-&gt; csl_item = handle:csl_item <span class="string">'name2019TwoWords'</span></pre>
+&gt; csl_item = handle:get_item <span class="string">'name2019TwoWords'</span></pre>
     <dl class="function">
     <dt>
     <a name = "Zotxt.citekey_types"></a>
     <strong>Zotxt.citekey_types</strong>
     </dt>
     <dd>
-    What types of citation keys to support.
+    What types of citation keys to expect.
 
 
 
@@ -2566,8 +2915,28 @@ b   <span class="number">4</span></pre>
 
 </dd>
     <dt>
-    <a name = "Zotxt:csl_item"></a>
-    <strong>Zotxt:csl_item (ckey)</strong>
+    <a name = "Zotxt.parameters"></a>
+    <strong>Zotxt.parameters</strong>
+    </dt>
+    <dd>
+    The names of the configuration parameters to process.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">citekey_types</span>
+        What types of citation keys to expect.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Zotxt:get_item"></a>
+    <strong>Zotxt:get_item (ckey)</strong>
     </dt>
     <dd>
     Retrieve a CSL item from zotxt.
@@ -2604,90 +2973,22 @@ b   <span class="number">4</span></pre>
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="ZotWeb"></a>ZotWeb</h2>
-
-    <dl class="function">
-    <dt>
-    <a name = "CITEKEY_TYPES.betterbibtexkey"></a>
-    <strong>CITEKEY_TYPES.betterbibtexkey (ckey)</strong>
-    </dt>
-    <dd>
-    Guess search terms from a BetterBibTeX citation key.</p>
-
-<p> Splits up a BetterBibTeX citation key at each uppercase letter and
- each start of a string of digits.</p>
-
-<p> BetterBibTeX citation keys must be encoded in ASCII.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A BetterBibTeX citation key.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        A list of search terms.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "CITEKEY_TYPES.easykey"></a>
-    <strong>CITEKEY_TYPES.easykey (ckey)</strong>
-    </dt>
-    <dd>
-    Guess search terms from a zotxt Easy Citekey.</p>
-
-<p> Splits up a zotxt Easy Citekey into an author, a year,
- and a title.</p>
-
-<p> zotxt Easy Citekeys must be encoded in UTF-8.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A zotxt Easy Citekey.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        A list of search terms.
-    </ol>
-
-
-
-
-</dd>
-</dl>
     <h2 class="section-header has-description"><a name="Class_ZotWeb"></a>Class ZotWeb </h2>
 
           <div class="section-description">
-          Interface to the <a href="https://www.zotero.org/support/dev/web_api/">Zotero Web API</a>
+          Interface to <a href="https://www.zotero.org/support/dev/web_api">Zotero&rsquo;s Web API</a>
           </div>
             <h3>Usage:</h3>
             <pre class="example">&gt; handle = ZotWeb{api_key = <span class="string">'alongstringoflettersandnumbers'</span>}
 &gt; handle.citekey_types = pandoc.List{<span class="string">'betterbibtexkey'</span>}
-&gt; csl_item = handle:csl_item <span class="string">'name2019TwoWords'</span></pre>
+&gt; csl_item = handle:get_item <span class="string">'name2019TwoWords'</span></pre>
     <dl class="function">
     <dt>
     <a name = "ZotWeb.citekey_types"></a>
     <strong>ZotWeb.citekey_types</strong>
     </dt>
     <dd>
-    What types of citation keys to support.
+    What types of citation keys to expect.
 
 
 
@@ -2697,8 +2998,40 @@ b   <span class="number">4</span></pre>
 
 </dd>
     <dt>
-    <a name = "ZotWeb:user_id"></a>
-    <strong>ZotWeb:user_id ()</strong>
+    <a name = "ZotWeb.parameters"></a>
+    <strong>ZotWeb.parameters</strong>
+    </dt>
+    <dd>
+    The names of the configuration parameters to process.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">citekey_types</span>
+        What types of citation keys to expect.
+        </li>
+        <li><span class="parameter">api_key</span>
+        Zotero API key.
+        </li>
+        <li><span class="parameter">user_id</span>
+        Zotero user ID.
+        </li>
+        <li><span class="parameter">groups</span>
+        Zotero groups this is user is a member of.
+        </li>
+        <li><span class="parameter">public_groups</span>
+        Public Zotero groups.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ZotWeb:get_user_id"></a>
+    <strong>ZotWeb:get_user_id ()</strong>
     </dt>
     <dd>
     Get the user ID for the given API key.
@@ -2721,8 +3054,60 @@ b   <span class="number">4</span></pre>
 
 </dd>
     <dt>
+    <a name = "ZotWeb:get_groups"></a>
+    <strong>ZotWeb:get_groups ()</strong>
+    </dt>
+    <dd>
+    Get the IDs of the groups the current user is a member of.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,</a></span>
+        &hellip;} A list of Zotero group IDs.
+    </ol>
+
+    <h3>Raises:</h3>
+     An error if the <code>api_key</code> field is not set, the Zotero Web API
+  could not be reached, or if no Zotero user ID could be found.
+  See <a href="../index.html#http_get">http_get</a> for details on the second error.
+
+
+
+</dd>
+    <dt>
+    <a name = "ZotWeb:endpoints"></a>
+    <strong>ZotWeb:endpoints ([item_id])</strong>
+    </dt>
+    <dd>
+    Iterate over item endpoint URLs.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">item_id</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A Zotero item ID.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">func</span></span>
+        A <em>stateful</em> iterator.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "ZotWeb:search"></a>
-    <strong>ZotWeb:search (scope, ...)</strong>
+    <strong>ZotWeb:search (...)</strong>
     </dt>
     <dd>
     Search items by their author, publication year, and title.</p>
@@ -2734,11 +3119,6 @@ b   <span class="number">4</span></pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">scope</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Where to search. &lsquo;u&rsquo; for in the user&rsquo;s library,
-  &lsquo;g&rsquo; for in group libraries, and &lsquo;a&rsquo; for both.
-        </li>
         <li><span class="parameter">...</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          Search terms.
@@ -2760,70 +3140,26 @@ b   <span class="number">4</span></pre>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
         <li>
-           <span class="types"><span class="type">int</span></span>
-         An error number:
-  0 if no items match the search terms,
-  1 for fetch errors, and
-  2 for parse errors.</li>
-        <li>
            <span class="types"><span class="type">An</span></span>
         error message.</li>
     </ol>
 
     <h3>Raises:</h3>
-    An error if the given scope is not one of &lsquo;u&rsquo;, &lsquo;g&rsquo;, or &lsquo;a&rsquo;.
-  See also <a href="../index.html#ZotWeb:user_id">ZotWeb:user_id</a> and <code>ZotWeb:group_ids</code>.
-
-
-
-</dd>
-    <dt>
-    <a name = "ZotWeb:search_terms"></a>
-    <strong>ZotWeb:search_terms (ckey)</strong>
-    </dt>
-    <dd>
-    Guess search terms from a citation key.</p>
-
-<p> The terms guessed are printed to STDERR
- if the user has requested more output.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A citation key, e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        A list of search terms.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if no search terms could be derived.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
+    See <a href="../index.html#ZotWeb:get_user_id">ZotWeb:get_user_id</a> and <a href="../index.html#ZotWeb:get_groups">ZotWeb:get_groups</a>.
 
 
 
 </dd>
     <dt>
     <a name = "ZotWeb:match"></a>
-    <strong>ZotWeb:match (scope, ckey)</strong>
+    <strong>ZotWeb:match (ckey)</strong>
     </dt>
     <dd>
     Searches for a CSL item that matches a citation key.</p>
 
-<p> Search terms are printed to STDERR if
+<p> <h3>Side-effects:</h3></p>
+
+<p> Search terms are printed to STDERR
  if the user has requested more output.</p>
 
 <p> <h3>Caveats:</h3></p>
@@ -2833,13 +3169,6 @@ b   <span class="number">4</span></pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">scope</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Where to search.
-  &lsquo;u&rsquo; for in the user&rsquo;s library,
-  &lsquo;g&rsquo; for in group libraries,
-  and &lsquo;a&rsquo; for both.
-        </li>
         <li><span class="parameter">ckey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A citation key, e.g., &lsquo;name:2019word&rsquo;, &lsquo;name2019TwoWords&rsquo;.
@@ -2861,26 +3190,17 @@ b   <span class="number">4</span></pre>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
-        <li>
-           <span class="types"><span class="type">int</span></span>
-         An error number:
-  0 if no items match the citation key,
-  1 for fetch errors,
-  2 for parse errors,
-  3 if more than one item matches the citation key, and
-  4 if the citation key is not unique.</li>
     </ol>
 
     <h3>Raises:</h3>
-    An error if the given scope is not one of &lsquo;u&rsquo;, &lsquo;g&rsquo;, or &lsquo;a&rsquo;.
-  See also <a href="../index.html#ZotWeb:user_id">ZotWeb:user_id</a> and <code>ZotWeb:group_ids</code>.
+    See <a href="../index.html#ZotWeb:get_user_id">ZotWeb:get_user_id</a> and <a href="../index.html#ZotWeb:get_groups">ZotWeb:get_groups</a>.
 
 
 
 </dd>
     <dt>
     <a name = "ZotWeb:lookup"></a>
-    <strong>ZotWeb:lookup (scope, id)</strong>
+    <strong>ZotWeb:lookup (id)</strong>
     </dt>
     <dd>
     Look up a CSL item by its Zotero ID.</p>
@@ -2892,13 +3212,6 @@ b   <span class="number">4</span></pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">scope</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Where to look up items.
-  &lsquo;u&rsquo; for in the user&rsquo;s library,
-  &lsquo;g&rsquo; for in group libraries,
-  and &lsquo;a&rsquo; for both.
-        </li>
         <li><span class="parameter">id</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A Zotero item ID.
@@ -2919,28 +3232,25 @@ b   <span class="number">4</span></pre>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
-        <li>
-           <span class="types"><span class="type">int</span></span>
-         An error number:
-  0 if there is no item with that item ID,
-  1 for fetch errors,
-  2 for parse errors, and
-  5 if the item ID is not unique.</li>
     </ol>
 
     <h3>Raises:</h3>
-    An error if the given scope is not one of &lsquo;u&rsquo;, &lsquo;g&rsquo;, or &lsquo;a&rsquo;.
-  See also <a href="../index.html#ZotWeb:user_id">ZotWeb:user_id</a> and <code>ZotWeb:group_ids</code>.
+    See <a href="../index.html#ZotWeb:get_user_id">ZotWeb:get_user_id</a> and <a href="../index.html#ZotWeb:get_groups">ZotWeb:get_groups</a>.
 
 
 
 </dd>
     <dt>
-    <a name = "ZotWeb:csl_item"></a>
-    <strong>ZotWeb:csl_item (ckey)</strong>
+    <a name = "ZotWeb:get_item"></a>
+    <strong>ZotWeb:get_item (ckey)</strong>
     </dt>
     <dd>
-    Retrieve a CSL item from Zotero.
+    Retrieve a CSL item from Zotero.</p>
+
+<p> <h3>Side-effects:</h3></p>
+
+<p> Search terms for citation keys are printed to STDERR
+ if the user has requested more output.
 
 
     <h3>Parameters:</h3>
@@ -2968,7 +3278,45 @@ b   <span class="number">4</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#ZotWeb:user_id">ZotWeb:user_id</a> and <code>ZotWeb:group_ids</code>.
+    See <a href="../index.html#ZotWeb:get_user_id">ZotWeb:get_user_id</a> and <a href="../index.html#ZotWeb:get_groups">ZotWeb:get_groups</a>.
+
+
+
+</dd>
+    <dt>
+    <a name = "ZotWeb:configure"></a>
+    <strong>ZotWeb:configure (A)</strong>
+    </dt>
+    <dd>
+    Configure the connector.</p>
+
+<p> See <a href="../index.html#Connector:configure">Connector:configure</a> for details.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">A</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
+         list of key-value pairs.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        <code>true</code> If the configuration is valid.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> Otherwise.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
 
 
 
@@ -3026,8 +3374,8 @@ b   <span class="number">4</span></pre>
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs.
+           <span class="types"><span class="type">{{['id']=string},...}</span></span>
+        A list of key-value pairs.
     </ol>
 
 
@@ -3067,8 +3415,8 @@ b   <span class="number">4</span></pre>
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{{id=string},...}</span></span>
-        A list of item IDs.
+           <span class="types"><span class="type">{{['id']=string},...}</span></span>
+        A list of key-value pairs.
     </ol>
 
 
@@ -3224,7 +3572,11 @@ b   <span class="number">4</span></pre>
 
 <p> The filename suffix determins what format the data is written as.
  There must be an encoder for that suffix in <a href="../index.html#BIBLIO_TYPES">BIBLIO_TYPES</a>.
- Ends every file with <a href="../index.html#EOL">EOL</a>. The caveats of <a href="../index.html#file_write">file_write</a> apply.
+ Ends every file with <a href="../index.html#EOL">EOL</a>.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> See <a href="../index.html#file_write">file_write</a>.
 
 
     <h3>Parameters:</h3>
@@ -3273,13 +3625,18 @@ b   <span class="number">4</span></pre>
     <dd>
     Add items from Zotero to a bibliography file.</p>
 
-<p> If an item is already in the bibliography file, it won&rsquo;t be added again.
- If items cannot be found, an error is printed to STDERR.</p>
+<p> If an item is already in the bibliography file, it won&rsquo;t be added again.</p>
 
 <p> <a href="https://github.com/jgm/citeproc">Citeproc</a> appears to recognise
  formatting in <em>every</em> CSL field, so <a href="../index.html#">pandoc-zotxt.lua</a> does the same.</p>
 
-<p> The caveats of <a href="../index.html#file_write">file_write</a> apply.
+<p> <h3>Side-effects:</h3></p>
+
+<p> If items cannot be found, an error is printed to STDERR.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> See <a href="../index.html#file_write">file_write</a>.
 
 
     <h3>Parameters:</h3>
@@ -3486,7 +3843,7 @@ b   <span class="number">4</span></pre>
     <dl class="function">
     <dt>
     <a name = "add_biblio"></a>
-    <strong>add_biblio (handle, meta, ckeys)</strong>
+    <strong>add_biblio (handle, doc)</strong>
     </dt>
     <dd>
     Add data to a bibliography file and the file to the document&rsquo;s metadata.</p>
@@ -3494,7 +3851,15 @@ b   <span class="number">4</span></pre>
 <p> Updates the bibliography file as needed and adds it to the <code>bibliography</code>
  metadata field. Interpretes a relative filename as relative to the
  directory of the first input file passed to <strong>pandoc</strong>, or, if not input
- files were given, as relative to the current working directory.
+ files were given, as relative to the current working directory.</p>
+
+<p> <h3>Side-effects:</h3></p>
+
+<p> If a source cannot be found, an error is printed to STDERR.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> See <a href="../index.html#file_write">file_write</a>.
 
 
     <h3>Parameters:</h3>
@@ -3502,15 +3867,10 @@ b   <span class="number">4</span></pre>
         <li><span class="parameter">handle</span>
          A interface to Zotero or the Zotero Web API.
         </li>
-        <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">pandoc.MetaMap</span></span>
-         A metadata block, with the field
+        <li><span class="parameter">doc</span>
+            <span class="types"><span class="type">pandoc.Pandoc</span></span>
+         A Pandoc document, with the metadata field
   <code>zotero-bibliography</code> set to the filename of the bibliography file.
-        </li>
-        <li><span class="parameter">ckeys</span>
-            <span class="types"><span class="type">tab</span></span>
-         The citaton keys of the items that should be added,
-  e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
         </li>
     </ul>
 
@@ -3540,10 +3900,12 @@ b   <span class="number">4</span></pre>
 </dd>
     <dt>
     <a name = "add_refs"></a>
-    <strong>add_refs (handle, meta, ckeys)</strong>
+    <strong>add_refs (handle, doc)</strong>
     </dt>
     <dd>
     Add bibliographic data to the <code>references</code> metadata field.</p>
+
+<p> <h3>Side-effects:</h3></p>
 
 <p> If a source cannot be found, an error is printed to STDERR.
 
@@ -3553,14 +3915,9 @@ b   <span class="number">4</span></pre>
         <li><span class="parameter">handle</span>
          A interface to Zotero or the Zotero Web API.
         </li>
-        <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">pandoc.MetaMap</span></span>
-         A metadata block.
-        </li>
-        <li><span class="parameter">ckeys</span>
-            <span class="types"><span class="type">tab</span></span>
-         The citation keys of the items that should be added,
-  e.g., <code>{&apos;name:2019word&apos;, &apos;name2019WordWordWord&apos;}</code>.
+        <li><span class="parameter">doc</span>
+            <span class="types"><span class="type">pandoc.Pandoc</span></span>
+         A Pandoc document.
         </li>
     </ul>
 
@@ -3589,7 +3946,7 @@ b   <span class="number">4</span></pre>
 </dd>
     <dt>
     <a name = "meta_param"></a>
-    <strong>meta_param (meta, key)</strong>
+    <strong>meta_param (meta, name)</strong>
     </dt>
     <dd>
     Lookup a parameter in the document&rsquo;s metadata field.</p>
@@ -3605,7 +3962,7 @@ b   <span class="number">4</span></pre>
             <span class="types"><span class="type">pandoc.MetaMap</span></span>
          A metadata block.
         </li>
-        <li><span class="parameter">key</span>
+        <li><span class="parameter">name</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A parameter name.
         </li>
@@ -3626,6 +3983,8 @@ b   <span class="number">4</span></pre>
         An error message.</li>
     </ol>
 
+    <h3>Raises:</h3>
+    An error if there is no parameter of that name.
 
 
 
@@ -3652,7 +4011,7 @@ b   <span class="number">4</span></pre>
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=tab,...}</a></span>
+           <span class="types"><span class="type">tab</span></span>
         A mapping of keys to values.
     </ol>
 
@@ -3667,9 +4026,11 @@ b   <span class="number">4</span></pre>
     <dd>
     Collect citations and add bibliographic data to a document.</p>
 
-<p> If errors occur, error messages are printed to STDERR.</p>
+<p> See the manual for details.</p>
 
-<p> See the manual for details.
+<p> <h3>Side-effects:</h3></p>
+
+<p> If errors occur, error messages are printed to STDERR.
 
 
     <h3>Parameters:</h3>
@@ -3706,7 +4067,7 @@ b   <span class="number">4</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-11-21 00:52:25 </i>
+<i style="float:right;">Last updated 2021-11-28 15:59:19 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
