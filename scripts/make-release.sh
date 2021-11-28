@@ -71,10 +71,6 @@ int() {
 	exit $((${1:?} + 128))
 }
 
-catch() {
-	SIG="${1:?}"
-}
-
 trapf() {
 	[ $# -gt 1 ] || return 0
 	__trapf_func="$1"
