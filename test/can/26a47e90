@@ -1,0 +1,15 @@
+HTTP/1.1 200 OK
+Date: Sun, 28 Nov 2021 09:37:10 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 0
+Link: <https://www.zotero.org/users/5763466/items/>; rel="alternate"
+Last-Modified-Version: 80
+Content-Length: 19
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": []
+}

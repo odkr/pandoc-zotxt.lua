@@ -1123,10 +1123,10 @@ end
 function test_zotxt_csl_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.Zotxt.csl_item, M.Zotxt, v)
+        lu.assert_error(M.Zotxt.get_item, M.Zotxt, v)
     end
 
-    local ret, err = M.Zotxt:csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = M.Zotxt:get_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
 end
@@ -1138,10 +1138,10 @@ function test_zotweb_csl_item ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(zotweb.csl_item, zotweb, v)
+        lu.assert_error(zotweb.get_item, zotweb, v)
     end
 
-    local ret, err = zotweb:csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = zotweb:get_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
 end
@@ -1153,10 +1153,10 @@ function test_zotweb_csl_item ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(zotweb.csl_item, zotweb, v)
+        lu.assert_error(zotweb.get_item, zotweb, v)
     end
 
-    local ret, err = zotweb:csl_item('haslanger2012ResistingRealitySocial')
+    local ret, err = zotweb:get_item('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
 end

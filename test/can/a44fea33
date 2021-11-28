@@ -1,5 +1,5 @@
 HTTP/1.1 200 OK
-Date: Sat, 20 Nov 2021 23:07:06 GMT
+Date: Sun, 28 Nov 2021 09:43:05 GMT
 Server: Apache/2.4.51 ()
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Zotero-API-Version: 3
@@ -8,31 +8,29 @@ Total-Results: 1
 Link: <https://www.zotero.org/groups/4513095/items/>; rel="alternate"
 Last-Modified-Version: 14
 Vary: Accept-Encoding
-Content-Length: 801
+Content-Length: 721
 Content-Type: application/vnd.citationstyles.csl+json
 
 {
     "items": [
         {
-            "id": "11662297/D9HEKNWD",
-            "type": "book",
-            "title": "Resisting Reality: Social Construction and Social Critique",
-            "publisher": "Oxford University Press",
-            "publisher-place": "Oxford",
-            "event-place": "Oxford",
-            "ISBN": "978-0-19-989262-4",
-            "note": "citation key: haslanger2012ResistingRealitySocial",
-            "shortTitle": "Resisting Reality",
+            "id": "11662297/7BTKP59I",
+            "type": "article-journal",
+            "title": "In Defence of Historical Constructivism about Races",
+            "container-title": "Ergo, an Open Access Journal of Philosophy",
+            "volume": "2",
+            "URL": "http://hdl.handle.net/2027/spo.12405314.0002.021",
+            "DOI": "10/gng6nw",
             "author": [
                 {
-                    "family": "Haslanger",
-                    "given": "Sally"
+                    "family": "Díaz-León",
+                    "given": "Esa"
                 }
             ],
             "issued": {
                 "date-parts": [
                     [
-                        2012
+                        2015
                     ]
                 ]
             }

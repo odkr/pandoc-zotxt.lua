@@ -68,10 +68,12 @@ $(COMMON_TESTS): tmpdir
 			"$(PANDOC)" $(PANDOC_ARGS) \
 				--metadata zotero-connector="$$CONNECTOR" \
 				--metadata zotero-api-key="$(ZOTERO_API_KEY)" \
-				--lua-filter "$(SCRIPT)" --filter pandoc-citeproc \
+				--lua-filter "$(SCRIPT)" \
+				--filter pandoc-citeproc \
 				--output "$(TMP_DIR)/$@.html" \
 				"$(TEST_DATA_DIR)/$@.md"; \
-			cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
+			cmp "$(TMP_DIR)/$@.html" \
+			    "$(TEST_NORM_DIR)/pre-v2_11/$@.html"; \
 		else \
 			$(PANDOC) $(PANDOC_ARGS) \
 				--metadata zotero-connector="$$CONNECTOR" \
@@ -79,7 +81,8 @@ $(COMMON_TESTS): tmpdir
 				--lua-filter "$(SCRIPT)" --citeproc \
 				--output "$(TMP_DIR)/$@.html" \
 				"$(TEST_DATA_DIR)/$@.md"; \
-			cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
+			cmp "$(TMP_DIR)/$@.html" \
+			    "$(TEST_NORM_DIR)/$@.html"; \
 		fi \
 	done
 
