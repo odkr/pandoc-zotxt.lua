@@ -162,6 +162,7 @@ fi
 
 cd -P "$REPO" || exit 69
 
+unset TMP_DIR CLEANUP
 trap cleanup EXIT
 trapf int 1 2 15
 

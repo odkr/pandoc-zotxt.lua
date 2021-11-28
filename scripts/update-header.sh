@@ -126,6 +126,7 @@ done
 # INIT
 # ====
 
+unset TMP_FILE
 trap cleanup EXIT
 trap 'cleanup 1' HUP
 trap 'cleanup 2' INT
