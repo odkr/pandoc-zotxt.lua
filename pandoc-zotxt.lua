@@ -406,6 +406,29 @@ function Prototype.mt:__call (tab)
     return setmetatable(tab, mt)
 end
 
+--- A simple list.
+--
+-- @type Table
+-- @usage
+--      > list = Table()
+--      > list:add 'a string'
+--      > list.n
+--      1
+--
+-- @fixme No unit test.
+Table = Prototype { n = 0 }
+
+--- Add an item to the table.
+--
+-- @param item The item.
+-- @fixme No unit test.
+function Table:add (item, ...)
+    local n = self.n + 1
+    self[n] = item
+    self.n = n
+    if ... then self:add(...) end
+end
+
 --- Prototype for errors.
 --
 -- @type Error
@@ -653,7 +676,7 @@ do
     --
     -- See `expand_vars` for the expression syntax.
     --
-    -- @tab ns A mapping of variable names to values.
+    -- @tab vars A mapping of variable names to values.
     -- @string var The name of the variable to look up.
     -- @string _ If the value of the variable should be passed on to a
     --  function, the literal `|`. Otherwise, the empty string.
@@ -661,20 +684,20 @@ do
     --  function, the name of that function. Otherwise the empty string.
     -- @treturn string The value of the expression.
     -- @raise See `expand_vars`.
-    local function eval (ns, var, _, func)
-        local v = ns
+    local function eval (vars, var, _, func)
+        local v = vars
         for n in split(var, '%.') do
             if type(v) ~= 'table' then break end
             v = v[n]
         end
         if func ~= '' then
-            local f = ns[func]
+            local f = vars[func]
             assert(f, format('$%s%s%s: no such function.', var, _, func))
             v = f(v)
         end
         local s = tostring(v)
         assert(s, format('$%s%s%s: cannot coerce to a string.', var, _, func))
-        return s
+        return expand_vars(s, vars)
     end
 
     --- Expand variables in strings.
@@ -683,7 +706,7 @@ do
     -- a variable name, and the "$" sign and the word are replaced with the
     -- value of that variable.
     --
-    --      > return expand_vars(
+    --      > expand_vars(
     --      >     '$v1 is $v2.',
     --      >     {v1 = 'foo', v2 = 'bar'}
     --      > )
@@ -701,7 +724,7 @@ do
     -- If a `$<variable>` expression is followed by a "|" character and
     -- another word, the second word is interpreted as a function name;
     -- the value of the given variable is then passed to that function,
-    -- and the whole expression `$<variable>|$<function>` is replaced
+    -- and the whole expression `$<variable>|<function>` is replaced
     -- with the first value that this function returns.
     --
     --      > expand_vars(
@@ -714,16 +737,35 @@ do
     --      > )
     --      bar is bar!
     --
+    -- Expressions are evaluated recursively.
+    --
+    --      > expand_vars(
+    --      >   '$v1 is bar.', {
+    --      >       v1 = '$v2',
+    --      >       v2 = 'foo'
+    --      >   }
+    --      > )
+    --      foo is bar.
+    --
+    -- Nested values can be looked up by joining tables names with a dot.
+    --
+    --      > expand_vars(
+    --      >   '$a.b is bar.', {
+    --      >       a = { b = 'foo '}
+    --      >   }
+    --      > )
+    --      foo is bar.
+    --
     -- @string str A string.
-    -- @tab ns A mapping of variable names to values.
+    -- @tab vars A mapping of variable names to values.
     -- @treturn string A transformed string.
     -- @raise An error if there is no function of the given name or
-    --  if the value of the expression cannot be coerced to a string.
+    --  if the value of an expression cannot be coerced to a string.
     -- @within String manipulation
-    function expand_vars (str, ns)
+    function expand_vars (str, vars)
         assert(str, 'no string given.')
-        assert(ns, 'no namespace given.')
-        local function e (...) return eval(ns, ...) end
+        assert(vars, 'no variables given.')
+        local function e (...) return eval(vars, ...) end
         return str:gsub('%f[%$]%$([%w_%.]+)%f[%A](|?)([%w_]*)', e):
                    gsub('%$(%$*)', '%1')
     end
@@ -800,7 +842,6 @@ end
 --
 -- @within Table manipulation
 -- @fixme No unit test.
--- @todo Check if that function may be useful elsewhere.
 function tabulate (iter, val)
     local tab = {}
     local n = 0
@@ -812,7 +853,6 @@ function tabulate (iter, val)
             tab[n] = val
         end
     until not val
-    tab.n = n
     return unpack(tab)
 end
 
@@ -848,7 +888,7 @@ end
 -- @usage
 --      > tab = {a = 3, b = 4, c = 2, d = 1}
 --      > for k, v in sorted_pairs(tab, in_order{'d', 'c'}) do
---      >>  print(k, v)
+--      >     print(k, v)
 --      > end
 --      d   1
 --      c   2
@@ -1394,7 +1434,7 @@ end
 
 do
     -- Filter to escape strings.
-    local esc = {}
+    local escape_str = {}
 
     -- Escape Markdown in a string element.
     --
@@ -1402,13 +1442,13 @@ do
     --
     -- @tparam pandoc.Str str A string element.
     -- @treturn pandoc.Str A string with all Markdown syntax escaped.
-    function esc.Str (str)
+    function escape_str.Str (str)
         str.text = escape_markdown(str.text)
         return str
     end
 
     -- Filter to convert to Markdown text.
-    local md = {}
+    local to_markdown = {}
 
     -- Make a function that converts an element to Markdown.
     --
@@ -1416,23 +1456,23 @@ do
     -- @treturn func A conversion function.
     local function make_conv_f (char)
         return function (elem)
-            local str = stringify(pandoc.walk_inline(elem, md))
+            local str = stringify(pandoc.walk_inline(elem, to_markdown))
             return Str(char .. str .. char)
         end
     end
 
     -- Convert AST elements into Markdown text.
-    md.Emph = make_conv_f '*'
-    md.Strong = make_conv_f '**'
-    md.Subscript = make_conv_f '~'
-    md.Superscript = make_conv_f '^'
+    to_markdown.Emph = make_conv_f '*'
+    to_markdown.Strong = make_conv_f '**'
+    to_markdown.Subscript = make_conv_f '~'
+    to_markdown.Superscript = make_conv_f '^'
 
     -- Convert <span> elements to Markdown text.
     --
     -- @tparam pandoc.Span A <span> element.
     -- @treturn pandoc.Str The element as Markdown.
-    function md.Span (span)
-        local str = stringify(pandoc.walk_inline(span, md))
+    function to_markdown.Span (span)
+        local str = stringify(pandoc.walk_inline(span, to_markdown))
         local attrs = ''
 
         local identifier = span.identifier
@@ -1465,10 +1505,10 @@ do
     --
     -- @tparam pandoc.SmallCaps A SmallCaps element.
     -- @treturn pandoc.Str The element as Markdown.
-    function md.SmallCaps (sc)
+    function to_markdown.SmallCaps (sc)
         local span = Span(sc.content)
         span.attributes.style = 'font-variant: small-caps'
-        return md.Span(span)
+        return to_markdown.Span(span)
     end
 
     --- Convert a Pandoc element to Markdown text.
@@ -1480,7 +1520,7 @@ do
     -- @treturn string Markdown text.
     -- @within Converters
     function markdownify (elem)
-        return stringify(walk(walk(elem, esc), md))
+        return stringify(walk(walk(elem, escape_str), to_markdown))
     end
 end
 
@@ -1508,9 +1548,9 @@ do
     function scalarify (str)
         -- Simple strings need no special treatment.
         if
-            tonumber(str) ~= nil   or  -- Numbers
-            str:match '^[%w-]+$'   or  -- Simple words
-            str:match '^[%w%./]+$' or  -- DOIs
+            tonumber(str) ~= nil    or -- Numbers
+            str:match '^[%w-]+$'    or -- Simple words
+            str:match '^[%w%./]+$'  or -- DOIs
             str:match '^%a+:[%w%./-]+' -- URLs
         then return str end
 
@@ -1557,10 +1597,10 @@ do
     end
 
     -- Convert Lua to YAML types.
-    local converters = {}
-    converters.boolean = tostring
-    converters.number = tostring
-    converters.string = scalarify
+    local to_yaml = {}
+    to_yaml.boolean = tostring
+    to_yaml.number = tostring
+    to_yaml.string = scalarify
 
     --- Generate a YAML representation of a graph.
     --
@@ -1583,21 +1623,21 @@ do
         assert(_rd < 1024, 'too much recursion.')
         if not ind then ind = 4 end
         local t = type(graph)
-        local conv = converters[t]
+        local conv = to_yaml[t]
         if conv then return conv(graph) end
         if t ~= 'table' then error(t .. ': cannot be expressed in YAML.') end
         _rd = _rd + 1
         if not _col then _col = 0 end
-        local str = ''
+        local strs = Table()
         local n = #graph
         local nkeys = select(2, keys(graph))
         local sp = spaces(_col)
         if n == nkeys then
             local col = _col + 2
             for i = 1, n do
-                if i > 1 then str = str .. sp end
-                str = str .. '- ' .. yamlify(graph[i], ind, sort_f, col, _rd)
-                if i ~= n then str = str .. EOL end
+                if i > 1 then strs:add(sp) end
+                strs:add('- ', yamlify(graph[i], ind, sort_f, col, _rd))
+                if i ~= n then strs:add(EOL) end
             end
         else
             local i = 0
@@ -1606,28 +1646,28 @@ do
                 if type(k) == 'number' then k = tostring(k)
                                        else k = scalarify(k)
                 end
-                if i > 1 then str = str .. sp end
-                str = str .. k .. ':'
+                if i > 1 then strs:add(sp) end
+                strs:add(k, ':')
                 local col = _col + ind
-                if type(v) == 'table' then str = str .. EOL .. spaces(col)
-                                      else str = str .. ' '
+                if type(v) == 'table' then strs:add(EOL, spaces(col))
+                                      else strs:add ' '
                 end
-                str = str .. yamlify(v, ind, sort_f, col, _rd)
-                if i ~= nkeys then str = str .. EOL end
+                strs:add(yamlify(v, ind, sort_f, col, _rd))
+                if i ~= nkeys then strs:add(EOL) end
             end
         end
-        return str
+        return concat(strs)
     end
 end
 
 do
-    local converters = {}
+    local to_meta = {}
 
     -- Convert a Lua boolean to a pandoc.MetaBool
     --
     -- @bool b A boolean value.
     -- @treturn pandoc.MetaBool The same boolean value.
-    function converters.boolean (x)
+    function to_meta.boolean (x)
         return pandoc.MetaBool(x)
     end
 
@@ -1635,7 +1675,7 @@ do
     --
     -- @bool n A number.
     -- @treturn pandoc.MetaInlines The same number.
-    function converters.number (n)
+    function to_meta.number (n)
         return MetaInlines(List{Str(tostring(n))})
     end
 
@@ -1645,7 +1685,7 @@ do
     --
     -- @string s A string.
     -- @treturn pandoc.MetaInlines The same string.
-    function converters.string (s)
+    function to_meta.string (s)
         local html = zot_to_html(s)
         local inlines = pandoc.read(html, 'html').blocks[1].content
         return MetaInlines(inlines)
@@ -1658,7 +1698,7 @@ do
     -- @within Converters
     function csl_item_to_meta (item)
         local t = type(item)
-        local conv = converters[t]
+        local conv = to_meta[t]
         if conv then return conv(item) end
         if t ~= 'table' then
             error(t .. ': cannot be converted to a Pandoc metadata type.')
@@ -1745,6 +1785,104 @@ do
 end
 
 
+-- Citation keys
+-- -------------
+
+--- A mapping of citation key types to functions that guess search terms.
+--
+-- @within Citation key types
+local CITEKEY_TYPES = {}
+
+do
+    local codes = utf8.codes
+    local len = utf8.len
+
+    --- Guess search terms from a BetterBibTeX citation key.
+    --
+    -- Splits up a BetterBibTeX citation key at each uppercase letter and
+    -- each start of a string of digits.
+    --
+    -- BetterBibTeX citation keys must be encoded in ASCII.
+    --
+    -- @string ckey A BetterBibTeX citation key.
+    -- @treturn {string,...} A list of search terms.
+    -- @fixme No unit test.
+    function CITEKEY_TYPES.betterbibtexkey (ckey)
+        local terms = Table()
+        for str, num in ckey:gmatch '([%a%p]*)(%d*)' do
+            if str and str ~= '' then
+                for term in split(str, '%u', nil, 'l') do
+                    local l = len(term)
+                    if l and l > 3 then terms:add(term) end
+                end
+            end
+            if num and num ~= '' then
+                local l = len(num)
+                if l and l > 1 then terms:add(num) end
+            end
+        end
+        if terms.n < 2 then return nil end
+        return terms
+    end
+
+    --- Guess search terms from a zotxt Easy Citekey.
+    --
+    -- Splits up a zotxt Easy Citekey into an author, a year,
+    -- and a title.
+    --
+    -- zotxt Easy Citekeys must be encoded in UTF-8.
+    --
+    -- @string ckey A zotxt Easy Citekey.
+    -- @treturn {string,...} A list of search terms.
+    -- @fixme No unit test.
+    function CITEKEY_TYPES.easykey (ckey)
+        local terms = Table()
+        local q
+        for p, c in codes(ckey) do
+            if not q then
+                -- 58 is the colon (:).
+                if c == 58 then
+                    local s = ckey:sub(1, p - 1)
+                    if s and s ~= '' then terms:add(s) end
+                    q = p
+                end
+            else
+                -- Digits start at 48 and end at 57.
+                if c < 48 or c > 57 then
+                    local s = ckey:sub(q + 1, p - 1)
+                    if s and s ~= '' then terms:add(s) end
+                    s = ckey:sub(p)
+                    if s and s ~= '' then terms:add(s) end
+                    break
+                end
+            end
+        end
+        if terms.n < 2 then return end
+        return terms
+    end
+end
+
+--- Guess search terms from a citation key.
+--
+-- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
+-- @tab citekey_types FIXME
+-- @treturn[1] {string,...} A list of search terms.
+-- @treturn[2] nil `nil` if no search terms could be derived.
+-- @treturn[2] string An error message.
+-- @within Citation key types
+-- @fixme No unit test.
+function guess_search_terms(ckey, citekey_types)
+    for i = 1, #citekey_types do
+        local f = CITEKEY_TYPES[citekey_types[i]]
+        if f then
+            local terms = f(ckey)
+            if terms then return terms end
+        end
+    end
+    return nil, 'cannot parse citation key ' .. ckey .. '.'
+end
+
+
 -- Networking
 -- ----------
 
@@ -1773,6 +1911,27 @@ do
     end
 end
 
+--- Query a URL via an HTTP GET request.
+--
+-- @string url The URL.
+-- @param {string=string,...} params Request parameters.
+-- @treturn string The MIME type of the HTTP content.
+-- @treturn string The HTTP content itself.
+-- @raise See `http_get`.
+-- @fixme No unit test.
+function url_query (url, params)
+    if params then
+        local p = {}
+        local n = 0
+        for k, v in sorted_pairs(params) do
+            n = n + 1
+            p[n] = k .. '=' .. v
+        end
+        if n > 0 then url = url .. '?' .. concat(p, '&') end
+    end
+    return http_get(url)
+end
+
 
 -- zotxt
 -- -----
@@ -1783,7 +1942,7 @@ end
 -- @usage
 --      > handle = Zotxt()
 --      > handle.citekey_types = pandoc.List{'betterbibtexkey'}
---      > csl_item = handle:csl_item 'name2019TwoWords'
+--      > csl_item = handle:get_item 'name2019TwoWords'
 Zotxt = Prototype()
 
 --- What types of citation keys to support.
@@ -1801,8 +1960,8 @@ do
     local tostring = tostring
     local type = type
 
-    -- URL template for looking up items.
-    local lookup_url = 'http://localhost:23119/zotxt/items?%s=%s'
+    -- URL of the endpoint to look up items at.
+    local items_url = 'http://localhost:23119/zotxt/items'
 
     --- Retrieve a CSL item from zotxt.
     --
@@ -1811,7 +1970,7 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See `http_get`.
-    function Zotxt:csl_item (ckey)
+    function Zotxt:get_item (ckey)
         local citekey_types = self.citekey_types
         local err = nil
         for i = 1, #citekey_types do
@@ -1819,30 +1978,34 @@ do
             -- but if a single one cannot be found, it replies with a cryptic
             -- error message (for easy citekeys) or an empty response
             -- (for Better BibTeX citation keys).
-            local query_url = lookup_url:format(citekey_types[i], ckey)
-            local mt, str = http_get(query_url)
+            local mt, str = url_query(items_url, {[citekey_types[i]] = ckey})
             if not mt or mt == '' then
                 err = ckey .. ': response has no MIME type.'
             elseif not str or str == '' then
                 err = ckey .. ': response is empty.'
             elseif not mt:match '^text/plain%f[%A]' then
-                err = format('%s: response is of wrong type %s.', ckey, mt)
+                err = ckey .. ': response is of wrong type ' .. mt .. '.'
             elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
                 err = ckey .. ': response is not encoded in UTF-8'
             else
                 -- luacheck: ignore ok
                 local data = parse_csl_json(str)
                 if data then
-                    if i ~= 1 then
-                        citekey_types[1], citekey_types[i] =
-                        citekey_types[i], citekey_types[1]
+                    local n = #data
+                    if n == 1 then
+                        if i ~= 1 then
+                            citekey_types[1], citekey_types[i] =
+                            citekey_types[i], citekey_types[1]
+                        end
+                        local item = data[1]
+                        item.id = ckey
+                        return item
                     end
-                    -- @fixme check the number of items!
-                    local item = data[1]
-                    item.id = ckey
-                    return item
+                    if n == 0 then err = ckey .. ': no matches.'
+                              else err = ckey .. ': too many matches.'
+                    end
                 else
-                    err = 'Zotero responded: ' .. str
+                    err = ckey .. ': got unparsable response: ' .. str
                 end
             end
         end
@@ -1854,105 +2017,19 @@ end
 -- Zotero Web API
 -----------------
 
---- A mapping of citation key types to functions that guess search terms.
---
--- @within ZotWeb
-local CITEKEY_TYPES = {}
-
-do
-    local codes = utf8.codes
-    local len = utf8.len
-
-    --- Guess search terms from a BetterBibTeX citation key.
-    --
-    -- Splits up a BetterBibTeX citation key at each uppercase letter and
-    -- each start of a string of digits.
-    --
-    -- BetterBibTeX citation keys must be encoded in ASCII.
-    --
-    -- @string ckey A BetterBibTeX citation key.
-    -- @treturn {string,...} A list of search terms.
-    -- @within ZotWeb
-    -- @fixme No unit test.
-    function CITEKEY_TYPES.betterbibtexkey (ckey)
-        local terms = {}
-        local n = 0
-        local function add (term)
-            n = n + 1
-            terms[n] = term
-        end
-        for str, num in ckey:gmatch '([%a%p]*)(%d*)' do
-            if str and str ~= '' then
-                for term in split(str, '%u', nil, 'l') do
-                    local l = len(term)
-                    if l and l > 3 then add(term) end
-                end
-            end
-            if num and num ~= '' then
-                local l = len(num)
-                if l and l > 1 then add(num) end
-            end
-        end
-        if n < 2 then return nil end
-        return terms
-    end
-
-    --- Guess search terms from a zotxt Easy Citekey.
-    --
-    -- Splits up a zotxt Easy Citekey into an author, a year,
-    -- and a title.
-    --
-    -- zotxt Easy Citekeys must be encoded in UTF-8.
-    --
-    -- @string ckey A zotxt Easy Citekey.
-    -- @treturn {string,...} A list of search terms.
-    -- @within ZotWeb
-    -- @fixme No unit test.
-    function CITEKEY_TYPES.easykey (ckey)
-        local terms = {}
-        local n = 0
-        local function add (term)
-            n = n + 1
-            terms[n] = term
-        end
-        local q
-        for p, c in codes(ckey) do
-            if not q then
-                -- 58 is the colon (:).
-                if c == 58 then
-                    local s = ckey:sub(1, p - 1)
-                    if s and s ~= '' then add(s) end
-                    q = p
-                end
-            else
-                -- Digits start at 48 and end at 57.
-                if c < 48 or c > 57 then
-                    local s = ckey:sub(q + 1, p - 1)
-                    if s and s ~= '' then add(s) end
-                    s = ckey:sub(p)
-                    if s and s ~= '' then add(s) end
-                    break
-                end
-            end
-        end
-        if n < 2 then return end
-        return terms
-    end
-end
-
---- Interface to the [Zotero Web API](https://www.zotero.org/support/dev/web_api/)
+--- Interface to [Zotero's Web API](https://www.zotero.org/support/dev/web_api)
 --
 -- @type ZotWeb
 -- @usage
 --      > handle = ZotWeb{api_key = 'alongstringoflettersandnumbers'}
 --      > handle.citekey_types = pandoc.List{'betterbibtexkey'}
---      > csl_item = handle:csl_item 'name2019TwoWords'
+--      > csl_item = handle:get_item 'name2019TwoWords'
 ZotWeb = Prototype()
 
 --- What types of citation keys to support.
 ZotWeb.citekey_types = List {
-    -- 'easykey' must go first, because it's unlikely that that the
-    -- citekey parser parses a Better BibTeX citation key (most BetterBibTeX
+    -- 'easykey' must go first, because it is unlikely that that the Easy
+    -- Citekey parser parses a Better BibTeX citation key (most BetterBibTeX
     -- citation keys don't contain colons), but the BetterBibTeX citation key
     -- parser will happily parse an Easy Citekey, and it will do it wrong.
     'easykey',
@@ -1965,46 +2042,35 @@ do
     local len = utf8.len
     local decode = json.decode
 
-    -- @todo Make expand_vars recursive and use it here!
     -- Zotero Web API base URL.
     local base_url = 'https://api.zotero.org'
 
     -- URL template for user ID lookups.
-    -- %s is replaced with the API key.
-    local user_id_url = base_url .. '/keys/%s'
+    local user_id_url = base_url .. '/keys/$api_key'
 
     -- URL template for group membership lookups.
-    -- %s is replaced with the user ID,
-    -- the second with the API key.
-    local group_url = base_url .. '/users/%s/groups?v=3&key=%s'
+    local groups_url = base_url .. '/users/$user_id/groups'
 
     -- User prefix.
-    -- %s is replaced with the user ID.
-    local user_prefix = '/users/%s'
+    local user_prefix = '/users/$user_id'
 
     -- Group prefix.
-    -- %s is replaced with the group ID.
-    local group_prefix = '/groups/%s'
+    local group_prefix = '/groups/$group_id'
 
-    -- Path for item lookups (relative to prefix).
-    -- The first %s is replaced with the item ID,
-    -- the second with the API key.
-    local lookup_path = '/items/%s?v=3&key=%s&format=csljson'
-
-    -- Path for item searches (relative to prefix).
-    -- The first %s is replaced with the API key,
-    -- the second with the search terms.
-    local search_path = '/items/?v=3&key=%s&format=csljson&qmode=titleCreatorYear&q=%s&itemType=-attachment'
+    -- URL template for item lookups.
+    local items_url = base_url .. '$prefix/items/$item_id'
 
     -- Retrieve and parse data from the Zotero Web API.
     --
-    -- @string query_url A URL.
-    -- @return[1] The response of the Zotero WEB API.
+    -- @string url A URL template.
+    -- @tab params A mapping of request parameter names to values
+    --  (e.g., `{v = 3, api_key = 'longstringoflettersandnumbers'}`).
+    -- @return[1] The response of the Zotero Web API.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raises See `http_get`
-    local function get (query_url)
-        local mt, str = http_get(query_url)
+    local function query (url, params)
+        local mt, str = url_query(url, params)
         if not mt or mt == '' then
             return nil, 'response has no MIME type.'
         elseif not str or str == '' then
@@ -2028,75 +2094,83 @@ do
     -- @fixme No unit test.
     function ZotWeb:user_id ()
         if self._user_id then return self._user_id end
-        assert(self.api_key, 'no Zotero API key given.')
-        local query_url = user_id_url:format(self.api_key)
-        local str, err = get(query_url)
+        assert(self.api_key, UIDLookupError{err = 'no Zotero API key set'})
+        local ep = expand_vars(user_id_url, self)
+        local str, err = query(ep, {v = 3})
         assert(str, UIDLookupError{err = err})
         local ok, data = pcall(decode, str)
         assert(ok, UIDLookupError{err = 'cannot parse response: ' .. str})
         local user_id = data.userID
-        assert(user_id, UIDLookupError{err = 'no user ID found.'})
+        assert(user_id, UIDLookupError{err = 'no user ID found'})
         self._user_id = user_id
         return user_id
     end
 
-    -- @fixme Undocumented.
+    --- Get the IDs of the groups the current user is a member of.
+    --
+    -- @treturn {string, ...} A list of Zotero group IDs.
+    -- @raise An error if the `api_key` field is not set, the Zotero Web API
+    --  could not be reached, or if no Zotero user ID could be found.
+    --  See `http_get` for details on the second error.
     -- @fixme No unit test.
-    function ZotWeb:group_ids ()
-        if self._group_ids then return self._group_ids end
-        assert(self.api_key, 'no Zotero API key given.')
-        local query_url = group_url:format(self:user_id(), self.api_key)
-        local str, err = get(query_url)
+    function ZotWeb:groups ()
+        if self._groups then return self._groups end
+        assert(self.api_key, GroupLookupError{err = 'no Zotero API key set.'})
+        local ep = expand_vars(groups_url, {user_id = self:user_id()})
+        local str, err = query(ep, {v = 3, key = self.api_key})
         assert(str, GroupLookupError{err = err})
-        local ok, groups = pcall(decode, str)
+        local ok, data = pcall(decode, str)
         assert(ok, GroupLookupError{err = 'cannot parse response: ' .. str})
-        local ids = {}
+        local groups = {}
         local n = 0
-        for i = 1, #groups do
-            if groups[i] and groups[i].data and groups[i].data.id then
+        for i = 1, #data do
+            if data[i] and data[i].data and data[i].data.id then
                 n = n + 1
-                ids[n] = groups[i].data.id
+                groups[n] = data[i].data.id
             end
         end
-        self._group_ids = ids
-        return ids
+        self._groups = groups
+        return groups
     end
 
-    -- Search items by their author, publication year, and title (worker).
+    --- Iterate over item endpoint URLs.
     --
-    -- @string scope Where to search.
-    --  'u' for in the user library,
-    --  'g' for in a group library.
-    -- @string id Depending on the scope, a user or a group ID.
-    -- @string api_key A Zotero API key.
-    -- @string ... Search terms.
-    -- @treturn[1] tab A list of CSL items that match the given search terms.
-    -- @treturn[2] nil `nil` if no items were found or an error occurred.
-    -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number:
-    --  0 if no items match the search terms,
-    --  1 for fetch errors, and
-    --  2 for parse errors.
-    -- @raise An error if the given scope is neither 'u' nor 'g'.
-    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    -- @string[opt] item_id A Zotero item ID.
+    -- @treturn func A *stateful* iterator.
     -- @fixme No unit test.
-    local function search (scope, id, api_key, ...)
-        -- luacheck: ignore err
-        local prefix
-        if     scope == 'u' then prefix = user_prefix
-        elseif scope == 'g' then prefix = group_prefix
-        else                error(scope .. ': no such scope.')
+    function ZotWeb:endpoints (item_id)
+        if not item_id then item_id = '' end
+        local n, groups
+        local i = -1
+        return function ()
+            i = i + 1
+            if i == 0 then
+                if self.api_key then
+                    return expand_vars(items_url, {
+                        prefix = user_prefix,
+                        user_id = self:user_id(),
+                        item_id = item_id
+                    })
+                end
+            else
+                if not n then
+                    groups = List()
+                    if self.api_key then
+                        groups:extend(self:groups())
+                    end
+                    if self.public_groups then
+                        groups:extend(self.public_groups)
+                    end
+                    n = #groups
+                end
+                if i > n then return end
+                return expand_vars(items_url, {
+                    prefix = group_prefix,
+                    group_id = groups[i],
+                    item_id = item_id
+                })
+            end
         end
-        local q = concat({...}, '+')
-        local query_url = format(base_url .. prefix .. search_path,
-                                 id, api_key, q)
-        local str, err = get(query_url)
-        if not str then return nil, err, 1 end
-        local data, err = parse_csl_json(str)
-        if not data then return nil, err, 2 end
-        local items = data.items
-        if not items or #items == 0 then return nil, 'no matches.', 0 end
-        return items
     end
 
     --- Search items by their author, publication year, and title.
@@ -2105,68 +2179,27 @@ do
     --
     -- Does *not* correct Zotero's CSL JSON export.
     --
-    -- @string scope Where to search.
-    --  'u' for in the user's library,
-    --  'g' for in group libraries, and
-    --  'a' for both.
     -- @string ... Search terms.
     -- @treturn[1] tab A list of CSL items that match the given search terms.
     -- @treturn[2] nil `nil` if no items were found or an error occurred.
     -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number:
-    --  0 if no items match the search terms,
-    --  1 for fetch errors, and
-    --  2 for parse errors.
     -- @treturn[2] An error message.
-    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
-    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
+    -- @raise See `ZotWeb:user_id` and `ZotWeb:groups`.
     -- @fixme No unit test (test should include abort on, e.g., parse errors).
-    function ZotWeb:search (scope, ...)
-        -- luacheck: ignore err
-        assert(self.api_key, 'no Zotero API key given.')
-        if scope == 'a' or scope == 'u' then
-            local items, err, errno = search('u', self:user_id(), self.api_key, ...)
-            if items then return items end
-            if errno > 0 then return nil, err, errno end
-        end
-        if scope == 'a' or scope == 'g' then
-            local group_ids = self:group_ids()
-            for i = 1, #group_ids do
-                local items, err, errno = search('g', group_ids[i], self.api_key, ...)
-                if items then return items end
-                if errno > 0 then return nil, err, errno end
-            end
-        else
-            error(scope .. ': no such scope.')
+    function ZotWeb:search (...)
+        local params = {v = 3, key = self.api_key,
+                        q = concat({...}, '+'), qmode = 'titleCreatorYear',
+                        format ='csljson', itemType='-attachment'}
+        for ep in self:endpoints() do
+            -- luacheck: ignore err
+            local str, err = query(ep, params)
+            if not str then return nil, err end
+            local data, err = parse_csl_json(str)
+            if not data then return nil, err end
+            local items = data.items
+            if items and #items > 0 then return items end
         end
         return nil, 'no matches.', 0
-    end
-
-    --- Guess search terms from a citation key.
-    --
-    -- The terms guessed are printed to STDERR
-    -- if the user has requested more output.
-    --
-    -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
-    -- @treturn[1] {string,...} A list of search terms.
-    -- @treturn[2] nil `nil` if no search terms could be derived.
-    -- @treturn[2] string An error message.
-    -- @fixme No unit test.
-    -- @todo Allow Lua expressions.
-    function ZotWeb:search_terms(ckey)
-        assert(self.citekey_types, 'no citation key types given.')
-        local citekey_types = self.citekey_types
-        for i = 1, #citekey_types do
-            local f = CITEKEY_TYPES[citekey_types[i]]
-            if f then
-                local terms = f(ckey)
-                if terms then
-                    info('$ckey: searching for: ' .. concat(terms, ', '))
-                    return terms
-                end
-            end
-        end
-        return nil, ckey .. ': failed to guess search terms.'
     end
 
     -- Filter items by their citation key.
@@ -2200,85 +2233,32 @@ do
     --
     -- Does *not* correct Zotero's CSL JSON export.
     --
-    -- @string scope Where to search.
-    --  'u' for in the user's library,
-    --  'g' for in group libraries, and
-    --  'a' for both.
     -- @string ckey A citation key, e.g., 'name:2019word', 'name2019TwoWords'.
     -- @treturn[1] tab A CSL item.
     -- @treturn[2] nil `nil` if less or more than one item was found or
     --  if an error occurred.
     -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number:
-    --  0 if no items match the citation key,
-    --  1 for fetch errors,
-    --  2 for parse errors,
-    --  3 if more than one item matches the citation key, and
-    --  4 if the citation key is not unique.
     -- @fixme No unit test.
-    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
-    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
-    function ZotWeb:match (scope, ckey)
+    -- @raise See `ZotWeb:user_id` and `ZotWeb:groups`.
+    function ZotWeb:match (ckey)
         -- luacheck: ignore err
-        assert(self.api_key, 'no Zotero API key given.')
-        local terms = self:search_terms(ckey)
+        local terms = guess_search_terms(ckey, self.citekey_types)
         if not terms then return nil, 'failed to parse "' .. ckey .. '".' end
-        local items, err = self:search(scope, unpack(terms))
+        info('$ckey: searching for: ' .. concat(terms, ', '))
+        local items, err = self:search(unpack(terms))
         if not items then return nil, ckey .. ': ' .. err end
         local n = #items
         if n == 0 then
-            return nil, ckey .. ': no matches.', 0
+            return nil, ckey .. ': no matches.'
         elseif n > 1 then
             items = filter_by_ckey(items, ckey)
             if not items or items.n == 0 then
-                return nil, ckey .. ': too many matches.', 3
+                return nil, ckey .. ': too many matches.'
             elseif items.n > 1 then
-                return nil, ckey .. ': citation key is not unique.', 4
+                return nil, ckey .. ': citation key is not unique.'
             end
         end
         return items[1]
-    end
-
-    --- Look up a CSL item by its Zotero ID (worker).
-    --
-    -- @string scope Where to look for items.
-    --  'u' for in the user library,
-    --  'g' for in a group library.
-    -- @string id Depending on the scope, a user or a group ID.
-    -- @string api_key A Zotero API key.
-    -- @string zot_id A Zotero item ID.
-    -- @treturn[1] tab A CSL item.
-    -- @treturn[2] nil `nil` if no item was found or if an error occurred.
-    -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number:
-    --  0 if there is no item with that item ID,
-    --  1 for fetch errors,
-    --  2 for parse errors, and
-    --  5 if the item ID is not unique.
-    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
-    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
-    -- @fixme No unit test.
-    local function lookup (scope, id, api_key, zot_id)
-        -- luacheck: ignore err
-        local prefix
-        if     scope == 'u' then prefix = user_prefix
-        elseif scope == 'g' then prefix = group_prefix
-        else                error(scope .. ': no such scope.')
-        end
-        local query_url = format(base_url .. prefix .. lookup_path,
-                                 id, zot_id, api_key)
-        local str, err = get(query_url)
-        if not str then return nil, zot_id .. ': ' .. err, 1 end
-        local data, err = parse_csl_json(str)
-        if not data then return nil, zot_id .. ': ' .. err, 2 end
-        local items = data.items
-        if items then
-            local n = #items
-            if n == 1    then return items[1]
-            elseif n > 1 then return nil, zot_id .. ': ID is not unique.', 5
-            end
-        end
-        return nil, zot_id .. ': no such item.', 0
     end
 
     --- Look up a CSL item by its Zotero ID.
@@ -2287,40 +2267,33 @@ do
     --
     -- Does *not* correct Zotero's CSL JSON export.
     --
-    -- @string scope Where to look for items.
-    --  'u' for in the user's library,
-    --  'g' for in group libraries,
-    --  and 'a' for both.
     -- @string id A Zotero item ID.
     -- @treturn[1] tab A CSL item.
     -- @treturn[2] nil `nil` if no or more than one item has been found.
     -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number:
-    --  0 if there is no item with that item ID,
-    --  2 for parse errors, and
-    --  5 if the item ID is not unique.
     -- @fixme No unit test.
-    -- @raise An error if the given scope is not one of 'u', 'g', or 'a'.
-    --  See also `ZotWeb:user_id` and `ZotWeb:group_ids`.
-    function ZotWeb:lookup (scope, id)
-        -- luacheck: ignore err
-        assert(self.api_key, 'no Zotero API key given.')
-        if scope == 'a' or scope == 'u' then
-            local items, err, errno = lookup('u', self:user_id(), self.api_key, id)
-            if items then return items end
-            if errno > 1 then return nil, err, errno end
-        end
-        if scope == 'a' or scope == 'g' then
-            local group_ids = self:group_ids()
-            for i = 1, #group_ids do
-                local items, err, errno = lookup('g', group_ids[i], self.api_key, id)
-                if items then return items end
-                if errno > 1 then return nil, err, errno end
+    -- @raise See `ZotWeb:user_id` and `ZotWeb:groups`.
+    function ZotWeb:lookup (item_id)
+        local params = {v = 3, key = self.api_key,
+                        format ='csljson', itemType='-attachment'}
+        for ep in self:endpoints(item_id) do
+            -- luacheck: ignore err
+            local str, err = query(ep, params)
+            if str then
+                local data, err = parse_csl_json(str)
+                if not data then return nil, err end
+                local items = data.items
+                if items then
+                    local n = #items
+                    if n == 1 then
+                        return items[1]
+                    elseif n > 1 then
+                        return nil, 'item ID ' .. item_id .. ' is not unique.'
+                    end
+                end
             end
-        else
-            error(scope .. ': no such scope.')
         end
-        return nil, id .. ': no such item.', 0
+        return nil, 'no matches.', 0
     end
 
     -- Zotero's CSL JSON export leaves CSL fields that have been entered
@@ -2328,23 +2301,23 @@ do
     -- them as CSL fields proper. This table maps CSL field names to functions
     -- that take the value of an "extra" field and return a value that can
     -- be used as CSL field.
-    local work_arounds = {}
+    local note_parsers = {}
 
     -- Work around for 'original-date'.
-    work_arounds['original-date'] = function (v)
+    note_parsers['original-date'] = function (v)
             return {['date-parts'] = {{v}}}
     end
 
     -- Convert sub-fields of Zotero's "extra" field to proper CSL fields.
     --
-    -- Note, the given item is changed in-place.
-    -- See `work_arounds` above for more details.
+    -- The item is changed in-place.
+    -- See `note_parsers` above for more details.
     --
     -- @tab item A CSL item.
     -- @treturn tab The same CSL item.
-    local function apply_workarounds (item)
+    local function parse_notes (item)
         for k, v in csl_item_extras(item) do
-            local f = work_arounds[k]
+            local f = note_parsers[k]
             if f then
                 v = f(v)
                 if v then item[k] = v end
@@ -2360,22 +2333,21 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @fixme No unit test.
-    -- @raise See `ZotWeb:user_id` and `ZotWeb:group_ids`.
-    function ZotWeb:csl_item (ckey)
+    -- @raise See `ZotWeb:user_id` and `ZotWeb:groups`.
+    function ZotWeb:get_item (ckey)
         -- luacheck: ignore err
         assert(ckey ~= '', 'citation key is the empty string.')
-        assert(self.api_key, 'no Zotero API key given.')
         local item, err
         if  self.citekey_types:includes 'key' and
             len(ckey) == 8                    and
             ckey:match '^[%u%d]+$'
         then
-            item, err = self:lookup('a', ckey)
+            item, err = self:lookup(ckey)
         else
-            item, err = self:match('a', ckey)
+            item, err = self:match(ckey)
         end
         if not item then return nil, err end
-        apply_workarounds(item)
+        parse_notes(item)
         item.id = ckey
         return item
     end
@@ -2547,11 +2519,6 @@ function biblio_update (handle, fname, ckeys)
     if #ckeys == 0 then return true end
     local fmt, err = biblio_write(fname)
     if not fmt then return nil, err end
-    -- @todo Remove this warning once the script has been dogfooded,
-    --       and was out in the open for a while.
-    if fmt == 'yaml' or fmt == 'yml' then
-        warn 'YAML bibliography file support is experimental!'
-    end
     local items, err, errno = biblio_read(fname)
     if not items then
         if errno ~= 2 then return nil, err, errno end
@@ -2563,7 +2530,7 @@ function biblio_update (handle, fname, ckeys)
     for i = 1, #ckeys do
         local ckey = ckeys[i]
         if not item_ids[ckey] then
-            local ok, ret, err = pcall(handle.csl_item, handle, ckey)
+            local ok, ret, err = pcall(handle.get_item, handle, ckey)
             if not ok then
                 return nil, tostring(ret)
             elseif ret then
@@ -2939,7 +2906,7 @@ function add_refs (handle, meta, ckeys)
     if not meta.references then meta.references = MetaList({}) end
     local n = #meta.references
     for i = 1, #ckeys do
-        local ok, ret, err = pcall(handle.csl_item, handle, ckeys[i])
+        local ok, ret, err = pcall(handle.get_item, handle, ckeys[i])
         if not ok  then return nil, tostring(ret)
         elseif ret then n = n + 1
                         meta.references[n] = csl_item_to_meta(ret)
@@ -3076,22 +3043,30 @@ function main (doc)
     local zotxt, zotweb
     if not conf.connector then
         zotxt = Zotxt()
-        if conf.api_key then
-            zotweb = ZotWeb{api_key = conf.api_key, _user_id = conf.user_id}
+        if conf.api_key or conf.public_groups then
+            zotweb = ZotWeb{
+                api_key = conf.api_key,
+                _user_id = conf.user_id,
+                _groups = conf.groups,
+                public_groups = conf.public_groups
+            }
         end
-    else
-        if conf.connector == 'zotxt' then
-            zotxt = Zotxt()
-        elseif conf.connector == 'zotweb' then
-            if not conf.api_key then
-                log 'you need to set an API key to use the Zotero Web API.'
-                return
-            end
-            zotweb = ZotWeb{api_key = conf.api_key, _user_id = conf.user_id}
-        else
-            log '$conf.connector: no such Zotero connector.'
+    elseif conf.connector == 'zotxt' then
+        zotxt = Zotxt()
+    elseif conf.connector == 'zotweb' then
+        if not (conf.api_key or conf.public_groups) then
+            log 'neither API key nor public groups given.'
             return
         end
+        zotweb = ZotWeb{
+            api_key = conf.api_key,
+            _user_id = conf.user_id,
+            _groups = conf.groups,
+            public_groups = conf.public_groups
+        }
+    else
+        log '$conf.connector: no such Zotero connector.'
+        return
     end
 
     local add_srcs = add_refs
@@ -3108,13 +3083,6 @@ function main (doc)
         elseif i == 2 then handle = zotweb
         end
         if handle then
-            -- @todo Remove this warning once:
-            --       (1) The test suite is complete.
-            --       (2) The script has been out for a while.
-            --       (3) The script has been dogfooded.
-            if handle == zotweb then
-                warn 'fetching data from the Zotero Web API is experimental!'
-            end
             -- luacheck: ignore err
             local meta, err = add_srcs(handle, doc.meta, ckeys)
             if meta then
