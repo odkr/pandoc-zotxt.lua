@@ -57,11 +57,13 @@
 -- LIBRARIES
 -- =========
 
+local pack = table.pack
+local unpack = table.unpack
+
 -- luacheck: push ignore
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 local stringify = pandoc.utils.stringify
 -- luacheck: pop
-
 
 local MetaInlines = pandoc.MetaInlines
 local Null = pandoc.Null
@@ -103,7 +105,7 @@ do
         assert(type(path) == 'string', 'Path is not a string.')
         if path == '' then return nil, 'Path is the empty string ("").' end
         local dir, fname = path:match(split_e)
-        for i = 1, #san_es do dir = dir:gsub(table.unpack(san_es[i])) end
+        for i = 1, #san_es do dir = dir:gsub(unpack(san_es[i])) end
         if     dir == ''   then dir = '.'
         elseif fname == '' then fname = '.' end
         assert(dir ~= '')
@@ -256,6 +258,7 @@ ZOTWEB_CSL = {
     type = 'book'
 }
 
+
 -- FUNCTIONS
 -- =========
 
@@ -291,7 +294,6 @@ function copy (data, s)
     return ret
 end
 
-
 --- Read a Markdown file.
 --
 -- @tparam string fname Name of the file.
@@ -313,7 +315,6 @@ function read_md_file (fname)
     return pandoc.read(md, 'markdown')
 end
 
-
 --- Read a JSON file.
 --
 -- @string fname The name of the file.
@@ -331,7 +332,6 @@ function read_json_file (fname)
     return data
 end
 
-
 do
     function conv (data)
         if type(data) ~= 'number' then return data end
@@ -348,7 +348,7 @@ do
     -- @return A copy of `data` with numbers converted to strings.
     -- @raise An error if the data is nested too deeply.
     function rconv_nums_to_strs (data)
-        return M.mapr(conv, data)
+        return M.apply(conv, data)
     end
 end
 
@@ -358,6 +358,15 @@ end
 
 -- File I/O
 -- --------
+
+function test_path_verify ()
+    local invalid = {nil, false, '', 0, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.path_verify(v))
+        lu.assert_error(M.path_verify('s', v))
+        lu.assert_error(M.path_verify('s', v, 's'))
+    end
+end
 
 function test_path_sanitise ()
     local invalid = {nil, false, '', 0, {}, function () end}
@@ -647,7 +656,7 @@ function test_tmp_fname ()
     }
 
     for k, v in pairs(tests) do
-        local fname, err = M.tmp_fname(table.unpack(k))
+        local fname, err = M.tmp_fname(unpack(k))
         if not fname then error(err) end
         lu.assert_str_matches(fname, v)
     end
@@ -704,7 +713,7 @@ function test_do_after ()
 
     local vs
     local function cleanup (...)
-        vs = table.pack(...)
+        vs = pack(...)
     end
 
     vs = nil
@@ -720,6 +729,130 @@ function test_do_after ()
     lu.assert_equals(vs[1], false)
     lu.assert_str_contains(tostring(vs[2]), 'err')
     lu.assert_equals(vs.n, 2)
+end
+
+
+-- Table prototype
+-- ---------------
+
+function test_table_add ()
+    local t = M.Table()
+    for i = 1, 4 do
+        for j = 1, 4 do
+            t:add(i, j)
+        end
+    end
+    lu.assert_equals(t.n, 32)
+    lu.assert_equals(t.n, #t)
+end
+
+
+-- String manipulation
+-- -------------------
+
+function test_split ()
+    local invalid = {nil, false, 0, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.split, v, 'regex')
+        lu.assert_error(M.split, 'string', v)
+        lu.assert_error(M.split, v, v)
+    end
+
+    invalid = {{}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.split, 'string', 'regex', v)
+    end
+
+    invalid = {0, {}, '', 'str', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.split, 'string', 'regex', nil, v)
+    end
+
+    local tests = {
+        [{'key: value:', '%s*:%s*'}] = {'key', 'value', '', n = 3},
+        [{'val, val, val', ',%s*'}] = {'val', 'val', 'val', n = 3},
+        [{', val , val', '%s*,%s*'}] = {'', 'val', 'val', n = 3},
+        [{'key: value', ': '}] = {'key', 'value', n = 2},
+        [{'key: value:x', '%s*:%s*', 2}] = {'key', 'value:x', n = 2},
+        [{'val, val, val', ',%s*', 2}] = {'val', 'val, val', n = 2},
+        [{'CamelCaseTest', '%u', nil, 'l'}] =
+            {'', 'Camel', 'Case', 'Test', n = 4},
+        [{'CamelCaseTest', '%u', nil, 'r'}] =
+            {'C', 'amelC', 'aseT', 'est', n = 4},
+        [{'CamelCaseTest', '%u', 2, 'l'}] =
+            {'', 'CamelCaseTest', n = 2},
+        [{'CamelCaseTest', '%u', 2, 'r'}] =
+            {'C', 'amelCaseTest', n = 2}
+        }
+
+    for k, v in pairs(tests) do
+        lu.assert_items_equals(pack(M.tabulate(M.split(unpack(k)))), v)
+    end
+end
+
+function test_expand_vars ()
+    local invalid = {nil, true, 1, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.expand_vars(v, {}))
+    end
+
+    invalid = {nil, true, 1, 'string', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.expand_vars('string', v))
+    end
+
+    lu.assert_error('a $test|func', {test = 'test'})
+
+    local tests = {
+        [{'$test', {}}] = 'nil',
+        [{'$test', {}}] = 'nil',
+        [{'$$test$', {test = 'nok'}}] = '$test',
+        [{'$test$', {test = 'ok'}}] = 'ok',
+        [{'$$test|func', {
+            test = 'nok',
+            func = function ()
+                return 'NOK'
+            end }}] = '$test|func',
+        [{'$test|func', {
+            test = 'nok',
+            func = function (s)
+                return s:gsub('nok', 'ok')
+            end }}] = 'ok',
+        [{'$test.test', {
+            test = { test = 'ok' }
+        }}] = 'ok',
+        [{'$test.test.test.test', {
+            test = { test = { test = { test ='ok' } } }
+        }}] = 'ok',
+        [{'$test|func', {
+            test = 'nok',
+            func = function (s)
+                return s:gsub('nok', '$v2|f2')
+            end,
+            v2 = 'nok2',
+            f2 = function (s)
+                return s:gsub('nok2', 'ok')
+            end
+        }}] = 'ok',
+        [{'$2', {['2'] = 'ok'}}] = 'ok',
+        [{'$test.test.test|test.func', {
+            test = {
+                test = {test = 'nok'},
+                func = function (s)
+                    return s:gsub('nok', '$v2|f2')
+                end
+            },
+            v2 = 'nok2',
+            f2 = function (s)
+                return s:gsub('nok2', 'ok')
+            end
+        }}] = 'ok',
+        [{'$2', {['2'] = 'ok'}}] = 'ok'
+    }
+
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.expand_vars(unpack(k)), v)
+    end
 end
 
 
@@ -748,74 +881,10 @@ function test_keys ()
     end
 end
 
-function test_copy ()
-    -- Test simple copies.
-    local simple = {
-        nil, false, true, 0, 1, '', 'test', {},
-        {1, 2, 3},
-        {5, 2, 3, 9},
-        {1, 2, 3, 'b', true, false},
-        {1, 2, 'x', false, 3, true},
-        (function ()
-            local t = {}
-            for i = 1, 1000 do t[i] = i end
-            return t
-            end)(),
-        {true},
-        {false},
-        {true, false, true},
-        {'a', 'b', 'c'},
-        (function ()
-            local t = {}
-            for i = 33, 126 do t[i-32] = string.char(i) end
-            return t
-            end)(),
-    }
-
-    for _, v in ipairs(simple) do
-        local t = M.copy(v)
-        lu.assert_items_equals(t, v)
-    end
-
-    -- Test a nested table.
-    local t = {1, 2, 3, {1, 2, 3, {4, 5, 6}}}
-    local c = copy(t)
-    lu.assert_items_equals(c, t)
-
-    -- Test a self-referential table.
-    t = {1, 2, 3}
-    t.t = t
-    c = copy(t)
-    lu.assert_items_equals(c, t)
-
-    -- Test a table that has another table as key.
-    t = {1, 2, 3}
-    local u = {1, 2, 3, {4, 5, 6}}
-    u[t] = 7
-    c = copy(u)
-    lu.assert_items_equals(c, u)
-
-    -- Test a table that overrides `__pairs`.
-    local single = {__pairs = function ()
-        return function () end
-    end}
-    t = setmetatable({1, 2, 3}, single)
-    c = copy(t)
-    lu.assert_items_equals(c, t)
-
-    -- Test a table that does all of this.
-    t = setmetatable({1, 2, 3, {4, 5}}, single)
-    u = {1, 2, 3, {4, 5, 6}}
-    t[u] = {1, 2, 3, {4, 5}}
-    t.t = t
-    c = copy(t)
-    lu.assert_items_equals(c, t)
-end
-
-function test_mapr ()
+function test_apply ()
     local invalid = {nil, true, 0, 'string', {}}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.mapr, v, 0)
+        lu.assert_error(M.apply, v, 0)
     end
 
     local function id (...) return ... end
@@ -827,8 +896,8 @@ function test_mapr ()
     }
 
     for _, v in ipairs(tests) do
-        lu.assert_equals(M.mapr(id, v), v)
-        lu.assert_equals(M.mapr(nilify, v), v)
+        lu.assert_equals(M.apply(id, v), v)
+        lu.assert_equals(M.apply(nilify, v), v)
     end
 
     local function inc (v)
@@ -850,7 +919,7 @@ function test_mapr ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(M.mapr(inc, k), v)
+        lu.assert_equals(M.apply(inc, k), v)
     end
 end
 
@@ -877,6 +946,35 @@ function test_sorted_pairs ()
         i = i + 1
         lu.assert_equals(k, sorted[i])
         lu.assert_equals(v, unsorted[k])
+    end
+end
+
+function test_tabulate ()
+    local invalid = {nil, true, 1, 'c', {1}}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.tabulate(v))
+    end
+
+    local function make_iterator (n)
+        local i = n
+        return function ()
+            if i > 3 then return end
+            i = i + 1
+            return i
+        end
+    end
+
+    local tests = {
+        [make_iterator(0)] = {},
+        [make_iterator(1)] = {1},
+        [make_iterator(3)] = {1, 2, 3},
+        [M.split('a/b/c', '/')] = {'a', 'b', 'c'},
+        [M.split('a/b/c', 'x')] = {'a/b/c'},
+        [function () end] = {}
+    }
+
+    for _, v in ipairs(tests) do
+        lu.assert_items_equal(table.pack(k), v)
     end
 end
 
@@ -1203,7 +1301,7 @@ function test_csl_items_sort ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(M.csl_items_sort(table.unpack(k)), v)
+        lu.assert_equals(M.csl_items_sort(unpack(k)), v)
     end
 end
 
@@ -1408,7 +1506,7 @@ function test_elem_type ()
     }
 
     for k, v in pairs(tests) do
-        lu.assert_equals(table.pack(M.elem_type(k)), v)
+        lu.assert_equals(pack(M.elem_type(k)), v)
     end
 end
 
