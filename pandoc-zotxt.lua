@@ -255,7 +255,6 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 -- @treturn[2] nil `nil` otherwise.
 -- @treturn[3] string An error message.
 -- @within File I/O
--- @fixme No unit test.
 function path_verify (v, ...)
     if type(v) ~= 'string' then
         return nil, 'path is not a string.'
@@ -426,7 +425,6 @@ Table.n = 0
 -- Sets `Table.n` to the number of items in the table.
 --
 -- @param ... Items.
--- @fixme No unit test.
 function Table:add (item, ...)
     local n = self.n + 1
     self[n] = item
@@ -448,7 +446,7 @@ Connector.parameters = {}
 -- `Connector.parameters` property, copies its value to the the field of
 -- the same name of the connector.
 --
--- @tparam {string=string,...} A list of key-value pairs.
+-- @tparam {string=string,...} conf A list of key-value pairs.
 -- @treturn[1] boolean `true` If the configuration is valid.
 -- @treturn[2] nil `nil` Otherwise.
 -- @treturn[2] string An error message.
@@ -667,6 +665,10 @@ end
 
 --- Iterate over substrings of a string.
 --
+-- <h3>Caveats:</h3>
+--
+-- Does *not* support multi-byte characters.
+--
 -- @string str The string.
 -- @string pattern A pattern that matches the sequence of characters that
 --  separates substrings. Must *not* contain frontier patterns (`%f`).
@@ -679,13 +681,14 @@ end
 --      > for s in split('CamelCase', '%u', nil, 'l') do
 --      >   print(s)
 --      > end
+--
 --      Camel
 --      Case
 --
 -- @within String manipulation
--- @fixme What does split do if the seperator is the last character?
--- @fixme No unit test.
 function split (str, pattern, max, inc)
+    assert(not max or type(max) == 'number', 'maximum splits is not numeric.')
+    assert(not inc or inc == 'l' or inc == 'r', 'can only include "l" or "r".')
     local pos = 1
     local n = 0
     local i, j
@@ -693,18 +696,20 @@ function split (str, pattern, max, inc)
         local sep, last
         if not pos then return end
         if inc == 'l' and i then sep = str:sub(i, j) end
-        if max and n == max then
+        i = nil
+        j = nil
+        n = n + 1
+        if n == max then
             last = -1
         else
             i, j = str:find(pattern, pos)
             if     not i      then last = -1
             elseif inc == 'r' then last = j
-                              else last = i - 1
+                                else last = i - 1
             end
         end
         local sub = str:sub(pos, last)
         if sep then sub = sep .. sub end
-        n = n + 1
         if j then pos = j + 1
              else pos = nil
         end
@@ -713,11 +718,21 @@ function split (str, pattern, max, inc)
 end
 
 do
-    -- Lookup a variable from a variable expression.
+    local function lookup (ns, names)
+        local v = ns
+        for n in split(names, '%.') do
+            if type(v) ~= 'table' then break end
+            v = v[n]
+        end
+        return v
+    end
+
+    -- Expand a variable from a variable expression.
     --
     -- See `expand_vars` for the expression syntax.
     --
-    -- @tab vars A mapping of variable names to values.
+    -- @int rd The current recursion depth.
+    -- @tab ns A mapping of variable names to values.
     -- @string var The name of the variable to look up.
     -- @string _ If the value of the variable should be passed on to a
     --  function, the literal `|`. Otherwise, the empty string.
@@ -725,16 +740,16 @@ do
     --  function, the name of that function. Otherwise the empty string.
     -- @treturn string The value of the expression.
     -- @raise See `expand_vars`.
-    local function eval (vars, var, _, func)
-        local v = vars[var]
+    local function eval (rd, ns, var, _, func)
+        local v = lookup(ns, var)
         if func ~= '' then
-            local f = vars[func]
-            assert(f, format('$%s%s%s: no such function.', var, _, func))
+            local f = lookup(ns, func)
+            assert(f, func .. ': no such function.')
             v = f(v)
         end
         local s = tostring(v)
-        assert(s, format('$%s%s%s: cannot coerce to a string.', var, _, func))
-        return expand_vars(s, vars)
+        assert(s, '$' .. var .. ': cannot coerce to a string.')
+        return expand_vars(s, ns, rd + 1)
     end
 
     --- Expand variables in strings.
@@ -774,27 +789,39 @@ do
     --      > )
     --      bar is bar!
     --
+    -- You can lookup values in tables by joining the name of the variable
+    -- and the name of the table field with a dot.
+    --
+    --      > expand_vars(
+    --      >   '$var.field is bar.', {
+    --      >       var = { field = 'bar' }
+    --      >   }
+    --      > )
+    --      bar is bar.
+    --
     -- Expressions are evaluated recursively.
     --
     --      > expand_vars(
-    --      >   '$v1 is bar.', {
-    --      >       v1 = '$v2',
-    --      >       v2 = 'foo'
+    --      >   '$1 is bar.', {
+    --      >       ['1'] = '$2',
+    --      >       ['2'] = 'foo'
     --      >   }
     --      > )
     --      foo is bar.
     --
     -- @string str A string.
-    -- @tab vars A mapping of variable names to values.
+    -- @tab ns A mapping of variable names to values.
     -- @treturn string A transformed string.
     -- @raise An error if there is no function of the given name or
     --  if the value of an expression cannot be coerced to a string.
     -- @within String manipulation
-    function expand_vars (str, vars)
+    function expand_vars (str, ns, _rd)
         assert(str, 'no string given.')
         assert(vars, 'no variables given.')
-        local function e (...) return eval(vars, ...) end
-        return str:gsub('%f[%$]%$([%w_%.]+)%f[%A](|?)([%w_]*)', e):
+        if not _rd then _rd = 0 end
+        assert(_rd < 512, 'too much recusion.')
+        local function e (...) return eval(_rd, ns, ...) end
+        return str:gsub('%f[%$]%$([%w_%.]+)%f[%W](|?)([%w_%.]*)', e):
                    gsub('%$(%$*)', '%1')
     end
 end
@@ -832,7 +859,7 @@ end
 -- @treturn table A new graph.
 -- @raise An error if the graph is too high.
 -- @within Table manipulation
-function mapr (func, graph, _rd)
+function apply (func, graph, _rd)
     if type(graph) ~= 'table' then
         local nv = func(graph)
         if nv == nil then return graph end
@@ -848,7 +875,7 @@ function mapr (func, graph, _rd)
         k = next(graph, k)
         if k == nil then break end
         local v = graph[k]
-        if type(v) == 'table' then v = mapr(func, v, _rd) end
+        if type(v) == 'table' then v = apply(func, v, _rd) end
         local nv = func(v)
         if nv == nil then ret[k] = v
                      else ret[k] = nv
@@ -857,10 +884,9 @@ function mapr (func, graph, _rd)
     return ret
 end
 
---- Tabulate the values that an iterator returns.
+--- Tabulate the values a stateful iterator returns.
 --
--- @func iter An iterator.
--- @param[opt] val The value to start iterating with.
+-- @func iter A *stateful* iterator.
 -- @treturn table The values generated by the iterator.
 -- @usage
 --      > str = 'key: value'
@@ -869,18 +895,13 @@ end
 --      key     value
 --
 -- @within Table manipulation
--- @fixme No unit test.
-function tabulate (iter, val)
-    local tab = {}
-    local n = 0
-    local p
-    repeat
-        val, p = iter(val, p)
-        if val then
-            n = n + 1
-            tab[n] = val
-        end
-    until not val
+function tabulate (iter)
+    local tab = Table()
+    while true do
+        local v = iter()
+        if v == nil then break end
+        tab:add(v)
+    end
     return unpack(tab)
 end
 
@@ -908,8 +929,8 @@ end
 
 --- Define a sorting function from a list of values.
 --
--- The sorting function will sort the given values in the order in which
--- they were passed. Unlisted values are sorted lexically.
+-- The function will sort values in the order they were given in.
+-- Unlisted values are sorted lexically.
 --
 -- @param ... Values.
 -- @treturn func A sorting function.
@@ -929,7 +950,6 @@ function in_order(...)
     local order = {}
     local list = {...}
     for i = 1, #list do order[list[i]] = i end
-
     return function (a, b)
         local i, j = order[a], order[b]
         if i and j then return i < j end
@@ -942,6 +962,28 @@ end
 
 -- CSL items
 -- ---------
+
+-- @fixme Undocumented.
+-- @fixme No unit test.
+function csl_key_standardise (key)
+    return key:gsub(' ', '-'):lower()
+end
+
+-- @fixme Undocumented.
+-- @fixme No unit test.
+function csl_keys_standardise (tab, _rd)
+    if not _rd then _rd = 0 end
+    assert(_rd < 512, 'too much recusion.')
+    local nkeys = select(2, keys(tab))
+    if nkeys == #tab then return tab end
+    local ret = {}
+    for k, v in pairs(tab) do
+        k = csl_key_standardise(k)
+        if type(v) == 'table' then v = csl_keys_standardise(v, _rd + 1) end
+        ret[k] = v
+    end
+    return ret
+end
 
 --- The preferred order of keys in YAML bibliography files.
 --
@@ -961,6 +1003,7 @@ CSL_KEY_ORDER = {
     'title-short',              -- A short version of the title.
     'short-title',              -- Ditto.
     'original-title',           -- Original title.
+    'original-date',            -- Original date.
     'translator',               -- Translator(s).
     'editor',                   -- The editor(s).
     'container-title',          -- Publication the item was published in.
@@ -989,23 +1032,6 @@ CSL_KEY_ORDER = {
     'abstract',                 -- The abstract.
 }
 
---- Iterate over key-value pairs in the "note" field of CSL items.
---
--- @tab item A CSL item.
--- @treturn func A *stateful* iterator.
--- @within CSL items
-function csl_item_extras (item)
-    if not item.note then return function () return end end
-    local next_ln = split(item.note, '\r?\n')
-    return function ()
-        local ln = next_ln()
-        if not ln or ln == '' then return end
-        local k, v = tabulate(split(ln, '%s*:%s*'), 2)
-        if not k then return nil end
-        return k:lower(), v
-    end
-end
-
 --- Sorting function for CSL field names.
 --
 -- Sorts field in the order in which they are listed in `CSL_KEY_ORDER`.
@@ -1017,6 +1043,196 @@ end
 -- @within CSL items
 -- @function csl_keys_sort
 csl_keys_sort = in_order(unpack(CSL_KEY_ORDER))
+
+do
+    local csl_vars = {
+        -- Standard variables.
+        ['abstract'] = true,
+        ['annote'] = true,
+        ['archive'] = true,
+        ['archive_location'] = true,
+        ['archive-place'] = true,
+        ['authority'] = true,
+        ['call-number'] = true,
+        ['citation-label'] = true,
+        ['citation-number'] = true,
+        ['collection-title'] = true,
+        ['container-title'] = true,
+        ['container-title-short'] = true,
+        ['dimensions'] = true,
+        ['doi'] = true,
+        ['event'] = true,
+        ['event-place'] = true,
+        ['first-reference-note-number'] = true,
+        ['genre'] = true,
+        ['isbn'] = true,
+        ['issn'] = true,
+        ['jurisdiction'] = true,
+        ['keyword'] = true,
+        ['locator'] = true,
+        ['medium'] = true,
+        ['note'] = true,
+        ['original-publisher'] = true,
+        ['original-publisher-place'] = true,
+        ['original-title'] = true,
+        ['page'] = true,
+        ['page-first'] = true,
+        ['pmcid'] = true,
+        ['pmid'] = true,
+        ['publisher'] = true,
+        ['publisher-place'] = true,
+        ['references'] = true,
+        ['reviewed-title'] = true,
+        ['scale'] = true,
+        ['section'] = true,
+        ['source'] = true,
+        ['status'] = true,
+        ['title'] = true,
+        ['title-short'] = true,
+        ['url'] = true,
+        ['version'] = true,
+        ['year-suffix'] = true,
+        -- Number variables.
+        ['chapter-number'] = true,
+        ['collection-number'] = true,
+        ['edition'] = true,
+        ['issue'] = true,
+        ['number'] = true,
+        ['number-of-pages'] = true,
+        ['number-of-volumes'] = true,
+        ['volume'] = true,
+        -- Date variables.
+        ['accessed'] = true,
+        ['container'] = true,
+        ['event-date'] = true,
+        ['issued'] = true,
+        ['original-date'] = true,
+        ['submitted'] = true,
+        -- Name variables.
+        ['author'] = true,
+        ['collection-editor'] = true,
+        ['composer'] = true,
+        ['container-author'] = true,
+        ['director'] = true,
+        ['editor'] = true,
+        ['editorial-director'] = true,
+        ['managing-editor'] = true,
+        ['illustrator'] = true,
+        ['interviewer'] = true,
+        ['original-author'] = true,
+        ['recipient'] = true,
+        ['reviewed-author'] = true,
+        ['translator'] = true,
+        -- Non-standard.
+        ['citation-key'] = true,
+        ['citekey'] = true
+    }
+
+    --- Iterate over key-value pairs in the "note" field of CSL items.
+    --
+    -- @tab item A CSL item.
+    -- @treturn func A *stateful* iterator.
+    -- @within CSL items
+    function csl_item_extras (item)
+        if not item.note then return function () return end end
+        local next_ln = split(item.note, '\r?\n')
+        return function ()
+            while true do
+                local ln = next_ln()
+                while ln == '' do ln = next_ln() end
+                if not ln then return end
+                local k, v = tabulate(split(ln, '%s*:%s*'), 2)
+                if k then
+                    k = csl_key_standardise(k)
+                    if csl_vars[k] then return k, v end
+                end
+            end
+        end
+    end
+end
+
+do
+    -- @fixme Undocumented.
+    local function parse_date (item, k, v)
+        local ps = {}
+        local i = 0
+        for ds in split(v, '/', 2) do
+            i = i + 1
+            local dt = {}
+            local y, m, d = ds:match '^(%d%d%d%d)%-?(%d*)%-?(%d*)$'
+            if y then
+                dt[1] = y
+                if m ~= '' then
+                    dt[2] = m
+                    if d ~= '' then
+                        dt[3] = d
+                    end
+                end
+                ps[i] = dt
+            elseif i == 1 then
+                warn 'item $item.id: failed to parse "$k" extra field.'
+                return
+            end
+        end
+        item[k] = {['date-parts'] = ps}
+    end
+
+    -- @fixme Untested.
+    -- @fixme Undocumented.
+    local function parse_name (item, k, v)
+        local family, given = split(v, '%s*||%s*', 2)
+        if not item[k] then item[k] = {} end
+        if family and family ~= '' and given and given ~= '' then
+            table.insert(item[k], {family = family, given = given})
+        else
+            table.insert(item[k], v)
+        end
+    end
+
+    local parsers = {
+        ['accessed'] = parse_date,
+        ['container'] = parse_date,
+        ['event-date'] = parse_date,
+        ['issued'] = parse_date,
+        ['original-date'] = parse_date,
+        ['submitted'] = parse_date,
+        ['author'] = parse_name,
+        ['collection-editor'] = parse_name,
+        ['composer'] = parse_name,
+        ['container-author'] = parse_name,
+        ['director'] = parse_name,
+        ['editor'] = parse_name,
+        ['editorial-director'] = parse_name,
+        ['managing-editor'] = parse_name,
+        ['illustrator'] = parse_name,
+        ['interviewer'] = parse_name,
+        ['original-author'] = parse_name,
+        ['recipient'] = parse_name,
+        ['reviewed-author'] = parse_name,
+        ['translator'] = parse_name
+    }
+
+    -- Zotero's CSL JSON export leaves CSL fields that have been entered
+    -- into its "extra" field in the CSL "note" field, rather than including
+    -- them as CSL fields proper. This table maps CSL field names to functions
+    -- that take the value of an "extra" field and return a value that can
+    -- be used as CSL field.
+    -- https://www.zotero.org/support/kb/item_types_and_fields#citing_fields_from_extra
+    function csl_item_parse_extras (item)
+        for k, v in csl_item_extras(item) do
+            local f = parsers[k]
+            if not item[k] or f == parse_date or k == 'type' then
+                if f then
+                    f(item, k, v)
+                -- At least until CSL v1.2 is out.
+                elseif k ~= 'citation-key' and k ~= 'citekey' then
+                    item[k] = v
+                end
+            end
+        end
+        return item
+    end
+end
 
 --- Sorting function for CSL items.
 --
@@ -1811,7 +2027,7 @@ do
         if str == '' then return nil, 'got the empty string.' end
         local ok, data = pcall(decode, str)
         if not ok then return nil, 'cannot parse: ' .. str end
-        return mapr(num_to_str, data)
+        return csl_keys_standardise(apply(num_to_str, data))
     end
 end
 
@@ -1819,7 +2035,10 @@ end
 -- Citation keys
 -- -------------
 
---- A mapping of citation key types to functions that guess search terms.
+--- A mapping of citation key types to parsers.
+--
+-- Each parser should take a citation key and either retunr search terms
+-- or `nil` if no search terms can be derrived.
 --
 -- @within Citation key types
 CITEKEY_PARSERS = {}
@@ -2265,7 +2484,7 @@ do
         for i = 1, #items do
             local item = items[i]
             for k, v in csl_item_extras(item) do
-                if (k == 'citation key' or k == 'citekey') and v == ckey then
+                if (k == 'citation-key' or k == 'citekey') and v == ckey then
                     n = n + 1
                     filtered[n] = item
                     break
@@ -2350,36 +2569,6 @@ do
         return nil, 'no matches.', 0
     end
 
-    -- Zotero's CSL JSON export leaves CSL fields that have been entered
-    -- into its "extra" field in the CSL "note" field, rather than including
-    -- them as CSL fields proper. This table maps CSL field names to functions
-    -- that take the value of an "extra" field and return a value that can
-    -- be used as CSL field.
-    local note_parsers = {}
-
-    -- Work around for 'original-date'.
-    note_parsers['original-date'] = function (v)
-            return {['date-parts'] = {{v}}}
-    end
-
-    -- Convert sub-fields of Zotero's "extra" field to proper CSL fields.
-    --
-    -- The item is changed in-place.
-    -- See `note_parsers` above for more details.
-    --
-    -- @tab item A CSL item.
-    -- @treturn tab The same CSL item.
-    local function parse_notes (item)
-        for k, v in csl_item_extras(item) do
-            local f = note_parsers[k]
-            if f then
-                v = f(v)
-                if v then item[k] = v end
-            end
-        end
-        return item
-    end
-
     --- Retrieve a CSL item from Zotero.
     --
     -- <h3>Side-effects:</h3>
@@ -2406,8 +2595,8 @@ do
             item, err = self:match(ckey)
         end
         if not item then return nil, err end
-        parse_notes(item)
         item.id = ckey
+        csl_item_parse_extras(item)
         return item
     end
 
@@ -2415,7 +2604,7 @@ do
     --
     -- See `Connector:configure` for details.
     --
-    -- @tparam {string=string,...} A list of key-value pairs.
+    -- @tparam {string=string,...} conf A list of key-value pairs.
     -- @treturn[1] boolean `true` If the configuration is valid.
     -- @treturn[2] nil `nil` Otherwise.
     -- @treturn[2] string An error message.
@@ -2618,7 +2807,7 @@ function biblio_update (handle, fname, ckeys)
                 return nil, tostring(ret)
             elseif ret then
                 if fmt == 'yaml' or fmt == 'yml' then
-                    ret = mapr(zot_to_md, ret)
+                    ret = apply(zot_to_md, ret)
                 end
                 n = n + 1
                 items[n] = ret
