@@ -790,7 +790,7 @@ do
     --      bar is bar!
     --
     -- You can lookup values in tables by joining the name of the variable
-    -- and the name of the table field with a dot.
+    -- and that of the table field with a dot.
     --
     --      > expand_vars(
     --      >   '$var.field is bar.', {
@@ -945,7 +945,6 @@ end
 --      b   4
 --
 -- @within Table manipulation
--- @fixme No unit test.
 function in_order(...)
     local order = {}
     local list = {...}
@@ -963,24 +962,45 @@ end
 -- CSL items
 -- ---------
 
--- @fixme Undocumented.
--- @fixme No unit test.
-function csl_key_standardise (key)
-    return key:gsub(' ', '-'):lower()
+--- Standardise CSL field name.
+--
+-- CSL fields are case-insensitive and treat spaces and dashes as equivalent
+-- (e.g., 'Original date' and 'original-date' are equivalent).
+--
+-- @string field A field name.
+-- @treturn string A standardised field name.
+-- @within CSL items
+function csl_varname_standardise (field)
+    return field:gsub(' ', '-'):lower()
 end
 
--- @fixme Undocumented.
--- @fixme No unit test.
-function csl_keys_standardise (tab, _rd)
+--- Standardise field names of a CSL item.
+--
+-- @tab tab A CSL item.
+-- @treturn tab A modified, deep copy of item.
+-- @see csl_varnames_standardise
+-- @within CSL items
+function csl_varnames_standardise (tab, _rd)
     if not _rd then _rd = 0 end
     assert(_rd < 512, 'too much recusion.')
     local nkeys = select(2, keys(tab))
-    if nkeys == #tab then return tab end
     local ret = {}
-    for k, v in pairs(tab) do
-        k = csl_key_standardise(k)
-        if type(v) == 'table' then v = csl_keys_standardise(v, _rd + 1) end
-        ret[k] = v
+    if nkeys == #tab then
+        for i = 1, nkeys do
+            local v = tab[i]
+            if type(v) == 'table' then
+                v = csl_varnames_standardise(tab[i], _rd + 1)
+            end
+            ret[i] = v
+        end
+    else
+        for k, v in pairs(tab) do
+            k = csl_varname_standardise(k)
+            if type(v) == 'table' then
+                v = csl_varnames_standardise(v, _rd + 1)
+            end
+            ret[k] = v
+        end
     end
     return ret
 end
@@ -990,9 +1010,9 @@ end
 -- [Appendix IV](https://docs.citationstyles.org/en/stable/specification.html#appendix-iv-variables)
 -- of the CSL specification lists all field names.
 --
--- @see csl_keys_sort
+-- @see csl_fields_sort
 -- @within CSL items
-CSL_KEY_ORDER = {
+CSL_FIELD_ORDER = {
     'id',                       -- Item ID.
     'type',                     -- For example, 'paper', 'book'.
     'author',                   -- Author(s).
@@ -1034,15 +1054,15 @@ CSL_KEY_ORDER = {
 
 --- Sorting function for CSL field names.
 --
--- Sorts field in the order in which they are listed in `CSL_KEY_ORDER`.
+-- Sorts field in the order in which they are listed in `CSL_FIELD_ORDER`.
 -- Unlisted fields are placed after listed ones in lexical order.
 --
 -- @string a A CSL fieldname.
 -- @string b Another CSL fieldname.
 -- @treturn bool Whether `a` should come before `b`.
 -- @within CSL items
--- @function csl_keys_sort
-csl_keys_sort = in_order(unpack(CSL_KEY_ORDER))
+-- @function csl_fields_sort
+csl_fields_sort = in_order(unpack(CSL_FIELD_ORDER))
 
 do
     local csl_vars = {
@@ -1139,11 +1159,13 @@ do
         return function ()
             while true do
                 local ln = next_ln()
-                while ln == '' do ln = next_ln() end
+                while ln and ln:match '^%s*$' do ln = next_ln() end
                 if not ln then return end
                 local k, v = tabulate(split(ln, '%s*:%s*'), 2)
                 if k then
-                    k = csl_key_standardise(k)
+                    k = k:gsub('^%s+', '')
+                    v = v:gsub('%s+$', '')
+                    k = csl_varname_standardise(k)
                     if csl_vars[k] then return k, v end
                 end
             end
@@ -1152,7 +1174,13 @@ do
 end
 
 do
-    -- @fixme Undocumented.
+    -- Parse a date in Zotero's extra field.
+    --
+    -- The given item is modified in-place.
+    --
+    -- @tab item A CSL item.
+    -- @string k A field name.
+    -- @string v The value.
     local function parse_date (item, k, v)
         local ps = {}
         local i = 0
@@ -1177,10 +1205,15 @@ do
         item[k] = {['date-parts'] = ps}
     end
 
-    -- @fixme Untested.
-    -- @fixme Undocumented.
+    -- Parse a name in Zotero's extra field.
+    --
+    -- The given item is modified in-place.
+    --
+    -- @tab item A CSL item.
+    -- @string k A field name.
+    -- @string v The value.
     local function parse_name (item, k, v)
-        local family, given = split(v, '%s*||%s*', 2)
+        local family, given = tabulate(split(v, '%s*%|%|%s*', 2))
         if not item[k] then item[k] = {} end
         if family and family ~= '' and given and given ~= '' then
             table.insert(item[k], {family = family, given = given})
@@ -1189,6 +1222,9 @@ do
         end
     end
 
+    -- This table maps CSL field names to functions that take an item, and
+    -- a field name-value pair as it should be entered into the "extra" field
+    -- and that *add* that field to the CSL item *in-place*.
     local parsers = {
         ['accessed'] = parse_date,
         ['container'] = parse_date,
@@ -1212,12 +1248,22 @@ do
         ['translator'] = parse_name
     }
 
-    -- Zotero's CSL JSON export leaves CSL fields that have been entered
-    -- into its "extra" field in the CSL "note" field, rather than including
-    -- them as CSL fields proper. This table maps CSL field names to functions
-    -- that take the value of an "extra" field and return a value that can
-    -- be used as CSL field.
-    -- https://www.zotero.org/support/kb/item_types_and_fields#citing_fields_from_extra
+    --- Copy CSL fields from the "extra" field to the item proper.
+    --
+    -- Zotero's CSL JSON export puts CSL fields that have been entered
+    -- into its "extra" field into the CSL "note" field, rather than to
+    -- convert them as CSL fields proper.
+    --
+    -- See <https://www.zotero.org/support/kb/item_types_and_fields#citing_fields_from_extra>
+    -- for how to enter fields into the "extra" field.
+    --
+    -- <h3>Caveats:</h3>
+    --
+    -- The item is changed *in-place.*
+    --
+    -- @tab item A CSL item.
+    -- @treturn table The same item.
+    -- @within CSL items
     function csl_item_parse_extras (item)
         for k, v in csl_item_extras(item) do
             local f = parsers[k]
@@ -1783,7 +1829,7 @@ do
 
     -- Convert a string to a YAML scalar.
     --
-    -- Strings must be encoded in UTF-8.
+    -- Strings *must* be encoded in UTF-8.
     -- Does *not* escape *all* non-printable characters.
     --
     -- @string str The value.
@@ -2000,8 +2046,8 @@ function zot_to_md (zot)
 end
 
 do
-    local floor = math.floor
     local decode = json.decode
+    local floor = math.floor
 
     -- Convert numbers to strings.
     --
@@ -2018,16 +2064,15 @@ do
     --- Parse a CSL JSON string.
     --
     -- @string str A CSL JSON string.
-    -- @treturn[1] tab A CSL item.
+    -- @treturn[1] tab A single CSL item or a list of CSL items.
     -- @treturn[2] nil `nil` if the string cannot be parsed.
     -- @treturn[2] string An error message.
     -- @within Converters
-    -- @fixme No unit test.
     function parse_csl_json (str)
         if str == '' then return nil, 'got the empty string.' end
         local ok, data = pcall(decode, str)
         if not ok then return nil, 'cannot parse: ' .. str end
-        return csl_keys_standardise(apply(num_to_str, data))
+        return csl_varnames_standardise(apply(num_to_str, data))
     end
 end
 
@@ -2059,14 +2104,13 @@ do
     -- @string ckey A BetterBibTeX citation key.
     -- @treturn {string,...} A list of search terms.
     -- @within Citation key types
-    -- @fixme No unit test.
     function CITEKEY_PARSERS.betterbibtexkey (ckey)
         local terms = Table()
         for str, num in ckey:gmatch '([%a%p]*)(%d*)' do
             if str and str ~= '' then
                 for term in split(str, '%u', nil, 'l') do
                     local l = len(term)
-                    if l and l > 3 then terms:add(term) end
+                    if l and l >= 3 then terms:add(term) end
                 end
             end
             if num and num ~= '' then
@@ -2074,7 +2118,7 @@ do
                 if l and l > 1 then terms:add(num) end
             end
         end
-        if terms.n < 2 then return nil end
+        if terms.n < 1 then return nil end
         return terms
     end
 
@@ -2089,24 +2133,24 @@ do
     -- @string ckey A zotxt Easy Citekey.
     -- @treturn {string,...} A list of search terms.
     -- @within Citation key types
-    -- @fixme No unit test.
     function CITEKEY_PARSERS.easykey (ckey)
         local terms = Table()
-        local q
+        local colon = false
         for p, c in codes(ckey) do
-            if not q then
+            if not colon then
                 -- 58 is the colon (:).
                 if c == 58 then
                     local s = ckey:sub(1, p - 1)
                     if s and s ~= '' then terms:add(s) end
-                    q = p
+                    colon = true
                 end
             else
                 -- Digits start at 48 and end at 57.
-                if c < 48 or c > 57 then
-                    local s = ckey:sub(q + 1, p - 1)
-                    if s and s ~= '' then terms:add(s) end
-                    s = ckey:sub(p)
+                if c >= 48 and c <= 57 then
+                    if terms.n < 2 then terms:add '' end
+                    terms[2] = terms[2] .. tostring(c - 48)
+                else
+                    local s = ckey:sub(p)
                     if s and s ~= '' then terms:add(s) end
                     break
                 end
@@ -2126,7 +2170,6 @@ end
 -- @treturn[2] nil `nil` if no search terms could be derived.
 -- @treturn[2] string An error message.
 -- @within Citation key types
--- @fixme No unit test.
 function guess_search_terms(ckey, citekey_types)
     for i = 1, #citekey_types do
         local f = CITEKEY_PARSERS[citekey_types[i]]
@@ -2175,7 +2218,6 @@ end
 -- @treturn string The HTTP content itself.
 -- @raise See `http_get`.
 -- @within Networking
--- @fixme No unit test.
 function url_query (url, params)
     if params then
         local p = {}
@@ -2511,8 +2553,8 @@ do
     -- @treturn[2] nil `nil` if less or more than one item was found or
     --  if an error occurred.
     -- @treturn[2] string An error message.
-    -- @fixme No unit test.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
+    -- @fixme No unit test.
     function ZotWeb:match (ckey)
         -- luacheck: ignore err
         local terms = guess_search_terms(ckey, self.citekey_types)
@@ -2544,8 +2586,8 @@ do
     -- @treturn[1] tab A CSL item.
     -- @treturn[2] nil `nil` if no or more than one item has been found.
     -- @treturn[2] string An error message.
-    -- @fixme No unit test.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
+    -- @fixme No unit test.
     function ZotWeb:lookup (item_id)
         local params = {v = 3, key = self.api_key,
                         format ='csljson', itemType='-attachment'}
@@ -2580,8 +2622,8 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @fixme No unit test.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
+    -- @fixme No unit test.
     function ZotWeb:get_item (ckey)
         -- luacheck: ignore err
         assert(ckey ~= '', 'citation key is the empty string.')
@@ -2663,7 +2705,9 @@ BIBLIO_TYPES.bibtex.decode = BIBLIO_TYPES.bib.decode
 
 --- De-/Encode CSL items in JSON.
 -- @within Bibliography files
-BIBLIO_TYPES.json = json
+BIBLIO_TYPES.json = {}
+BIBLIO_TYPES.json.encode = json.encode
+BIBLIO_TYPES.json.decode = parse_csl_json
 
 --- De-/Encode CSL items in YAML.
 -- @within Bibliography files
@@ -2681,7 +2725,9 @@ function BIBLIO_TYPES.yaml.decode (str)
     if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
     local doc = pandoc.read(str, 'markdown')
     if not doc.meta.references then return {} end
-    return walk(doc.meta.references, {MetaInlines = markdownify})
+    local refs = walk(doc.meta.references, {MetaInlines = markdownify})
+    for i = 1, #refs do refs[i] = csl_varnames_standardise(refs[i]) end
+    return refs
 end
 
 --- Serialise a list of CSL items to a YAML string.
@@ -2692,7 +2738,7 @@ end
 -- @within Bibliography files
 function BIBLIO_TYPES.yaml.encode (items)
     table.sort(items, csl_items_sort)
-    return yamlify({references=items}, nil, csl_keys_sort)
+    return yamlify({references=items}, nil, csl_fields_sort)
 end
 
 --- Alternative suffix for YAML files.
