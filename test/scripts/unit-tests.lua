@@ -158,7 +158,7 @@ ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
-ZOTXT_CSL = json.decode(ZOTXT_JSON)
+ZOTXT_CSL = M.parse_csl_json(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
@@ -227,7 +227,7 @@ ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
 
 --- Bibliographic data as returned by the Zotero Web API.
 ZOTWEB_CSL = {
-    ISBN = '978-0-19-989262-4',
+    isbn = '978-0-19-989262-4',
     author = {{family = 'Haslanger', given = 'Sally'}},
     ['event-place'] = 'Oxford',
     id = 'haslanger2012ResistingRealitySocial',
@@ -235,25 +235,7 @@ ZOTWEB_CSL = {
     note = 'citation key: haslanger2012ResistingRealitySocial',
     publisher = 'Oxford University Press',
     ['publisher-place'] = 'Oxford',
-    shortTitle = 'Resisting Reality',
-    title = 'Resisting Reality: Social Construction and Social Critique',
-    type = 'book'
-}
-
---- API key for the Zotero Web API.
-ZOTWEB_API_KEY = 'MO2GHxbkLnWgCqPtpoewgwIl'
-
---- Bibliographic data as returned by the Zotero Web API.
-ZOTWEB_CSL = {
-    ISBN = '978-0-19-989262-4',
-    author = {{family = 'Haslanger', given = 'Sally'}},
-    ['event-place'] = 'Oxford',
-    id = 'haslanger2012ResistingRealitySocial',
-    issued = {['date-parts'] = {{'2012'}}},
-    note = 'citation key: haslanger2012ResistingRealitySocial',
-    publisher = 'Oxford University Press',
-    ['publisher-place'] = 'Oxford',
-    shortTitle = 'Resisting Reality',
+    shorttitle = 'Resisting Reality',
     title = 'Resisting Reality: Social Construction and Social Critique',
     type = 'book'
 }
@@ -978,6 +960,23 @@ function test_tabulate ()
     end
 end
 
+function test_in_order ()
+    local tests = {
+        [{{3}, {1, 2, 3}}] = {3, 1, 2},
+        [{{}, {3, 2, 1}}] = {1, 2, 3},
+        [{{3, 2}, {1, 2, 3}}] = {3, 2, 1},
+        [{{3, 2}, {}}] = {},
+        [{{}, {}}] = {}
+    }
+
+    for k, v in pairs(tests) do
+        local f = M.in_order(unpack(k[1]))
+        local t = k[2]
+        table.sort(t, f)
+        lu.assert_equals(t, v)
+    end
+end
+
 
 -- Converters
 -- ----------
@@ -1210,7 +1209,7 @@ function test_yamlify ()
     lu.assert_equals(M.yamlify('test' .. utf8.char(0xda99) .. 'test'),
         '"test\\uda99test"')
     local str = M.yamlify(ZOTXT_CSL)
-    local csl = yaml.parse(str)
+    local csl = rconv_nums_to_strs(yaml.parse(str))
     lu.assert_equals(csl, ZOTXT_CSL)
 end
 
@@ -1261,21 +1260,97 @@ end
 
 
 -- Bibliography files
--- --------------
+-- ------------------
 
-function test_csl_keys_sort ()
+function test_csl_varname_standardise ()
     local invalid = {nil, false, 0, {}, function () end}
     for _, v in ipairs(invalid) do
-        lu.assert_error(M.csl_keys_sort, v, 'string')
-        lu.assert_error(M.csl_keys_sort, 'string', v)
+        lu.assert_error(M.csl_varname_standardise, v)
     end
 
-    lu.assert_true(M.csl_keys_sort('a', 'b'))
-    lu.assert_false(M.csl_keys_sort('b', 'a'))
-    lu.assert_true(M.csl_keys_sort('id', 'a'))
-    lu.assert_false(M.csl_keys_sort('a', 'id'))
-    lu.assert_true(M.csl_keys_sort('id', 'type'))
-    lu.assert_false(M.csl_keys_sort('type', 'id'))
+    local tests = {
+        ['Citation Key'] = 'citation-key',
+        ['ORIGINAL DATE'] = 'original-date',
+        [''] = '',
+        ['Author'] = 'author',
+        ['BLA-bla bLa'] = 'bla-bla-bla'
+    }
+    for k, v in pairs(tests) do
+        lu.assert_equals(M.csl_varname_standardise(k), v)
+    end
+end
+
+function test_csl_varnames_standardise ()
+    local invalid = {nil, true, 1, 'c', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.csl_varnames_standardise, v)
+    end
+
+    local test = {
+        ISBN = '978-0-19-989262-4',
+        Author = {{Family = 'Haslanger', Given = 'Sally'}},
+        ['Event place'] = 'Oxford',
+        ID = 'haslanger2012ResistingRealitySocial',
+        Issued = {['date-parts'] = {{'2012'}}},
+        Note = 'citation key: haslanger2012ResistingRealitySocial',
+        Publisher = 'Oxford University Press',
+        ['Publisher place'] = 'Oxford',
+        ShortTitle = 'Resisting Reality',
+        Title = 'Resisting Reality: Social Construction and Social Critique',
+        Type = 'book'
+    }
+
+    lu.assert_equals(M.csl_varnames_standardise(test), ZOTWEB_CSL)
+end
+
+function test_csl_item_parse_extras ()
+    local invalid = {nil, true, 1, 'c', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.csl_item_parse_extras, v)
+    end
+
+    local input = {
+        author = {{family = 'Doe', given = 'John'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        note = [[
+            Original date: 1970
+            Original author: Doe || Jane
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    local output = {
+        author = {{family = 'Doe', given = 'John'}},
+        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        ['original-data'] = {['date-parts'] = {{'1970'}}},
+        note = [[
+            Original date: 1970
+            Original author: Doe || Jane
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    lu.assert_items_equals(M.csl_item_parse_extras(copy(input)), output)
+end
+
+function test_csl_fields_sort ()
+    local invalid = {nil, false, 0, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.csl_fields_sort, v, 'string')
+        lu.assert_error(M.csl_fields_sort, 'string', v)
+    end
+
+    lu.assert_true(M.csl_fields_sort('a', 'b'))
+    lu.assert_false(M.csl_fields_sort('b', 'a'))
+    lu.assert_true(M.csl_fields_sort('id', 'a'))
+    lu.assert_false(M.csl_fields_sort('a', 'id'))
+    lu.assert_true(M.csl_fields_sort('id', 'type'))
+    lu.assert_false(M.csl_fields_sort('type', 'id'))
 end
 
 function test_csl_items_sort ()
@@ -1335,6 +1410,92 @@ function test_biblio_read ()
     lu.assert_not_nil(data)
     lu.assert_nil(err)
     lu.assert_items_equals(data, ZOTXT_YAML)
+end
+
+function test_parse_csl_json ()
+    local invalid = {nil, true, 1, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.parse_csl_json, v)
+    end
+
+    local output = {
+        author = {{family = 'Doe', given = 'John'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+
+    local tests = {
+        [[
+            {
+                "author": [
+                    {
+                        "family": "Doe",
+                        "given": "John"
+                    }
+                ],
+                "issued": {
+                    "date-parts": [
+                        ["2021"]
+                    ]
+                },
+                "publisher": "Unit test press",
+                "publisher-place": "Vienna",
+                "title": "Unit testing",
+                "type": "book"
+            }
+        ]],
+        [[
+            {
+                "Author": [
+                    {
+                        "family": "Doe",
+                        "given": "John"
+                    }
+                ],
+                "Issued": {
+                    "Date parts": [
+                        [2021]
+                    ]
+                },
+                "Publisher": "Unit test press",
+                "Publisher place": "Vienna",
+                "Title": "Unit testing",
+                "Type": "book"
+            }
+        ]]
+    }
+
+    for _, v in ipairs(tests) do
+        lu.assert_items_equals(M.parse_csl_json(v), output)
+    end
+end
+
+function test_guess_search_terms ()
+    local invalid = {nil, true, 1, {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.guess_search_terms, v)
+    end
+
+    local tests = {
+        [''] = nil,
+        ['doe'] = {'doe', n = 1},
+        ['doeWord'] = {'doe', 'Word', n = 2},
+        ['doe:'] = nil,
+        ['doe2020'] = {'doe', '2020', n = 2},
+        ['doe:2020'] = {'doe', '2020', n = 2},
+        ['doeWord2020'] = {'doe', 'Word', '2020', n = 3},
+        ['doe:2020easy'] = {'doe', '2020', 'easy', n = 3},
+        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words', n = 4}
+    }
+
+    local citekey_types = M.ZotWeb.citekey_types
+
+    for k, v in pairs(tests) do
+        lu.assert_items_equals(M.guess_search_terms(k, citekey_types), v)
+    end
 end
 
 function test_biblio_write ()
