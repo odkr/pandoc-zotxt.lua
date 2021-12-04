@@ -1217,7 +1217,7 @@ end
 -- zotxt
 -- -----
 
-function test_zotxt_csl_item ()
+function test_zotxt_get_item ()
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
         lu.assert_error(M.Zotxt.get_item, M.Zotxt, v)
@@ -1231,22 +1231,87 @@ end
 -- Zotero Web API
 -- --------------
 
-function test_zotweb_csl_item ()
+function test_zotweb_get_user_id ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
-    local invalid = {nil, false, '', {}, function () end}
-    for _, v in ipairs(invalid) do
-        lu.assert_error(zotweb.get_item, zotweb, v)
-    end
-
-    local ret, err = zotweb:get_item('haslanger2012ResistingRealitySocial')
+    local ret, err = zotweb:get_user_id()
+    lu.assert_not_nil(ret)
     lu.assert_nil(err)
-    lu.assert_equals(ret, ZOTWEB_CSL)
+    lu.assert_equals(ret, 5763466)
 end
 
--- Zotero Web API
--- --------------
+function test_zotweb_get_groups ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local ret, err = zotweb:get_groups()
+    lu.assert_not_nil(ret)
+    lu.assert_nil(err)
+    lu.assert_items_equals(ret, {4513095})
+end
 
-function test_zotweb_csl_item ()
+function test_zotweb_endpoints ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local iter, err = zotweb:endpoints()
+    lu.assert_not_nil(iter)
+    lu.assert_nil(err)
+    lu.assert_items_equals(pack(M.tabulate(iter)), {
+        'https://api.zotero.org/users/5763466/items/',
+        'https://api.zotero.org/groups/4513095/items/',
+        n = 2
+    })
+
+    iter, err = zotweb:endpoints 'fake_id'
+    lu.assert_not_nil(iter)
+    lu.assert_nil(err)
+    lu.assert_items_equals(pack(M.tabulate(iter)), {
+        'https://api.zotero.org/users/5763466/items/fake_id',
+        'https://api.zotero.org/groups/4513095/items/fake_id',
+        n = 2
+    })
+end
+
+function test_zotweb_search ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.search, zotweb, v)
+    end
+
+    local items, err = zotweb:search('haslanger', '2012', 'Resisting', 'Reality', 'Social')
+    lu.assert_not_nil(items)
+    lu.assert_nil(err)
+    lu.assert_equals(#items, 1)
+    items[1].id = 'haslanger2012ResistingRealitySocial'
+    lu.assert_items_equals(items[1], ZOTWEB_CSL)
+end
+
+function test_zotweb_match ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.match, zotweb, v)
+    end
+
+    local item, err = zotweb:match 'haslanger2012ResistingRealitySocial'
+    lu.assert_not_nil(item)
+    lu.assert_nil(err)
+    item.id = 'haslanger2012ResistingRealitySocial'
+    lu.assert_items_equals(item, ZOTWEB_CSL)
+end
+
+function test_zotweb_lookup ()
+    local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
+    local invalid = {nil, false, '', {}, function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(zotweb.lookup, zotweb, v)
+    end
+
+    local item, err = zotweb:lookup 'D9HEKNWD'
+    lu.assert_not_nil(item)
+    lu.assert_nil(err)
+    item.id = 'haslanger2012ResistingRealitySocial'
+    lu.assert_items_equals(item, ZOTWEB_CSL)
+end
+
+function test_zotweb_get_item ()
     local zotweb = M.ZotWeb{api_key = ZOTWEB_API_KEY}
     local invalid = {nil, false, '', {}, function () end}
     for _, v in ipairs(invalid) do
@@ -1254,6 +1319,7 @@ function test_zotweb_csl_item ()
     end
 
     local ret, err = zotweb:get_item('haslanger2012ResistingRealitySocial')
+    lu.assert_not_nil(ret)
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
 end

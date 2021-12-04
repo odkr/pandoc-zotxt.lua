@@ -1,0 +1,39 @@
+HTTP/1.1 200 OK
+Date: Sat, 04 Dec 2021 17:38:13 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Last-Modified-Version: 12
+Vary: Accept-Encoding
+Content-Length: 801
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": [
+        {
+            "id": "11662297/D9HEKNWD",
+            "type": "book",
+            "title": "Resisting Reality: Social Construction and Social Critique",
+            "publisher": "Oxford University Press",
+            "publisher-place": "Oxford",
+            "event-place": "Oxford",
+            "ISBN": "978-0-19-989262-4",
+            "note": "citation key: haslanger2012ResistingRealitySocial",
+            "shortTitle": "Resisting Reality",
+            "author": [
+                {
+                    "family": "Haslanger",
+                    "given": "Sally"
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        2012
+                    ]
+                ]
+            }
+        }
+    ]
+}

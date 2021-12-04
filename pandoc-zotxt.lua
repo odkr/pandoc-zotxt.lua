@@ -2404,7 +2404,6 @@ do
     -- @raise An error if the `api_key` field is not set, the Zotero Web API
     --  could not be reached, or if no Zotero user ID could be found.
     --  See `http_get` for details on the second error.
-    -- @fixme No unit test.
     function ZotWeb:get_user_id ()
         if self.user_id then return self.user_id end
         assert(self.api_key, UIDLookupError{err = 'no Zotero API key set'})
@@ -2425,7 +2424,6 @@ do
     -- @raise An error if the `api_key` field is not set, the Zotero Web API
     --  could not be reached, or if no Zotero user ID could be found.
     --  See `http_get` for details on the second error.
-    -- @fixme No unit test.
     function ZotWeb:get_groups ()
         if self.groups then return self.groups end
         assert(self.api_key, GroupLookupError{err = 'no Zotero API key set.'})
@@ -2450,7 +2448,6 @@ do
     --
     -- @string[opt] item_id A Zotero item ID.
     -- @treturn func A *stateful* iterator.
-    -- @fixme No unit test.
     function ZotWeb:endpoints (item_id)
         if not item_id then item_id = '' end
         local n, groups
@@ -2498,10 +2495,10 @@ do
     -- @treturn[2] string An error message.
     -- @treturn[2] An error message.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
-    -- @fixme No unit test (test should include abort on, e.g., parse errors).
     function ZotWeb:search (...)
+        local q = concat({...}, '+')
         local params = {v = 3, key = self.api_key,
-                        q = concat({...}, '+'), qmode = 'titleCreatorYear',
+                        q = q, qmode = 'titleCreatorYear',
                         format ='csljson', itemType='-attachment'}
         for ep in self:endpoints() do
             -- luacheck: ignore err
@@ -2554,7 +2551,6 @@ do
     --  if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
-    -- @fixme No unit test.
     function ZotWeb:match (ckey)
         -- luacheck: ignore err
         local terms = guess_search_terms(ckey, self.citekey_types)
@@ -2587,7 +2583,6 @@ do
     -- @treturn[2] nil `nil` if no or more than one item has been found.
     -- @treturn[2] string An error message.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
-    -- @fixme No unit test.
     function ZotWeb:lookup (item_id)
         local params = {v = 3, key = self.api_key,
                         format ='csljson', itemType='-attachment'}
@@ -2623,7 +2618,6 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See `ZotWeb:get_user_id` and `ZotWeb:get_groups`.
-    -- @fixme No unit test.
     function ZotWeb:get_item (ckey)
         -- luacheck: ignore err
         assert(ckey ~= '', 'citation key is the empty string.')
