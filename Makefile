@@ -105,7 +105,6 @@ $(ZOTXT_TESTS): tmpdir
 		cmp "$(TMP_DIR)/$@.html" "$(TEST_NORM_DIR)/$@.html"; \
 	fi
 
-
 $(ZOTWEB_TESTS): tmpdir
 	if "$(PANDOC)" --lua-filter "$(TEST_SCPT_DIR)/pre-v2_11.lua" \
 		--from markdown --to plain /dev/null; \
@@ -128,14 +127,15 @@ $(ZOTWEB_TESTS): tmpdir
 	fi
 
 %.1: %.md
-	$(PANDOC) \ 
+	$(PANDOC) \
 		--from markdown-smart --to man --standalone \
 		--metadata $(notdir $*) \
 		--metadata section=1 \
 		--metadata date="$$(date '+%B %d, %Y')" \
 		--output $@ $*.md
-%.gz: %.1
-	gzip $@
+
+%.1.gz: %.1
+	gzip --force $<
 
 header:
 	sh scripts/update-header.sh -f pandoc-zotxt.lua
