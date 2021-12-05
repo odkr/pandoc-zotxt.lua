@@ -1148,24 +1148,41 @@ do
         ['citekey'] = true
     }
 
-    -- @fixme Undocumented.
+    -- Remove leading and trailing whitespace from a string.
+    --
+    -- @string s A string.
+    -- @treturn string Another string.
     local function trim (s)
         return s:gsub('^%s+', ''):gsub('%s*$', '')
     end
 
-    -- @fixme Undocumented.
-    local function verify_pair (k, v)
-        if not k or not v then return end
-        k = csl_varname_standardise(trim(k))
-        if not csl_vars[k] then return end
-        v = trim(v)
-        if v == '' then return end
-        return k, v
+    -- Verify that a CSL variable-value pair is meaningful.
+    --
+    -- Checks if the given key is a CSL variable name and if the value is set.
+    -- Also removes leading and trailing whitespaces from both.
+    --
+    -- @string varname A variable name.
+    -- @string value A value.
+    -- @treturn[1] string The key.
+    -- @treturn[1] string The value.
+    -- @treturn[2] nil `nil` if the key or the value are invalid.
+    local function verify_pair (varname, value)
+        if not varname or not value then return end
+        varname = csl_varname_standardise(trim(varname))
+        if varname == '' or not csl_vars[varname] then return end
+        value = trim(value)
+        if value == '' then return end
+        return varname, value
     end
 
-    -- @fixme Undocumented.
-    local function make_nsyn_iter (note)
-        local next_line = split(note, '\r?\n')
+    -- Create a function that iterates over "extra" field entries.
+    --
+    -- Uses the newer `<variable name>: <value><linefeed>` syntax.
+    --
+    -- @string extra The contents of a Zotero "extra" field.
+    -- @treturn func A *stateful* iterator.
+    local function make_iter (extra)
+        local next_line = split(extra, '\r?\n')
         return function ()
             while true do
                 local ln = next_line()
@@ -1177,9 +1194,13 @@ do
         end
     end
 
-    -- @fixme Undocumented.
-    -- @fixme Untested.
-    local function make_osyn_iter (note)
+    -- Create a function that iterates over legacy "extra" field entries.
+    --
+    -- Uses the older `{:<variable name>: <value>}` syntax.
+    --
+    -- @string extra The contents of a Zotero "extra" field.
+    -- @treturn func A *stateful* iterator.
+    local function make_legacy_iter (note)
         local next_pair = note:gmatch '{:([%a-]+):%s*([^}]+)}'
         return function ()
             while true do
@@ -1199,14 +1220,14 @@ do
     function csl_item_extras (item)
         local note = item.note
         if not note then return function () return end end
-        local next_pair = make_nsyn_iter(note)
-        local syn = 'n'
+        local next_pair = make_iter(note)
+        local legacy = false
         return function ()
-            if syn == 'n' then
+            if not legacy then
                 local k, v = next_pair()
                 if k then return k, v end
-                next_pair = make_osyn_iter(note)
-                syn = 'o'
+                next_pair = make_legacy_iter(note)
+                legacy = true
             end
             return next_pair()
         end
