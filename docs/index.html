@@ -79,19 +79,51 @@
  Zotero and adds their bibliographic data to a document&rsquo;s &ldquo;references&rdquo;
  metadata field or to a bibliography file, where Pandoc can pick it up.</p></p>
 <p> Cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo; (provided
- by Better BibTeX for Zotero) or &ldquo;easy citekeys&rdquo; (provided by zotxt). Then,
- while Zotero is running, tell <strong>pandoc</strong> to filter your document through
- <strong>pandoc-zotxt.lua</strong> before processing citations. That&rsquo;s all there is to it.</p>
+ by Better BibTeX for Zotero) or &ldquo;Easy Citekeys&rdquo; (provided by zotxt). Then
+ tell <strong>pandoc</strong> to filter your document through <strong>pandoc-zotxt.lua</strong> before
+ processing citations. That&rsquo;s all there is to it.</p>
 
-<p> If a document&rsquo;s &ldquo;references&rdquo; metadata field or a bibliography file already
- has bibliographic data for a citation, that citation will be ignored.</p>
+<p> If the &ldquo;references&rdquo; metadata field or a bibliography file already contains
+ bibliographic data for a citation, that citation will be ignored.</p>
+
+<h2> CONNECTING TO ZOTERO</h2>
+
+<h2> Desktop client</h2>
+
+<p> By default, bibliographic data is fetched from your Zotero desktop client.
+ You have to install the zotxt plugin for Zotero for this to work. Zotero
+ must be running when you invoke <strong>pandoc</strong>. This is the preferred way to
+ fetch data from Zotero.</p>
+
+<h2> Web API</h2>
+
+<p> Bibliographic data can also be fetched from the Zotero Web API. If you want
+ to access your Zotero database via the Web API, create a Zotero API key and
+ set the metadata field &ldquo;zotero-api-key&rdquo; to that key.</p>
+
+<p> If you want to fetch bibliographic data from <em>public</em> Zotero groups, set
+ the metadata field &ldquo;zotero-public-groups&rdquo; to the a list of the IDs of the
+ groups that you want to fetch data from. These groups need to allow
+ non-members to access their libraries. You do <em>not</em> need an API key to do
+ so.</p>
+
+<p> The Zotero Web API does <em>not</em> allow to search for citation keys. Therefore,
+ citation keys have to be converted into search terms; Better BibTeX
+ citation keys are split up at the first of each series of digits and at
+ uppercase letters (&ldquo;DoeTitle2020&rdquo; becomes &ldquo;Doe&rdquo;, &ldquo;Title&rdquo;, &ldquo;2020&rdquo;), Easy
+ Citekeys are split up at the first colon and at the last digit
+ (&ldquo;doe:2020title&rdquo; becomes &ldquo;doe&rdquo;, &ldquo;2020&rdquo;, &ldquo;title&rdquo;).</p>
+
+<p> If a search yields more than one item, add the citation key to the item&rsquo;s
+ &ldquo;extra&rdquo; field in Zotero, using either the field name &ldquo;Citation key&rdquo; or
+ &ldquo;Citekey&rdquo;; e.g., &ldquo;Citation key: DoeTitle2020&rdquo;. If you use BetterBibTeX for
+ Zotero, you can do so by &lsquo;pinning&rsquo; the citation key.</p>
 
 <h2> BIBLIOGRAPHY FILES</h2>
 
-<p> <strong>pandoc-zotxt.lua</strong> can add bibliographic data to a bibliography file,
- rather than to the &ldquo;references&rdquo; metadata field. This speeds up subsequent
- processing of the same document, because that data need not be fetched
- again from Zotero.</p>
+<p> Bibliographic data can be added to a bibliography file, rather than to the
+ &ldquo;references&rdquo; metadata field. This speeds up subsequent processing of the
+ same document, because that data need not be fetched again from Zotero.</p>
 
 <p> To use such a bibliography file, set the &ldquo;zotero-bibliography&rdquo; metadata
  field to a filename. If the filename is relative, it is interpreted as
@@ -133,14 +165,14 @@
 <h2> CITATION KEY TYPES</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> supports multiple types of citation keys, namely,
- &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;easy citekeys&rdquo; and Zotero item IDs.</p>
+ &ldquo;Better BibTeX citation keys&rdquo;, &ldquo;Easy Citekeys&rdquo; and Zotero item IDs.</p>
 
 <p> However, it may happen that a Better BibTeX citation key is interpreted as
- an easy citekey <em>and</em> yet picks out an item, if not the one that it
- actually is the citation key of. That is to say, citation keys may be
- matched with the wrong bibliographic data.</p>
+ an Easy Citekey <em>and</em> yet picks out an item, though not the one that it
+ actually is the citation key of. That is, citation keys may be matched with
+ the wrong bibliographic data.</p>
 
-<p> If this happens, you can disable citation keys by setting the
+<p> If this happens, you can disable citation key types by setting the
  &ldquo;zotero-citekey-types&rdquo; metadata field to the citation key type or to the
  list of citation key types that you actually use.</p>
 
@@ -151,28 +183,29 @@
 <tr>
 <th> <strong>Key</strong>           </th>
 <th> <strong>Type</strong>                   </th>
-<th> <strong>Comments</strong> </th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td> <a href="index.html#CITEKEY_PARSERS.betterbibtexkey">betterbibtexkey</a> </td>
 <td> Better BibTeX citation key </td>
-<td> -            </td>
 </tr>
 <tr>
 <td> <a href="index.html#CITEKEY_PARSERS.easykey">easykey</a>         </td>
-<td> easy citekey               </td>
-<td> Deprecated.  </td>
+<td> Easy Citekey               </td>
 </tr>
 <tr>
 <td> <code>key</code>             </td>
 <td> Zotero item ID             </td>
-<td> Hard to use. </td>
 </tr>
 </tbody>
 </table>
 
+
+<h2> SETTINGS</h2>
+
+<p> If a metadata field takes a list of values, but you only want to give a
+ single value, you can enter that value as a scalar.</p>
 
 <h2> EXAMPLES</h2>
 
@@ -183,41 +216,45 @@ EOF
 </pre>
 
 
-<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero.</p>
+<p> The above will look up &ldquo;DoeTitle2020&rdquo; in Zotero.</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-bibliography: bibliography.json
 ...
-See @doe2020Title <span class="keyword">for</span> details.
+See @DoeTitle2020 <span class="keyword">for</span> details.
 EOF
 </pre>
 
 
-<p> The above will look up &ldquo;doe2020Title&rdquo; in Zotero and save its bibliographic
+<p> The above will look up &ldquo;DoeTitle2020&rdquo; in Zotero and save its bibliographic
  data into the file &ldquo;bibliography.json&rdquo; in the current working directory. If
- the same command is run again, &ldquo;doe2020Title&rdquo; will <em>not</em> be looked up again.</p>
+ the same command is run again, &ldquo;DoeTitle2020&rdquo; will <em>not</em> be looked up again.</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-citekey-types: betterbibtexkey
 ...
-See @doe2020Title <span class="keyword">for</span> details.
+See @doe:<span class="number">2020</span>Title <span class="keyword">for</span> details.
 EOF
 </pre>
 
 
-<p> The above forces <strong>pandoc-zotxt.lua</strong> to interpret &ldquo;doe2020Title&rdquo; as a
+<p> The above forces <strong>pandoc-zotxt.lua</strong> to interpret &ldquo;doe:2020Title&rdquo; as a
  Better BibTeX citation key.</p>
 
 <h2> KNOWN ISSUES</h2>
+
+<h2> Wrong matches</h2>
 
 <p> Citation keys may, on rare occassions, be matched with the wrong Zotero
  item. This happens if a citation key picks out a different record depending
  on whether it is interpreted as a Better BibTeX citation key or as an easy
  citekey. See <strong>CITATION KEY TYPES</strong> above on how to fix this.</p>
+
+<h2> Temporary files</h2>
 
 <p> <strong>pandoc-zotxt.lua</strong> creates a temporary file when it adds sources to a
  bibliography file. If Pandoc exits because it catches a signal (e.g.,
@@ -226,10 +263,18 @@ EOF
  using Pandoc up to v2.7, another process may, mistakenly, use the same
  temporary file at the same time, though this is highly unlikely.</p>
 
+<h2> Zotero desktop client</h2>
+
 <p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
  that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does not. As a
  consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these versions
  of Zotero unless you tell <strong>pandoc</strong> to set that header.</p>
+
+<h2> Zotero Web API</h2>
+
+<p> Support for group libraries is limited. They are only searched if no item
+ in your personal library matches the search terms derived from the citation
+ key. Also, the &ldquo;extra&rdquo; field of items in group libraries is ignored.</p>
 
 <h2> SECURITY</h2>
 
@@ -371,7 +416,7 @@ EOF
 	<td class="summary">Configuration parameters.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Connector:configure">Connector:configure (A)</a></td>
+	<td class="name" nowrap><a href="#Connector:configure">Connector:configure (conf)</a></td>
 	<td class="summary">Configure the connector.</td>
 	</tr>
 </table>
@@ -459,7 +504,7 @@ EOF
 	<td class="summary">Iterate over substrings of a string.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#expand_vars">expand_vars (str, vars)</a></td>
+	<td class="name" nowrap><a href="#expand_vars">expand_vars (str, ns)</a></td>
 	<td class="summary">Expand variables in strings.</td>
 	</tr>
 </table>
@@ -470,12 +515,12 @@ EOF
 	<td class="summary">Get the keys and the length of a table.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#mapr">mapr (func, graph)</a></td>
+	<td class="name" nowrap><a href="#apply">apply (func, graph)</a></td>
 	<td class="summary">Apply a function to every node of a graph.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tabulate">tabulate (iter[, val])</a></td>
-	<td class="summary">Tabulate the values that an iterator returns.</td>
+	<td class="name" nowrap><a href="#tabulate">tabulate (iter)</a></td>
+	<td class="summary">Tabulate the values a stateful iterator returns.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#sorted_pairs">sorted_pairs (tab[, func])</a></td>
@@ -489,16 +534,28 @@ EOF
 <h2><a href="#CSL_items">CSL items</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#CSL_KEY_ORDER">CSL_KEY_ORDER</a></td>
+	<td class="name" nowrap><a href="#csl_varname_standardise">csl_varname_standardise (field)</a></td>
+	<td class="summary">Standardise CSL field name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#csl_varnames_standardise">csl_varnames_standardise (tab)</a></td>
+	<td class="summary">Standardise field names of a CSL item.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CSL_FIELD_ORDER">CSL_FIELD_ORDER</a></td>
 	<td class="summary">The preferred order of keys in YAML bibliography files.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#csl_fields_sort">csl_fields_sort (a, b)</a></td>
+	<td class="summary">Sorting function for CSL field names.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#csl_item_extras">csl_item_extras (item)</a></td>
 	<td class="summary">Iterate over key-value pairs in the &ldquo;note&rdquo; field of CSL items.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#csl_keys_sort">csl_keys_sort (a, b)</a></td>
-	<td class="summary">Sorting function for CSL field names.</td>
+	<td class="name" nowrap><a href="#csl_item_parse_extras">csl_item_parse_extras (item)</a></td>
+	<td class="summary">Copy CSL fields from the &ldquo;extra&rdquo; field to the item proper.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#csl_items_sort">csl_items_sort (a, b)</a></td>
@@ -544,7 +601,7 @@ EOF
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_PARSERS">CITEKEY_PARSERS</a></td>
-	<td class="summary">A mapping of citation key types to functions that guess search terms.</td>
+	<td class="summary">A mapping of citation key types to parsers.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_PARSERS.betterbibtexkey">CITEKEY_PARSERS.betterbibtexkey (ckey)</a></td>
@@ -624,7 +681,7 @@ EOF
 	<td class="summary">Retrieve a CSL item from Zotero.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ZotWeb:configure">ZotWeb:configure (A)</a></td>
+	<td class="name" nowrap><a href="#ZotWeb:configure">ZotWeb:configure (conf)</a></td>
 	<td class="summary">Configure the connector.</td>
 	</tr>
 </table>
@@ -1472,7 +1529,7 @@ a <span class="global">string</span></pre>
 </dd>
     <dt>
     <a name = "Connector:configure"></a>
-    <strong>Connector:configure (A)</strong>
+    <strong>Connector:configure (conf)</strong>
     </dt>
     <dd>
     Configure the connector.</p>
@@ -1484,9 +1541,9 @@ a <span class="global">string</span></pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">A</span>
+        <li><span class="parameter">conf</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
-         list of key-value pairs.
+         A list of key-value pairs.
         </li>
     </ul>
 
@@ -1871,7 +1928,11 @@ Something went slightly wrong.</pre>
     <strong>split (str, pattern[, max[, inc]])</strong>
     </dt>
     <dd>
-    Iterate over substrings of a string.
+    Iterate over substrings of a string.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> Does <em>not</em> support multi-byte characters.
 
 
     <h3>Parameters:</h3>
@@ -1913,6 +1974,7 @@ Something went slightly wrong.</pre>
         <pre class="example">&gt; <span class="keyword">for</span> s <span class="keyword">in</span> split(<span class="string">'CamelCase'</span>, <span class="string">'%u'</span>, <span class="keyword">nil</span>, <span class="string">'l'</span>) <span class="keyword">do</span>
 &gt;   <span class="global">print</span>(s)
 &gt; <span class="keyword">end</span>
+
 Camel
 Case</pre>
     </ul>
@@ -1920,7 +1982,7 @@ Case</pre>
 </dd>
     <dt>
     <a name = "expand_vars"></a>
-    <strong>expand_vars (str, vars)</strong>
+    <strong>expand_vars (str, ns)</strong>
     </dt>
     <dd>
     <p>Expand variables in strings.</p>
@@ -1963,12 +2025,23 @@ Case</pre>
   bar is bar!
 </code></pre>
 
+<p> You can lookup values in tables by joining the name of the variable
+ and that of the table field with a dot.</p>
+
+<pre><code>  &gt; expand_vars(
+  &gt;   '$var.field is bar.', {
+  &gt;       var = { field = 'bar' }
+  &gt;   }
+  &gt; )
+  bar is bar.
+</code></pre>
+
 <p> Expressions are evaluated recursively.</p>
 
 <pre><code>  &gt; expand_vars(
-  &gt;   '$v1 is bar.', {
-  &gt;       v1 = '$v2',
-  &gt;       v2 = 'foo'
+  &gt;   '$1 is bar.', {
+  &gt;       ['1'] = '$2',
+  &gt;       ['2'] = 'foo'
   &gt;   }
   &gt; )
   foo is bar.
@@ -1981,7 +2054,7 @@ Case</pre>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A string.
         </li>
-        <li><span class="parameter">vars</span>
+        <li><span class="parameter">ns</span>
             <span class="types"><span class="type">tab</span></span>
          A mapping of variable names to values.
         </li>
@@ -2036,8 +2109,8 @@ Case</pre>
 
 </dd>
     <dt>
-    <a name = "mapr"></a>
-    <strong>mapr (func, graph)</strong>
+    <a name = "apply"></a>
+    <strong>apply (func, graph)</strong>
     </dt>
     <dd>
     Apply a function to every node of a graph.</p>
@@ -2072,21 +2145,17 @@ Case</pre>
 </dd>
     <dt>
     <a name = "tabulate"></a>
-    <strong>tabulate (iter[, val])</strong>
+    <strong>tabulate (iter)</strong>
     </dt>
     <dd>
-    Tabulate the values that an iterator returns.
+    Tabulate the values a stateful iterator returns.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">iter</span>
             <span class="types"><span class="type">func</span></span>
-         An iterator.
-        </li>
-        <li><span class="parameter">val</span>
-         The value to start iterating with.
-         (<em>optional</em>)
+         A <em>stateful</em> iterator.
         </li>
     </ul>
 
@@ -2148,8 +2217,8 @@ key     value</pre>
     <dd>
     Define a sorting function from a list of values.</p>
 
-<p> The sorting function will sort the given values in the order in which
- they were passed. Unlisted values are sorted lexically.
+<p> The function will sort values in the order they were given in.
+ Unlisted values are sorted lexically.
 
 
     <h3>Parameters:</h3>
@@ -2186,8 +2255,69 @@ b   <span class="number">4</span></pre>
 
     <dl class="function">
     <dt>
-    <a name = "CSL_KEY_ORDER"></a>
-    <strong>CSL_KEY_ORDER</strong>
+    <a name = "csl_varname_standardise"></a>
+    <strong>csl_varname_standardise (field)</strong>
+    </dt>
+    <dd>
+    Standardise CSL field name.</p>
+
+<p> CSL fields are case-insensitive and treat spaces and dashes as equivalent
+ (e.g., &lsquo;Original date&rsquo; and &lsquo;original-date&rsquo; are equivalent).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">field</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A field name.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A standardised field name.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "csl_varnames_standardise"></a>
+    <strong>csl_varnames_standardise (tab)</strong>
+    </dt>
+    <dd>
+    Standardise field names of a CSL item.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">tab</span>
+            <span class="types"><span class="type">tab</span></span>
+         A CSL item.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">tab</span></span>
+        A modified, deep copy of item.
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="index.html#csl_varnames_standardise">csl_varnames_standardise</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "CSL_FIELD_ORDER"></a>
+    <strong>CSL_FIELD_ORDER</strong>
     </dt>
     <dd>
     The preferred order of keys in YAML bibliography files.</p>
@@ -2227,6 +2357,9 @@ b   <span class="number">4</span></pre>
         </li>
         <li><span class="parameter">original-title</span>
         Original title.
+        </li>
+        <li><span class="parameter">original-date</span>
+        Original date.
         </li>
         <li><span class="parameter">translator</span>
         Translator(s).
@@ -2312,8 +2445,42 @@ b   <span class="number">4</span></pre>
 
     <h3>See also:</h3>
     <ul>
-         <a href="index.html#csl_keys_sort">csl_keys_sort</a>
+         <a href="index.html#csl_fields_sort">csl_fields_sort</a>
     </ul>
+
+
+</dd>
+    <dt>
+    <a name = "csl_fields_sort"></a>
+    <strong>csl_fields_sort (a, b)</strong>
+    </dt>
+    <dd>
+    Sorting function for CSL field names.</p>
+
+<p> Sorts field in the order in which they are listed in <a href="index.html#CSL_FIELD_ORDER">CSL_FIELD_ORDER</a>.
+ Unlisted fields are placed after listed ones in lexical order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">a</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A CSL fieldname.
+        </li>
+        <li><span class="parameter">b</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         Another CSL fieldname.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">bool</span></span>
+        Whether <code>a</code> should come before <code>b</code>.
+    </ol>
+
+
 
 
 </dd>
@@ -2345,33 +2512,37 @@ b   <span class="number">4</span></pre>
 
 </dd>
     <dt>
-    <a name = "csl_keys_sort"></a>
-    <strong>csl_keys_sort (a, b)</strong>
+    <a name = "csl_item_parse_extras"></a>
+    <strong>csl_item_parse_extras (item)</strong>
     </dt>
     <dd>
-    Sorting function for CSL field names.</p>
+    Copy CSL fields from the &ldquo;extra&rdquo; field to the item proper.</p>
 
-<p> Sorts field in the order in which they are listed in <a href="index.html#CSL_KEY_ORDER">CSL_KEY_ORDER</a>.
- Unlisted fields are placed after listed ones in lexical order.
+<p> Zotero&rsquo;s CSL JSON export puts CSL fields that have been entered
+ into its &ldquo;extra&rdquo; field into the CSL &ldquo;note&rdquo; field, rather than to
+ convert them as CSL fields proper.</p>
+
+<p> See <a href="https://www.zotero.org/support/kb/item_types_and_fields#citing_fields_from_extra">https://www.zotero.org/support/kb/item_types_and_fields#citing_fields_from_extra</a>
+ for how to enter fields into the &ldquo;extra&rdquo; field.</p>
+
+<p> <h3>Caveats:</h3></p>
+
+<p> The item is changed <em>in-place.</em>
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">a</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A CSL fieldname.
-        </li>
-        <li><span class="parameter">b</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         Another CSL fieldname.
+        <li><span class="parameter">item</span>
+            <span class="types"><span class="type">tab</span></span>
+         A CSL item.
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">bool</span></span>
-        Whether <code>a</code> should come before <code>b</code>.
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+        The same item.
     </ol>
 
 
@@ -2672,7 +2843,7 @@ b   <span class="number">4</span></pre>
     <ol>
 
            <span class="types"><span class="type">tab</span></span>
-        A CSL item.
+        A single CSL item or a list of CSL items.
     </ol>
      <h3>Or</h3>
     <ol>
@@ -2697,7 +2868,10 @@ b   <span class="number">4</span></pre>
     <strong>CITEKEY_PARSERS</strong>
     </dt>
     <dd>
-    A mapping of citation key types to functions that guess search terms.
+    A mapping of citation key types to parsers.</p>
+
+<p> Each parser should take a citation key and either retunr search terms
+ or <code>nil</code> if no search terms can be derrived.
 
 
 
@@ -3285,7 +3459,7 @@ b   <span class="number">4</span></pre>
 </dd>
     <dt>
     <a name = "ZotWeb:configure"></a>
-    <strong>ZotWeb:configure (A)</strong>
+    <strong>ZotWeb:configure (conf)</strong>
     </dt>
     <dd>
     Configure the connector.</p>
@@ -3295,9 +3469,9 @@ b   <span class="number">4</span></pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">A</span>
+        <li><span class="parameter">conf</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
-         list of key-value pairs.
+         A list of key-value pairs.
         </li>
     </ul>
 
@@ -4067,7 +4241,7 @@ b   <span class="number">4</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-11-28 15:59:19 </i>
+<i style="float:right;">Last updated 2021-12-05 17:03:12 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
