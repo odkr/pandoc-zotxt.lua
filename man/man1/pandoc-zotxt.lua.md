@@ -24,12 +24,56 @@ Zotero and adds their bibliographic data to a document's "references" metadata
 field or to a bibliography file, where Pandoc can pick it up.
 
 Cite your sources using so-called "Better BibTeX citation keys" (provided
-by Better BibTeX for Zotero) or "easy citekeys" (provided by zotxt). Then,
-while Zotero is running, tell **pandoc** to filter your document through
-**pandoc-zotxt.lua** before processing citations. That's all there is to it.
+by Better BibTeX for Zotero) or "Easy Citekeys" (provided by zotxt). Then
+tell **pandoc** to filter your document through **pandoc-zotxt.lua** before
+processing citations. That's all there is to it.
 
-If a document's "references" metadata field or a bibliography file already
-has bibliographic data for a citation, that citation will be ignored.
+If the "references" metadata field or a bibliography file already contains
+bibliographic data for a citation, that citation will be ignored.
+
+
+CONNECTING TO ZOTERO
+====================
+
+Desktop client
+--------------
+
+By default, bibliographic data is fetched from your Zotero desktop client.
+You have to install the *zotxt* plugin for Zotero for this to work. And
+Zotero must be running when you invoke **pandoc**. This is the preferred
+way to fetch data from Zotero.
+
+
+Web API
+-------
+
+Bibliographic data can also be fetched from the Zotero Web API. If you want
+to access your Zotero database via the Web API, you have to create a Zotero
+API key and set the metadata field "zotero-api-key" to that key.
+
+You can also fetch bibliographic data from public Zotero groups, by setting
+the metadata field "zotero-public-groups" to a list of the IDs of the groups
+that you want to search.
+
+The Zotero Web API does *not* allow to search for citation keys. Therefore,
+citation keys have to be converted into search terms; Better BibTeX citation
+keys are split up at the first of a series of digits and at uppercase letter
+("DoeTitle2020" becomes "Doe", "Title", "2020"), Easy Citekeys are split up
+at the first colon and at the last digit ("doe:2020title" becomes "doe",
+"2020", "title").
+
+If a search returns more than one item, add the citation key to the item's
+"extra" field in Zotero, using either the field name "Citation key" or the
+field name "Citekey"; e.g., "Citation key: DoeTitle2020". If you use
+BetterBibTeX for Zotero, you can do so by pinning its citation key.
+
+Support for Zotero's "extra" field is limited to the newer "<field name>:
+<value><linefeed>" syntax; entries in the older "{:<field>: <value>}"
+syntax are ignored.
+
+Support for group libraries, too, is limited. They are only searched if no
+item in your user library matches the search terms derived from the citation
+key. And the "extra" field of items in group libraries is ignored altogether.
 
 
 BIBLIOGRAPHY FILES
