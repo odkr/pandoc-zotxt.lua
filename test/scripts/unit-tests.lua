@@ -1369,6 +1369,52 @@ function test_csl_varnames_standardise ()
     lu.assert_equals(M.csl_varnames_standardise(test), ZOTWEB_CSL)
 end
 
+function test_csl_item_extras ()
+    local invalid = {nil, true, 1, 'c', function () end}
+    for _, v in ipairs(invalid) do
+        lu.assert_error(M.csl_item_extras, v)
+    end
+
+    local inputs = {
+        {
+            author = {{family = 'Doe', given = 'John'}},
+            issued = {['date-parts'] = {{'2021'}}},
+            note = [[
+                Original date: 1970
+                Original author: Doe || Jane
+            ]],
+            publisher = 'Unit test press',
+            ['publisher-place'] = 'Vienna',
+            title = 'Unit testing',
+            type = 'book'
+        },
+        {
+            author = {{family = 'Doe', given = 'John'}},
+            issued = {['date-parts'] = {{'2021'}}},
+            note = [[
+                {:original-date: 1970}
+                {:original-author: Doe || Jane}
+            ]],
+            publisher = 'Unit test press',
+            ['publisher-place'] = 'Vienna',
+            title = 'Unit testing',
+            type = 'book'
+        }
+    }
+
+    for _, i in ipairs(inputs) do
+        local res = {}
+        for k, v in M.csl_item_extras(i) do
+            res[k] = v
+        end
+
+        lu.assert_items_equals(res, {
+            ['original-date'] = '1970',
+            ['original-author'] = 'Doe || Jane'
+        })
+    end
+end
+
 function test_csl_item_parse_extras ()
     local invalid = {nil, true, 1, 'c', function () end}
     for _, v in ipairs(invalid) do
@@ -1401,6 +1447,35 @@ function test_csl_item_parse_extras ()
         title = 'Unit testing',
         type = 'book'
     }
+    lu.assert_items_equals(M.csl_item_parse_extras(copy(input)), output)
+
+    input = {
+        author = {{family = 'Doe', given = 'John'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        note = [[
+            {:original-date: 1970}
+            {:original-author: Doe || Jane}
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    output = {
+        author = {{family = 'Doe', given = 'John'}},
+        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        ['original-data'] = {['date-parts'] = {{'1970'}}},
+        note = [[
+            {:original-date: 1970}
+            {:original-author: Doe || Jane}
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+
     lu.assert_items_equals(M.csl_item_parse_extras(copy(input)), output)
 end
 

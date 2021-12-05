@@ -1148,27 +1148,67 @@ do
         ['citekey'] = true
     }
 
+    -- @fixme Undocumented.
+    local function trim (s)
+        return s:gsub('^%s+', ''):gsub('%s*$', '')
+    end
+
+    -- @fixme Undocumented.
+    local function verify_pair (k, v)
+        if not k or not v then return end
+        k = csl_varname_standardise(trim(k))
+        if not csl_vars[k] then return end
+        v = trim(v)
+        if v == '' then return end
+        return k, v
+    end
+
+    -- @fixme Undocumented.
+    local function make_nsyn_iter (note)
+        local next_line = split(note, '\r?\n')
+        return function ()
+            while true do
+                local ln = next_line()
+                while ln and ln:match '^%s*$' do ln = next_line() end
+                if not ln then return end
+                local k, v = verify_pair(tabulate(split(ln, '%s*:%s*'), 2))
+                if k then return k, v end
+            end
+        end
+    end
+
+    -- @fixme Undocumented.
+    -- @fixme Untested.
+    local function make_osyn_iter (note)
+        local next_pair = note:gmatch '{:([%a-]+):%s*([^}]+)}'
+        return function ()
+            while true do
+                local k, v = next_pair()
+                if not k then return end
+                k, v = verify_pair(k, v)
+                if k then return k, v end
+            end
+        end
+    end
+
     --- Iterate over key-value pairs in the "note" field of CSL items.
     --
     -- @tab item A CSL item.
     -- @treturn func A *stateful* iterator.
     -- @within CSL items
     function csl_item_extras (item)
-        if not item.note then return function () return end end
-        local next_ln = split(item.note, '\r?\n')
+        local note = item.note
+        if not note then return function () return end end
+        local next_pair = make_nsyn_iter(note)
+        local syn = 'n'
         return function ()
-            while true do
-                local ln = next_ln()
-                while ln and ln:match '^%s*$' do ln = next_ln() end
-                if not ln then return end
-                local k, v = tabulate(split(ln, '%s*:%s*'), 2)
-                if k then
-                    k = k:gsub('^%s+', '')
-                    v = v:gsub('%s+$', '')
-                    k = csl_varname_standardise(k)
-                    if csl_vars[k] then return k, v end
-                end
+            if syn == 'n' then
+                local k, v = next_pair()
+                if k then return k, v end
+                next_pair = make_osyn_iter(note)
+                syn = 'o'
             end
+            return next_pair()
         end
     end
 end
@@ -2713,9 +2753,9 @@ BIBLIO_TYPES.yaml = {}
 -- @treturn tab A list of CSL items.
 -- @within Bibliography files
 function BIBLIO_TYPES.yaml.decode (str)
-    local next_ln = str:gmatch '(.-)\r?\n'
-    local ln = next_ln(str, nil)
-    while ln and ln ~= '---' do ln = next_ln(str, ln) end
+    local next_line = str:gmatch '(.-)\r?\n'
+    local ln = next_line(str, nil)
+    while ln and ln ~= '---' do ln = next_line(str, ln) end
     if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
     local doc = pandoc.read(str, 'markdown')
     if not doc.meta.references then return {} end

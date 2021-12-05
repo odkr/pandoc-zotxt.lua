@@ -40,8 +40,8 @@ Desktop client
 
 By default, bibliographic data is fetched from your Zotero desktop client.
 You have to install the zotxt plugin for Zotero for this to work. Zotero
-must be running when you invoke **pandoc**. This is the preferred
-way to fetch data from Zotero.
+must be running when you invoke **pandoc**. This is the preferred way to
+fetch data from Zotero.
 
 
 Web API
@@ -61,11 +61,7 @@ split up at the first colon and at the last digit ("doe:2020title" becomes
 If a search yields more than one item, add the citation key to the item's
 "extra" field in Zotero, using either the field name "Citation key" or 
 "Citekey"; e.g., "Citation key: DoeTitle2020". If you use BetterBibTeX for
-Zotero, you can do so by pinning its citation key.
-
-Support for Zotero's "extra" field is limited to the "\<field name\>:
-\<value\>\<linefeed\>" syntax; entries in the deprecated "{:\<field\>:
-\<value\>}" syntax are ignored.
+Zotero, you can do so by 'pinning' the citation key.
 
 
 BIBLIOGRAPHY FILES
@@ -132,8 +128,8 @@ SETTINGS
 *zotero-citekey-types*
 :   A list of citation key types. See **CITATION KEY TYPES** for details.
 
-*zotero-connector*
-:   A list of Zotero connector names:
+*zotero-connectors*
+:   A list of one or more Zotero connectors:
 
     **Name** | **Connects to**
     -------- | ---------------------
@@ -149,6 +145,8 @@ SETTINGS
     Needed to fetch data from the Zotero Web API,
     but looked up automatically if not given.
 
+If a metadata field takes a list of values, but you only want to give a single
+value, you can enter that value as a scalar.
 
 
 EXAMPLES
@@ -160,31 +158,31 @@ See @doe2020Title for details.
 EOF
 ```
 
-The above will look up "doe2020Title" in Zotero.
+The above will look up "DoeTitle2020" in Zotero.
 
 ```sh
 pandoc -L pandoc-zotxt.lua -C <<EOF
 ---
 zotero-bibliography: bibliography.json
 ...
-See @doe2020Title for details.
+See @DoeTitle2020 for details.
 EOF
 ```
 
-The above will look up "doe2020Title" in Zotero and save its bibliographic
+The above will look up "DoeTitle2020" in Zotero and save its bibliographic
 data into the file "bibliography.json" in the current working directory. If
-the same command is run again, "doe2020Title" will *not* be looked up again.
+the same command is run again, "DoeTitle2020" will *not* be looked up again.
 
 ```sh
 pandoc -L pandoc-zotxt.lua -C <<EOF
 ---
 zotero-citekey-types: betterbibtexkey
 ...
-See @doe2020Title for details.
+See @doe:2020Title for details.
 EOF
 ```
 
-The above forces **pandoc-zotxt.lua** to interpret "doe2020Title" as a
+The above forces **pandoc-zotxt.lua** to interpret "doe:2020Title" as a
 Better BibTeX citation key.
 
 
@@ -222,7 +220,7 @@ Zotero Web API
 
 Support for group libraries is limited. They are only searched if no item in
 your user library matches the search terms derived from the citation key.
-And the "extra" field of items in group libraries is ignored altogether.
+Also, the "extra" field of items in group libraries is ignored.
 
 
 SECURITY
