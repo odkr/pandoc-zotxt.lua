@@ -48,8 +48,13 @@ Web API
 -------
 
 Bibliographic data can also be fetched from the Zotero Web API. If you want
-to access your Zotero database via the Web API, you have to create a Zotero
-API key and set the metadata field "zotero-api-key" to that key.
+to access your Zotero database via the Web API, create a Zotero API key and
+set the metadata field "zotero-api-key" to that key.
+
+If you want to fetch bibliographic data from *public* Zotero groups, set the
+metadata field "zotero-public-groups" to the a list of the IDs of the groups
+that you want to fetch data from. These groups need to allow non-members to
+access their libraries. You do *not* need an API key to do so.
 
 The Zotero Web API does *not* allow to search for citation keys. Therefore,
 citation keys have to be converted into search terms; Better BibTeX citation
@@ -140,6 +145,15 @@ SETTINGS
     citations in your document for which no bibliographic data has been found
     *and* you have given a Zotero API key, the Zotero Web API is tried next.
 
+*zotero-groups*
+:   A list of Zotero group IDs.
+    These groups are searched if no item is found in your personal library.
+    Use this to limit the scope of the search.
+    By default, all groups you are a member of are searched.
+
+*zotero-public-groups*
+:   A list of Zotero group IDs. See **Zotero Web API** above for details.
+
 *zotero-user-id*
 :   A Zotero user ID.
     Needed to fetch data from the Zotero Web API,
@@ -219,7 +233,7 @@ Zotero Web API
 --------------
 
 Support for group libraries is limited. They are only searched if no item in
-your user library matches the search terms derived from the citation key.
+your personal library matches the search terms derived from the citation key.
 Also, the "extra" field of items in group libraries is ignored.
 
 

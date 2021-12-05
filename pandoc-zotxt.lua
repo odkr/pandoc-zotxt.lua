@@ -3305,10 +3305,10 @@ do
     -- If the given value is a `pandoc.MetaList`, it is returned as is.
     --
     -- @param v A value.
-    -- @return A list.
+    -- @treturn pandoc.List A list.
     local function listify (v)
         if type(v) == 'string' or v.tag == 'MetaInlines' then
-            return {v}
+            return List{v}
         elseif v.tag == 'MetaList' then
             return v
         end
@@ -3317,12 +3317,24 @@ do
 
     -- Convert a Pandoc metadata value to a string.
     --
-    -- @param pandoc.MetaValue v The value.
+    -- @param pandoc.MetaValue v A medata value.
+    -- @treturn string A string.
     local function from_string (v)
         local ok, str = pcall(stringify, v)
         if not ok then return nil, str end
         if str == '' then return nil, 'is the empty string.' end
         return str
+    end
+
+    -- Convert a list of Pandoc metadata value to a list of strings.
+    --
+    -- @param pandoc.MetaValue v A medata value.
+    -- @treturn pandoc.List A list of strings.
+    local function from_list (v)
+        -- luacheck: ignore v
+        local v, err = listify(v)
+        if not v then return nil, err end
+        return v:map(from_string)
     end
 
     -- A mapping of key names to functions that parse and verify values.
@@ -3386,6 +3398,12 @@ do
 
     -- Get the Zotero API key to use.
     keys.api_key = from_string
+
+    -- Get the Zotero groups to search.
+    keys.groups = from_list
+
+    -- Get the public Zotero groups to search.
+    keys.public_groups = from_list
 
     -- Get the Zotero user ID to use.
     keys.user_id = from_string

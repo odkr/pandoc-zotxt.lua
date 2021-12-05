@@ -1,0 +1,54 @@
+HTTP/1.1 200 OK
+Date: Sun, 05 Dec 2021 15:53:47 GMT
+Server: Apache/2.4.51 ()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Zotero-API-Version: 3
+Zotero-Schema-Version: 3
+Total-Results: 1
+Link: <https://www.zotero.org/groups/4532986/items/>; rel="alternate"
+Last-Modified-Version: 2
+Vary: Accept-Encoding
+Content-Length: 2631
+Content-Type: application/vnd.citationstyles.csl+json
+
+{
+    "items": [
+        {
+            "id": "11748420/JG42QDTS",
+            "type": "article-journal",
+            "title": "The legacy of reification: Gillian Rose and the value-form theory challenge to Georg Lukács",
+            "container-title": "Thesis Eleven",
+            "page": "80-96",
+            "volume": "157",
+            "issue": "1",
+            "abstract": "This article examines the relationship between Marx’s Capital, Georg Lukács and Critical Theory through the prism of value-form theory. Marx’s theorisation of value understands commodities as expressions of the historical form of social relations defined by capital. Products of human labour become values in capitalist production, defined by the abstract quality of undifferentiated quantities of labour-power, exchangeable through the universal character of the market. The social form of this process, Marx identifies as processing a fetish quality, where humans take on the thing-like character of commodities. The impact of this theorisation on Critical Theory has been considerable, beginning with Lukács’ concept of reification. In Part I, I examine the challenge to Lukács’ interpretation of Marx’s Capital made by Gillian Rose. She draws attention to a misidentification of reification in Marx, suggesting a strong conceptual distinction between commodity-fetishism and reification. In their conceptual flattening, Rose contends that Lukács and Critical Theory generalised Marx’s value-form theory, losing its speculative character. I argue that despite Rose’s suggestion remaining unfulfilled, she helps illuminate important tensions between Marx’s value theory and Critical Theory. This comparison allows in Part II for the beginning level of a speculative approach to Marx’s Capital to be advanced.",
+            "URL": "http://journals.sagepub.com/doi/10.1177/0725513620911854",
+            "DOI": "10.1177/0725513620911854",
+            "shortTitle": "The legacy of reification",
+            "journalAbbreviation": "Thesis Eleven",
+            "language": "en",
+            "author": [
+                {
+                    "family": "Lazarus",
+                    "given": "Michael"
+                }
+            ],
+            "issued": {
+                "date-parts": [
+                    [
+                        "2020"
+                    ]
+                ]
+            },
+            "accessed": {
+                "date-parts": [
+                    [
+                        2021,
+                        12,
+                        5
+                    ]
+                ]
+            }
+        }
+    ]
+}
