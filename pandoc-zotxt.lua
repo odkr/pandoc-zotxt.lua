@@ -24,7 +24,6 @@
 -- CONNECTING TO ZOTERO
 -- ====================
 --
---
 -- Desktop client
 -- --------------
 --
@@ -116,7 +115,7 @@
 -- SETTINGS
 -- ========
 --
---
+-- FIXME: Definition lists are missing!
 --
 -- If a metadata field takes a list of values, but you only want to give a
 -- single value, you can enter that value as a scalar.
