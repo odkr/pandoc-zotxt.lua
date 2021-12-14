@@ -11,6 +11,7 @@ local len = string.len
 local rep = string.rep
 local format = string.format
 
+-- luacheck: ignore pandoc
 local stringify = pandoc.utils.stringify
 
 
@@ -21,15 +22,12 @@ local stringify = pandoc.utils.stringify
 --
 -- Prefixes the message with `ldoc-md.lua` and ': ', and appends `\n`.
 --
--- @param msg The message. Coerced to `string`.
+-- @param msg The message.
 -- @param ... Arguments to that message (think `string.format`).
 --  Only applied if `msg` is a `string`.
 -- @within Warnings
 local function errf (msg, ...)
-    if type(msg) ~= 'string' then msg = tostring(msg)
-                             else msg = msg:format(...)
-    end
-    io.stderr:write('ldoc-md.lua: ', msg , '\n')
+    io.stderr:write('ldoc-md.lua: ', msg:format(...), '\n')
 end
 
 -- Report if a format is unsupported.
@@ -42,10 +40,12 @@ end})
 -- ELEMENTS
 -- ========
 
+-- luacheck: ignore Blocksep
 function Blocksep ()
     return '\n\n'
 end
 
+-- luacheck: ignore BulletList
 function BulletList (items)
     local ret = ''
     for i = 1, #items do
@@ -54,10 +54,12 @@ function BulletList (items)
     return ret
 end
 
+-- luacheck: ignore Code
 function Code (s, _)
   return '`' .. s .. '`'
 end
 
+-- luacheck: ignore CodeBlock
 function CodeBlock (s, _)
     local ret = ''
     for ln in s:gmatch '([^\n]+)' do
@@ -67,22 +69,41 @@ function CodeBlock (s, _)
     return ret
 end
 
+-- luacheck: ignore DefinitionList
+function DefinitionList (t)
+    local s = ''
+    for _, ds in ipairs(t) do
+        for k, vs in pairs(ds) do
+            s = s .. '<h3>' .. k .. '</h3>' .. Blocksep()
+            for _, v in pairs(vs) do
+                s = s .. v .. Blocksep()
+            end
+        end
+    end
+    return s
+end
+
+-- luacheck: ignore Doc
 function Doc (s, _, _)
     return s
 end
 
+-- luacheck: ignore DoubleQuoted
 function DoubleQuoted (s)
     return '"' .. s .. '"'
 end
 
+-- luacheck: ignore Emph
 function Emph (s)
     return '*' .. s .. '*'
 end
 
+-- luacheck: ignore LineBreak
 function LineBreak ()
     return '\n'
 end
 
+-- luacheck: ignore Link
 function Link(s, href, title, _)
     if title and title ~= '' then
         return format('[%s](%s "%s")', s, href, title)
@@ -91,7 +112,8 @@ function Link(s, href, title, _)
     end
 end
 
-function Header (level, s, attr)
+-- luacheck: ignore Header
+function Header (level, s, _)
     if level < 3 then
         local c
         if level == 1 then c = '='
@@ -104,27 +126,34 @@ function Header (level, s, attr)
     end
 end
 
+-- luacheck: ignore Para
 function Para (s)
     return s
 end
 
+-- luacheck: ignore Plain
 Plain = stringify
 
 -- This is so that the output can be wrapped with `fold` or `fmt`.
+-- luacheck: ignore SoftBreak
 function SoftBreak ()
     return ' '
 end
 
+-- luacheck: ignore Space
 function Space ()
     return ' '
 end
 
+-- luacheck: ignore Str
 Str = stringify
 
+-- luacheck: ignore Strong
 function Strong (s)
     return '**' .. s .. '**'
 end
 
+-- luacheck: ignore Table
 function Table (_, _, _, headers, rows)
     local ret = ''
     local widths = {}
