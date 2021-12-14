@@ -13,3 +13,5 @@ readme = '../README.md'
 format = 'discount'
 dir = '../docs'
 style = '.'
+
+new_type("proto", "Prototypes")
