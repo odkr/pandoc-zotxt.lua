@@ -123,17 +123,17 @@ You can set the following citation key types:
 SETTINGS
 ========
 
-*zotero-api-key*
+zotero-api-key
 :   A Zotero API key.
-    You need to set an API key to fetch data from the Zotero Web API.
+    Has to be set to fetch data from the Zotero Web API.
 
-*zotero-bibliography*
+zotero-bibliography
 :   A filename. See **BIBLIOGRAPHY FILES** for details.
 
-*zotero-citekey-types*
+zotero-citekey-types
 :   A list of citation key types. See **CITATION KEY TYPES** for details.
 
-*zotero-connectors*
+zotero-connectors
 :   A list of one or more Zotero connectors:
 
     **Name** | **Connects to**
@@ -145,16 +145,16 @@ SETTINGS
     citations in your document for which no bibliographic data has been found
     *and* you have given a Zotero API key, the Zotero Web API is tried next.
 
-*zotero-groups*
+zotero-groups
 :   A list of Zotero group IDs.
     These groups are searched if no item is found in your personal library.
     Use this to limit the scope of the search.
     By default, all groups you are a member of are searched.
 
-*zotero-public-groups*
+zotero-public-groups
 :   A list of Zotero group IDs. See **Zotero Web API** above for details.
 
-*zotero-user-id*
+zotero-user-id
 :   A Zotero user ID.
     Needed to fetch data from the Zotero Web API,
     but looked up automatically if not given.
