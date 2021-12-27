@@ -89,6 +89,10 @@ do
     end
 end
 
+--- Enable debugging mode.
+_G.DEBUG = true
+
+--- Load the module.
 local M = require 'pandoc-zotxt'
 
 --- Returns canned responses for URL requests.
@@ -107,8 +111,8 @@ local M = require 'pandoc-zotxt'
 function M.http_get (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
-    M.warn '$url -> $hash'
     local path = M.path_join(CAN_DIR, hash)
+    M.xwarn('@info', 'redirecting ${url} to ${path}')
     local mt = 'text/plain; charset=UTF-8'
     local data, err = M.file_read(path)
     if not data then return mt, err end
