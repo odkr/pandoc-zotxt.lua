@@ -14,4 +14,14 @@ format = 'discount'
 dir = '../docs'
 style = '.'
 
-new_type("proto", "Prototypes")
+backtick_references = false
+
+new_type('object', 'Prototypes', false, 'Uninitialised properties')
+new_type('const', 'Constructors', false, 'Named parameters')
+
+custom_tags = {
+    {'caveats', title = 'Caveats'},
+    {'side', title = 'Side-effects'},
+    {'require', title = 'Requires'},
+    {'proto', title = 'Prototype'}
+}
