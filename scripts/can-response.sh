@@ -3,6 +3,7 @@
 
 set -efu
 
+
 # CONFIGURATION
 # =============
 
@@ -21,7 +22,7 @@ update_can() (
 	
 	# shellcheck disable=2086
 	params="$(IFS='&'; set -- $data; unset IFS
-		  printf '"%s"\n' "$@" | jq -r '@uri' |
+		  printf '"%s"\n' "$@" | jq --raw-output '@uri' |
 	          sed 's/%3D/=/; s/%2B/+/g')"
 	n=0
 	encoded="$endpoint"
@@ -58,18 +59,7 @@ TMP_DIR="$(mktemp -d)" && [ "$TMP_DIR" ] || exit 69
 readonly TMP_DIR
 export TMPDIR="$TMP_DIR"
 
-case $# in
-	(0)	make -e PANDOC_ARGS=--verbose test 2>&1 |
-		grep -Eo 'https?://[^[:space:]]+' |
-		sort -u |
-		while read -r url
-		do
-			update_can "$url"
-		done
-		;;
-	(*)	for url
-		do
-			update_can "$url"
-		done
-		;;
-esac
+for URL
+do
+	update_can "$URL"
+done
