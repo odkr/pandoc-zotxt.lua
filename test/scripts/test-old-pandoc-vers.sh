@@ -27,10 +27,9 @@ done |
 sort --zero-terminated --unique |
 while read -d $'\0' -r PANDOC
 do
-	printf 'Running tests with %s: ' \
-	        "$BLD$(basename "$PANDOC")$RST" 1>&2 
+	printf "Running tests with $BLD%s$RST: " "$(basename "$PANDOC")" 
 	if make -e PANDOC="$PANDOC" "$@" >/dev/null 2>&1
-		then echo "${GRN}pass${RST}" >&2
-		else echo "${RED}fail${RST}" >&2
+		then echo "${GRN}pass${RST}"
+		else echo "${RED}fail${RST}"
 	fi
 done

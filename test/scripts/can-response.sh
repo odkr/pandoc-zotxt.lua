@@ -4,11 +4,19 @@
 set -efu
 
 
-# CONFIGURATION
-# =============
+# CONSTANTS
+# =========
+
+# Repository source directory.
+REPO="$(git rev-parse --show-toplevel)" && [ "$REPO" ] || {
+	printf '%s: failed to determine root directory of repository.\n' \
+	       "$SCRIPT_NAME" >&2
+	exit 69
+}
+readonly REPO
 
 # Where to put cans.
-CAN_DIR=test/can
+readonly CAN_DIR="$REPO/test/can"
 
 
 # FUNCTIONS

@@ -68,8 +68,8 @@ tmpdir:
 	@$(RM) -r "$(TMP_DIR)"/*
 
 linter:
-	@printf 'Running linter ...\n'
-	@luacheck pandoc-zotxt.lua
+	@printf 'Linting ...\n' >&2
+	@luacheck pandoc-zotxt.lua || [ $$? -eq 127 ]
 
 unit-tests: tmpdir
 	@[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
@@ -167,9 +167,9 @@ $(ZOTWEB_TESTS): tmpdir
 
 %.1: %.md
 	$(PANDOC) \
-	    -f markdown-smart -t man -s -o $@ \
+	    -f rst -t man -s -o $@ \
 	    -M $(notdir $*) -M section=1 -M date="$$(date '+%B %d, %Y')" \
-	    $*.md
+	    $*.rst
 
 %.1.gz: %.1
 	gzip --force $<
