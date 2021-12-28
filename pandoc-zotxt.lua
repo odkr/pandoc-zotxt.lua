@@ -464,29 +464,29 @@ end
 --
 -- @function typed_args
 -- @fixme No unit-test.
-if DEBUG then
-    function typed_args (...)
-        local types = pack(...)
-        return function (func)
-            return function (...)
-                -- luacheck: ignore type
-                local args = pack(...)
-                local type, prev
-                for i = 1, math.max(types.n, args.n) do
-                    if     types[i] == '...' then prev = true
-                    elseif types[i]          then type = types[i]
-                    elseif not prev          then break
-                    end
-                    local ok, err = type_match(args[i], type)
-                    if not ok then
-                        error(format('argument %d: %s', i, err), 2)
-                    end
+function typed_args (...)
+    local types = pack(...)
+    return function (func)
+        return function (...)
+            -- luacheck: ignore type
+            local args = pack(...)
+            local type, prev
+            for i = 1, math.max(types.n, args.n) do
+                if     types[i] == '...' then prev = true
+                elseif types[i]          then type = types[i]
+                elseif not prev          then break
                 end
-                return func(...)
+                local ok, err = type_match(args[i], type)
+                if not ok then
+                    error(format('argument %d: %s', i, err), 2)
+                end
             end
+            return func(...)
         end
     end
-else
+end
+
+if not DEBUG then
     function typed_args ()
         return function (...) return ... end
     end
@@ -509,34 +509,31 @@ end
 --
 -- @function typed_keyword_args
 -- @fixme No unit test!
-if DEBUG then
-    typed_keyword_args = typed_args('table')(
-        function (types)
-            return function (const)
-                return typed_args('table', '?table')(
-                    function (proto, args)
-                        do
-                            -- luacheck: ignore args type
-                            local args = args
-                            if not args then args = {} end
-                            for key, type in pairs(types) do
-                                if proto[key] == nil then
-                                    local ok, err = type_match(args[key], type)
-                                    if not ok then
-                                        error(key .. ': ' .. err, 2)
-                                    end
+typed_keyword_args = typed_args('table')(
+    function (types)
+        return function (const)
+            return typed_args('table', '?table')(
+                function (proto, args)
+                    do
+                        -- luacheck: ignore args type
+                        local args = args
+                        if not args then args = {} end
+                        for key, type in pairs(types) do
+                            if proto[key] == nil then
+                                local ok, err = type_match(args[key], type)
+                                if not ok then
+                                    error(key .. ': ' .. err, 2)
                                 end
                             end
                         end
-                        return const(proto, args)
                     end
-                )
-            end
+                    return const(proto, args)
+                end
+            )
         end
-    )
-else
-    typed_keyword_args = typed_args
-end
+    end
+)
+if not DEBUG then typed_keyword_args = typed_args end
 
 
 -----------
@@ -1404,9 +1401,6 @@ do
         end
     )
 end
-
-
-
 
 
 -----------
@@ -4308,7 +4302,7 @@ M[1] = {Pandoc = function (doc)
     local ok, ret = pcall(main, doc)
     if ok then return ret end
     xwarn('@error', '@plain', ret)
-    os.exit(69)
+    os.exit(69, true)
 end}
 
 return M
