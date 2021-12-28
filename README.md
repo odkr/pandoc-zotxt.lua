@@ -1,10 +1,9 @@
 # pandoc-zotxt.lua
 
-**pandoc-zotxt.lua** looks up sources of citations in
-[Zotero](https://www.zotero.org/) and adds them either to a
-document's `references` metadata field or to a bibliography
-file, where Pandoc can pick them up. See the
-[manual](man/pandoc-zotxt.lua.md) for more details.
+**pandoc-zotxt.lua** looks up the bibliographic data of citations in
+[Zotero](https://www.zotero.org/) and adds them either to the `references`
+metadata field or to a bibliography file, where Pandoc can pick them up.
+See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 
 
 ## Requirements
@@ -12,9 +11,8 @@ file, where Pandoc can pick them up. See the
 **pandoc-zotxt.lua** requires [Pandoc](https://www.pandoc.org/) v2.0 or later,
 [Zotero](https://www.zotero.org/), [zotxt](https://github.com/egh/zotxt/), and
 [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/).
-It should work under any POSIX-compliant operating system (e.g., \*BSD, Linux,
-macOS) as well as under Windows; it has *not* been tested under Windows,
-however.
+It should work under every operating system supported by Pandoc;
+it has *not* been tested under Windows, however.
 
 
 ## Installation
@@ -29,7 +27,8 @@ You use **pandoc-zotxt.lua** at your own risk.
 4. Symlink or move the file `pandoc-zotxt.lua` from the repository
    up into the `filters` directory.
 
-If you are using a POSIX-compliant operating system and have
+If you are running a POSIX-compliant operating system
+(e.g., Linux, FreeBSD, NetBSD, OpenBSD or macOS) and have
 [curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
 you can install **pandoc-zotxt.lua** by copy-pasting the following commands
 into a Bourne-compatible shell:
@@ -37,27 +36,26 @@ into a Bourne-compatible shell:
 ```sh
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
-  name=pandoc-zotxt.lua vers=1.1.0b3
+  name=pandoc-zotxt.lua vers=1.1.0b4
   url="https://github.com/odkr/$name/releases/download/v$vers/$name-$vers.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
     [ -d "$data_dir" ] && break
   done
   filters_dir="$data_dir/filters"
-  mkdir -p "$filters_dir"
-  cd -P "$filters_dir" || exit
+  mkdir -p "$filters_dir" && cd -P "$filters_dir" || exit
   { curl -L "$url" || err=$?
     [ "${err-0}" -eq 127 ] && wget -O - "$url"; } | tar -xz
   ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
-If you want to use the copy of the manual that ships with this release,
-you can add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b3/man`
+If you want to use the manual page that ships with this release, add
+`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b4/man`
 to your `MANPATH`.
 
 
 ## Documentation
 
-See the [manual](man/man1/pandoc-zotxt.lua.md),
+See the [manual](man/man1/pandoc-zotxt.lua.rst),
 the [source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
 and the [source code](pandoc-zotxt.lua) itself for details.
 
@@ -67,19 +65,20 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [Pandoc](https://www.pandoc.org/) v2.7.2 or later.
-3. [pandoc-citeproc](https://github.com/jgm/pandoc-citeproc) v0.16.1.3
-   (for Pandoc prior to v2.11).
+2. [GNU Make](https://www.gnu.org/software/make/).
+3. The [Bash](https://www.gnu.org/software/bash/).
+4. [Pandoc](https://www.pandoc.org/) v2.11.4 or later.
 
-The test suite may or may not work with other versions of
-Pandoc (and `pandoc-citeproc`).
+Note, that the test suite requires Pandoc v2.11.4 or later does *not* mean
+that **pandoc-zotxt.lua** will not work with earlier versions of Pandoc.
+
 
 ### Running the tests
 
 Simply say:
 
 ```sh
-    make test
+    make
 ```
 
 Note, some tests report errors even if they succeed. *Not* every error message
@@ -98,6 +97,8 @@ to a local Zotero database by:
 
 Note, you will have to adapt the test suite to your database (or vice versa;
 you can import the references used in the test suite from `tests/items.rdf`).
+You will also need to adapt the Zotero item IDs used in test cases to your
+Zotero library.
 
 Moreover, you will need:
 
