@@ -1,6 +1,3 @@
-# Interpret Makefile according to POSIX standard.
-.POSIX:
-
 # DIRECTORIES
 # ===========
 
@@ -165,7 +162,7 @@ $(ZOTWEB_TESTS): tmpdir
 	    fi \
 	done
 
-%.1: %.md
+%.1: %.rst
 	$(PANDOC) \
 	    -f rst -t man -s -o $@ \
 	    -M $(notdir $*) -M section=1 -M date="$$(date '+%B %d, %Y')" \
