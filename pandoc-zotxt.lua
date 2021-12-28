@@ -4,62 +4,59 @@
 --
 -- **pandoc** **-L** *pandoc-zotxt.lua* **-C**
 --
---
 -- DESCRIPTION
 -- ===========
 --
 -- **pandoc-zotxt.lua** is a Lua filter for Pandoc that looks up citations in
--- Zotero and adds the needed bibliographic data to the "references" metadata
--- field or to a bibliography file, where Pandoc can pick it up.
+-- Zotero and adds their bibliographic data to the "references" metadata field
+-- or to a bibliography file, where Pandoc can pick it up.
 --
--- Cite your sources using so-called "Better BibTeX citation keys" (provided
--- by Better BibTeX for Zotero) or "Easy Citekeys" (provided by zotxt). Then
--- tell **pandoc** to filter your document through **pandoc-zotxt.lua** before
--- processing citations. That's all there is to it.
+-- You cite your sources using so-called "Better BibTeX citation keys"
+-- (provided by Better BibTeX for Zotero) or "Easy Citekeys" (provided by
+-- zotxt) and then tell **pandoc** to filter your document through
+-- **pandoc-zotxt.lua** before processing citations. That's all there is to it.
 --
 -- If the "references" metadata field or a bibliography file already contains
 -- bibliographic data for a citation, that citation will be ignored.
 --
---
 -- CONNECTING TO ZOTERO
 -- ====================
---
 --
 -- Desktop client
 -- --------------
 --
--- By default, bibliographic data is fetched from your Zotero desktop client,
+-- By default, bibliographic data is fetched from the Zotero desktop client,
 -- which must be running when you invoke **pandoc**. This is the faster,
--- easier, and less error-prone way to fetch data from Zotero. However, you
--- need to install the zotxt add-on for the Zotero desktop client to use it.
---
+-- easier, and less error-prone method to lookup citations in Zotero. However,
+-- you need to install the zotxt add-on for the Zotero desktop client to use
+-- it.
 --
 -- Web API
 -- -------
 --
 -- Bibliographic data can also be fetched from the Zotero Web API. If you want
--- to access your Zotero database via the Web API, create a Zotero API key and
+-- to access your Zotero library via the Web API, create a Zotero API key and
 -- set the metadata field "zotero-api-key" to that key.
 --
--- If you want to fetch bibliographic data from *public* Zotero groups, set
--- the metadata field "zotero-public-groups" to the a list of the IDs of the
--- groups that you want to fetch data from. These groups need to allow
--- non-members to access their libraries. You do *not* need an API key to
--- access those groups.
+-- If you want to fetch bibliographic data from *public* Zotero groups, list
+-- the IDs of those groups in the metadata field "zotero-public-groups". The
+-- groups have to allow non-members to access their libraries; however, you do
+-- not need an API key to access them.
 --
--- The Zotero Web API does *not* allow to search for citation keys. Therefore,
--- citation keys have to be translated to search terms; Better BibTeX citation
--- keys are split up at the first of each series of digits and at uppercase
--- letters ("DoeTitle2020" becomes "Doe", "Title", "2020"), Easy Citekeys are
--- split up at the first colon and at the last digit ("doe:2020title" becomes
--- "doe", "2020", "title").
+-- The Zotero Web API does *not* allow to search for citation keys other than
+-- Zotero item IDs. Therefore, BetterBibTeX citation keys and Easy Citekeys
+-- have to be translated into search terms: Better BibTeX citation keys are
+-- split up at the first of each series of digits and at uppercase letters
+-- ("DoeTitle2020" becomes "Doe", "Title", "2020"). Easy Citekeys are split up
+-- at the first colon and at the last digit ("doe:2020title" becomes "doe",
+-- "2020", "title").
 --
 -- If a search yields more than one item, you need to add the citation key to
 -- the item's "extra" field in Zotero to disambiguate, using either the field
 -- name "Citation key" or "Citekey"; e.g., "Citation key: DoeTitle2020". If
--- you have installed the BetterBibTeX for Zotero add-on, you can do so by
--- 'pinning' the citation key.
---
+-- you added the BetterBibTeX for Zotero add-on to the Zotero desktop client,
+-- you can do so by 'pinning' the citation key. Alternatively, you can cite
+-- the source using its Zotero item ID.
 --
 -- BIBLIOGRAPHY FILES
 -- ==================
@@ -72,6 +69,7 @@
 -- field to a filename. If the filename is relative, it is interpreted as
 -- relative to the directory of the first input file passed to **pandoc** or,
 -- if no input file was given, as relative to the current working directory.
+--
 -- The format of the file is determined by its filename ending:
 --
 -- | **Ending** | **Format** |
@@ -79,99 +77,84 @@
 -- | `.json`    | CSL JSON   |
 -- | `.yaml`    | CSL YAML   |
 --
---
 -- The bibliography file is added to the "bibliography" metadata field
 -- automatically. You can safely set "zotero-bibliography" and "bibliography"
 -- at the same time.
 --
 -- Records are only ever added to the bibliography file, never changed or
--- deleted. If you need to update them, delete the bibliography file, so that
--- it will be regenerated from scratch.
---
+-- deleted. If you need to change or delete a record, delete the bibliography
+-- file, so that it will be regenerated from scratch.
 --
 -- CITATION KEY TYPES
 -- ==================
 --
--- **pandoc-zotxt.lua** supports multiple types of citation keys, namely,
--- "Better BibTeX citation keys", "Easy Citekeys" and Zotero item IDs.
+-- You can use citation keys of multitple types:
 --
--- However, it may happen that a Better BibTeX citation key is interpreted as
--- an Easy Citekey *and* yet matches an item, though not the one that it is
--- the citation key of. That is, citation keys may be matched with the wrong
--- bibliographic data.
+-- | **Name**          | **Type**                   | **Example**   |
+-- | ----------------- | -------------------------- | ------------- |
+-- | `betterbibtexkey` | Better BibTeX citation key | DoeTitle2020  |
+-- | `easykey`         | Easy Citekey               | doe:2020title |
+-- | `key`             | Zotero item ID             | A1BC23D4      |
 --
--- If this happens, you can disable citation key types you do *not* use by
--- setting the "zotero-citekey-types" metadata field to the citation key type
--- (or the list of citation key types) that you do use.
+-- However, Better BibTeX citation keys are sometimes, if rarely,
+-- misinterpreted as Easy Citekeys and still match an item, though *not* the
+-- one that they are the citation key of.
 --
--- You can set the following citation key types:
+-- If this happens, disable Easy Citekeys by only listing BetterBibTeX
+-- citation keys and, if you use them, Zotero item IDs in the
+-- "zotero-citekey-types" metadata field:
 --
--- | **Key**           | **Type**                   |
--- | ----------------- | -------------------------- |
--- | `betterbibtexkey` | Better BibTeX citation key |
--- | `easykey`         | Easy Citekey               |
--- | `key`             | Zotero item ID             |
---
---
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
+--     ---
+--     zotero-citekey-types:
+--         - betterbibtexkey
+--         - key
+--     ...
+--     Now, @DoeTitle is guaranteed to be treated as a BetterBibTeX citation
+--     key.
+--     EOF
 --
 -- SETTINGS
 -- ========
 --
--- Configure **pandoc-zotxt.lua** by setting the following metadata fields:
+-- You configure how bibligraphic data is fetched by setting the following
+-- metadata fields:
 --
--- <h3>zotero-api-key</h3>
+-- * **zotero-api-key**: A Zotero API key. Needed to access your personal
+-- library via the Zotero Web API, but not needed to access public groups.
 --
--- A Zotero API key. Must be set to access your personal library via the
--- Zotero Web API. Not needed to access public groups.
+-- * **zotero-bibliography**: A bibliography filename. Fetched bibliographic
+-- data is added to this file. (See "BIBLIOGRAPHY FILES" above for details.)
 --
--- <h3>zotero-bibliography</h3>
+-- * **zotero-citekey-types**: A list of citation key types. Citation keys are
+-- treated as being of any of the listed types only. (See "CITATION KEY TYPES"
+-- above for details.)
 --
--- A filename. If set, fetched bibliographic data is added to that file. (See
--- **BIBLIOGRAPHY FILES** for details.)
+-- * **zotero-connectors**: One or more Zotero connectors:
 --
--- <h3>zotero-citekey-types</h3>
+--   | **Key** | **Connect to**        |
+--   | ------- | --------------------- |
+--   | zotxt   | Zotero desktop client |
+--   | zotweb  | Zotero Web API        |
 --
--- A list of citation key types. If set, citation keys are assumed to be of
--- one of the listed types only. (See **CITATION KEY TYPES** for details.)
+--   Data is fetched via the listed connectors only.
 --
--- <h3>zotero-connectors</h3>
+--   By default, the Zotero desktop client is searched first. If you have set
+--   a Zotero API key and the client could not be reached or some citations
+--   not be found, the Zotero Web API is searched next.
 --
--- One or more Zotero connectors:
+-- * **zotero-groups**: A list of Zotero group IDs. Only the listed groups are
+-- searched. By default, all groups that you are a member of are searched.
 --
--- | **Name** | **Connects to**       |
--- | -------- | --------------------- |
--- | zotxt    | Zotero desktop client |
--- | zotweb   | Zotero Web API        |
+-- * **zotero-public-groups**: A list of Zotero group IDs. Listed groups are
+-- searched in addition to the groups that you are a member of, if any. These
+-- groups must be public. (See "Zotero Web API" above for details.)
 --
---
--- If set, data is fetched via the listed connectors only.
---
--- By default, the Zotero desktop client is searched first. If the client
--- could not be reached or some citations could not be found *and* if you have
--- given a Zotero API key, the Zotero Web API is searched next.
---
--- <h3>zotero-groups</h3>
---
--- A list of Zotero group IDs to search. If set, only the listed groups are
--- searched. By default, all groups you are a member of are searched. (But see
--- **CAVEATS** below.)
---
--- <h3>zotero-public-groups</h3>
---
--- A list of Zotero group IDs. If set, these groups are searched in addition
--- to the groups you are a member of, if any. These groups must be public.
--- (See **Zotero Web API** above for details.)
---
--- <h3>zotero-user-id</h3>
---
--- A Zotero user ID. Needed to fetch data via the Zotero Web API. Looked up
--- automatically if not given.
---
---
+-- * **zotero-user-id**: A Zotero user ID. Needed to fetch data via the Zotero
+-- Web API, but looked up automatically if not given.
 --
 -- If a metadata field takes a list of values, but you only want to give one,
 -- you can enter that value as a scalar.
---
 --
 -- EXAMPLES
 -- ========
@@ -182,7 +165,6 @@
 --     See @doe2020Title for details.
 --     EOF
 --
---
 -- Add bibliographic data to the file "bibliography.json":
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
@@ -192,18 +174,16 @@
 --     See @DoeTitle2020 for details.
 --     EOF
 --
---
--- Interpret "doe:2020Title" as a Better BibTeX citation key:
+-- Interpret "doe:2020title" as a Better BibTeX citation key:
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
 --     zotero-citekey-types: betterbibtexkey
 --     ...
---     See @doe:2020Title for details.
+--     See @doe:2020title for details.
 --     EOF
 --
---
--- Try to fetch data from the Zotero Web API, too:
+-- Fetch data from the Zotero Web API, too:
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
@@ -212,7 +192,15 @@
 --     See @DoeTitle2020 for details.
 --     EOF
 --
+-- Fetch data from the Zotero Web API *only*:
 --
+--     pandoc -L pandoc-zotxt.lua -C <<EOF
+--     ---
+--     zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
+--     zotero-connectors: zotweb
+--     ...
+--     See @DoeTitle2020 for details.
+--     EOF
 --
 -- KNOWN ISSUES
 -- ============
@@ -220,13 +208,13 @@
 -- Citation keys may, on rare occassions, be matched with the wrong Zotero
 -- item. This happens if a citation key picks out a different record depending
 -- on whether it is interpreted as a Better BibTeX citation key or as an easy
--- citekey. See **CITATION KEY TYPES** above on how to fix this.
+-- citekey. See "CITATION KEY TYPES" above on how to address this.
 --
--- **pandoc-zotxt.lua** creates a temporary file when it adds sources to a
--- bibliography file. If Pandoc exits because it catches a signal (e.g.,
--- because you press `Ctrl`-`c`), then this file will *not* be deleted. This
--- is a bug in Pandoc and in the process of being fixed. Moreover, if you are
--- using Pandoc up to v2.7, another process may, mistakenly, use the same
+-- **pandoc-zotxt.lua** creates a temporary file when it adds bibliographic
+-- data to a bibliography file. If Pandoc exits because it catches a signal
+-- (e.g., because you press `Ctrl`-`c`), then this file will *not* be deleted.
+-- This is a bug in Pandoc and in the process of being fixed. Moreover, if you
+-- are using Pandoc up to v2.7, another process may, mistakenly, use the same
 -- temporary file at the same time, though this is highly unlikely.
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
@@ -238,7 +226,6 @@
 -- They are only searched if no item in your personal library matches. Also,
 -- the "extra" field of items in group libraries is ignored.
 --
---
 -- SECURITY
 -- ========
 --
@@ -247,19 +234,16 @@
 -- then they can read and change the content of that file, regardless of
 -- whether they have permission to read or write the file itself.
 --
---
 -- CAVEATS
 -- =======
 --
 -- **pandoc-zotxt.lua** is Unicode-agnostic.
---
 --
 -- SEE ALSO
 -- ========
 --
 -- * [zotxt](https://github.com/egh/zotxt)
 -- * [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
---
 --
 -- pandoc(1)
 --
@@ -415,8 +399,9 @@ local Pandoc = pandoc.Pandoc
 --
 -- Give one or more Lua type names separated by '|' to declare that the given
 -- value may be of any of those types (e.g., `'string|table'`). Use `'*'` to
--- declare that the value may be of any type except for `nil`. `'?T'` is the
--- same as '`nil|T`' (e.g., `'?table'` is the same as `'nil|table'`).
+-- declare that the value may be of any type oter than `nil`. `'?T'` is short
+-- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`). `'?*'` is
+-- a special case; it signifies that the value may be of any type, even `nil`.
 --
 -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
 --
@@ -427,9 +412,10 @@ local Pandoc = pandoc.Pandoc
 -- >
 -- > Type declaration = ['?'], list of types
 --
+-- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
+--
 -- @param val A value.
 -- @string decl A type declaration.
--- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
 -- @treturn[1] bool `true` if the value is of the declared type(s).
 -- @treturn[2] nil `nil` otherwise.
 -- @treturn[2] string An error message.
@@ -452,23 +438,16 @@ end
 --
 -- The type declaration syntax is that of @{type_match}, save for that
 -- you can use `'...'` to declare that an argument is of the same type
--- as the previous argument; if `'...'` is the last type declaration, then
+-- as the previous one; if `'...'` is the last type declaration, then
 -- the previous type declaration applies to all remaning arguments.
 --
--- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
---
--- > Type = 'boolean' | 'function' | 'nil'    | 'number'   |
--- >        'string'  | 'table'    | 'thread' | 'userdata'
--- >
--- > List of types = (type, {'|', type}) | '*'
--- >
--- > Type declaration = (['?'], list of types) | '...'
---
 -- @caveats Wrong type names do *not* raise an error on declaration.
+--
 -- @string ... Type declarations.
 -- @treturn func A function that adds type checks to a function.
+--
 -- @usage
--- copy = typed_func('?*', '?table')(
+-- copy = typed_args('?*', '?table')(
 --     function (val, _seen)
 --         if type(val) ~= 'table' then return val end
 --         if     not _seen  then _seen = {}
@@ -482,10 +461,11 @@ end
 --         return ret
 --     end
 -- )
+--
+-- @function typed_args
 -- @fixme No unit-test.
--- @function typed_func
 if DEBUG then
-    function typed_func (...)
+    function typed_args (...)
         local types = pack(...)
         return function (func)
             return function (...)
@@ -507,34 +487,33 @@ if DEBUG then
         end
     end
 else
-    function typed_func ()
+    function typed_args ()
         return function (...) return ... end
     end
 end
 
---- Type-check arguments of a constructor when running in debugging mode.
---
--- <h3>Type declaration grammar:</h3>
---
--- See @{type_match}.
+--- Type-check keyword arguments when running in debugging mode.
 --
 -- @caveats Wrong type names do *not* raise an error on declaration.
--- @tparam {string=string,...} types A mapping of parameter names
---  to type declarations.
--- @treturn func A function that adds type checks to a constructor.
+--
+-- @tparam {string=string,...} types A mapping of parameter names to
+--  type declarations. See @{type_match} for the type declaration syntax.
+-- @treturn func A function that adds type checks to a function.
+--
 -- @usage
 -- Foo = Object()
--- Foo.new = typed_const{
+-- Foo.new = typed_keyword_args{
 --     bar = 'number',
 --     baz = '?string'
 -- }(getmetatable(Foo).__call)
--- @function typed_const
+--
+-- @function typed_keyword_args
 -- @fixme No unit test!
 if DEBUG then
-    typed_const = typed_func('table')(
+    typed_keyword_args = typed_args('table')(
         function (types)
             return function (const)
-                return typed_func('table', '?table')(
+                return typed_args('table', '?table')(
                     function (proto, args)
                         do
                             -- luacheck: ignore args type
@@ -556,7 +535,7 @@ if DEBUG then
         end
     )
 else
-    typed_const = typed_func
+    typed_keyword_args = typed_args
 end
 
 
@@ -576,8 +555,9 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 --
 -- @string ... Path segments.
 -- @treturn string A path.
+--
 -- @function path_join
-path_join = typed_func('string', '...')(
+path_join = typed_args('string', '...')(
     function (...)
         local segs = pack(...)
         for i = 1, segs.n do
@@ -601,12 +581,13 @@ do
         {'^%.' .. PATH_SEP, ''}
     }
 
-    --- Sanitise a path.
+    --- Normalise a path.
     --
     -- @string path A path.
     -- @treturn string A normalised path.
+    --
     -- @function path_normalise
-    path_normalise = typed_func('string')(
+    path_normalise = typed_args('string')(
         function (path)
             assert(path ~= '', 'path is the empty string.')
             for i = 1, #patterns do path = path:gsub(unpack(patterns[i])) end
@@ -624,8 +605,9 @@ do
     -- @string path A path.
     -- @treturn string The directory the file is in.
     -- @treturn string The file's name.
+    --
     -- @function path_split
-    path_split = typed_func('string')(
+    path_split = typed_args('string')(
         function (path)
             assert(path ~= '', 'path is the empty string.')
             local dir, fname = path:match(pattern)
@@ -676,7 +658,7 @@ local json = require 'lunajson'
 --
 -- @section
 
---- Get a copy of the variables a function can access.
+--- Get a copy of the variables that a function can access.
 --
 -- @int[opt=2] level A stack level, where
 --
@@ -688,8 +670,9 @@ local json = require 'lunajson'
 -- @treturn[1] table A mapping of variable names to values.
 -- @treturn[2] nil `nil` if there is no function at that level of the stack.
 -- @treturn[2] string An error message.
+--
 -- @function vars_get
-vars_get = typed_func('?number')(
+vars_get = typed_args('?number')(
     function (level)
         if not level then level = 2 end
         assert(level > 0, 'level is not a positive number.')
@@ -722,14 +705,16 @@ vars_get = typed_func('?number')(
 --- A metatable to make tables ignore case.
 --
 -- @usage
+--
 -- > tab = setmetatable({}, ignore_case)
 -- > tab.FOO = 'bar'
 -- > tab.foo
 -- bar
+--
 -- @fixme No unit test.
 ignore_case = {}
 
---- Look up an item in the table.
+--- Look up an item.
 --
 -- @tab tab A table.
 -- @param key A key.
@@ -741,7 +726,7 @@ function ignore_case.__index (tab, key)
     end
 end
 
---- Store a new item in the table.
+--- Store a new item.
 --
 -- @tab tab A table.
 -- @param key A key.
@@ -756,6 +741,7 @@ end
 --- Make a deep copy of a value.
 --
 -- @caveats Bypasses metamethods.
+--
 -- @param val A value.
 -- @return A deep copy.
 --
@@ -766,8 +752,9 @@ end
 -- > foo[#foo + 1] = 4
 -- > table.unpack(baz, 1)
 -- 1    2    3
+--
 -- @function copy
-copy = typed_func('?*', '?table')(
+copy = typed_args('?*', '?table')(
     function (val, _seen)
         -- Borrows from:
         -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
@@ -790,12 +777,13 @@ copy = typed_func('?*', '?table')(
 -- @tab tab A table.
 -- @treturn tab The keys of the table.
 -- @treturn int The number of items in the table.
+--
 -- @function keys
-keys = typed_func('table')(
+keys = typed_args('table')(
     function (tab)
         local ks = {}
         local n = 0
-        for k in next, tab do
+        for k in pairs(tab) do
             n = n + 1
             ks[n] = k
         end
@@ -807,6 +795,7 @@ keys = typed_func('table')(
 --
 -- @tab values Values.
 -- @treturn func A sorting function.
+--
 -- @usage
 -- > tab = {a = 3, b = 4, c = 2, d = 1}
 -- > for k, v in sorted(tab, order{'d', 'c'}) do
@@ -816,8 +805,9 @@ keys = typed_func('table')(
 -- c    2
 -- a    3
 -- b    4
+--
 -- @function order
-order = typed_func('table')(
+order = typed_args('table')(
     function (vals)
         local order = {}
         for i = 1, #vals do order[vals[i]] = i end
@@ -837,6 +827,7 @@ order = typed_func('table')(
 -- @func[opt] func A sorting function.
 --  If no function is given, sorts lexically.
 -- @treturn func A *stateful* iterator.
+--
 -- @usage
 -- > for k, v in sorted{c = 3, b = 2, a = 1} do
 -- >     print(k, v)
@@ -844,8 +835,9 @@ order = typed_func('table')(
 -- a    1
 -- b    2
 -- c    3
+--
 -- @function sorted
-sorted = typed_func('table', '?function')(
+sorted = typed_args('table', '?function')(
     function (tab, func)
         local ks = keys(tab)
         sort(ks, func)
@@ -868,14 +860,16 @@ sorted = typed_func('table', '?function')(
 -- @param[opt] tab A table to iterate over.
 -- @param[opt] key The index to start iterating at.
 -- @return The values returned by the iterator.
+--
 -- @usage
 -- > str = 'key: value'
 -- > k, v = tabulate(split(str, '%s*:%s*', 2))
 -- > print(k, v)
 -- key    value
+--
 -- @function tabulate
 -- @fixme Stateless iterators are untested.
-tabulate = typed_func('function')(
+tabulate = typed_args('function')(
     function (iter, tab, key)
         local vals = Values()
         for v in iter, tab, key do vals:add(v) end
@@ -890,8 +884,9 @@ tabulate = typed_func('function')(
 -- @param graph A graph.
 -- @func func A function.
 -- @return The transformed graph.
+--
 -- @function walk
-walk = typed_func('*', 'function', '?table')(
+walk = typed_args('*', 'function', '?table')(
     function (graph, func, _seen)
         if type(graph) ~= 'table' then
             local ret = func(graph)
@@ -903,7 +898,7 @@ walk = typed_func('*', 'function', '?table')(
         end
         local ret = {}
         _seen[graph] = ret
-        for k, v in next, graph do
+        for k, v in pairs(graph) do
             if type(v) == 'table' then v = walk(v, func, _seen) end
             local new = func(v)
             if new == nil then ret[k] = v
@@ -923,6 +918,7 @@ walk = typed_func('*', 'function', '?table')(
 --- Iterate over substrings of a string.
 --
 -- @caveats Supports neither multi-byte characters nor frontier patterns.
+--
 -- @string str A string.
 -- @string pattern Where to split the string.
 -- @int[opt] max Split the string into at most that many substrings.
@@ -933,6 +929,7 @@ walk = typed_func('*', 'function', '?table')(
 --
 --  By default, separators are *not* included.
 -- @treturn func A *stateful* iterator.
+--
 -- @usage
 -- > for s in split('CamelCase', '%u', nil, 'l') do
 -- >     print(string.format("%s", s))
@@ -940,8 +937,9 @@ walk = typed_func('*', 'function', '?table')(
 -- ""
 -- "Camel"
 -- "Case"
+--
 -- @function split
-split = typed_func('string', 'string', '?number', '?string')(
+split = typed_args('string', 'string', '?number', '?string')(
     function (str, pattern, max, include)
         assert(not pattern:match '%f[%%]%%f', 'split does not support %f.')
         assert(not include or include:match '^[lr]$', 'expecting "l" or "r".')
@@ -978,8 +976,9 @@ split = typed_func('string', 'string', '?number', '?string')(
 --
 -- @string str A string.
 -- @treturn string A trimmed string.
+--
 -- @function trim
-trim = typed_func('string')(
+trim = typed_args('string')(
     function (str)
         return str:gsub('^%s+', ''):gsub('%s*$', '')
     end
@@ -1031,7 +1030,7 @@ do
     --    foo is bar.
     --
     -- If a braced string is preceded by two or more dollar signs, it is *not*
-    -- *not* treated as a variable name and *not* replaced. A series of *n*
+    -- *not* treated as a variable name and *not* replaced. Any series of *n*
     -- dollar signs is replaced with *n* – 1 dollar signs.
     --
     --    > vars_sub(
@@ -1080,8 +1079,8 @@ do
     --
     -- @caveats
     --
-    -- * If there is no variable of a given name, the variable expression
-    --   is quietly replaced with `nil`.
+    -- * If there is no variable of a given name,
+    --   the expression is quietly replaced with `nil`.
     --
     --       > vars_sub('foo is ${bar}.', {})
     --       foo is nil.
@@ -1096,9 +1095,10 @@ do
     -- @string str A string.
     -- @tab vars Variables.
     -- @treturn string A transformed string.
+    --
     -- @function vars_sub
     -- @fixme Improve error messages.
-    vars_sub = typed_func('string', 'table', '?number')(
+    vars_sub = typed_args('string', 'table', '?number')(
         function (str, vars, _rd)
             if not _rd then _rd = 0 end
             assert(_rd < 64, 'recursion limit exceeded.')
@@ -1116,7 +1116,6 @@ end
 
 --- Base prototype.
 --
--- @object Object
 -- @usage
 -- > -- Delegate to Object.
 -- > Foo = Object()
@@ -1146,6 +1145,8 @@ end
 -- > bar = foo()
 -- > bar.bar
 -- bam!
+--
+-- @object Object
 Object = {}
 
 --- Metatable for prototypes.
@@ -1154,12 +1155,15 @@ setmetatable(Object, Object.mt)
 
 --- Delegate to a prototype.
 --
--- Sets a table's metatable to a copy of the prototype's metatable
+-- Set a table's metatable to a copy of the prototype's metatable
 -- and then set the `__index` field of that metatable to the prototype.
 --
+-- @caveats If a table is given, it is modified *in-place*.
+--
 -- @tab proto A prototype.
--- @tab[opt] props Object properties.
+-- @tab[opt] tab A table.
 -- @treturn Object An object.
+--
 -- @usage
 -- > foo = Object{foo = 'foo', bar = 'bar'}
 -- > foo.foo
@@ -1171,12 +1175,14 @@ setmetatable(Object, Object.mt)
 -- foo
 -- > bar.bar
 -- bam!
+--
+-- @function Object.mt.__call
 -- @fixme DEBUG
-Object.mt.__call = typed_func('table', '?table')(
-    function (proto, props)
+Object.mt.__call = typed_args('table', '?table')(
+    function (proto, tab)
         local mt = copy(getmetatable(proto))
         mt.__index = proto
-        return setmetatable(props or {}, mt)
+        return setmetatable(tab or {}, mt)
     end
 )
 
@@ -1187,6 +1193,7 @@ Object.mt.__call = typed_func('table', '?table')(
 -- > list:add 'a string'
 -- > list.n
 -- 1
+--
 -- @object Values
 -- @proto @{Object}
 Values = Object()
@@ -1197,9 +1204,11 @@ Values.n = 0
 --- Add items to the list.
 --
 -- @side Sets @{Values.n} to the number of items in the list.
+--
 -- @param ... Items.
+--
 -- @function Values:add
-Values.add = typed_func('table')(
+Values.add = typed_args('table')(
     function (self, ...)
         local items = pack(...)
         local n = self.n
@@ -1208,24 +1217,26 @@ Values.add = typed_func('table')(
     end
 )
 
---- Add getters to an object.
+--- Add getters to a table.
 --
 -- <h3>Getter protocol:</h3>
 --
--- If the object does not have a given property, look for a function of the
--- same name as the property in the `getters` field of the object's metatable.
--- That field must be a mapping of property names to functions. If it contains
--- a function of the same name as the property, then that function is called
--- with the object as argument and whatever it returns is returned as the
--- value of the property. If `getters` contains no function of that name,
--- the name is looked up in the object's prototype.
+-- If an index is not present in a the table, look for a function of the same
+-- name in the table's `getters` metavalue. That metavalue must be a mapping
+-- of indices to functions. If it contains a function of the same name as the
+-- index, then that function is called with the table as only argument and
+-- whatever it returns is returned as the value for the index. If `getters`
+-- contains no function of that name, the name is looked up in the table's
+-- `__index` metavalue.
 --
 -- @caveats
---  * Objects are modified *in-place*.
---  * Getters are *not* inherited.
--- @tab obj An object.
--- @treturn tab The object.
--- @function getterify
+--
+-- * Tables are modified *in-place*.
+-- * Getters are *not* inherited.
+--
+-- @tab tab A table.
+-- @treturn tab The table.
+--
 -- @usage
 -- > -- Enable getters for an object.
 -- > foo = getterify(Object{foo = 'bar'})
@@ -1244,12 +1255,15 @@ Values.add = typed_func('table')(
 -- > baz = foo{foo = 'bam!'}
 -- > baz.bar
 -- bam!
+--
+-- @function getterify
 -- @fixme Untested.
-getterify = typed_func('table')(
-    function (obj)
-        local mt = copy(getmetatable(obj))
+getterify = typed_args('table')(
+    function (tab)
+        local mt = copy(getmetatable(tab))
         local index = mt.__index
-        mt.__index = typed_func('table')(
+        mt.__index = typed_args('table')(
+            -- luacheck: ignore tab
             function (tab, key)
                 local getters = getmetatable(tab).getters
                 if getters then
@@ -1260,23 +1274,24 @@ getterify = typed_func('table')(
                     local t = type(index)
                     if t == 'table'    then return index[key]      end
                     if t == 'function' then return index(tab, key) end
-                    local err = 'metatable\'s "__index" field points to a %s.'
+                    local err = 'table\'s "__index" metavalue points to a %s.'
                     error(err:format(t), 2)
                 end
             end
         )
-        return setmetatable(obj, mt)
+        return setmetatable(tab, mt)
     end
 )
 
 --- Delegate to a prototype and add getters.
 --
 -- @tab proto A prototype.
--- @tab[opt] props Object properties.
+-- @tab[opt] tab A table.
 -- @treturn Object A getterified object.
+--
 -- @see getterify
 -- @function delegate_with_getters
-delegate_with_getters = typed_func('table', '?table')(
+delegate_with_getters = typed_args('table', '?table')(
     function (...)
         return getterify(getmetatable(Object).__call(...))
     end
@@ -1329,18 +1344,19 @@ do
     --
     -- String values that start with an '@' are interpreted as options:
     --
-    --  * `'@error'`, `'@warning'`, `'@info'`: Set the message's
-    --    priority. (*default* 'warning')
-    --  * `'@novars'`: Turn variable substitution off. (*default* on)
-    --  * `'@vars'`: Turn variable substitution on.
-    --  * `'@noopts'`: Turn option processing off. (*default* on)
-    --  * `'@plain'`: Turn variable substitution *and* option processing off.
+    -- * `'@error'`, `'@warning'`, `'@info'`: Set the message's
+    --   priority. (*default* 'warning')
+    -- * `'@novars'`: Turn variable substitution off. (*default* on)
+    -- * `'@vars'`: Turn variable substitution on.
+    -- * `'@noopts'`: Turn option processing off. (*default* on)
+    -- * `'@plain'`: Turn variable substitution *and* option processing off.
     --
     -- Unknown options are ignored.
     --
     -- @param ... Messages. At least one must be given.
+    --
     -- @function xwarn
-    xwarn = typed_func('*')(
+    xwarn = typed_args('*')(
         function (...)
             local priority = 'warning'
             local do_opts_get = true
@@ -1402,9 +1418,10 @@ end
 --
 -- @string path A path.
 -- @treturn bool `true` if the path is absolute, `false` otherwise.
+--
 -- @function path_is_abs
 if not pandoc.types or PANDOC_VERSION < {2, 12} then
-    path_is_abs = typed_func('string')(
+    path_is_abs = typed_args('string')(
         function (path)
             assert(path ~= '', 'path is the empty string.')
             if PATH_SEP == '\\' and path:match '^.:\\' then return true end
@@ -1433,15 +1450,16 @@ do
 
     --- Prettify paths.
     --
-    -- Remove the current working directory from the beginning of a path and
-    -- replace the user's home directory with '~' on non-Windows systems.
+    -- Removes the working directory from the beginning of the path. On
+    -- non-Windows systems, also replaces the user's home directory with '~'.
     --
     -- @string path A path.
     -- @treturn string A prettier path.
-    -- @require The current working directory is only removed from the
-    --  path if run with Pandoc v2.12 or newer.
+    -- @require The working directory is removed from the
+    --  beginning of the path since Pandoc v2.12.
+    --
     -- @function path_prettify
-    path_prettify = typed_func('string')(
+    path_prettify = typed_args('string')(
         function (path)
             assert(path ~= '', 'path is the empty string.')
             path = path_normalise(path)
@@ -1476,16 +1494,20 @@ end
 
 --- Check whether a file exists.
 --
--- @caveats Another process may create a file of the given name between the
---  time `file_exists` checks whether that file exists and the time it returns.
+-- @caveats
+--
+-- Another process may create a file of the given name between the time
+-- `file_exists` tries to access that file and the time it returns.
+--
 -- @string fname A filename.
 -- @treturn[1] boolean `true` if the file exists.
 -- @treturn[2] nil `nil` if the file does not exist.
 -- @treturn[2] string An error message.
 -- @treturn[2] int The error number 2.
 -- @raise An error if the file cannot be closed again.
+--
 -- @function file_exists
-file_exists = typed_func('string')(
+file_exists = typed_args('string')(
     function (fname)
         assert(fname ~= '', 'filename is the empty string.')
         local file, err, errno = io.open(fname, 'r')
@@ -1500,14 +1522,15 @@ do
 
     --- Locate a file in Pandoc's resource path.
     --
-    -- Absolute filenames are returned as they are.
+    -- @caveats Absolute filenames are returned as is.
     --
     -- @string fname A filename.
-    -- @treturn[1] string A filename.
+    -- @treturn[1] string A filename in Pandoc's resource path.
     -- @treturn[2] nil `nil` if the file could not be found.
     -- @treturn[2] string An error message.
+    --
     -- @function file_locate
-    file_locate = typed_func('string')(
+    file_locate = typed_args('string')(
         function (fname)
             assert(fname ~= '', 'filename is the empty string.')
             if not resource_path or file_exists(fname) then return fname end
@@ -1527,8 +1550,9 @@ end
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] int An error number.
+--
 -- @function file_read
-file_read = typed_func('string')(
+file_read = typed_args('string')(
     function (fname)
         assert(fname ~= '', 'filename is the empty string.')
         local str, err, errno, file, ok
@@ -1547,7 +1571,7 @@ do
     --
     -- @param file The name or handle of a file to write data to.
     -- @string ... The data.
-    -- @treturn[1] bool `true` if the data was written to the given file.
+    -- @treturn[1] bool `true` if the data was written out sucessfully.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] int An error number.
@@ -1566,20 +1590,25 @@ do
     --
     -- If a file of that name already exists, it is overwritten.
     --
-    -- @caveats Data is first written to a temporary file, that file is then
-    --  renamed to the given filename. This is safe and secure starting with
-    --  Pandoc v2.8. If you are using an older version of Pandoc, then the
-    --  caveats of @{with_tmp_file} apply.
+    -- @caveats
+    --
+    -- Data is first written to a temporary file, that file is then renamed
+    -- to the given filename. This is safe and secure starting with Pandoc
+    -- v2.8. If you are using an older version of Pandoc, the caveats of
+    -- @{with_tmp_file} apply.
+    --
     -- @side Typically creates and deletes a temporary file.
+    --
     -- @string fname A filename.
     -- @string ... The data.
     -- @treturn[1] bool `true` if the data was written to the given file.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] int An error number.
+    --
     -- @function file_write
     -- @fixme Legacy version is untested.
-    file_write_legacy = typed_func('string')(
+    file_write_legacy = typed_args('string')(
         function (fname, ...)
             assert(fname ~= '', 'filename is the empty string.')
             local dir = path_split(fname)
@@ -1612,7 +1641,7 @@ do
             return path_join(get_working_directory(), path)
         end
 
-        file_write_modern = typed_func('string')(
+        file_write_modern = typed_args('string')(
             function (fname, ...)
                 assert(fname ~= '', 'filename is the empty string.')
                 local dir, base = path_split(path_make_abs(fname))
@@ -1662,9 +1691,12 @@ do
 
     --- Generate a name for a temporary file.
     --
-    -- @caveats The filename generated is only *likely* not to be in use.
-    --  Another process may create a file of the same name between the time
-    -- `tmp_fname` checks whether that name is in use and the time it returns.
+    -- @caveats
+    --
+    -- The filename generated is only *likely* not to be in use. Another
+    -- process may create a file of the same name between the time `tmp_fname`
+    -- checks whether that name is in use and the time it returns.
+    --
     -- @string[opt] dir A directory to prefix the filename with.
     --  Must *not* be the empty string.
     -- @string[opt='pdz-XXXXXX'] templ A template for the filename.
@@ -1673,8 +1705,9 @@ do
     -- @treturn[1] string A filename.
     -- @treturn[2] nil `nil` if the generated filename is in use.
     -- @treturn[2] string An error message.
+    --
     -- @function tmp_fname
-    tmp_fname = typed_func('?string', '?string')(
+    tmp_fname = typed_args('?string', '?string')(
         function (dir, templ)
             if templ == nil then
                 templ = 'pdz-XXXXXX'
@@ -1704,13 +1737,17 @@ end
 --- Run a function with a temporary file.
 --
 -- Generates a temporary filename. Does *not* create that file.
--- If the given function raises an error or returns `nil` or `false`,
+-- If the function raises an error or returns `nil` or `false`,
 -- the temporary file is deleted.
 --
--- @caveats The temporary file may have been created by *another* process. If
---  that file is located within a directory that other users have write access
---  to (e.g., `/tmp`), then this is a security issue.
+-- @caveats
+--
+-- The temporary file may have been created by *another* process. If that
+-- file is located within a directory that other users have write access
+-- to (e.g., `/tmp`), then this is a security issue.
+--
 -- @side May print error messages to STDERR.
+--
 -- @func func Given the name of the temporary file.
 --  Must *not* change the working directory.
 -- @string[opt] dir A directory to prefix the name
@@ -1718,8 +1755,9 @@ end
 -- @string[opt] templ A template for the name
 --  of the temporary file. See @{tmp_fname}.
 -- @return The values the function returns.
+--
 -- @function with_tmp_file
-with_tmp_file = typed_func('function', '?string', '?string')(
+with_tmp_file = typed_args('function', '?string', '?string')(
     function (func, dir, templ)
         local tmp_file, err = tmp_fname(dir, templ)
         if not tmp_file then return nil, err end
@@ -1748,8 +1786,9 @@ with_tmp_file = typed_func('function', '?string', '?string')(
 -- @treturn string The HTTP content itself.
 -- @raise An error if the host cannot be reached.
 --  This error can only be caught since Pandoc v2.11.
+--
 -- @function http_get
-http_get = typed_func('string')(
+http_get = typed_args('string')(
     function (url)
         assert(url ~= '', 'URL is the empty string.')
         return pandoc.mediabag.fetch(url, '.')
@@ -1763,8 +1802,9 @@ http_get = typed_func('string')(
 -- @treturn string The MIME type of the HTTP content.
 -- @treturn string The HTTP content itself.
 -- @raise See @{http_get}.
+--
 -- @function url_query
-url_query = typed_func('string', '?table')(
+url_query = typed_args('string', '?table')(
     function (url, params)
         assert(url ~= '', 'URL is the empty string.')
         if params then
@@ -1817,13 +1857,16 @@ do
 
     --- Escape Markdown syntax.
     --
+    -- @caveats
+    --
     -- Only escapes [Markdown that Pandoc recognises in bibliographic
     -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
     -- @string str Non-markdown text.
     -- @treturn string Text with markdown syntax escaped.
+    --
     -- @function escape_markdown
-    escape_markdown = typed_func('string')(
+    escape_markdown = typed_args('string')(
         function (str)
             for i = 1, npatterns do
                 local pattern, repl = unpack(patterns[i])
@@ -1915,13 +1958,16 @@ do
 
     --- Convert a Pandoc element to Markdown text.
     --
+    -- @caveats
+    --
     -- Only recognises [elements Pandoc permits in bibliographic
     -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
+    --
     -- @function markdownify
-    markdownify = typed_func('table|userdata')(
+    markdownify = typed_args('table|userdata')(
         function (elem)
             local escaped = elem_walk(elem, escape_str)
             return stringify(elem_walk(escaped, to_markdown))
@@ -1944,8 +1990,11 @@ do
 
     --- Convert a string to a YAML scalar.
     --
-    -- @caveats Strings *must* be encoded in UTF-8.
-    --  Does *not* escape *all* non-printable characters.
+    -- @caveats
+    --
+    -- * Strings *must* be encoded in UTF-8.
+    -- * Does *not* escape *all* non-printable characters.
+    --
     -- @string str A string.
     -- @bool[opt] unquoted Quote strings only when needed?
     -- @treturn string A YAML scalar.
@@ -2008,8 +2057,10 @@ do
     -- Lines are termined with @{EOL}.
     --
     -- @caveats
-    --  * Mangles strings in encodings other than UTF-8.
-    --  * Does *not* escape *all* non-printable characters (because Unicode).
+    --
+    -- * Mangles strings in encodings other than UTF-8.
+    -- * Does *not* escape *all* non-printable characters (because Unicode).
+    --
     -- @param val A value.
     -- @int[opt=4] ind How many spaces to indent blocks.
     -- @func[opt] sort A function to sort keys of mappings.
@@ -2017,9 +2068,10 @@ do
     -- @treturn[1] string A YAML string.
     -- @treturn[2] nil `nil` if the data cannot be represented in YAML.
     -- @treturn[2] string An error message.
+    --
     -- @function yamlify
     -- @fixme Indentation and sorting is not unit-tested.
-    yamlify = typed_func('*', '?number', '?function', '?number')(
+    yamlify = typed_args('*', '?number', '?function', '?number')(
         -- luacheck: ignore sort
         function (val, ind, sort, _col, _rd)
             if not _rd then _rd = 0 end
@@ -2069,9 +2121,10 @@ end
 --
 -- @string pseudo Zotero pseudo-HTML code.
 -- @treturn string HTML code.
+--
 -- @function zotero_to_html
 -- @raise An error if opening `<sc>` and closing `</sc>` tags are unbalanced.
-zotero_to_html = typed_func('string')(
+zotero_to_html = typed_args('string')(
     function (pseudo)
         local opened, closed, n, m
         opened, n = pseudo:gsub('<sc>',
@@ -2079,13 +2132,17 @@ zotero_to_html = typed_func('string')(
         if n == 0 then return pseudo end
         closed, m = opened:gsub('</sc>',
                                 '</span>')
-        assert(m == n, format('%s: contains %d <sc>, but %d </sc> tags.',
-                              pseudo, n, m))
+        if m ~= n then
+            error(format('%s: contains %d <sc>, but %d </sc> tags.',
+                         pseudo, n, m), 0)
+        end
         return closed
     end
 )
 
 --- Convert Zotero pseudo-HTML to Markdown.
+--
+-- @caveats
 --
 -- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
 -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
@@ -2093,12 +2150,15 @@ zotero_to_html = typed_func('string')(
 -- @string pseudo Zotero pseudo-HTML code.
 -- @treturn string Markdown text.
 -- @raise See @{zotero_to_html}.
+--
 -- @function zotero_to_markdown
-zotero_to_markdown = typed_func('string')(
+zotero_to_markdown = typed_args('string')(
     function (pseudo)
         local html = zotero_to_html(pseudo)
         local ok, doc = pcall(read, html, 'html')
-        assert(ok, 'cannot parse Zotero pseudo-HTML.')
+        if not ok then
+            error(pseudo .. ': cannot parse Zotero pseudo-HTML.', 0)
+        end
         return markdownify(doc)
     end
 )
@@ -2208,13 +2268,17 @@ do
 
     --- Iterate over every key-value pair in the "note" field of a CSL item.
     --
-    -- @caveats Assumes that the "note" field is used to store entries that
-    --  were added to Zotero's ["extra" field](https://perma.cc/EGN3-78CH).
+    -- @caveats
+    --
+    -- Assumes that the "note" field is used to store entries that
+    -- were added to Zotero's ["extra" field](https://perma.cc/EGN3-78CH).
+    --
     -- @tab item A CSL item.
     -- @treturn func A *stateful* iterator.
+    --
     -- @see csl_item_add_extras
     -- @function csl_item_extras
-    csl_item_extras = typed_func('table')(
+    csl_item_extras = typed_args('table')(
         function (item)
             local note = item.note
             if not note then return function () return end end
@@ -2239,6 +2303,7 @@ do
     -- Parse a date in Zotero's extra field.
     --
     -- @caveats The item is modified in-place.
+    --
     -- @tab item A CSL item.
     -- @string key A field name.
     -- @string val A value.
@@ -2268,6 +2333,7 @@ do
     -- Parse a name in Zotero's extra field.
     --
     -- @caveats The item is modified in-place.
+    --
     -- @tab item A CSL item.
     -- @string key A field name.
     -- @string val A value.
@@ -2308,14 +2374,11 @@ do
 
     --- Add CSL variables from the "note" field to the item proper.
     --
-    -- Zotero's CSL JSON export puts CSL fields that have been entered into
-    -- its ["extra" field](https://perma.cc/EGN3-78CH) into the CSL "note"
-    -- field, rather than to merge the "extra" field with the item.
-    --
     -- @tab item A CSL item.
     -- @treturn table The item with variables from "extra" copied.
+    --
     -- @function csl_item_add_extras
-    csl_item_add_extras = typed_func('table')(
+    csl_item_add_extras = typed_args('table')(
         function (item)
             local ret = copy(item)
             for k, v in csl_item_extras(item) do
@@ -2335,13 +2398,14 @@ do
     )
 end
 
---- Standardise variable names of a CSL item.
+--- Normalise variable names of a CSL item.
 --
 -- @tab item A CSL item.
 -- @treturn tab A normalised item.
 -- @see csl_varname_normalise
+--
 -- @function csl_item_normalise_vars
-csl_item_normalise_vars = typed_func('table', '?table')(
+csl_item_normalise_vars = typed_args('table', '?table')(
     function (item, _seen)
         if     not _seen   then _seen = {}
         elseif _seen[item] then return _seen[item]
@@ -2434,9 +2498,10 @@ do
     -- @treturn pandoc.MetaMap A Pandoc metadata value.
     -- @raise An error if an item cannot be converted to
     --  a Pandoc metadata value.
+    --
     -- @function csl_item_to_meta
     -- @fixme No unit test.
-    csl_item_to_meta = typed_func('table')(convert)
+    csl_item_to_meta = typed_args('table')(convert)
 end
 
 --- Filter CSL items by their citation key.
@@ -2444,9 +2509,10 @@ end
 -- @tparam {tab,...} items CSL items.
 -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
 -- @treturn {tab,...} Items with that citation key.
+--
 -- @function csl_items_filter_by_ckey
 -- @fixme No unit test.
-csl_items_filter_by_ckey = typed_func('table', 'string')(
+csl_items_filter_by_ckey = typed_args('table', 'string')(
     function (items, ckey)
         local filtered = Values()
         for i = 1, #items do
@@ -2465,11 +2531,13 @@ csl_items_filter_by_ckey = typed_func('table', 'string')(
 --- Pick the IDs of CSL items out of a list of CSL items.
 --
 -- @side May print error messages to STDERR.
+--
 -- @tparam {tab,...} items CSL items.
--- @treturn {[string]=true,...} A [set](https://www.lua.org/pil/11.5.html)
---  of item IDs.
+-- @treturn {[string]=true,...}
+--  A [set](https://www.lua.org/pil/11.5.html) of item IDs.
+--
 -- @function csl_items_ids
-csl_items_ids = typed_func('table')(
+csl_items_ids = typed_args('table')(
     function (items)
         local ids = {}
         for i = 1, #items do
@@ -2490,24 +2558,29 @@ csl_items_ids = typed_func('table')(
 --- Sort CSL items by their ID.
 --
 -- @caveats Assumes that CSL item IDs are of the same type.
+--
 -- @tab a A CSL item.
 -- @tab b Another CSL item.
 -- @treturn bool Whether item A comes before item B.
+--
 -- @function csl_items_sort
-csl_items_sort = typed_func('table', 'table')(
+csl_items_sort = typed_args('table', 'table')(
     function (a, b)
         return a.id < b.id
     end
 )
 
---- Trim a CSL variable name, lowercase it, and replace spaces with dashes.
+--- Normalise a CSL variable name.
+--
+-- Trim the variable name, lowercase it, and replace spaces with dashes.
 --
 -- @string var A CSL variable name.
 -- @treturn[1] string A normalised variable name.
--- @treturn[2] nil `nil` if the given string is not a CSL variable name.
+-- @treturn[2] nil `nil` if the string is not a CSL variable name.
 -- @treturn[2] string An error message.
+--
 -- @function csl_varname_normalise
-csl_varname_normalise = typed_func('string')(
+csl_varname_normalise = typed_args('string')(
     function (var)
         var = trim(var):gsub(' ', '-'):lower()
         if var:match '^[%a%-]+$' then return var end
@@ -2524,8 +2597,9 @@ csl_varname_normalise = typed_func('string')(
 -- @string a A CSL variable name.
 -- @string b Another CSL variable name.
 -- @treturn bool Whether variable A should come before variable B.
+--
 -- @function csl_vars_sort
-csl_vars_sort = typed_func('string', 'string')(order(CSL_VARS_ORDER))
+csl_vars_sort = typed_args('string', 'string')(order(CSL_VARS_ORDER))
 
 do
     local decode = json.decode
@@ -2549,8 +2623,9 @@ do
     -- @treturn[1] tab A single CSL item or a list of CSL items.
     -- @treturn[2] nil `nil` if the string cannot be parsed.
     -- @treturn[2] string An error message.
+    --
     -- @function csl_json_to_items
-    csl_json_to_items = typed_func('string')(
+    csl_json_to_items = typed_args('string')(
         function (str)
             if str == '' then return nil, 'got the empty string.' end
             local ok, data = pcall(decode, str)
@@ -2567,10 +2642,6 @@ end
 
 --- An interface for parsing citation keys.
 --
--- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
--- @tparam[opt] {string,...} types Types to try to parse the citation key as.
---  If @{citekey.parsers} contains no parser for a type, it is ignored.
---  Order is significant.
 -- @object citekey
 -- @proto @{Object}
 citekey = Object()
@@ -2590,13 +2661,15 @@ do
     -- and at each start of a string of digits.
     --
     -- @caveats BetterBibTeX citation keys must be encoded in ASCII.
+    --
     -- @string ckey A BetterBibTeX citation key (e.g., `'DoeWord2020'`).
     -- @treturn[1] {string,...} Search terms.
     -- @treturn[2] nil `nil` if no search terms could be derived.
     -- @treturn[2] string An error message.
+    --
     -- @function citekey.parsers.betterbibtexkey
     -- @fixme No unit test.
-    citekey.parsers.betterbibtexkey = typed_func('string')(
+    citekey.parsers.betterbibtexkey = typed_args('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
             local terms = Values()
@@ -2627,13 +2700,15 @@ do
     -- Splits up an Easy Citekey into an author, a year, and a word.
     --
     -- @caveats Easy Citekeys must be encoded in UTF-8.
+    --
     -- @string ckey A zotxt Easy Citekey (e.g., `'doe2020:word'`).
     -- @treturn[1] {string,...} Search terms.
     -- @treturn[2] nil `nil` if no search terms could be derived.
     -- @treturn[2] string An error message.
+    --
     -- @function Citekey.parsers.easykey
     -- @fixme No unit test.
-    citekey.parsers.easykey = typed_func('string')(
+    citekey.parsers.easykey = typed_args('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
             local terms = Values()
@@ -2670,21 +2745,22 @@ end
 --
 -- @caveats
 --
--- The citation key types 'key' and 'easykey' go before 'betterbibtexkey', for
--- while it is unlikely for the Zotero item ID parser or the Easy Citekey
+-- The citation key types 'key' and 'easykey' go before 'betterbibtexkey',
+-- for while it is unlikely for the Zotero item ID parser or the Easy Citekey
 -- parser to parse a Better BibTeX citation key, it is possible for the
 -- BetterBibTeX citation parser to parse a Zotero item ID and quite likely
 -- for it to parse an Easy Citekey -- and it would do it wrong.
 --
 -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
--- @tparam[opt] {string,...} types Types to try to parse the citation key as.
+-- @tparam {string,...} types Types to try to parse the citation key as.
 --  If @{citekey.parsers} contains no parser for a type, it is ignored.
 --  Order is significant.
 -- @treturn[1] {string,...} Search terms.
 -- @treturn[2] nil `nil` if no search terms could be derived.
 -- @treturn[2] string An error message.
+--
 -- @function citekey:guess_terms
-citekey.guess_terms = typed_func('table', 'string', 'table')(
+citekey.guess_terms = typed_args('table', 'string', 'table')(
     function (self, ckey, types)
         assert(ckey ~= '', 'citation key is the empty string.')
         assert(#types > 0, 'list of citation key types is empty.')
@@ -2704,7 +2780,7 @@ citekey.guess_terms = typed_func('table', 'string', 'table')(
 -- Bibliography files
 -- @section
 
---- An interface to bibliography files.
+--- An interface for reading, writing, and updating bibliography files.
 --
 -- @object biblio
 -- @proto @{Object}
@@ -2720,8 +2796,9 @@ biblio.types.bib = {}
 --
 -- @string str The contents of a BibLaTeX file.
 -- @treturn {{['id']=string},...} Key-value pairs.
+--
 -- @function biblio.types.bib.decode
-biblio.types.bib.decode = typed_func('string')(
+biblio.types.bib.decode = typed_args('string')(
     function (str)
         local ids = Values()
         for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do ids:add{id = id} end
@@ -2736,6 +2813,7 @@ biblio.types.bibtex = {}
 --
 -- @string str The contents of a BibTeX file.
 -- @treturn {{['id']=string},...} Key-value pairs.
+--
 -- @function biblio.types.bibtex.decode
 biblio.types.bibtex.decode = biblio.types.bib.decode
 
@@ -2746,6 +2824,7 @@ biblio.types.json = {}
 --
 -- @string str A CSL JSON file.
 -- @treturn {tab,...} CSL items.
+--
 -- @function biblio.types.json.decode
 biblio.types.json.decode = csl_json_to_items
 
@@ -2753,59 +2832,35 @@ biblio.types.json.decode = csl_json_to_items
 --
 -- @tparam {tab,...} items CSL items.
 -- @treturn string A CSL YAML string.
+--
 -- @function biblio.types.json.encode
 biblio.types.json.encode = json.encode
 
 --- De-/Encode CSL items in YAML.
 biblio.types.yaml = {}
 
-do
-    -- @fixme Undocumented.
-    -- @fixme This is a weird workaround.
-    -- @fixme Check what elem_type reports!
-    -- @fixme try to create something less insane.
-    -- does .content work instead of .c?
-    -- also factor this out
-    -- and some older versions of pandoc won't need this either.
-    -- local function elem_to_string (val)
-    --     if not elem_type(val) then return end
-    --     xwarn('@error', 'DEBUG: ', elem_type(val))
-    --     local words = Values()
-    --     for i = 1, #val do
-    --         local con = val[i].c
-    --         if con then words:add(con) end
-    --     end
-    --     return concat(words, ' ')
-    -- end
-
-    --- Parse a CSL YAML string.
-    --
-    -- @caveats Converts formatting to Markdown, not Zotero pseudo-HTML.
-    -- @string str A CSL YAML string.
-    -- @treturn {tab,...} CSL items.
-    -- @function biblio.types.yaml.decode
-    biblio.types.yaml.decode = typed_func('string')(
-        function (str)
-            local next_line = str:gmatch '(.-)\r?\n'
-            local ln = next_line(str, nil)
-            while ln and ln ~= '---' do ln = next_line(str, ln) end
-            if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
-            local doc = read(str, 'markdown')
-            if not doc.meta.references then return {} end
-            local refs = elem_walk(doc.meta.references,
-                                   {MetaInlines = markdownify})
-            -- :-/.
-            -- This used to break stuff for Pandoc <v2.14.
-            -- It stopped doing that. This is weird.
-            -- The test suite is probably too permissive.
-            -- if not pandoc.types or PANDOC_VERSION < {2, 14} then
-            --     refs = walk(refs, elem_to_string)
-            -- end
-            for i = 1, #refs do refs[i] = csl_item_normalise_vars(refs[i]) end
-            return refs
-        end
-    )
-end
+--- Parse a CSL YAML string.
+--
+-- @caveats Converts formatting to Markdown, not Zotero pseudo-HTML.
+--
+-- @string str A CSL YAML string.
+-- @treturn {tab,...} CSL items.
+--
+-- @function biblio.types.yaml.decode
+biblio.types.yaml.decode = typed_args('string')(
+    function (str)
+        local next_line = str:gmatch '(.-)\r?\n'
+        local ln = next_line(str, nil)
+        while ln and ln ~= '---' do ln = next_line(str, ln) end
+        if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
+        local doc = read(str, 'markdown')
+        if not doc.meta.references then return {} end
+        local refs = elem_walk(doc.meta.references,
+                                {MetaInlines = markdownify})
+        for i = 1, #refs do refs[i] = csl_item_normalise_vars(refs[i]) end
+        return refs
+    end
+)
 
 do
     -- Convert Zotero pseudo-HTML to Markdown in CSL fields.
@@ -2823,8 +2878,9 @@ do
     -- @tparam {tab,...} items CSL items.
     -- @treturn string A CSL YAML string.
     -- @raise See @{yamlify} and @{zotero_to_markdown}.
+    --
     -- @function biblio.types.yaml.encode
-    biblio.types.yaml.encode = typed_func('table')(
+    biblio.types.yaml.encode = typed_args('table')(
         function (items)
             sort(items, csl_items_sort)
             items = walk(items, to_markdown)
@@ -2838,16 +2894,17 @@ biblio.types.yml = biblio.types.yaml
 
 --- Read a bibliography file.
 --
--- The filename suffix determines the format the file is interpreted as.
--- @{biblio.types} must contain a decoder for that suffix.
+-- The filename suffix determines the file's format.
+-- @{biblio.types} must contain a matching decoder.
 --
 -- @string fname A filename.
 -- @treturn[1] tab CSL items.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number if the error is an I/O error.
+--
 -- @function biblio:read
-biblio.read = typed_func('table', 'string')(
+biblio.read = typed_args('table', 'string')(
     function (self, fname)
         assert(fname ~= '', 'filename is the empty string')
         local suffix = fname:match '%.(%w+)$'
@@ -2866,12 +2923,11 @@ biblio.read = typed_func('table', 'string')(
 
 --- Write bibliographic data to a bibliography file.
 --
--- The filename suffix determines the format that the data is written as.
--- @{biblio.types} must contain an encoder for that suffix.
---
--- Ends every file with @{EOL}.
+-- The filename suffix determines the file's format.
+-- @{biblio.types} must contain a matching encoder.
 --
 -- @caveats See @{file_write}.
+--
 -- @string fname A filename.
 -- @tab[opt] items CSL items. If none are given, tests
 --  whether the data can be written in the given format.
@@ -2879,8 +2935,9 @@ biblio.read = typed_func('table', 'string')(
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number if the error is an I/O error.
+--
 -- @function biblio:write
-biblio.write = typed_func('table', 'string', '?table')(
+biblio.write = typed_args('table', 'string', '?table')(
     function (self, fname, items)
         local ok, err, errno, ret, suffix, codec, encode
         assert(fname ~= '', 'filename is the empty string')
@@ -2903,6 +2960,7 @@ biblio.write = typed_func('table', 'string', '?table')(
 --
 -- @caveats See @{file_write}.
 -- @side May print error messages to STDERR.
+--
 -- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
 -- @string fname The name of the bibliography file.
 -- @tparam {string,...} ckeys The citation keys of the items to add
@@ -2912,10 +2970,11 @@ biblio.write = typed_func('table', 'string', '?table')(
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number if the error is a file I/O error.
 -- @raise See @{http_get}.
+--
 -- @function biblio:update
 -- @todo Move markup conversion to the YAML codec.
 -- @todo Use sets so that the loop gets simpler.
-biblio.update = typed_func('table', 'table', 'string', 'table')(
+biblio.update = typed_args('table', 'table', 'string', 'table')(
     function (self, handle, fname, ckeys)
         -- luacheck: no redefined
         assert(fname ~= '', 'filename is the empty string')
@@ -2966,9 +3025,10 @@ biblio.update = typed_func('table', 'table', 'string', 'table')(
 -- @tparam pandoc.AstElement elem A Pandoc AST element.
 -- @treturn pandoc.AstElement The clone.
 -- @fixme No unit test.
+--
 -- @function elem_clone
 if not pandoc.types or PANDOC_VERSION < {2, 15} then
-    elem_clone = typed_func('table')(
+    elem_clone = typed_args('table')(
         function (elem)
             if elem.clone then return elem:clone() end
             local copy = setmetatable({}, getmetatable(elem))
@@ -2977,7 +3037,7 @@ if not pandoc.types or PANDOC_VERSION < {2, 15} then
         end
     )
 else
-    elem_clone = typed_func('table|userdata')(
+    elem_clone = typed_args('table|userdata')(
         function (elem)
             if elem.clone then return elem:clone() end
             return Pandoc(elem.blocks:clone(), elem.meta:clone())
@@ -2993,6 +3053,8 @@ end
 -- @treturn[1] string 'AstElement'.
 -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
 -- @treturn[2] string An error message.
+--
+-- @function elem_type
 -- @fixme It's unclear whether this code ignores pandoc.Doc
 --        in favour of pandoc.Pandoc (as it should) in Pandoc <v2.15/2.14.
 if not pandoc.types or PANDOC_VERSION < {2, 15} then
@@ -3138,11 +3200,12 @@ do
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
-    -- @return Whatever you want.
+    -- @return Typically but not necessarily, a new Pandoc AST element.
+    --
     -- @todo Try to make the filter more similar to Pandoc's walkers,
     --  so that some of the documentation can be removed.
     -- @function elem_walk
-    elem_walk = typed_func('*', 'table', '?number')(
+    elem_walk = typed_args('*', 'table', '?number')(
         function (elem, filter, _rd)
             if not _rd then _rd = 0 end
             assert(_rd < 128, 'recursion limit exceeded.')
@@ -3172,10 +3235,12 @@ end
 -- Reads the `references` metadata field and every bibliography file.
 --
 -- @side May print error messages to STDERR.
+--
 -- @tparam pandoc.MetaMap meta A metadata block.
 -- @treturn pandoc.List CSL items.
+--
 -- @function meta_sources
-meta_sources = typed_func('table|userdata')(
+meta_sources = typed_args('table|userdata')(
     function (meta)
         local data = List()
         if not meta then return data end
@@ -3225,13 +3290,16 @@ do
     end
 
     --- Collect the citation keys used in a document.
+    --
     -- @side May print error messages to STDERR.
+    --
     -- @tparam pandoc.Pandoc doc A document.
     -- @bool[opt] undef Collect only undefind citation keys?
     -- @treturn {string,...} Citation keys.
     -- @treturn int The number of citation keys found.
+    --
     -- @function doc_ckeys
-    doc_ckeys = typed_func('table|userdata', '?boolean')(
+    doc_ckeys = typed_args('table|userdata', '?boolean')(
         function (doc, undef)
             local meta = doc.meta
             local blocks = doc.blocks
@@ -3349,9 +3417,7 @@ do
     -- @{Setting:get} is that name with underscores replaced by dashes.
     --
     -- Settings may have prefixes. If so, the setting name is prefixed with
-    -- that prefix *and* '-' before being translated into a fieldname.
-    --
-    -- In Lua:
+    -- that prefix *and* '-' before being translated into a fieldname. In Lua:
     --
     --    if prefix and prefix ~= '' then name = prefix .. '-' .. name end
     --    fieldname = name:gsub('_', '-')
@@ -3361,16 +3427,15 @@ do
     -- Configuration values can be of one of three types: 'number', 'string',
     -- or 'list'.
     --
-    -- The scalar types 'number' and 'string' declare that a
-    -- value must be of (and should be coerced to) the Lua type of the same
-    -- name.
+    -- The scalar types 'number' and 'string' declare that a value must be of
+    -- (and should be coerced to) the Lua type of the same name.
     --
     -- The type 'list' declares that a value must be a `pandoc.List`. All
-    -- items in a list must be of the same type. Declare that type by
+    -- items in a list must be of the same type, which you declare by
     -- appending '<*T*>' to a 'list', where *T* is either the name of a
-    -- scalar type or 'list'. If you do not declare that type, it defaults
-    -- to 'string'. If a scalar value is encountered, but a list is expected,
-    -- the scalar value is put into a single-item list.
+    -- scalar type or 'list<...>'. If you do not declare that type, it
+    -- defaults to 'string'. If a scalar value is encountered, but a list
+    -- is expected, the scalar value is put into a single-item list.
     --
     -- Prefix a type with '?' to declare that a setting is optional.
     --
@@ -3400,6 +3465,7 @@ do
     -- @string[opt='?string'] type A type to coerce the setting's value to.
     -- @func[opt] check A function that checks the setting's value.
     -- @string[opt] prefix A prefix.
+    --
     -- @usage
     -- setting = Setting:new{
     --     name = 'bar',
@@ -3409,9 +3475,10 @@ do
     --         return nil, 'not a positive number.'
     --     end
     -- }
+    --
     -- @see Setting:get
     -- @const Setting:new
-    Setting.new = typed_const{
+    Setting.new = typed_keyword_args{
         name = 'string',
         type = '?string',
         check = '?function',
@@ -3442,8 +3509,10 @@ do
     --
     -- @tparam pandoc.MetaMap meta A metadata block.
     -- @return[1] The value of the setting.
-    -- @treturn[2] nil `nil` if the setting is optional and was not given.
-    -- @raise An error if the setting is misconfigured.
+    -- @treturn[2] nil `nil` if the settings was not given.
+    -- @raise An error if the setting is missing,
+    --  of the wrong type, or invalid.
+    --
     -- @usage
     -- > setting = Setting:new{
     -- >    prefix = 'foo',
@@ -3459,9 +3528,10 @@ do
     -- 123
     -- > type(bar)
     -- number
+    --
     -- @see Setting:new
     -- @function Setting:get
-    Setting.get = typed_func('table', 'table')(
+    Setting.get = typed_args('table', 'table')(
         function (self, meta)
             local name = self.name
             if self.prefix then name = self.prefix .. '-' .. name end
@@ -3486,15 +3556,6 @@ do
     )
 end
 
---- A setting template with the prefix 'zotero'.
---
--- @object ZotSetting
--- @proto Setting
-ZotSetting = Setting()
-
---- Set to 'zotero'.
-ZotSetting.prefix = 'zotero'
-
 --- A configuration parser.
 --
 -- @see Settings:add
@@ -3507,18 +3568,20 @@ Settings = Object()
 --
 -- @tparam Setting ... Settings.
 -- @see Settings:parse
+--
 -- @usage
 -- settings = Settings()
--- settings:add{
+-- settings:add(Setting:new{
 --     name = 'bar',
 --     type = '?number',
 --     check = function (x)
 --         if x > 0 return true end
 --         return nil, 'not a positive number.'
 --     end
--- }
+-- })
+--
 -- @function Settings:add
-Settings.add = typed_func('table', '...')(
+Settings.add = typed_args('table', '...')(
     function (self, ...)
         local settings = pack(...)
         for i = 1, settings.n do
@@ -3536,16 +3599,17 @@ Settings.add = typed_func('table', '...')(
 --
 -- @tparam pandoc.MetaMap meta A metadata block.
 -- @treturn tab A mapping of setting names to values.
+--
 -- @usage
 -- > settings = Settings()
--- > settings:add{
+-- > settings:add(Setting:new{
 -- >     name = 'bar',
 -- >     type = '?number',
 -- >     check = function (x)
 -- >         if x > 0 return true end
 -- >         return nil, 'not a positive number.'
 -- >     end
--- > }
+-- > })
 -- > meta = pandoc.MetaMap{
 -- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
 -- >         pandoc.Str "0123"
@@ -3555,9 +3619,10 @@ Settings.add = typed_func('table', '...')(
 -- 123
 -- > type(conf.bar)
 -- number
+--
 -- @see Settings:add
 -- @function Settings:parse
-Settings.parse = typed_func('table', 'table|userdata')(
+Settings.parse = typed_args('table', 'table|userdata')(
     function (self, meta)
         local conf = {}
         if meta then
@@ -3568,6 +3633,15 @@ Settings.parse = typed_func('table', 'table|userdata')(
         return conf
     end
 )
+
+--- A configuration setting prototype with the prefix 'zotero'.
+--
+-- @object ZotSetting
+-- @proto Setting
+ZotSetting = Setting()
+
+--- Set to 'zotero'.
+ZotSetting.prefix = 'zotero'
 
 
 --------------------
@@ -3582,6 +3656,7 @@ connectors = setmetatable({}, ignore_case)
 -- @usage
 -- handle = connectors.Zotxt()
 -- item = handle:fetch 'DoeWord2020'
+--
 -- @object connectors.Zotxt
 -- @proto @{Object}
 connectors.Zotxt = Object()
@@ -3625,8 +3700,9 @@ do
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See @{http_get}.
+    --
     -- @function connectors.Zotxt:fetch
-    connectors.Zotxt.fetch = typed_func('table', 'string')(
+    connectors.Zotxt.fetch = typed_args('table', 'string')(
         function (self, ckey)
             local ckey_types = self.citekey_types
             local err = nil
@@ -3682,9 +3758,10 @@ end
 -- @treturn[2] nil `nil` if a configuration setting is missing.
 -- @treturn[2] string An error message.
 -- @raise An error if the configuration cannot be parsed.
+--
 -- @function connectors.Zotxt:configure
 -- @see connectors.Zotxt.settings
-connectors.Zotxt.configure = typed_func('table', 'table|userdata')(
+connectors.Zotxt.configure = typed_args('table', 'table|userdata')(
     function (self, meta)
         for k, v in pairs(self.settings:parse(meta)) do self[k] = v end
         return true
@@ -3697,9 +3774,11 @@ connectors.Zotxt.configure = typed_func('table', 'table|userdata')(
 -- @number[opt] user_id A Zotero user ID.
 -- @tparam[opt] {number,...} groups Zotero groups to search in.
 -- @tparam[opt] {number,...} public_groups Public Zotero groups to search in.
+--
 -- @usage
 -- handle = connectors.ZotWeb{api_key = 'lettersandnumbers'}
 -- item = handle:fetch 'DoeWord2020'
+--
 -- @object connectors.ZotWeb
 -- @proto @{connectors.Zotxt}
 connectors.ZotWeb = connectors.Zotxt()
@@ -3809,6 +3888,8 @@ do
     connectors.ZotWeb.mt.__call = delegate_with_getters
 
     --- Getters for Zotero Web API connectors.
+    --
+    -- @see getterify
     connectors.ZotWeb.mt.getters = {}
 
     --- Get the user ID for the given API key.
@@ -3824,7 +3905,7 @@ do
     --  * no user ID could be found for the given Zotero API key.
     --
     -- @function connectors.ZotWeb.mt.getters.user_id
-    connectors.ZotWeb.mt.getters.user_id = typed_func('table')(
+    connectors.ZotWeb.mt.getters.user_id = typed_args('table')(
         function (obj)
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(user_id_url, obj)
@@ -3859,7 +3940,7 @@ do
     --  * the API's response cannot be parsed.
     --
     -- @function connectors.ZotWeb.mt.getters.groups
-    connectors.ZotWeb.mt.getters.groups = typed_func('table')(
+    connectors.ZotWeb.mt.getters.groups = typed_args('table')(
         function (obj)
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(groups_url, obj)
@@ -3887,8 +3968,9 @@ do
     --
     -- @string[opt] id A Zotero item ID.
     -- @treturn func A *stateful* iterator.
+    --
     -- @function connectors.ZotWeb:endpoints
-    connectors.ZotWeb.endpoints = typed_func('table', '?string')(
+    connectors.ZotWeb.endpoints = typed_args('table', '?string')(
         function (self, id)
             if id then assert(zotero_is_id(id))
                   else id = ''
@@ -3930,6 +4012,7 @@ do
     --- Search items by their author, publication year, and title.
     --
     -- @caveats Does *not* correct Zotero's CSL JSON export.
+    --
     -- @string ... Search terms.
     -- @treturn[1] tab CSL items that match the given search terms.
     -- @treturn[2] nil `nil` if no items were found or an error occurred.
@@ -3937,8 +4020,9 @@ do
     -- @treturn[2] An error message.
     -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
     --  @{connectors.ZotWeb.mt.getters.groups}.
+    --
     -- @function connectors.ZotWeb:search
-    connectors.ZotWeb.search = typed_func('table', 'string', '?string', '...')(
+    connectors.ZotWeb.search = typed_args('table', 'string', '?string', '...')(
         function (self, ...)
             local q = concat({...}, '+')
             local params = {v = 3, key = self.api_key,
@@ -3965,8 +4049,9 @@ do
     -- @treturn[2] string An error message.
     -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
     --  @{connectors.ZotWeb.mt.getters.groups}.
+    --
     -- @function connectors.ZotWeb:lookup
-    connectors.ZotWeb.lookup = typed_func('table', 'string')(
+    connectors.ZotWeb.lookup = typed_args('table', 'string')(
         function (self, id)
             assert(zotero_is_id(id))
             local params = {v = 3, key = self.api_key,
@@ -3995,16 +4080,20 @@ do
 
     --- Fetch a CSL item from Zotero.
     --
-    -- @side Search terms for citation keys are printed to STDERR
-    --  if the user has requested verbose output.
+    -- @side
+    --
+    -- Search terms for citation keys are printed to STDERR
+    -- if the user has requested verbose output.
+    --
     -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
     --  @{connectors.ZotWeb.mt.getters.groups}.
+    --
     -- @function connectors.ZotWeb:fetch
-    connectors.ZotWeb.fetch = typed_func('table', 'string')(
+    connectors.ZotWeb.fetch = typed_args('table', 'string')(
         function (self, ckey)
             -- luacheck: ignore err
             assert(ckey ~= '', 'citation key is the empty string.')
@@ -4041,8 +4130,9 @@ do
     -- @treturn[2] nil `nil` if a configuration setting is missing.
     -- @treturn[2] string An error message.
     -- @raise An error if the configuration cannot be parsed.
+    --
     -- @function connectors.ZotWeb:configure
-    connectors.ZotWeb.configure = typed_func('table', 'table|userdata')(
+    connectors.ZotWeb.configure = typed_args('table', 'table|userdata')(
         function (self, meta)
             local ok, err = connectors.Zotxt.configure(self, meta)
             if not ok then return nil, err end
@@ -4062,10 +4152,10 @@ end
 
 --- Add data to a bibliography file and the file to the document's metadata.
 --
--- Updates the given bibliography file as needed and adds its to the
--- `bibliography` metadata field. Interpretes relative filenames as relative
--- to the directory of the first input file passed to **pandoc**, or, if no
--- input files were given, as relative to the current working directory.
+-- Updates the bibliography file as needed and adds its to the `bibliography`
+-- metadata field. Interpretes relative filenames as relative to the directory
+-- of the first input file passed to **pandoc**, or, if no input files were
+-- given, as relative to the current working directory.
 --
 -- @caveats @{file_write}.
 -- @side May print error messages to STDERR.
@@ -4077,8 +4167,9 @@ end
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
 -- @raise See @{connectors.Zotxt} and @{connectors.ZotWeb}.
+--
 -- @function add_biblio
-add_biblio = typed_func('string', 'table', 'table|userdata')(
+add_biblio = typed_args('string', 'table', 'table|userdata')(
     function (fname, handle, doc)
         local ckeys = doc_ckeys(doc, true)
         if #ckeys == 0 then return end
@@ -4100,14 +4191,16 @@ add_biblio = typed_func('string', 'table', 'table|userdata')(
 --- Add bibliographic data to the `references` metadata field.
 --
 -- @side May print error messages to STDERR.
+--
 -- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] table An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
 -- @raise See @{connectors.Zotxt} and @{connectors.ZotWeb}.
+--
 -- @function add_refs
-add_refs = typed_func('table', 'table|userdata')(
+add_refs = typed_args('table', 'table|userdata')(
     function (handle, doc)
         local ckeys = doc_ckeys(doc, true)
         local meta = doc.meta
@@ -4153,11 +4246,12 @@ do
         }
     )
 
-    --- Collect citations and add bibliographic data to a document.
+    --- Collect citations and add bibliographic data to the document.
     --
     -- See the manual for details.
     --
     -- @side May print error messages to STDERR.
+    --
     -- @tparam pandoc.Pandoc doc A document.
     -- @treturn[1] pandoc.Pandoc The document with bibliographic data added.
     -- @treturn[2] nil `nil` if nothing was done or an error occurred.
