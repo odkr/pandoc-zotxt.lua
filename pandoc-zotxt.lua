@@ -533,6 +533,7 @@ typed_keyword_args = typed_args('table')(
         end
     end
 )
+
 if not DEBUG then typed_keyword_args = typed_args end
 
 
