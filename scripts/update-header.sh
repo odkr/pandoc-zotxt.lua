@@ -114,7 +114,7 @@ then
 
 	filter_name="$(basename "$filter")" && [ "$filter_name" ] ||
 		panic '%s: failed to determine basename.' "$filter"
-	manpage="$repo/man/man1/$filter_name.md"
+	manpage="$repo/man/man1/$filter_name.rst"
 fi
 
 for file in "$filter" "$manpage"
@@ -146,12 +146,11 @@ readonly TMP_FILE
 
 exec >>"$TMP_FILE"
 printf -- '---\n'
-pandoc --from markdown-smart --to "$script_dir/ldoc-md.lua" "$manpage" |
-fold -sw 76                                                            |
-perl -ne '$p = 1 if /^SYNOPSIS$/; print "-- $_" if $p;'                |
+pandoc --from rst --to "$script_dir/ldoc-md.lua" "$manpage"           |
+perl -ne '$do_print = 1 if /^SYNOPSIS$/; print "-- $_" if $do_print;' |
 sed 's/ *$//'
 printf -- '--\n'
-perl -ne '$p = 1 if /^-- *@/; print if $p; ' <"$filter"
+perl -ne '$do_print = 1 if /^-- *@/; print if $do_print; ' <"$filter"
 
 mv "$filter" "$filter.bak" &&
 mv "$TMP_FILE" "$filter"

@@ -7,12 +7,16 @@
 -- @copyright 2021 Odin Kroeger
 -- @license MIT
 
+-- luacheck: allow defined top
+
 local len = string.len
 local rep = string.rep
 local format = string.format
 
 -- luacheck: ignore pandoc
 local stringify = pandoc.utils.stringify
+
+local WRAP = 76
 
 
 -- FUNCTIONS
@@ -26,13 +30,55 @@ local stringify = pandoc.utils.stringify
 -- @param ... Arguments to that message (think `string.format`).
 --  Only applied if `msg` is a `string`.
 -- @within Warnings
-local function errf (msg, ...)
-    io.stderr:write('ldoc-md.lua: ', msg:format(...), '\n')
+local function warn (...)
+    -- luacheck: ignore PANDOC_SCRIPT_FILE
+    io.stderr:write(PANDOC_SCRIPT_FILE, ': ', ...)
+    io.stderr:write('\n')
+end
+
+local function indent (str, n)
+    local ind = {}
+    local sp = string.rep(' ', n)
+    local i = 0
+    for line in str:gmatch '[^\n]*' do
+        i = i + 1
+        ind[i] = sp .. line .. '\n'
+    end
+    return table.concat(ind)
+end
+
+local function reflow (str, n)
+    local lines = {}
+    local i = 0
+    local function add (ln)
+        i = i + 1
+        lines[i] = ln
+    end
+    for line in str:gmatch '[^\n]*' do
+        local ind, pos, rem = line:match '^(%s*)()(.*)'
+        local wrap = n - (pos or 1) + 1
+        while len(rem) > wrap do
+            local ln = rem:sub(1, wrap)
+            local eol, sol = ln:match '()%s+()%S*$'
+            if not eol then
+                add(ind .. ln)
+                rem = rem:sub(wrap + 1)
+            else
+                add(ind .. rem:sub(1, eol - 1))
+                rem = rem:sub(sol)
+            end
+        end
+        if not rem:match '^%s*$'
+            then add(ind .. rem)
+            else add('')
+        end
+    end
+    return table.concat(lines, '\n'):gsub('\n*(\n\n)', '%1')
 end
 
 -- Report if a format is unsupported.
 setmetatable(_G, {__index = function (_, key)
-    errf('%s: unsupported format.', key)
+    warn(key, ': unsupported format.')
     return function () return '' end
 end})
 
@@ -61,12 +107,7 @@ end
 
 -- luacheck: ignore CodeBlock
 function CodeBlock (s, _)
-    local ret = ''
-    for ln in s:gmatch '([^\n]+)' do
-        ret = ret .. '    ' .. ln .. '\n'
-    end
-
-    return ret
+    return indent(s, 4)
 end
 
 -- luacheck: ignore DefinitionList
@@ -74,18 +115,27 @@ function DefinitionList (t)
     local s = ''
     for _, ds in ipairs(t) do
         for k, vs in pairs(ds) do
-            s = s .. '<h3>' .. k .. '</h3>' .. Blocksep()
+            s = s .. format('* **%s**', k)
+            local i = 1
             for _, v in pairs(vs) do
-                s = s .. v .. Blocksep()
+                if v ~= '' then
+                    v = indent(v, 2)
+                    if i == 1 then s = s .. ': ' .. v:gsub('^%s+', '')
+                              else s = s .. v
+                    end
+                    s = s .. '\n'
+                    i = i + 1
+                end
             end
         end
+        s = s .. '\n'
     end
     return s
 end
 
 -- luacheck: ignore Doc
 function Doc (s, _, _)
-    return s
+    return reflow(s, WRAP)
 end
 
 -- luacheck: ignore DoubleQuoted
@@ -121,7 +171,7 @@ function Header (level, s, _)
         end
         return '\n' .. s .. '\n' .. rep(c, len(s))
     else
-        errf 'LDoc only supports Setext-style headers.'
+        warn 'LDoc only supports Setext-style headers.'
         return '\n' .. s
     end
 end
@@ -134,10 +184,14 @@ end
 -- luacheck: ignore Plain
 Plain = stringify
 
--- This is so that the output can be wrapped with `fold` or `fmt`.
 -- luacheck: ignore SoftBreak
 function SoftBreak ()
     return ' '
+end
+
+-- luacheck: ignore Span
+function Span (s)
+    return s
 end
 
 -- luacheck: ignore Space

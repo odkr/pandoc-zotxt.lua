@@ -92,28 +92,35 @@ file, so that it will be regenerated from scratch.
 CITATION KEY TYPES
 ==================
 
-You can use citation keys of multitple types, namely:
+You can use citation keys of multitple types:
 
-- Better BibTeX citation keys (e.g., "DoeTitle2020"),
-- Easy Citekeys (e.g., "doe:2020title"), and
-- Zotero item IDs (e.g., "A1B2C3D4").
+=================== ========================== =============
+**Name**            **Type**                   **Example**
+=================== ========================== =============
+``betterbibtexkey`` Better BibTeX citation key DoeTitle2020
+``easykey``         Easy Citekey               doe:2020title
+``key``             Zotero item ID             A1BC23D4
+=================== ========================== =============
 
 However, Better BibTeX citation keys are sometimes, if rarely, misinterpreted
 as Easy Citekeys and still match an item, though *not* the one that they are
 the citation key of.
 
-If this happens, disable citation key types you do not use by listing
-those you do use in the "zotero-citekey-types" metadata field.
+If this happens, disable Easy Citekeys by only listing BetterBibTeX citation
+keys and, if you use them, Zotero item IDs in the "zotero-citekey-types"
+metadata field:
 
-You can set the following citation key types:
+.. code:: sh
 
-=================== ==========================
-**Key**             **Type**
-=================== ==========================
-``betterbibtexkey`` Better BibTeX citation key
-``easykey``         Easy Citekey
-``key``             Zotero item ID
-=================== ==========================
+   pandoc -L pandoc-zotxt.lua -C <<EOF
+   ---
+   zotero-citekey-types:
+       - betterbibtexkey
+       - key
+   ...
+   Now, @DoeTitle is guaranteed to be treated as a BetterBibTeX citation key.
+   EOF
+
 
 SETTINGS
 ========
@@ -188,7 +195,7 @@ Add bibliographic data to the file "bibliography.json":
    See @DoeTitle2020 for details.
    EOF
 
-Interpret "doe:2020Title" as a Better BibTeX citation key:
+Interpret "doe:2020title" as a Better BibTeX citation key:
 
 .. code:: sh
 
@@ -196,7 +203,7 @@ Interpret "doe:2020Title" as a Better BibTeX citation key:
    ---
    zotero-citekey-types: betterbibtexkey
    ...
-   See @doe:2020Title for details.
+   See @doe:2020title for details.
    EOF
 
 Fetch data from the Zotero Web API, too:
