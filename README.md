@@ -49,7 +49,7 @@ into a Bourne-compatible shell:
 ```
 
 If you want to use the manual page that ships with this release, add
-`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b4/man`
+`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b4/man`
 to your `MANPATH`.
 
 
