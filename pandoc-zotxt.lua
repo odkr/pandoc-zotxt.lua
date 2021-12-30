@@ -106,12 +106,9 @@
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
---     zotero-citekey-types:
---         - betterbibtexkey
---         - key
+--     zotero-citekey-types: betterbibtexkey
 --     ...
---     Now, @DoeTitle is guaranteed to be treated as a BetterBibTeX citation
---     key.
+--     Forces @DoeTitle to be treated as a BetterBibTeX citation key.
 --     EOF
 --
 -- SETTINGS
@@ -120,22 +117,22 @@
 -- You configure how bibligraphic data is fetched by setting the following
 -- metadata fields:
 --
--- * **zotero-api-key**: A Zotero API key. Needed to access your personal
+-- * `zotero-api-key`: A Zotero API key. Needed to access your personal
 -- library via the Zotero Web API, but not needed to access public groups.
 --
--- * **zotero-bibliography**: A bibliography filename. Fetched bibliographic
+-- * `zotero-bibliography`: A bibliography filename. Fetched bibliographic
 -- data is added to this file. (See "BIBLIOGRAPHY FILES" above for details.)
 --
--- * **zotero-citekey-types**: A list of citation key types. Citation keys are
+-- * `zotero-citekey-types`: A list of citation key types. Citation keys are
 -- treated as being of any of the listed types only. (See "CITATION KEY TYPES"
 -- above for details.)
 --
--- * **zotero-connectors**: One or more Zotero connectors:
+-- * `zotero-connectors`: One or more Zotero connectors:
 --
---   | **Key** | **Connect to**        |
---   | ------- | --------------------- |
---   | zotxt   | Zotero desktop client |
---   | zotweb  | Zotero Web API        |
+--   | *Key*  | *Connect to*          |
+--   | ------ | --------------------- |
+--   | zotxt  | Zotero desktop client |
+--   | zotweb | Zotero Web API        |
 --
 --   Data is fetched via the listed connectors only.
 --
@@ -143,14 +140,14 @@
 --   a Zotero API key and the client could not be reached or some citations
 --   not be found, the Zotero Web API is searched next.
 --
--- * **zotero-groups**: A list of Zotero group IDs. Only the listed groups are
+-- * `zotero-groups`: A list of Zotero group IDs. Only the listed groups are
 -- searched. By default, all groups that you are a member of are searched.
 --
--- * **zotero-public-groups**: A list of Zotero group IDs. Listed groups are
+-- * `zotero-public-groups`: A list of Zotero group IDs. Listed groups are
 -- searched in addition to the groups that you are a member of, if any. These
 -- groups must be public. (See "Zotero Web API" above for details.)
 --
--- * **zotero-user-id**: A Zotero user ID. Needed to fetch data via the Zotero
+-- * `zotero-user-id`: A Zotero user ID. Needed to fetch data via the Zotero
 -- Web API, but looked up automatically if not given.
 --
 -- If a metadata field takes a list of values, but you only want to give one,
@@ -398,9 +395,9 @@ local Pandoc = pandoc.Pandoc
 -- <h3>Type declaration grammar:</h3>
 --
 -- Give one or more Lua type names separated by '|' to declare that the given
--- value may be of any of those types (e.g., `'string|table'`). Use `'*'` to
--- declare that the value may be of any type oter than `nil`. `'?T'` is short
--- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`). `'?*'` is
+-- value may be of any of those types (e.g., `'string|table'`). Use '`*`' to
+-- declare that the value may be of any type oter than `nil`. '`?T`' is short
+-- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`). '`?*`' is
 -- a special case; it signifies that the value may be of any type, even `nil`.
 --
 -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
@@ -415,7 +412,7 @@ local Pandoc = pandoc.Pandoc
 -- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
 --
 -- @param val A value.
--- @string decl A type declaration.
+-- @string decl A type declaration (e.g., `'?number|string'`).
 -- @treturn[1] bool `true` if the value is of the declared type(s).
 -- @treturn[2] nil `nil` otherwise.
 -- @treturn[2] string An error message.
@@ -437,8 +434,8 @@ end
 -- <h3>Type declaration grammar:</h3>
 --
 -- The type declaration syntax is that of @{type_match}, save for that
--- you can use `'...'` to declare that an argument is of the same type
--- as the previous one; if `'...'` is the last type declaration, then
+-- you can use '`...`' to declare that an argument is of the same type
+-- as the previous one; if '`...`' is the last type declaration, then
 -- the previous type declaration applies to all remaning arguments.
 --
 -- @caveats Wrong type names do *not* raise an error on declaration.
@@ -496,8 +493,8 @@ end
 --
 -- @caveats Wrong type names do *not* raise an error on declaration.
 --
--- @tparam {string=string,...} types A mapping of parameter names to
---  type declarations. See @{type_match} for the type declaration syntax.
+-- @tparam {string=string,...} types A mapping of keywords
+--  to [type declarations](#type_match).
 -- @treturn func A function that adds type checks to a function.
 --
 -- @usage
@@ -534,7 +531,9 @@ typed_keyword_args = typed_args('table')(
     end
 )
 
-if not DEBUG then typed_keyword_args = typed_args end
+function typed_keyword_args ()
+    return function (...) return ... end
+end
 
 
 -----------
@@ -668,6 +667,17 @@ local json = require 'lunajson'
 -- @treturn[1] table A mapping of variable names to values.
 -- @treturn[2] nil `nil` if there is no function at that level of the stack.
 -- @treturn[2] string An error message.
+--
+-- @usage
+-- > function bar ()
+-- >     print(get_vars(3)['foo'])
+-- > end
+-- > function foo ()
+-- >     foo = 'foo'
+-- >     bar()
+-- > end
+-- > foo()
+-- foo
 --
 -- @function vars_get
 vars_get = typed_args('?number')(
@@ -879,24 +889,24 @@ tabulate = typed_args('function')(
 --
 -- A node is only changed if the function does *not* return `nil`.
 --
--- @param graph A graph.
+-- @param val A value.
 -- @func func A function.
 -- @return The transformed graph.
 --
 -- @function walk
 walk = typed_args('*', 'function', '?table')(
-    function (graph, func, _seen)
-        if type(graph) ~= 'table' then
-            local ret = func(graph)
-            if ret == nil then return graph end
+    function (val, func, _seen)
+        if type(val) ~= 'table' then
+            local ret = func(val)
+            if ret == nil then return val end
             return ret
         end
-        if     not _seen    then _seen = {}
-        elseif _seen[graph] then return _seen[graph]
+        if     not _seen  then _seen = {}
+        elseif _seen[val] then return _seen[val]
         end
         local ret = {}
-        _seen[graph] = ret
-        for k, v in pairs(graph) do
+        _seen[val] = ret
+        for k, v in pairs(val) do
             if type(v) == 'table' then v = walk(v, func, _seen) end
             local new = func(v)
             if new == nil then ret[k] = v
@@ -1285,7 +1295,7 @@ getterify = typed_args('table')(
 --
 -- @tab proto A prototype.
 -- @tab[opt] tab A table.
--- @treturn Object A getterified object.
+-- @treturn Object A getterified table.
 --
 -- @see getterify
 -- @function delegate_with_getters
@@ -1749,7 +1759,7 @@ end
 --  of the temporary file with. See @{tmp_fname}.
 -- @string[opt] templ A template for the name
 --  of the temporary file. See @{tmp_fname}.
--- @return The values the function returns.
+-- @return The values returned by the function.
 --
 -- @function with_tmp_file
 with_tmp_file = typed_args('function', '?string', '?string')(
@@ -1797,6 +1807,10 @@ http_get = typed_args('string')(
 -- @treturn string The MIME type of the HTTP content.
 -- @treturn string The HTTP content itself.
 -- @raise See @{http_get}.
+--
+-- @usage
+-- > -- Query <https://site.example?foo=1&bar=2>.
+-- mt, con = url_query('https://site.example', {foo = 1, bar = 2})
 --
 -- @function url_query
 url_query = typed_args('string', '?table')(
@@ -1859,6 +1873,10 @@ do
     --
     -- @string str Non-markdown text.
     -- @treturn string Text with markdown syntax escaped.
+    --
+    -- @usage
+    -- > escape_markdown '*text*'
+    -- \*text*
     --
     -- @function escape_markdown
     escape_markdown = typed_args('string')(
@@ -2574,6 +2592,10 @@ csl_items_sort = typed_args('table', 'table')(
 -- @treturn[2] nil `nil` if the string is not a CSL variable name.
 -- @treturn[2] string An error message.
 --
+-- @usage
+-- > csl_varname_normalise 'Original date'
+-- original-date
+--
 -- @function csl_varname_normalise
 csl_varname_normalise = typed_args('string')(
     function (var)
@@ -2696,7 +2718,7 @@ do
     --
     -- @caveats Easy Citekeys must be encoded in UTF-8.
     --
-    -- @string ckey A zotxt Easy Citekey (e.g., `'doe2020:word'`).
+    -- @string ckey A zotxt Easy Citekey (e.g., `'doe:2020word'`).
     -- @treturn[1] {string,...} Search terms.
     -- @treturn[2] nil `nil` if no search terms could be derived.
     -- @treturn[2] string An error message.
@@ -2959,7 +2981,7 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
 -- @string fname The name of the bibliography file.
 -- @tparam {string,...} ckeys The citation keys of the items to add
---  (e.g., `{'doe:2020word', 'DoeWord2020'}`).
+--  (e.g., `{'doe:2020word'}`).
 -- @treturn[1] bool `true` if the file was updated or no update was required.
 -- @treturn[2] nil `nil` if an error occurrs.
 -- @treturn[2] string An error message.
