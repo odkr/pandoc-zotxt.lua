@@ -114,11 +114,9 @@ metadata field:
 
    pandoc -L pandoc-zotxt.lua -C <<EOF
    ---
-   zotero-citekey-types:
-       - betterbibtexkey
-       - key
+   zotero-citekey-types: betterbibtexkey
    ...
-   Now, @DoeTitle is guaranteed to be treated as a BetterBibTeX citation key.
+   Forces @DoeTitle to be treated as a BetterBibTeX citation key.
    EOF
 
 
@@ -145,7 +143,7 @@ zotero-connectors
    One or more Zotero connectors:
 
    ======= =====================
-   **Key** **Connect to**
+   *Key*   *Connect to*
    ======= =====================
    zotxt   Zotero desktop client
    zotweb  Zotero Web API
