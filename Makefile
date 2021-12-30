@@ -31,7 +31,6 @@ PANDOC_FMTS	:= -f markdown -t html
 PANDOC_VERS	:= $(shell $(PANDOC) -L $(TEST_SCPT_DIR)/print-vers.lua \
 		                     $(PANDOC_FMTS) /dev/null)
 
-
 # TARGETS
 # =======
 
@@ -70,7 +69,7 @@ linter:
 
 unit-tests: tmpdir
 	@[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
-	@printf 'Running unit tests ...\n'
+	@printf 'Running unit tests ...\n' >&2
 	@"$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
 	             -L "$(TEST_SCPT_DIR)/unit-tests.lua" /dev/null
 
@@ -163,23 +162,24 @@ $(ZOTWEB_TESTS): tmpdir
 	done
 
 %.1: %.rst
-	$(PANDOC) \
-	    -f rst -t man -s -o $@ \
-	    -M $(notdir $*) -M section=1 -M date="$$(date '+%B %d, %Y')" \
+	$(PANDOC) -f rst -t man -s -o $@ \
+	    -M name=$(notdir $*) \
+	    -M section=1 \
+	    -M date="$$(date '+%B %d, %Y')" \
 	    $*.rst
 
 %.1.gz: %.1
 	gzip --force $<
 
-header:
-	scripts/header-add-man -f pandoc-zotxt.lua
+%.lua: man/man1/%.lua.rst
+	scripts/header-add-man -f $@ 
 
-ldoc: header
+docs/index.html: pandoc-zotxt.lua 
 	ldoc -c ldoc/config.ld .
 
-docs: header ldoc man/man1/pandoc-zotxt.lua.1.gz
+docs: pandoc-zotxt.lua docs/index.html man/man1/pandoc-zotxt.lua.1.gz
 
 all: test docs
 
-.PHONY: all docs header ldoc linter unit-tests test tmpdir \
+.PHONY: all docs linter unit-tests test tmpdir \
         $(COMMON_TESTS) $(ZOTXT_TESTS) $(ZOTWEB_TESTS)
