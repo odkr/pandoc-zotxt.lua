@@ -116,8 +116,8 @@ $(ZOTXT_TESTS): tmpdir
 	    	                -M zotero-connectors="$$CONN" \
 	    	                -M zotero-api-key="$(ZOTERO_API_KEY)" \
 	    	                -L "$(SCRIPT)" -F pandoc-citeproc \
-	    	                "$(TEST_DATA_DIR)/$@.md"; \
-	    	    cmp "$(TMP_DIR)/zotxt/$@.html" \
+	    	                "$(TEST_DATA_DIR)/zotxt/$@.md"; \
+	    	    cmp "$(TMP_DIR)/$@.html" \
 	    	        "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
 	    	else \
 	    	    $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \

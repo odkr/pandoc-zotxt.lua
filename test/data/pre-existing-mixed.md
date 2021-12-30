@@ -1,9 +1,11 @@
 ---
 bibliography: test/data/bibliography.yaml
 references:
-    - type: paper
+    - type: article-journal
       id: dotson2011
-      author: Kristie Dotson
+      author:
+          - family: Dotson
+            given: Kristie
       issued:
           date-parts:
               - - 2011

@@ -65,12 +65,11 @@ and the [source code](pandoc-zotxt.lua) itself for details.
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [GNU Make](https://www.gnu.org/software/make/).
-3. The [Bash](https://www.gnu.org/software/bash/).
-4. [Pandoc](https://www.pandoc.org/) v2.11.4 or later.
+2. [Pandoc](https://www.pandoc.org/) v2.10 to v2.16.
+3. [GNU Make](https://www.gnu.org/software/make/).
 
-Note, that the test suite requires Pandoc v2.11.4 or later does *not* mean
-that **pandoc-zotxt.lua** will not work with earlier versions of Pandoc.
+Note, that the test suite requires Pandoc v2.10 to v2.16 does *not* mean
+that **pandoc-zotxt.lua** works only with those versions of Pandoc.
 
 
 ### Running the tests

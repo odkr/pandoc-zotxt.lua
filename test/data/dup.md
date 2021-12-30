@@ -1,6 +1,6 @@
 ---
 references:
-    - type: paper
+    - type: article-journal
       id: crenshaw1989DemarginalizingIntersectionRace
       author: Kimberlé Crenshaw
       issued:

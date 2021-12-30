@@ -167,7 +167,7 @@ ZOTXT_YAML = {
         id="crenshaw1989DemarginalizingIntersectionRace",
         issued={["date-parts"]={{'1989'}}},
         title="Demarginalizing the intersection of race and sex",
-        type="paper"
+        type="article-journal"
     }
 }
 
@@ -194,7 +194,7 @@ if pandoc.types and PANDOC_VERSION <= {2, 14} then
                 {},
                 {text="sex"}
             },
-            type={{text="paper"}}
+            type={{text="article-journal"}}
         }
     }
 else
@@ -218,7 +218,7 @@ else
                 Space(),
                 Str "sex"
             },
-            type={Str "paper"}
+            type={Str "article-journal"}
         }
     }
 end
