@@ -1,0 +1,107 @@
+#!/bin/sh
+# header-add-man - Add a manual to a filter's header.
+# See -h for details.
+# Copyright 2021 Odin Kroeger
+# Released under the MIT license.
+# shellcheck disable=2015
+
+set -Ceu
+
+
+# CONSTANTS
+# =========
+
+# The top-level directory of the git repository.
+REPO="$(git rev-parse --show-toplevel)" && [ "$REPO" ] || {
+	SCPT_NAME="$(basename "$0")" && [ "$SCPT_NAME" ] || SCPT_NAME="$0"
+	printf '%s: failed to find repository.\n' "$SCPT_NAME" >&2
+	exit 69
+}
+readonly REPO
+
+
+# LIBRARY
+# =======
+
+LIBRARY="$REPO/scripts/library.sh"
+# shellcheck source=library.sh
+. "$LIBRARY" || exit
+
+
+# ARGUMENTS
+# =========
+
+filter='' manpage=''
+OPTIND=1 OPTARG='' opt=''
+while getopts f:m:h opt
+do
+	case $opt in
+		(f)	filter="$OPTARG" ;;
+		(m)	manpage="$OPTARG" ;;
+		(h)	exec cat <<-EOF
+			$SCPT_NAME - Add a Lua filter's manual to its header.
+
+			Synopsis:
+			    $SCPT_NAME [-f FILTER] [-m MANPAGE]
+			    $SCPT_NAME -h
+
+			Options:
+			    -f FILTER   Update FILTER.
+			    -m PAGE     Read manual from PAGE.
+			                (Default: man/man1/<FILTER>.rst).
+			    -h          Show this help screen.
+
+			    Relative paths are relative to the top-level
+			    directory of the git repository.
+			EOF
+			;;
+		(*)	exit 70
+	esac
+done
+shift $((OPTIND - 1))
+[ $# -gt 0 ] && panic -s 64 'too many operands.'
+
+for file in "$filter" "$manpage"
+do
+	[ -z "$file" ] || 
+	[ -f "$file" ] || 
+	panic -s 66 '%s: no such file.' "$file"
+done
+unset file
+
+[ "${filter-}" ] || filter="$(guess_filter)" && [ "$filter" ] || exit
+
+i=0
+while ! { [ "$manpage" ] && [ -f "$REPO/$manpage" ]; }
+do
+	case $i in
+		(0) manpage="man/man1/$filter.rst" ;;
+		(*) panic 'cannot guess manual, use -m.'
+	esac
+	i=$((i + 1))
+done
+
+format="${manpage##*.}" && [ "$format" ] || format=rst
+
+
+# PRELUDE
+# =======
+
+cd -P "$REPO" || exit 69
+temp_dir_make -d . -p ham
+tmp_file="$TEMP_DIR/$filter"
+
+
+# MAIN
+# ====
+
+exec >>"$tmp_file"
+printf -- '---\n'
+pandoc --from "$format" --to "scripts/ldoc-md.lua" "$manpage"         |
+perl -ne '$do_print = 1 if /^SYNOPSIS$/; print "-- $_" if $do_print;' |
+sed 's/ *$//'
+printf -- '--\n'
+perl -ne '$do_print = 1 if /^-- *@/; print if $do_print; ' <"$filter"
+
+mv "$filter" "$filter.bak" &&
+mv "$tmp_file" "$filter"

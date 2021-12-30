@@ -1,0 +1,20 @@
+#!/usr/bin/env awk -f
+# tmp-name.awk - Print a name suitable for a temporary file.
+# Copyright 2021 Odin Kroeger 
+# Released under the MIT license.
+
+BEGIN {
+	srand();
+	if (prefix) s = prefix "-";
+	else s = "";
+	if (len) n = len;
+	else n = 6;
+	for (i = 0; i < n; i++) {
+		c = int(rand() * 62);
+		if      (c < 10) c += 48;
+		else if (c < 36) c += 55;
+		else             c += 61;
+		s = s sprintf("%c", c);
+	}
+	print s;
+}

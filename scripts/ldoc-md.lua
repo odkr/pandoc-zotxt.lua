@@ -1,6 +1,6 @@
 --- A simple Lua writer for Pandoc that writes LDoc Markdown.
 --
--- It only supports the subset of Markdown that is used by the manual.
+-- Only supports the subset of Markdown needed to represent the manual.
 --
 -- @script ldoc-md.lua
 -- @author Odin Kroeger
@@ -8,34 +8,44 @@
 -- @license MIT
 
 -- luacheck: allow defined top
+-- luacheck: ignore pandoc
 
-local len = string.len
+if not pandoc.text then pandoc.text = require 'text' end
+
+local len = pandoc.text.len
 local rep = string.rep
 local format = string.format
 
--- luacheck: ignore pandoc
 local stringify = pandoc.utils.stringify
 
+--- At what column to wrap lines.
 local WRAP = 76
 
-
--- FUNCTIONS
--- =========
+--- Functions
+-- @section
 
 --- Print an error message to STDERR.
 --
--- Prefixes the message with `ldoc-md.lua` and ': ', and appends `\n`.
+-- The message is prefixed with `PANDOC_SCRIPT_FILE .. ': '` and
+-- terminated with `\n`. Non-string values are coerced to strings.
 --
--- @param msg The message.
--- @param ... Arguments to that message (think `string.format`).
---  Only applied if `msg` is a `string`.
--- @within Warnings
+-- @param ... Messages
 local function warn (...)
     -- luacheck: ignore PANDOC_SCRIPT_FILE
-    io.stderr:write(PANDOC_SCRIPT_FILE, ': ', ...)
-    io.stderr:write('\n')
+    local function write (...) return io.stderr:write(...) end
+    local msgs = table.pack(...)
+    if msgs.n < 1 then return end
+    write(PANDOC_SCRIPT_FILE, ': ')
+    for i = 1, msgs.n do write(tostring(msgs[i])) end
+    write('\n')
 end
 
+
+--- Indent every line of a string.
+--
+-- @string str A string.
+-- @int n How many columns to indent lines.
+-- @treturn A string with indented lines.
 local function indent (str, n)
     local ind = {}
     local sp = string.rep(' ', n)
@@ -47,7 +57,12 @@ local function indent (str, n)
     return table.concat(ind)
 end
 
-local function reflow (str, n)
+--- Reflow lines of a string.
+--
+-- @string str A string.
+-- @int n At what column to wrap lines.
+-- @treturn string A wrapped string.
+local function wrap (str, n)
     local lines = {}
     local i = 0
     local function add (ln)
@@ -55,6 +70,7 @@ local function reflow (str, n)
         lines[i] = ln
     end
     for line in str:gmatch '[^\n]*' do
+        -- luacheck: ignore wrap
         local ind, pos, rem = line:match '^(%s*)()(.*)'
         local wrap = n - (pos or 1) + 1
         while len(rem) > wrap do
@@ -76,6 +92,10 @@ local function reflow (str, n)
     return table.concat(lines, '\n'):gsub('\n*(\n\n)', '%1')
 end
 
+
+--- Error handling
+-- @section
+
 -- Report if a format is unsupported.
 setmetatable(_G, {__index = function (_, key)
     warn(key, ': unsupported format.')
@@ -83,8 +103,8 @@ setmetatable(_G, {__index = function (_, key)
 end})
 
 
--- ELEMENTS
--- ========
+--- Elements
+-- @section
 
 -- luacheck: ignore Blocksep
 function Blocksep ()
@@ -115,7 +135,7 @@ function DefinitionList (t)
     local s = ''
     for _, ds in ipairs(t) do
         for k, vs in pairs(ds) do
-            s = s .. format('* **%s**', k)
+            s = s .. format('* `%s`', k)
             local i = 1
             for _, v in pairs(vs) do
                 if v ~= '' then
@@ -135,7 +155,7 @@ end
 
 -- luacheck: ignore Doc
 function Doc (s, _, _)
-    return reflow(s, WRAP)
+    return wrap(s, WRAP)
 end
 
 -- luacheck: ignore DoubleQuoted

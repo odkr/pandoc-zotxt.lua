@@ -1,0 +1,201 @@
+#!/bin/sh
+# release-publish - Publish a release on GitHub.
+# See -h for details.
+# Copyright 2021 Odin Kroeger
+# Released under the MIT license.
+# shellcheck disable=2015
+
+set -Ceu
+
+
+# CONSTANTS
+# =========
+
+# The top-level directory of the git repository.
+REPO="$(git rev-parse --show-toplevel)" && [ "$REPO" ] || {
+	SCPT_NAME="$(basename "$0")" && [ "$SCPT_NAME" ] || SCPT_NAME="$0"
+	printf '%s: failed to find repository.\n' "$SCPT_NAME" >&2
+	exit 69
+}
+readonly REPO
+
+
+# LIBRARY
+# =======
+
+LIBRARY="$REPO/scripts/library.sh"
+# shellcheck source=library.sh
+. "$LIBRARY" || exit
+
+
+# WORKING DIRECTORY
+# =================
+
+cd -P "$REPO" || exit 69
+
+
+# DEFAULTS
+# ========
+
+# Where to look for the manifest file.
+manifest=Manifest
+
+
+# ARGUMENTS
+# =========
+
+filter=
+OPTIND=1 OPTARG='' opt=
+while getopts m:f:h opt
+do
+	case $opt in
+		(f)	filter="$OPTARG" ;;
+		(m)	manifest="$OPTARG" ;;
+		(h)	exec cat <<-EOF
+			$SCPT_NAME - publish a release on GitHub
+
+			Synopsis:
+			    $SCPT_NAME [-d DIR] [-f FILTER] [-m manifest]
+			    $SCPT_NAME -h
+
+			Options:
+			    -f FILTER    The Lua filter.
+			    -m MANIDEST  The manifest file.
+			                 (Defaults to $manifest.)
+			    -h           Show this help screen.
+			EOF
+			;;
+		(*)	exit 70
+	esac
+done
+shift $((OPTIND - 1))
+[ $# -gt 0 ] && panic -s 64 'too many operands.'
+
+for file in "$filter" "$manifest"
+do
+	[ -z "$file" ] || 
+	[ -f "$file" ] || 
+	panic -s 66 '%s: no such file.' "$file"
+done
+unset file
+
+[ "${filter-}" ] || filter="$(guess_filter)" && [ "$filter" ] || exit
+
+
+# PRELUDE
+# =======
+
+temp_dir_make -d . -p rp
+
+
+# MAIN
+# ====
+
+warn 'verifying branch ...'
+
+[ "$(git branch --show-current)" = main ] ||
+	panic 'not on "%s" branch.' "main"
+
+warn 'verifying version number ...'
+
+tag="$(	git tag --sort=-version:refname |
+	grep -E '^v'                    |
+	sed 's/^v//; q;'
+)" && [ "$tag" ] ||
+	panic 'failed to derive version from tag.'
+
+release="$(sed -n 's/-- *@release *//p;' "$filter")" && [ "$release" ] ||
+	panic '%s: failed to parse @release.' "$filter"
+
+vers="$(sed -n "s/^ *VERSION *= *['\"]\([^'\"]*\)['\"].*/\1/p;" "$filter")" &&
+	[ "$vers" ] || panic '%s: failed to parse VERSION.' "$filter"
+
+[ "$tag" = "$release" ] ||
+	panic -s 65 '%s: @release %s does not match tag v%s.' \
+	       "$filter" "$release" "$tag"
+
+[ "$tag" = "$vers" ] ||
+	panic -s 65 '%s: VERSION %s does not match tag v%s.' \
+	      "$filter" "$vers" "$tag"
+
+while read -r fname || [ "$fname" ]
+do
+	case $fname in
+		('#'*|'') continue ;;
+		(*[Rr][Ee][Aa][Dd][Mm][Ee]*)
+			grep --fixed-strings --quiet "$tag" "$fname" ||
+			panic -s 65 '%s: does not reference v%s.' \
+			      "$fname" "$tag"
+	esac
+done <"$manifest"
+
+warn 'testing release ...'
+
+test/script/test-pandoc-vers
+
+warn 'testing under real-world conditions ...'
+
+make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
+	panic 'at least one test failed.'
+
+name="$(basename "$REPO")" && [ "$name" ] ||
+	panic '%s: failed to determine basename.' "$REPO"
+
+warn 'packaging release ...'
+
+(
+	cd -P "$TEMP_DIR" || exit 69
+	relname="$name-$tag"
+
+	lineno=0
+	# shellcheck disable=2094
+	while read -r fname || [ "$fname" ]
+	do
+		lineno=$((lineno + 1))
+		case $fname in ('#'*|'')
+			continue
+		esac
+		case $fname in
+			("/$REPO"|"/$REPO/*") : ;;
+			(/*)	panic -s 65 '%s: line %d: %s: not in %s.' \
+				      "$manifest" "$lineno" \
+				      "$fname" "$REPO"
+				;;
+			(*)	fname="$REPO/$fname" ;;
+		esac
+		[ -e "$fname" ] ||
+			panic -s 66 '%s: line %d: %s: no such file or directory.' \
+			      "$manifest" "$lineno" \
+			      "$fname"
+		dirname="$(dirname "$fname")" && [ "$dirname" ] ||
+			panic '%s: line %d: %s: failed to get directory.' \
+			      "$manifest" "$lineno" \
+			      "$fname"
+		mkdir -p "$relname/${dirname#"$REPO"}"
+		if [ -d "$fname" ]
+			then cp -a "$fname/" "$relname/${fname#"$REPO"}"
+			else cp "$fname" "$relname/${fname#"$REPO"}"
+		fi
+	done <"$manifest"
+
+	tar="$relname.tgz"
+	tar --create --gzip --file "$tar" "$relname"
+	gpg --detach-sign --output "$tar.sig" "$tar"
+
+	zip="$relname.zip"
+	zip --recurse-paths --test --quiet "$zip" "$relname"
+	gpg --detach-sign --output "$zip.sig" "$zip"
+)
+
+warn 'pushing tag %s to github ...' "v${tag}"
+
+git push origin "v$tag"
+
+warn 'drafting release ...'
+
+pre=
+case $tag in (*[a-z]*)
+	pre=--prerelease ;;
+esac
+
+gh release create --draft $pre "v$tag" "$TEMP_DIR/$name-$tag."*

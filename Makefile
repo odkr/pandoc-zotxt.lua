@@ -172,12 +172,14 @@ $(ZOTWEB_TESTS): tmpdir
 	gzip --force $<
 
 header:
-	sh scripts/update-header.sh -f pandoc-zotxt.lua
+	scripts/header-add-man -f pandoc-zotxt.lua
 
 ldoc: header
 	ldoc -c ldoc/config.ld .
 
 docs: header ldoc man/man1/pandoc-zotxt.lua.1.gz
 
-.PHONY: docs header ldoc linter unit-tests test tmpdir \
+all: test docs
+
+.PHONY: all docs header ldoc linter unit-tests test tmpdir \
         $(COMMON_TESTS) $(ZOTXT_TESTS) $(ZOTWEB_TESTS)
