@@ -50,12 +50,13 @@ case $TERM in (*color|*colour*)
 	BDO="$(tput rmso)"    || BDO=
 	CVV="$(tput cvvis)"   || CVV=
 	CNV="$(tput cnorm)"   || CNV=
-	RED="$(tput setaf 1)" || RED=
+	CYA="$(tput setaf 6)" || CYA=
 	GRN="$(tput setaf 2)" || GRN=
+	RED="$(tput setaf 1)" || RED=
 	RST="$(tput sgr0)"    || RST=
 esac
 # shellcheck disable=2034
-readonly BLD BDO RED GRN CVV CNV RST
+readonly BLD BDO CVV CNV CYA GRN RED RST
 
 
 # GLOBALS
@@ -163,7 +164,7 @@ panic() {
 catch() {
 	tput dl1 >&2
 	printf '\r' >&2
-	warn 'caught %s.' "$1"
+	warn -e "$CYA" 'caught %s.' "$1"
 	eval "SIGNO=\"\$SIG_$1\""
 	if [ "$SIGNO" ]
 		then SIGNAME="$1"
