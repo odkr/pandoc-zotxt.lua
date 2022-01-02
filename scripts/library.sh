@@ -44,13 +44,16 @@ unset signame signo
 readonly TEMP_NAME_GEN="$REPO/scripts/temp-name-gen"
 
 # Colours!
-BLD="$(tput smso)"    || BLD=
-BDO="$(tput rmso)"    || BDO=
-RED="$(tput setaf 1)" || RED=
-GRN="$(tput setaf 2)" || GRN=
-CVV="$(tput cvvis)"   || CVV=
-CNV="$(tput cnorm)"   || CNV=
-RST="$(tput sgr0)"    || RST=
+BLD='' BDO='' CVV='' CNV='' RED='' GRN='' RST=''
+case $TERM in (*color|*colour*)
+	BLD="$(tput smso)"    || BLD=
+	BDO="$(tput rmso)"    || BDO=
+	CVV="$(tput cvvis)"   || CVV=
+	CNV="$(tput cnorm)"   || CNV=
+	RED="$(tput setaf 1)" || RED=
+	GRN="$(tput setaf 2)" || GRN=
+	RST="$(tput sgr0)"    || RST=
+esac
 # shellcheck disable=2034
 readonly BLD BDO RED GRN CVV CNV RST
 
