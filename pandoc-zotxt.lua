@@ -3898,7 +3898,7 @@ do
         end
     )
 
-    --- Get the groups the current user is a member of.
+    --- Get the groups the user is a member of.
     --
     -- @tparam connectors.ZoteroWeb obj A Zotero Web API handle.
     -- @treturn {string,...} Zotero group IDs.
