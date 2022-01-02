@@ -1202,11 +1202,9 @@ Object.mt.__call = typed_args('table', '?table')(
 -- @treturn Object An object.
 --
 -- @usage
--- > foo = Object:new{foo = 'foo', bar = 'bar'}
+-- > foo = Object:new{foo = 'foo'}
 -- > foo.foo
 -- foo
--- > foo.bar
--- bar
 Object.new = typed_args('table', '?table')(
     function (proto, props)
         return proto(copy(props))
@@ -3361,7 +3359,7 @@ end
 
 --- An option definition
 --
--- @string name A optiona name.
+-- @string name An option name.
 -- @string[opt='string'] type A type to coerce the option's value to.
 -- @func[opt] check A function that checks the option's value.
 -- @string[opt] prefix A prefix.
@@ -3380,12 +3378,12 @@ Options = Object()
 
 --- Create a new option parser.
 --
---      parser = Options:new{name = 'foo'}
+--    parser = Options:new{name = 'foo'}
 --
 -- is equivalent to:
 --
---      parser = Options()
---      parser:add{name = 'foo'}
+--    parser = Options()
+--    parser:add{name = 'foo'}
 --
 -- @see Options:add
 -- @function Options:new
@@ -3484,7 +3482,7 @@ do
         return List{conv(val)}
     end
 
-    --- Add an option definition to the parser.
+    --- Add an option to the parser.
     --
     -- <h3>Mapping of option names to metadata fieldnames:</h3>
     --
@@ -3591,7 +3589,7 @@ do
         )
     )
 
-    --- Get configuration options from a metadata block.
+    --- Read configuration options from a metadata block.
     --
     -- @tparam pandoc.MetaMap meta A metadata block.
     -- @treturn tab A mapping of setting names to values.
@@ -4187,7 +4185,7 @@ do
                     local conn = connectors[name]
                     if not conn then
                         return nil, name .. ': no such connector.'
-                    elseif not conn.fetch then
+                    elseif not (conn.new and conn.fetch) then
                         return nil, name .. ': connector violates protocol.'
                     end
                 end
