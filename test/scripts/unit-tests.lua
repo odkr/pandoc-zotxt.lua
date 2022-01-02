@@ -1632,7 +1632,7 @@ function test_elem_walk ()
         'dup-biblio-bib.md', 'dup-biblio-yaml.md', 'dup.md',
         'easykey.md', 'empty.md', 'ex-biblio.md',
         'ex-simple.md', 'issue-4-2.md', 'issue-4.md',
-        'merge.md', 'nocite-bbt.md', 'pre-existing-mixed.md'
+        'merge.md', 'pre-existing-mixed.md'
     }
 
     for _, v in ipairs(fnames) do
@@ -1720,7 +1720,7 @@ function test_doc_ckeys ()
     lu.assert_items_equals(ckeys, {})
     lu.assert_equals(n, 0)
 
-    test_fname = M.path_join(DATA_DIR, 'nocite-bbt.md')
+    test_fname = M.path_join(DATA_DIR, 'issue-7.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
     lu.assert_items_equals(M.doc_ckeys(test_file),
