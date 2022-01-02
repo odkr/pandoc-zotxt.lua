@@ -27,17 +27,18 @@ You use **pandoc-zotxt.lua** at your own risk.
 4. Symlink or move the file `pandoc-zotxt.lua` from the repository
    up into the `filters` directory.
 
-If you are running a POSIX-compliant operating system
-(e.g., Linux, FreeBSD, NetBSD, OpenBSD or macOS) and have
-[curl](https://curl.haxx.se/) or [wget](https://www.gnu.org/software/wget/),
-you can install **pandoc-zotxt.lua** by copy-pasting the following commands
+If you are running a POSIX-compliant operating system (e.g., *BSD,
+Linux, or macOS) and have [curl](https://curl.haxx.se/) or 
+[wget](https://www.gnu.org/software/wget/), then you can install
+**pandoc-zotxt.lua** by copy-pasting the following commands
 into a Bourne-compatible shell:
 
 ```sh
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
   name=pandoc-zotxt.lua vers=1.1.0b5
-  url="https://github.com/odkr/$name/releases/download/v$vers/$name-$vers.tgz"
+  release="$name-$vers"
+  url="https://github.com/odkr/$name/releases/download/v$vers/$release.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
     [ -d "$data_dir" ] && break
   done
@@ -45,11 +46,11 @@ into a Bourne-compatible shell:
   mkdir -p "$filters_dir" && cd -P "$filters_dir" || exit
   { curl -L "$url" || err=$?
     [ "${err-0}" -eq 127 ] && wget -O - "$url"; } | tar -xz
-  ln -fs "$name" "$name-$vers/$name" .; )
+  ln -fs "$name" "$release/$name" .; )
 ```
 
-If you want to use the manual page that ships with this release, add
-`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b5/man`
+If you want to use the manual page that ships with this release,
+add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b5/man`
 to your `MANPATH`.
 
 

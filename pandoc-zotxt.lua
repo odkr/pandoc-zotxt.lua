@@ -4048,7 +4048,7 @@ do
         end
     )
 
-    --- Fetch a CSL item from Zotero.
+    --- Fetch a CSL item from the Zotero Web API.
     --
     -- @side
     --
