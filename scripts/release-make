@@ -141,6 +141,9 @@ do
 	warn 'merging %s to %s ...' "$release_branch" "$branch"
 	git checkout "$branch"
 	git merge "$release_branch"
+	
+	warn 'pushing changes ...' "$branch"
+	git push origin "$branch"
 done
 
 warn 'adding tag v%s ...' "$vers"
