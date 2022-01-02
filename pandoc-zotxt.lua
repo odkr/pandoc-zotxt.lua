@@ -114,25 +114,25 @@
 -- SETTINGS
 -- ========
 --
--- You configure how bibligraphic data is fetched by setting the following
+-- You can configure how bibligraphic data is fetched by setting the following
 -- metadata fields:
 --
 -- * `zotero-api-key`: A Zotero API key. Needed to access your personal
--- library via the Zotero Web API, but not needed to access public groups.
+-- library via the Zotero Web API; not needed to access public groups.
 --
 -- * `zotero-bibliography`: A bibliography filename. Fetched bibliographic
--- data is added to this file. (See "BIBLIOGRAPHY FILES" above for details.)
+-- data is added to this file. (See "Bibligraphy Files" above for details.)
 --
 -- * `zotero-citekey-types`: A list of citation key types. Citation keys are
--- treated as being of any of the listed types only. (See "CITATION KEY TYPES"
+-- treated as being of any of the listed types only. (See "Citation Key Types"
 -- above for details.)
 --
 -- * `zotero-connectors`: One or more Zotero connectors:
 --
---   | *Key*  | *Connect to*          |
---   | ------ | --------------------- |
---   | zotxt  | Zotero desktop client |
---   | zotweb | Zotero Web API        |
+--   | **Key**   | **Fetch data from**   |
+--   | --------- | --------------------- |
+--   | zotero    | Zotero desktop client |
+--   | zoteroweb | Zotero Web API        |
 --
 --   Data is fetched via the listed connectors only.
 --
@@ -299,7 +299,7 @@
 --- Document parsing
 -- @section
 
---- Configuration parsing
+--- Option parsing
 -- @section
 
 --- Zotero connectors
@@ -1191,6 +1191,13 @@ Object.mt.__call = typed_args('table', '?table')(
         local mt = copy(getmetatable(proto))
         mt.__index = proto
         return setmetatable(tab or {}, mt)
+    end
+)
+
+-- @fixme
+Object.new = typed_args('table', '?table')(
+    function (proto, props)
+        return proto(copy(props))
     end
 )
 
@@ -2978,7 +2985,7 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @caveats See @{file_write}.
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
 -- @string fname The name of the bibliography file.
 -- @tparam {string,...} ckeys The citation keys of the items to add
 --  (e.g., `{'doe:2020word'}`).
@@ -3336,16 +3343,47 @@ do
 end
 
 
-------------------------
--- Configuration parsing
+-----------------
+-- Option parsing
 -- @section
 
---- A configuration setting.
+--- An option definition
 --
--- @see Setting:new
--- @object Setting
+-- @string name A name.
+-- @string[opt='string'] type A type to coerce the setting's value to.
+-- @func[opt] check A function that checks the setting's value.
+-- @string[opt] prefix A prefix.
+--
+-- @see Options:add
+-- @table Option
+
+--- An option parser.
+--
+-- @see Options:new
+-- @see Options:add
+-- @see Options:parse
+-- @object Options
 -- @proto @{Object}
-Setting = Object()
+Options = Object()
+
+--- dada
+-- @fixme
+-- @function Options:new
+Options.new = typed_args('table', '...')(
+    typed_keyword_args{
+        name = 'string',
+        type = '?string',
+        check = '?function',
+        prefix = '?string'
+    }(
+        function (proto, ...)
+            local obj = Object.new(proto)
+            obj:add(...)
+            return obj
+        end
+    )
+)
+
 
 do
     -- A mapping of configuration value types to parers.
@@ -3354,7 +3392,7 @@ do
     -- Convert a configuration value to a type.
     --
     -- @param val A value.
-    -- @string type A type declaration. See @{Setting:new} for the grammar.
+    -- @string type A type declaration. See @{Options:add} for the grammar.
     -- @return[1] A value of the given type.
     -- @treturn[2] nil `nil` if the value cannot be converted.
     -- @treturn[2] string An error message.
@@ -3426,35 +3464,40 @@ do
         return List{conv(val)}
     end
 
-    --- Create a new setting.
+    --- Add an option definition to the parser.
     --
-    -- <h3>Mapping of setting names to metadata fieldnames:</h3>
+    -- <h3>Mapping of option names to metadata fieldnames:</h3>
     --
-    -- Every setting has a name. The metadata fieldname that is looked up by
-    -- @{Setting:get} is that name with underscores replaced by dashes.
+    -- The name of the metadata field that is looked up by @{Options:parse} is
+    -- the name of the option with underscores replaced by dashes.
     --
-    -- Settings may have prefixes. If so, the setting name is prefixed with
-    -- that prefix *and* '-' before being translated into a fieldname. In Lua:
+    -- However, options may have prefixes. If so, the option name is prefixed
+    -- with that prefix *and* '-' before being translated into a fieldname.
     --
-    --    if prefix and prefix ~= '' then name = prefix .. '-' .. name end
+    -- In Lua:
+    --
+    --    if prefix then name = prefix .. '-' .. name end
     --    fieldname = name:gsub('_', '-')
     --
     -- <h3>Type declaration grammar:</h3>
     --
-    -- Configuration values can be of one of three types: 'number', 'string',
-    -- or 'list'.
+    -- Configuration values can be of one of three types:
     --
-    -- The scalar types 'number' and 'string' declare that a value must be of
-    -- (and should be coerced to) the Lua type of the same name.
+    -- * 'number'
+    -- * 'string'
+    -- * 'list'
     --
-    -- The type 'list' declares that a value must be a `pandoc.List`. All
-    -- items in a list must be of the same type, which you declare by
-    -- appending '<*T*>' to a 'list', where *T* is either the name of a
-    -- scalar type or 'list<...>'. If you do not declare that type, it
-    -- defaults to 'string'. If a scalar value is encountered, but a list
-    -- is expected, the scalar value is put into a single-item list.
+    -- If you declare an option to be of the scalar types 'number' or
+    -- 'string', its value is required to be of the Lua type of the
+    -- same name. Values are converted automatically if possible.
     --
-    -- Prefix a type with '?' to declare that a setting is optional.
+    -- If you declare an option to be of the type 'list', its value is
+    -- required to be a `pandoc.List`. If a scalar is encountered where
+    -- a list was expected, the value is wrapped in a single-item list.
+    --
+    -- The items of a list must all be of the same type, which you declare
+    -- by appending '<*T*>' to the literal 'list', where *T* is either the
+    -- name of a scalar type or 'list<...>' and defaults to 'string'.
     --
     -- Whitespace is ignored.
     --
@@ -3465,200 +3508,121 @@ do
     -- > Simple type = 'number' | 'string'
     -- >
     -- > List = 'list', {whitespace},
-    -- >        ['<', {whitespace}, (simple type | list), {whitespace}, ['>'] ]
+    -- >        ['<', {whitespace}, (simple type | list), {whitespace}, '>'? ]
     -- >
-    -- > Type declaration = {whitespace},
-    -- >                    ['?'], {whitespace},
-    -- >                    (simple type | list), {whitespace}
+    -- > Type declaration = {whitespace}, (simple type | list), {whitespace}
+    --
+    -- No checks are performed if a value is `nil`.
     --
     -- <h3>Check protocol:</h3>
     --
     -- You can give a function that checks whether a setting's value is
-    -- valid. That function is run after the value has been coerced to the
-    -- requested type. It must return `true` if the value is valid and `nil`
-    -- and an error message otherwise.
+    -- valid. That function is called after the value has been coerced
+    -- to the requested type and should map valid values to `true` and
+    -- invalid values to `nil` and an error message.
     --
-    -- @string name A name.
-    -- @string[opt='?string'] type A type to coerce the setting's value to.
-    -- @func[opt] check A function that checks the setting's value.
-    -- @string[opt] prefix A prefix.
+    -- No checks are performed if a value is `nil`.
+    --
+    -- @tparam Option ... Options.
     --
     -- @usage
-    -- setting = Setting:new{
+    -- options = Options()
+    -- options:add{
     --     name = 'bar',
-    --     type = '?number',
+    --     type = 'number',
     --     check = function (x)
     --         if x > 0 return true end
     --         return nil, 'not a positive number.'
     --     end
     -- }
     --
-    -- @see Setting:get
-    -- @const Setting:new
-    Setting.new = typed_keyword_args{
-        name = 'string',
-        type = '?string',
-        check = '?function',
-        prefix = '?string',
-    }(
-        function (proto, args)
-            for _, key in pairs{'name', 'prefix', 'type'} do
-                local val = args[key]
-                if val and val == '' then
-                    error(format('%s: is the empty string.', key), 2)
+    -- @see Options:parse
+    -- @function Options:add
+    Options.add = typed_args('table', '...')(
+        typed_keyword_args{
+            name = 'string',
+            type = '?string',
+            check = '?function',
+            prefix = '?string'
+        }(
+            function (self, opt, ...)
+                for _, key in pairs{'name', 'prefix', 'type'} do
+                    if opt[key] == '' then
+                        error(key .. ': is the empty string.', 2)
+                    end
                 end
+                local name = opt.name
+                if self[name] then
+                    error(format('name "%s" is already in use.', name), 2)
+                end
+                if opt.type then
+                    -- Raise an error if the type declaration is wrong.
+                    local cycle = {}
+                    cycle[1] = cycle
+                    convert(cycle, opt.type)
+                end
+                self[name] = {
+                    type = opt.type or 'string',
+                    check = opt.check,
+                    prefix = opt.prefix
+                }
+                if ... then self:add(...) end
             end
-            if args.type then
-                args.optional, args.type = args.type:match '(%??)(.*)'
-                -- Raise an error if the type declaration is wrong.
-                local cycle = {}
-                cycle[1] = cycle
-                convert(cycle, args.type)
-            else
-                args.optional = true
-                args.type = 'string'
-            end
-            return proto(args)
-        end
+        )
     )
 
-    --- Get a setting's value from a metadata block.
+    --- Get configuration options from a metadata block.
     --
     -- @tparam pandoc.MetaMap meta A metadata block.
-    -- @return[1] The value of the setting.
-    -- @treturn[2] nil `nil` if the settings was not given.
-    -- @raise An error if the setting is missing,
-    --  of the wrong type, or invalid.
+    -- @treturn tab A mapping of setting names to values.
     --
     -- @usage
-    -- > setting = Setting:new{
-    -- >    prefix = 'foo',
-    -- >    name = 'bar',
-    -- >    type = 'number'
+    -- > options = Options()
+    -- > options:add{
+    -- >     name = 'bar',
+    -- >     type = 'number',
+    -- >     check = function (x)
+    -- >         if x > 0 return true end
+    -- >         return nil, 'not a positive number.'
+    -- >     end
     -- > }
     -- > meta = pandoc.MetaMap{
-    -- >   ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
-    -- >           pandoc.Str "0123"
-    -- >   })
-    -- > bar = setting:get(meta)
-    -- > bar
+    -- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
+    -- >         pandoc.Str "0123"
+    -- >     })
+    -- > conf = options:parse(meta)
+    -- > conf.bars
     -- 123
-    -- > type(bar)
+    -- > type(conf.bar)
     -- number
     --
-    -- @see Setting:new
-    -- @function Setting:get
-    Setting.get = typed_args('table', 'table')(
+    -- @see Options:add
+    -- @function Options:parse
+    Options.parse = typed_args('table', 'table|userdata')(
         function (self, meta)
-            local name = self.name
-            if self.prefix then name = self.prefix .. '-' .. name end
-            local key = name:gsub('_', '-')
-            local val = meta[key]
-            local err
-            if val ~= nil then
-                val, err = convert(val, self.type)
-                if val then
-                    if not self.check then return val end
-                    local ok
-                    ok, err = self.check(val)
-                    if ok then return val end
+            local conf = {}
+            if not meta then return conf end
+            for name, opt in pairs(self) do
+                local key = name
+                if opt.prefix then key = opt.prefix .. '-' .. key end
+                key = key:gsub('_', '-')
+                local val = meta[key]
+                if val ~= nil then
+                    local err
+                    val, err = convert(val, opt.type)
+                    if not val then error(key .. ': ' .. err, 0) end
+                    if opt.check then
+                        -- luacheck: ignore err
+                        local ok, err = opt.check(val)
+                        if not ok then error(key .. ': ' .. err, 0) end
+                    end
+                    conf[name] = val
                 end
-            elseif self.optional then
-                return
-            else
-                err = 'not set, but required'
             end
-            error(format('metadata field "%s": ' .. err, key), 0)
+            return conf
         end
     )
 end
-
---- A configuration parser.
---
--- @see Settings:add
--- @see Settings:parse
--- @object Settings
--- @proto @{Object}
-Settings = Object()
-
---- Add settings to the parser.
---
--- @tparam Setting ... Settings.
--- @see Settings:parse
---
--- @usage
--- settings = Settings()
--- settings:add(Setting:new{
---     name = 'bar',
---     type = '?number',
---     check = function (x)
---         if x > 0 return true end
---         return nil, 'not a positive number.'
---     end
--- })
---
--- @function Settings:add
-Settings.add = typed_args('table', '...')(
-    function (self, ...)
-        local settings = pack(...)
-        for i = 1, settings.n do
-            local setting = settings[i]
-            local name = setting.name
-            if self[name] then
-                error(format('setting name "%s" is already in use.', name), 2)
-            end
-            self[name] = setting
-        end
-    end
-)
-
---- Get configuration settings from a metadata block.
---
--- @tparam pandoc.MetaMap meta A metadata block.
--- @treturn tab A mapping of setting names to values.
---
--- @usage
--- > settings = Settings()
--- > settings:add(Setting:new{
--- >     name = 'bar',
--- >     type = '?number',
--- >     check = function (x)
--- >         if x > 0 return true end
--- >         return nil, 'not a positive number.'
--- >     end
--- > })
--- > meta = pandoc.MetaMap{
--- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
--- >         pandoc.Str "0123"
--- >     })
--- > conf = settings:get(meta)
--- > conf.bar
--- 123
--- > type(conf.bar)
--- number
---
--- @see Settings:add
--- @function Settings:parse
-Settings.parse = typed_args('table', 'table|userdata')(
-    function (self, meta)
-        local conf = {}
-        if meta then
-            for name, setting in pairs(self) do
-                conf[name] = setting:get(meta)
-            end
-        end
-        return conf
-    end
-)
-
---- A configuration setting prototype with the prefix 'zotero'.
---
--- @object ZotSetting
--- @proto Setting
-ZotSetting = Setting()
-
---- Set to 'zotero'.
-ZotSetting.prefix = 'zotero'
 
 
 --------------------
@@ -3671,40 +3635,32 @@ connectors = setmetatable({}, ignore_case)
 --- Interface to [zotxt](https://github.com/egh/zotxt).
 --
 -- @usage
--- handle = connectors.Zotxt()
+-- handle = connectors.Zotero:new()
 -- item = handle:fetch 'DoeWord2020'
 --
--- @object connectors.Zotxt
+-- @object connectors.Zotero
 -- @proto @{Object}
-connectors.Zotxt = Object()
+connectors.Zotero = Object()
 
---- Types of citation keys to expect.
-connectors.Zotxt.citekey_types = List{
-    'betterbibtexkey',  -- Better BibTeX citation key
-    'easykey',          -- zotxt easy citekey
-    'key',              -- Zotero item ID
-}
-
---- Settings of the connector.
+--- Zotero options.
 --
 -- Defines `zotero-citekey-types`.
 -- See the manual for details.
 --
--- @object connectors.Zotxt.settings
--- @proto @{Settings}
-connectors.Zotxt.settings = Settings()
-connectors.Zotxt.settings:add(ZotSetting:new{
+-- @object connectors.Zotero.options
+-- @proto @{Options}.
+connectors.Zotero.options = Options:new{
+    prefix = 'zotero',
     name = 'citekey_types',
-    type = '?list',
-    check = function (tab)
-        for i = 1, #tab do
-            if not connectors.Zotxt.citekey_types:includes(tab[i]) then
-                return nil, tab[i] .. ': not a citation key type.'
-            end
-        end
-        return true
-    end
-})
+    type = 'list'
+}
+
+--- Types of citation keys to expect.
+connectors.Zotero.citekey_types = List{
+    'betterbibtexkey',  -- Better BibTeX citation key
+    'easykey',          -- zotxt easy citekey
+    'key',              -- Zotero item ID
+}
 
 do
     -- URL of the endpoint to look up items at.
@@ -3718,8 +3674,8 @@ do
     -- @treturn[2] string An error message.
     -- @raise See @{http_get}.
     --
-    -- @function connectors.Zotxt:fetch
-    connectors.Zotxt.fetch = typed_args('table', 'string')(
+    -- @function connectors.Zotero:fetch
+    connectors.Zotero.fetch = typed_args('table', 'string')(
         function (self, ckey)
             local ckey_types = self.citekey_types
             local err = nil
@@ -3768,23 +3724,6 @@ do
     )
 end
 
---- Configure the connector.
---
--- @tparam pandoc.MetaMap meta A metadata block.
--- @treturn[1] bool `true` if the connector was configured.
--- @treturn[2] nil `nil` if a configuration setting is missing.
--- @treturn[2] string An error message.
--- @raise An error if the configuration cannot be parsed.
---
--- @function connectors.Zotxt:configure
--- @see connectors.Zotxt.settings
-connectors.Zotxt.configure = typed_args('table', 'table|userdata')(
-    function (self, meta)
-        for k, v in pairs(self.settings:parse(meta)) do self[k] = v end
-        return true
-    end
-)
-
 --- Interface to [Zotero's Web API](https://www.zotero.org/support/dev/web_api)
 --
 -- @string[opt] api_key A Zotero Web API key.
@@ -3793,23 +3732,23 @@ connectors.Zotxt.configure = typed_args('table', 'table|userdata')(
 -- @tparam[opt] {number,...} public_groups Public Zotero groups to search in.
 --
 -- @usage
--- handle = connectors.ZotWeb{api_key = 'lettersandnumbers'}
+-- handle = connectors.ZoteroWeb{api_key = 'lettersandnumbers'}
 -- item = handle:fetch 'DoeWord2020'
 --
--- @object connectors.ZotWeb
--- @proto @{connectors.Zotxt}
-connectors.ZotWeb = connectors.Zotxt()
+-- @object connectors.ZoteroWeb
+-- @proto @{connectors.Zotero}
+connectors.ZoteroWeb = connectors.Zotero()
 
 --- Types of citation keys to expect.
 --
 -- See @{citekey:guess_terms} for caveats.
-connectors.ZotWeb.citekey_types = List {
+connectors.ZoteroWeb.citekey_types = List {
     'key',              -- Zotero item IDs
     'easykey',          -- zotxt Easy Citekey
     'betterbibtexkey',  -- Better BibTeX citation key
 }
 
---- Zotero Web API settings.
+--- Zotero Web API options.
 --
 -- Defines:
 --
@@ -3820,19 +3759,15 @@ connectors.ZotWeb.citekey_types = List {
 --
 -- See the manual for details.
 --
--- @object connectors.ZotWeb.settings
--- @proto Copy of @{connectors.Zotxt.settings}.
-connectors.ZotWeb.settings = copy(connectors.Zotxt.settings)
-
-do
-    local settings = connectors.ZotWeb.settings
-    settings:add(
-        ZotSetting:new{name = 'api_key'},
-        ZotSetting:new{name = 'user_id', type = '?number'},
-        ZotSetting:new{name = 'groups', type = '?list<number>'},
-        ZotSetting:new{name = 'public_groups', type = '?list<number>'}
-    )
-end
+-- @object connectors.ZoteroWeb.options
+-- @proto Copy of @{connectors.Zotero.options}.
+connectors.ZoteroWeb.options = copy(connectors.Zotero.options)
+connectors.ZoteroWeb.options:add(
+    {prefix = 'zotero', name = 'api_key'},
+    {prefix = 'zotero', name = 'user_id', type = 'number'},
+    {prefix = 'zotero', name = 'groups', type = 'list<number>'},
+    {prefix = 'zotero', name = 'public_groups', type = 'list<number>'}
+)
 
 do
     -- Shorthands.
@@ -3896,22 +3831,22 @@ do
     end
 
     --- Metatable for Zotero Web API connectors.
-    connectors.ZotWeb.mt = getmetatable(connectors.ZotWeb)
+    connectors.ZoteroWeb.mt = getmetatable(connectors.ZoteroWeb)
 
     --- Delegate to the Zotero Web API interface.
     --
     -- @see delegate_with_getters
-    -- @function connectors.ZotWeb.mt.__call
-    connectors.ZotWeb.mt.__call = delegate_with_getters
+    -- @function connectors.ZoteroWeb.mt.__call
+    connectors.ZoteroWeb.mt.__call = delegate_with_getters
 
     --- Getters for Zotero Web API connectors.
     --
     -- @see getterify
-    connectors.ZotWeb.mt.getters = {}
+    connectors.ZoteroWeb.mt.getters = {}
 
     --- Get the user ID for the given API key.
     --
-    -- @tparam connectors.ZotWeb obj A Zotero Web API handle.
+    -- @tparam connectors.ZoteroWeb obj A Zotero Web API handle.
     -- @treturn string A Zotero user ID.
     -- @raise An error if:
     --
@@ -3921,8 +3856,8 @@ do
     --  * the API's response cannot be parsed,
     --  * no user ID could be found for the given Zotero API key.
     --
-    -- @function connectors.ZotWeb.mt.getters.user_id
-    connectors.ZotWeb.mt.getters.user_id = typed_args('table')(
+    -- @function connectors.ZoteroWeb.mt.getters.user_id
+    connectors.ZoteroWeb.mt.getters.user_id = typed_args('table')(
         function (obj)
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(user_id_url, obj)
@@ -3947,7 +3882,7 @@ do
 
     --- Get the IDs of the groups the current user is a member of.
     --
-    -- @tparam connectors.ZotWeb obj A Zotero Web API handle.
+    -- @tparam connectors.ZoteroWeb obj A Zotero Web API handle.
     -- @treturn {string,...} Zotero group IDs.
     -- @raise An error if:
     --
@@ -3956,8 +3891,8 @@ do
     --    (see @{http_get} for details),
     --  * the API's response cannot be parsed.
     --
-    -- @function connectors.ZotWeb.mt.getters.groups
-    connectors.ZotWeb.mt.getters.groups = typed_args('table')(
+    -- @function connectors.ZoteroWeb.mt.getters.groups
+    connectors.ZoteroWeb.mt.getters.groups = typed_args('table')(
         function (obj)
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(groups_url, obj)
@@ -3986,8 +3921,8 @@ do
     -- @string[opt] id A Zotero item ID.
     -- @treturn func A *stateful* iterator.
     --
-    -- @function connectors.ZotWeb:endpoints
-    connectors.ZotWeb.endpoints = typed_args('table', '?string')(
+    -- @function connectors.ZoteroWeb:endpoints
+    connectors.ZoteroWeb.endpoints = typed_args('table', '?string')(
         function (self, id)
             if id then assert(zotero_is_id(id))
                   else id = ''
@@ -4035,11 +3970,11 @@ do
     -- @treturn[2] nil `nil` if no items were found or an error occurred.
     -- @treturn[2] string An error message.
     -- @treturn[2] An error message.
-    -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
-    --  @{connectors.ZotWeb.mt.getters.groups}.
+    -- @raise See @{connectors.ZoteroWeb.mt.getters.user_id} and
+    --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
-    -- @function connectors.ZotWeb:search
-    connectors.ZotWeb.search = typed_args('table', 'string', '?string', '...')(
+    -- @function connectors.ZoteroWeb:search
+    connectors.ZoteroWeb.search = typed_args('table', 'string', '?string', '...')(
         function (self, ...)
             local q = concat({...}, '+')
             local params = {v = 3, key = self.api_key,
@@ -4064,11 +3999,11 @@ do
     -- @treturn[1] tab A CSL item.
     -- @treturn[2] nil `nil` if no or more than one item has been found.
     -- @treturn[2] string An error message.
-    -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
-    --  @{connectors.ZotWeb.mt.getters.groups}.
+    -- @raise See @{connectors.ZoteroWeb.mt.getters.user_id} and
+    --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
-    -- @function connectors.ZotWeb:lookup
-    connectors.ZotWeb.lookup = typed_args('table', 'string')(
+    -- @function connectors.ZoteroWeb:lookup
+    connectors.ZoteroWeb.lookup = typed_args('table', 'string')(
         function (self, id)
             assert(zotero_is_id(id))
             local params = {v = 3, key = self.api_key,
@@ -4106,11 +4041,11 @@ do
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
-    -- @raise See @{connectors.ZotWeb.mt.getters.user_id} and
-    --  @{connectors.ZotWeb.mt.getters.groups}.
+    -- @raise See @{connectors.ZoteroWeb.mt.getters.user_id} and
+    --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
-    -- @function connectors.ZotWeb:fetch
-    connectors.ZotWeb.fetch = typed_args('table', 'string')(
+    -- @function connectors.ZoteroWeb:fetch
+    connectors.ZoteroWeb.fetch = typed_args('table', 'string')(
         function (self, ckey)
             -- luacheck: ignore err
             assert(ckey ~= '', 'citation key is the empty string.')
@@ -4139,26 +4074,6 @@ do
             return csl_item_add_extras(item)
         end
     )
-
-    --- Configure the connector.
-    --
-    -- @tparam pandoc.MetaMap meta A metadata block.
-    -- @treturn[1] bool `true` if the connector was configured.
-    -- @treturn[2] nil `nil` if a configuration setting is missing.
-    -- @treturn[2] string An error message.
-    -- @raise An error if the configuration cannot be parsed.
-    --
-    -- @function connectors.ZotWeb:configure
-    connectors.ZotWeb.configure = typed_args('table', 'table|userdata')(
-        function (self, meta)
-            local ok, err = connectors.Zotxt.configure(self, meta)
-            if not ok then return nil, err end
-            if not (self.api_key or self.public_groups) then
-                return nil, 'neither Zotero API key nor public groups given.'
-            end
-            return true
-        end
-    )
 end
 
 
@@ -4178,12 +4093,12 @@ end
 -- @side May print error messages to STDERR.
 --
 -- @string fname A filename for the bibliography file.
--- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] pandoc.Meta An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See @{connectors.Zotxt} and @{connectors.ZotWeb}.
+-- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
 --
 -- @function add_biblio
 add_biblio = typed_args('string', 'table', 'table|userdata')(
@@ -4209,12 +4124,12 @@ add_biblio = typed_args('string', 'table', 'table|userdata')(
 --
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotxt|connectors.ZotWeb handle An interface to Zotero.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] table An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See @{connectors.Zotxt} and @{connectors.ZotWeb}.
+-- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
 --
 -- @function add_refs
 add_refs = typed_args('table', 'table|userdata')(
@@ -4237,14 +4152,12 @@ add_refs = typed_args('table', 'table|userdata')(
 )
 
 do
-    local settings = Settings()
-    settings:add(
-        ZotSetting:new{
-            name = 'bibliography',
-        },
-        ZotSetting:new{
+    local options = Options:new(
+        {prefix = 'zotero', name = 'bibliography'},
+        {
+            prefix = 'zotero',
             name = 'connectors',
-            type = '?list',
+            type = 'list',
             check = function (names)
                 for i = 1, #names do
                     local name = names[i]
@@ -4272,23 +4185,25 @@ do
     -- @tparam pandoc.Pandoc doc A document.
     -- @treturn[1] pandoc.Pandoc The document with bibliographic data added.
     -- @treturn[2] nil `nil` if nothing was done or an error occurred.
-    -- @raise See @{connectors.Zotxt} and @{connectors.ZotWeb}.
+    -- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
     function main (doc)
-        local conf = settings:parse(doc.meta)
+        local conf = options:parse(doc.meta)
 
         local handles = Values()
-        local conns = conf.connectors
-        if not conns then
-            for _, conn in sorted(connectors, order{'zotxt'}) do
-                local handle = conn()
-                if not handle.configure or handle:configure(doc.meta) then
-                    handles:add(handle)
-                end
+        if not conf.connectors then
+            for _, conn in sorted(connectors, order{'zotero'}) do
+                local args
+                if conn.options then args = conn.options:parse(doc.meta) end
+                local ok, handle = pcall(conn.new, conn, args)
+                if ok then handles:add(handle) end
             end
         else
-            for i = 1, #conns do
-                local handle = connectors[conns[i]]()
-                if handle.configure then assert(handle:configure(doc.meta)) end
+            for i = 1, #conf.connectors do
+                local conn = connectors[conf.connectors[i]]
+                local args
+                if conn.options then args = conn.options:parse(doc.meta) end
+                local handle, err = conn:new(args)
+                if not handle then error(err, 0) end
                 handles:add(handle)
             end
         end

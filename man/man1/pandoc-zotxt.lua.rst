@@ -123,31 +123,31 @@ metadata field:
 SETTINGS
 ========
 
-You configure how bibligraphic data is fetched by setting the following
-metadata fields:
+You can configure how bibligraphic data is fetched by
+setting the following metadata fields:
 
 zotero-api-key
    A Zotero API key. Needed to access your personal library via the
-   Zotero Web API, but not needed to access public groups.
+   Zotero Web API; not needed to access public groups.
 
 zotero-bibliography
    A bibliography filename. Fetched bibliographic data is added to this
-   file. (See "BIBLIOGRAPHY FILES" above for details.)
+   file. (See "Bibligraphy Files" above for details.)
 
 zotero-citekey-types
    A list of citation key types. Citation keys are treated as being of
-   any of the listed types only. (See "CITATION KEY TYPES" above for
+   any of the listed types only. (See "Citation Key Types" above for
    details.)
 
 zotero-connectors
    One or more Zotero connectors:
 
-   ======= =====================
-   *Key*   *Connect to*
-   ======= =====================
-   zotxt   Zotero desktop client
-   zotweb  Zotero Web API
-   ======= =====================
+   =========  =====================
+   **Key**    **Fetch data from**
+   =========  =====================
+   zotero     Zotero desktop client
+   zoteroweb  Zotero Web API
+   =========  =====================
 
    Data is fetched via the listed connectors only.
 

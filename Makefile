@@ -45,7 +45,7 @@ ZOTWEB_TESTS	= $(notdir $(ZOTWEB_DOCS:.md=))
 # ZOTERO CONNECTORS
 # =================
 
-CONNECTORS ?= zotxt zotweb
+CONNECTORS ?= zotero zoteroweb
 
 
 # ZOTERO CREDENTIALS

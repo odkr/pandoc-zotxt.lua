@@ -1048,29 +1048,29 @@ function test_yamlify ()
     lu.assert_equals(csl, ZOTXT_CSL)
 end
 
-function test_settings_add ()
-    local settings = M.Settings()
-    local add = settings.add
+function test_options_add ()
+    local options = M.Options()
+    local add = options.add
 
     local errors = {
         -- @fixme: why is that? why no prefix?
-        {'argument 2: expected table, but got nil%.', add, settings},
-        {'argument 2: expected table, but got nil%.', add, settings, nil},
-        {'argument 2: expected table, but got boolean%.', add, settings, true},
-        --{'.-: nada: no such type%.', add, settings, M.Setting:new{name = 'n', type ='nada'}},
-        --{'.+: name: expected string, but got nil%.', add, settings, M.Setting:new{}},
-        --{'.+: name: is the empty string%.', add, settings, M.Setting:new{name = ''}},
-        --{'.+: check: expected nil or function, but got boolean%.', add, settings, M.Setting:new{name = 'n', check = true}}
+        {'argument 2: expected table, but got nil%.', add, options},
+        {'argument 2: expected table, but got nil%.', add, options, nil},
+        {'argument 2: expected table, but got boolean%.', add, options, true},
+        --{'.-: nada: no such type%.', add, options, M.Setting:new{name = 'n', type ='nada'}},
+        --{'.+: name: expected string, but got nil%.', add, options, M.Setting:new{}},
+        --{'.+: name: is the empty string%.', add, options, M.Setting:new{name = ''}},
+        --{'.+: check: expected nil or function, but got boolean%.', add, options, M.Setting:new{name = 'n', check = true}}
     }
 
     for _, v in ipairs(errors) do
         lu.assert_error_msg_matches(unpack(v))
     end
 
-    lu.assert_true(pcall(add, settings, {name = 'test'}))
+    lu.assert_true(pcall(add, options, {name = 'test'}))
 end
 
-function test_settings_parse ()
+function test_options_parse ()
     local meta = pandoc.MetaMap{
         ['zotero-test'] = pandoc.MetaInlines{pandoc.Str 'test'},
         ['zotero-unstr'] = pandoc.MetaMap{},
@@ -1081,12 +1081,12 @@ function test_settings_parse ()
     }
 
     local erroneous = {
-        [M.Setting:new{prefix = 'zotero', name = 'unstr'}] = 'metadata field "zotero-unstr": not a string or empty.',
+        [{prefix = 'zotero', name = 'unstr'}] = 'zotero-unstr: not a string or empty.',
     }
 
     for k, v in pairs(erroneous) do
-        local parser = M.Settings()
-        parser:add(M.Setting:new(k))
+        local parser = M.Options()
+        parser:add(k)
         lu.assert_error_msg_equals(
             v,
             parser.parse,
@@ -1099,18 +1099,18 @@ function test_settings_parse ()
         [{name = 'test', check = nilify}] = nil,
     }
     for k, v in pairs(missing) do
-        local parser = M.Settings()
+        local parser = M.Options()
         parser:add(M.Setting:new(k))
         local ok, msg = parser:parse(meta)
         lu.assert_nil(ok)
         lu.assert_equals(msg, v)
     end
 
-    local conf_parser = M.Settings()
-    conf_parser:add(M.Setting:new{prefix = 'zotero', name = 'test'})
-    conf_parser:add(M.Setting:new{prefix = 'zotero', name = 'list', type = 'list'})
-    conf_parser:add(M.Setting:new{prefix = 'zotero', name = 'num_list', type = 'list', check = id})
-    conf_parser:add(M.Setting:new{prefix = 'zotero', name = 'higher_ord', type = 'list<list>'})
+    local conf_parser = M.Options()
+    conf_parser:add({prefix = 'zotero', name = 'test'})
+    conf_parser:add({prefix = 'zotero', name = 'list', type = 'list'})
+    conf_parser:add({prefix = 'zotero', name = 'num_list', type = 'list', check = id})
+    conf_parser:add({prefix = 'zotero', name = 'higher_ord', type = 'list<list>'})
 
     local conf = conf_parser:parse(meta)
 
@@ -1124,8 +1124,8 @@ end
 -- zotxt
 -- -----
 
-function test_zotxt_fetch ()
-    local ret, err = M.connectors.zotxt:fetch('haslanger2012ResistingRealitySocial')
+function test_zotero_fetch ()
+    local ret, err = M.connectors.zotero:fetch('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     lu.assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
 end
@@ -1133,25 +1133,25 @@ end
 -- Zotero Web API
 -- --------------
 
--- function test_zotweb_get_user_id ()
---     local zotweb = M.connectors.zotweb{api_key = ZOTWEB_API_KEY}
---     local ret, err = zotweb:get_user_id()
+-- function test_zoteroweb_get_user_id ()
+--     local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+--     local ret, err = zoteroweb:get_user_id()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
 --     lu.assert_equals(ret, 5763466)
 -- end
 
--- function test_zotweb_get_groups ()
---     local zotweb = M.connectors.zotweb{api_key = ZOTWEB_API_KEY}
---     local ret, err = zotweb:get_groups()
+-- function test_zoteroweb_get_groups ()
+--     local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+--     local ret, err = zoteroweb:get_groups()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
 --     lu.assert_items_equals(ret, {4513095, n = 1})
 -- end
 
-function test_zotweb_endpoints ()
-    local zotweb = M.connectors.ZotWeb{api_key = ZOTWEB_API_KEY}
-    local iter, err = zotweb:endpoints()
+function test_zoteroweb_endpoints ()
+    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+    local iter, err = zoteroweb:endpoints()
     lu.assert_not_nil(iter)
     lu.assert_nil(err)
     lu.assert_items_equals(pack(M.tabulate(iter)), {
@@ -1160,7 +1160,7 @@ function test_zotweb_endpoints ()
         n = 2
     })
 
-    iter, err = zotweb:endpoints 'FAKE0123'
+    iter, err = zoteroweb:endpoints 'FAKE0123'
     lu.assert_not_nil(iter)
     lu.assert_nil(err)
     lu.assert_items_equals(pack(M.tabulate(iter)), {
@@ -1170,10 +1170,10 @@ function test_zotweb_endpoints ()
     })
 end
 
-function test_zotweb_search ()
-    local zotweb = M.connectors.zotweb{api_key = ZOTWEB_API_KEY}
+function test_zoteroweb_search ()
+    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
 
-    local items, err = zotweb:search('haslanger', '2012', 'Resisting', 'Reality', 'Social')
+    local items, err = zoteroweb:search('haslanger', '2012', 'Resisting', 'Reality', 'Social')
     lu.assert_not_nil(items)
     lu.assert_nil(err)
     lu.assert_equals(#items, 1)
@@ -1181,20 +1181,20 @@ function test_zotweb_search ()
     lu.assert_items_equals(items[1], ZOTWEB_CSL)
 end
 
-function test_zotweb_lookup ()
-    local zotweb = M.connectors.zotweb{api_key = ZOTWEB_API_KEY}
+function test_zoteroweb_lookup ()
+    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
 
-    local item, err = zotweb:lookup 'D9HEKNWD'
+    local item, err = zoteroweb:lookup 'D9HEKNWD'
     lu.assert_not_nil(item)
     lu.assert_nil(err)
     item.id = 'haslanger2012ResistingRealitySocial'
     lu.assert_items_equals(item, ZOTWEB_CSL)
 end
 
-function test_zotweb_fetch ()
-    local zotweb = M.connectors.zotweb{api_key = ZOTWEB_API_KEY}
+function test_zoteroweb_fetch ()
+    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
 
-    local ret, err = zotweb:fetch('haslanger2012ResistingRealitySocial')
+    local ret, err = zoteroweb:fetch('haslanger2012ResistingRealitySocial')
     lu.assert_not_nil(ret)
     lu.assert_nil(err)
     lu.assert_equals(ret, ZOTWEB_CSL)
@@ -1452,7 +1452,7 @@ function test_csl_json_to_items ()
 end
 
 function test_citekey_to_terms ()
-    local citekey_types = M.connectors.zotweb.citekey_types
+    local citekey_types = M.connectors.zoteroweb.citekey_types
 
     local tests = {
         [''] = nil,
@@ -1537,7 +1537,7 @@ end
 function test_biblio_update ()
     local wrong = {'nosuffix', 'n.', 'n.wrongformat'}
     for _, v in ipairs(wrong) do
-        local ok, err =  M.biblio:update(M.connectors.zotxt, v, {'<n/a>'})
+        local ok, err =  M.biblio:update(M.connectors.zotero, v, {'<n/a>'})
         lu.assert_nil(ok)
         lu.assert_not_nil(err)
     end
@@ -1550,13 +1550,13 @@ function test_biblio_update ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.biblio:update(M.connectors.zotxt, fname, {})
+    ok, err = M.biblio:update(M.connectors.zotero, fname, {})
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.biblio:update(M.connectors.zotxt, fname, {'haslanger:2012resisting'})
+    ok, err = M.biblio:update(M.connectors.zotero, fname, {'haslanger:2012resisting'})
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1569,7 +1569,7 @@ function test_biblio_update ()
     -- Checks adding a new citation.
     local new
     ckeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.biblio:update(M.connectors.zotxt, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1577,7 +1577,7 @@ function test_biblio_update ()
     lu.assert_not_nil(data)
     lu.assert_equals(#data, 2)
 
-    ok, err = M.biblio:update(M.connectors.zotxt, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = read_json_file(fname)
@@ -1587,7 +1587,7 @@ function test_biblio_update ()
 
     -- This should not change the file.
     local post
-    ok, err = M.biblio:update(M.connectors.zotxt, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = read_json_file(fname)
