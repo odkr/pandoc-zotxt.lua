@@ -36,7 +36,7 @@ into a Bourne-compatible shell:
 ```sh
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
-  name=pandoc-zotxt.lua vers=1.1.0b4
+  name=pandoc-zotxt.lua vers=1.1.0b5
   url="https://github.com/odkr/$name/releases/download/v$vers/$name-$vers.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
     [ -d "$data_dir" ] && break
@@ -49,7 +49,7 @@ into a Bourne-compatible shell:
 ```
 
 If you want to use the manual page that ships with this release, add
-`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b4/man`
+`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b5/man`
 to your `MANPATH`.
 
 
@@ -58,6 +58,12 @@ to your `MANPATH`.
 See the [manual](man/man1/pandoc-zotxt.lua.rst),
 the [source code documentation](https://odkr.github.io/pandoc-zotxt.lua/),
 and the [source code](pandoc-zotxt.lua) itself for details.
+
+
+## Contact
+
+If there's something wrong with **pandoc-zotxt.lua**, please
+[open an issue](https://github.com/odkr/pandoc-zotxt.lua/issues).
 
 
 ## Testing
@@ -81,8 +87,8 @@ Simply say:
 ```
 
 Note, some tests report errors even if they succeed. *Not* every error message
-indicates that **pandoc-zotxt.lua** failed a test. If it did fail a test,
-`make` exits with a non-zero status.
+indicates that **pandoc-zotxt.lua** failed a test. If it does fail a test,
+`make` will exit with a non-zero status.
 
 ### The real-world test suite
 
@@ -104,12 +110,6 @@ Moreover, you will need:
 * Zotero (v5 or newer)
 * zotxt (v5 or newer)
 * Better BibTeX for Zotero (v5 or newer)
-
-
-## Contact
-
-If there's something wrong with **pandoc-zotxt.lua**, please
-[open an issue](https://github.com/odkr/pandoc-zotxt.lua/issues).
 
 
 ## License
