@@ -85,7 +85,7 @@ unset file
 # PRELUDE
 # =======
 
-temp_dir_make -d . -p rp
+temp_dir_make -d . -p rm
 
 
 # MAIN
@@ -93,25 +93,15 @@ temp_dir_make -d . -p rp
 
 warn 'verifying version number ...'
 
-tag="$(	git tag --sort=-version:refname |
-	grep -E '^v'                    |
-	sed 's/^v//; q;'
-)" && [ "$tag" ] ||
-	panic 'failed to derive version from tag.'
-
 release="$(sed -n 's/-- *@release *//p;' "$filter")" && [ "$release" ] ||
 	panic '%s: failed to parse @release.' "$filter"
 
 vers="$(sed -n "s/^ *VERSION *= *['\"]\([^'\"]*\)['\"].*/\1/p;" "$filter")" &&
 	[ "$vers" ] || panic '%s: failed to parse VERSION.' "$filter"
 
-[ "$tag" = "$release" ] ||
-	panic -s 65 '%s: @release %s does not match tag v%s.' \
-	       "$filter" "$release" "$tag"
-
-[ "$tag" = "$vers" ] ||
-	panic -s 65 '%s: VERSION %s does not match tag v%s.' \
-	      "$filter" "$vers" "$tag"
+[ "$release" = "$vers" ] ||
+	panic -s 65 '%s: @release %s does not match VERSION v%s.' \
+	       "$filter" "$release" "$vers"
 
 warn 'verifying branch ...'
 
@@ -124,17 +114,17 @@ do
 	case $fname in
 		('#'*|'') continue ;;
 		(*[Rr][Ee][Aa][Dd][Mm][Ee]*)
-			grep --fixed-strings --quiet "$tag" "$fname" ||
+			grep --fixed-strings --quiet "$vers" "$fname" ||
 			panic -s 65 '%s: does not reference v%s.' \
-			      "$fname" "$tag"
+			      "$fname" "$vers"
 	esac
 done <"$manifest"
 
 warn 'updating documentation ...'
 
-echo make docs
-echo git add "$filter" man docs
-echo git commit -m 'docs: updated.'
+make docs
+git add "$filter" man docs
+git commit -m 'docs: updated.'
 
 warn 'testing release ...'
 
@@ -145,12 +135,24 @@ warn 'testing under real-world conditions ...'
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
 
-for branch in develop main
+# DEBUG
+for branch in develop # main
 do
 	warn 'merging %s to %s ...' "$release_branch" "$branch"
-	echo git checkout "$branch"
-	echo git merge "$release_branch"
+	git checkout "$branch"
+	git merge "$release_branch"
 done
 
-warn 'adding tag v%s ...' "$tag"
-echo git tag "v$tag"
+warn 'adding tag v%s ...' "$vers"
+
+last="$(
+	git tag --list 'v*' --sort version:refname |
+	tail -n1
+)" && [ "$last" ] ||
+	panic 'failed to determine current release.'
+
+log="$TEMP_DIR/log"
+git log "^$last" HEAD >"$log"
+
+# DEBUG
+echo git tag --file "$log" --edit "v$vers"
