@@ -17,7 +17,6 @@ style = '.'
 backtick_references = false
 
 new_type('object', 'Prototypes', false, 'Uninitialised properties')
-new_type('const', 'Constructors', false, 'Named parameters')
 
 custom_tags = {
     {'caveats', title = 'Caveats'},
