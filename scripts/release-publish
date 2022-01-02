@@ -98,11 +98,12 @@ warn 'verifying branch ...'
 
 warn 'verifying version number ...'
 
-tag="$(	git tag --sort=-version:refname |
-	grep -E '^v'                    |
-	sed 's/^v//; q;'
-)" && [ "$tag" ] ||
-	panic 'failed to derive version from tag.'
+tag="$(
+	git tag --list 'v*' --sort version:refname |
+	tail -n1                                   |
+	sed 's/^v//'
+)" && [ "$last" ] ||
+	panic 'failed to determine current release.'
 
 release="$(sed -n 's/-- *@release *//p;' "$filter")" && [ "$release" ] ||
 	panic '%s: failed to parse @release.' "$filter"
