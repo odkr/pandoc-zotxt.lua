@@ -43,7 +43,7 @@
 <li><a href="#Citation_keys">Citation keys </a></li>
 <li><a href="#Bibliography_files">Bibliography files </a></li>
 <li><a href="#Document_parsing">Document parsing </a></li>
-<li><a href="#Configuration_parsing">Configuration parsing </a></li>
+<li><a href="#Option_parsing">Option parsing </a></li>
 <li><a href="#Zotero_connectors">Zotero connectors </a></li>
 <li><a href="#Main">Main </a></li>
 </ul>
@@ -200,45 +200,42 @@
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
-</span>zotero-citekey-types:
-    - betterbibtexkey
-    - key
+</span>zotero-citekey-types: betterbibtexkey
 ...
-Now, @DoeTitle is guaranteed to be treated as a BetterBibTeX citation
-key.
+Forces @DoeTitle to be treated as a BetterBibTeX citation key.
 EOF
 </pre>
 
 
 <h2> SETTINGS</h2>
 
-<p> You configure how bibligraphic data is fetched by setting the following
+<p> You can configure how bibligraphic data is fetched by setting the following
  metadata fields:</p>
 
 <ul>
-<li><p><strong>zotero-api-key</strong>: A Zotero API key. Needed to access your personal
-library via the Zotero Web API, but not needed to access public groups.</p></li>
-<li><p><strong>zotero-bibliography</strong>: A bibliography filename. Fetched bibliographic
-data is added to this file. (See &ldquo;BIBLIOGRAPHY FILES&rdquo; above for details.)</p></li>
-<li><p><strong>zotero-citekey-types</strong>: A list of citation key types. Citation keys are
-treated as being of any of the listed types only. (See &ldquo;CITATION KEY TYPES&rdquo;
+<li><p><code>zotero-api-key</code>: A Zotero API key. Needed to access your personal
+library via the Zotero Web API; not needed to access public groups.</p></li>
+<li><p><code>zotero-bibliography</code>: A bibliography filename. Fetched bibliographic
+data is added to this file. (See &ldquo;Bibligraphy Files&rdquo; above for details.)</p></li>
+<li><p><code>zotero-citekey-types</code>: A list of citation key types. Citation keys are
+treated as being of any of the listed types only. (See &ldquo;Citation Key Types&rdquo;
 above for details.)</p></li>
-<li><p><strong>zotero-connectors</strong>: One or more Zotero connectors:</p>
+<li><p><code>zotero-connectors</code>: One or more Zotero connectors:</p>
 
 <table>
 <thead>
 <tr>
-<th> <strong>Key</strong> </th>
-<th> <strong>Connect to</strong>        </th>
+<th> <strong>Key</strong>   </th>
+<th> <strong>Fetch data from</strong>   </th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td> zotxt   </td>
+<td> zotero    </td>
 <td> Zotero desktop client </td>
 </tr>
 <tr>
-<td> zotweb  </td>
+<td> zoteroweb </td>
 <td> Zotero Web API        </td>
 </tr>
 </tbody>
@@ -250,12 +247,12 @@ above for details.)</p></li>
 <p>By default, the Zotero desktop client is searched first. If you have set
 a Zotero API key and the client could not be reached or some citations
 not be found, the Zotero Web API is searched next.</p></li>
-<li><p><strong>zotero-groups</strong>: A list of Zotero group IDs. Only the listed groups are
+<li><p><code>zotero-groups</code>: A list of Zotero group IDs. Only the listed groups are
 searched. By default, all groups that you are a member of are searched.</p></li>
-<li><p><strong>zotero-public-groups</strong>: A list of Zotero group IDs. Listed groups are
+<li><p><code>zotero-public-groups</code>: A list of Zotero group IDs. Listed groups are
 searched in addition to the groups that you are a member of, if any. These
 groups must be public. (See &ldquo;Zotero Web API&rdquo; above for details.)</p></li>
-<li><p><strong>zotero-user-id</strong>: A Zotero user ID. Needed to fetch data via the Zotero
+<li><p><code>zotero-user-id</code>: A Zotero user ID. Needed to fetch data via the Zotero
 Web API, but looked up automatically if not given.</p></li>
 </ul>
 
@@ -316,7 +313,7 @@ EOF
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
-zotero-connectors: zotweb
+zotero-connectors: zoteroweb
 ...
 See @DoeTitle2020 <span class="keyword">for</span> details.
 EOF
@@ -369,7 +366,7 @@ EOF
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: 2018, 2019, 2020, 2021 Odin Kroeger</li>
-        <li><strong>Release</strong>: 1.1.0b4</li>
+        <li><strong>Release</strong>: 1.1.0b5</li>
         <li><strong>License</strong>: MIT</li>
         <li><strong>Author</strong>: Odin Kroeger</li>
     </ul>
@@ -451,7 +448,7 @@ EOF
 	<td class="summary">Tabulate the values an iterator returns.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#walk">walk (graph, func)</a></td>
+	<td class="name" nowrap><a href="#walk">walk (val, func)</a></td>
 	<td class="summary">Walk a graph and apply a function to every node.</td>
 	</tr>
 </table>
@@ -483,6 +480,10 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#Object.mt.__call">Object.mt.__call (proto[, tab])</a></td>
 	<td class="summary">Delegate to a prototype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Object.new">Object.new</a></td>
+	<td class="summary">Initialise a new object.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#Values">Values</a></td>
@@ -765,39 +766,27 @@ EOF
 	<td class="summary">Collect the citation keys used in a document.</td>
 	</tr>
 </table>
-<h2><a href="#Configuration_parsing">Configuration parsing </a></h2>
+<h2><a href="#Option_parsing">Option parsing </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#Setting">Setting</a></td>
-	<td class="summary">A configuration setting.</td>
+	<td class="name" nowrap><a href="#Option">Option</a></td>
+	<td class="summary">An option definition</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Setting:new">Setting:new</a></td>
-	<td class="summary">Create a new setting.</td>
+	<td class="name" nowrap><a href="#Options">Options</a></td>
+	<td class="summary">An option parser.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Setting:get">Setting:get (meta)</a></td>
-	<td class="summary">Get a setting&rsquo;s value from a metadata block.</td>
+	<td class="name" nowrap><a href="#Options:new">Options:new ()</a></td>
+	<td class="summary">Create a new option parser.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Settings">Settings</a></td>
-	<td class="summary">A configuration parser.</td>
+	<td class="name" nowrap><a href="#Options:add">Options:add (...)</a></td>
+	<td class="summary">Add an option definition to the parser.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Settings:add">Settings:add (...)</a></td>
-	<td class="summary">Add settings to the parser.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#Settings:parse">Settings:parse (meta)</a></td>
-	<td class="summary">Get configuration settings from a metadata block.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ZotSetting">ZotSetting</a></td>
-	<td class="summary">A configuration setting prototype with the prefix &lsquo;zotero&rsquo;.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#ZotSetting.prefix">ZotSetting.prefix</a></td>
-	<td class="summary">Set to &lsquo;zotero&rsquo;.</td>
+	<td class="name" nowrap><a href="#Options:parse">Options:parse (meta)</a></td>
+	<td class="summary">Get configuration options from a metadata block.</td>
 	</tr>
 </table>
 <h2><a href="#Zotero_connectors">Zotero connectors </a></h2>
@@ -807,76 +796,68 @@ EOF
 	<td class="summary">A case-insensitive namespace for connector prototypes.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.Zotxt">connectors.Zotxt</a></td>
+	<td class="name" nowrap><a href="#connectors.Zotero">connectors.Zotero</a></td>
 	<td class="summary">Interface to <a href="https://github.com/egh/zotxt">zotxt</a>.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.Zotxt.citekey_types">connectors.Zotxt.citekey_types</a></td>
+	<td class="name" nowrap><a href="#connectors.Zotero.options">connectors.Zotero.options</a></td>
+	<td class="summary">Zotero options.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#connectors.Zotero.citekey_types">connectors.Zotero.citekey_types</a></td>
 	<td class="summary">Types of citation keys to expect.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.Zotxt.settings">connectors.Zotxt.settings</a></td>
-	<td class="summary">Settings of the connector.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#connectors.Zotxt:fetch">connectors.Zotxt:fetch (ckey)</a></td>
+	<td class="name" nowrap><a href="#connectors.Zotero:fetch">connectors.Zotero:fetch (ckey)</a></td>
 	<td class="summary">Fetch a CSL item via zotxt.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.Zotxt:configure">connectors.Zotxt:configure (meta)</a></td>
-	<td class="summary">Configure the connector.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb">connectors.ZotWeb</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb">connectors.ZoteroWeb</a></td>
 	<td class="summary">Interface to <a href="https://www.zotero.org/support/dev/web_api">Zotero&rsquo;s Web API</a></td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.citekey_types">connectors.ZotWeb.citekey_types</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.citekey_types">connectors.ZoteroWeb.citekey_types</a></td>
 	<td class="summary">Types of citation keys to expect.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.settings">connectors.ZotWeb.settings</a></td>
-	<td class="summary">Zotero Web API settings.</td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.options">connectors.ZoteroWeb.options</a></td>
+	<td class="summary">Zotero Web API options.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.mt">connectors.ZotWeb.mt</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt">connectors.ZoteroWeb.mt</a></td>
 	<td class="summary">Metatable for Zotero Web API connectors.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.mt.__call">connectors.ZotWeb.mt.__call ()</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt.__call">connectors.ZoteroWeb.mt.__call ()</a></td>
 	<td class="summary">Delegate to the Zotero Web API interface.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.mt.getters">connectors.ZotWeb.mt.getters</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt.getters">connectors.ZoteroWeb.mt.getters</a></td>
 	<td class="summary">Getters for Zotero Web API connectors.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.mt.getters.user_id">connectors.ZotWeb.mt.getters.user_id (obj)</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt.getters.user_id">connectors.ZoteroWeb.mt.getters.user_id (obj)</a></td>
 	<td class="summary">Get the user ID for the given API key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb.mt.getters.groups">connectors.ZotWeb.mt.getters.groups (obj)</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt.getters.groups">connectors.ZoteroWeb.mt.getters.groups (obj)</a></td>
 	<td class="summary">Get the IDs of the groups the current user is a member of.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb:endpoints">connectors.ZotWeb:endpoints ([id])</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb:endpoints">connectors.ZoteroWeb:endpoints ([id])</a></td>
 	<td class="summary">Iterate over item endpoint URLs.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb:search">connectors.ZotWeb:search (...)</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb:search">connectors.ZoteroWeb:search (...)</a></td>
 	<td class="summary">Search items by their author, publication year, and title.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb:lookup">connectors.ZotWeb:lookup (id)</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb:lookup">connectors.ZoteroWeb:lookup (id)</a></td>
 	<td class="summary">Look up a CSL item by its Zotero ID.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb:fetch">connectors.ZotWeb:fetch (ckey)</a></td>
+	<td class="name" nowrap><a href="#connectors.ZoteroWeb:fetch">connectors.ZoteroWeb:fetch (ckey)</a></td>
 	<td class="summary">Fetch a CSL item from Zotero.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#connectors.ZotWeb:configure">connectors.ZotWeb:configure (meta)</a></td>
-	<td class="summary">Configure the connector.</td>
 	</tr>
 </table>
 <h2><a href="#Main">Main </a></h2>
@@ -988,9 +969,9 @@ EOF
 <p> <h3>Type declaration grammar:</h3></p>
 
 <p> Give one or more Lua type names separated by &lsquo;|&rsquo; to declare that the given
- value may be of any of those types (e.g., <code>'string|table'</code>). Use <code>'*'</code> to
- declare that the value may be of any type oter than <code>nil</code>. <code>'?T'</code> is short
- for &lsquo;<code>nil|T</code>&rsquo; (e.g., <code>'?table'</code> is equivalent to <code>'nil|table'</code>). <code>'?*'</code> is
+ value may be of any of those types (e.g., <code>'string|table'</code>). Use &lsquo;<code>*</code>&rsquo; to
+ declare that the value may be of any type oter than <code>nil</code>. &lsquo;<code>?T</code>&rsquo; is short
+ for &lsquo;<code>nil|T</code>&rsquo; (e.g., <code>'?table'</code> is equivalent to <code>'nil|table'</code>). &lsquo;<code>?*</code>&rsquo; is
  a special case; it signifies that the value may be of any type, even <code>nil</code>.</p>
 
 <p> In <a href="https://en.wikipedia.org/wiki/EBNF">Extended Backus-Naur Form</a>:</p>
@@ -1017,7 +998,7 @@ EOF
         </li>
         <li><span class="parameter">decl</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A type declaration.
+         A type declaration (e.g., <code>'?number|string'</code>).
         </li>
     </ul>
 
@@ -1051,8 +1032,8 @@ EOF
 <p> <h3>Type declaration grammar:</h3></p>
 
 <p> The type declaration syntax is that of <a href="../index.html#type_match">type_match</a>, save for that
- you can use <code>'...'</code> to declare that an argument is of the same type
- as the previous one; if <code>'...'</code> is the last type declaration, then
+ you can use &lsquo;<code>...</code>&rsquo; to declare that an argument is of the same type
+ as the previous one; if &lsquo;<code>...</code>&rsquo; is the last type declaration, then
  the previous type declaration applies to all remaning arguments.
 
     <h3>Caveats:</h3>
@@ -1118,8 +1099,8 @@ EOF
     <ul>
         <li><span class="parameter">types</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
-         A mapping of parameter names to
-  type declarations. See <a href="../index.html#type_match">type_match</a> for the type declaration syntax.
+         A mapping of keywords
+  to <a href="#type_match">type declarations</a>.
         </li>
     </ul>
 
@@ -1193,6 +1174,18 @@ Foo.new = typed_keyword_args{
 
 
 
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; <span class="keyword">function</span> bar ()
+&gt;     <span class="global">print</span>(get_vars(<span class="number">3</span>)[<span class="string">'foo'</span>])
+&gt; <span class="keyword">end</span>
+&gt; <span class="keyword">function</span> foo ()
+&gt;     foo = <span class="string">'foo'</span>
+&gt;     bar()
+&gt; <span class="keyword">end</span>
+&gt; foo()
+foo</pre>
+    </ul>
 
 </dd>
 </dl>
@@ -1500,7 +1493,7 @@ key    value</pre>
 </dd>
     <dt>
     <a name = "walk"></a>
-    <strong>walk (graph, func)</strong>
+    <strong>walk (val, func)</strong>
     </dt>
     <dd>
     Walk a graph and apply a function to every node.</p>
@@ -1514,8 +1507,8 @@ key    value</pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">graph</span>
-         A graph.
+        <li><span class="parameter">val</span>
+         A value.
         </li>
         <li><span class="parameter">func</span>
             <span class="types"><span class="type">func</span></span>
@@ -1876,6 +1869,45 @@ bam!</pre>
 
 </dd>
     <dt>
+    <a name = "Object.new"></a>
+    <strong>Object.new</strong>
+    </dt>
+    <dd>
+    Initialise a new object.</p>
+
+<p> <code>Object:new(props)</code> is equivalent to <code>Object(copy(props))</code>.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <ul>
+        <li><span class="parameter">proto</span>
+            <span class="types"><span class="type">tab</span></span>
+         A prototype.
+        </li>
+        <li><span class="parameter">props</span>
+            <span class="types"><span class="type">tab</span></span>
+         Properties.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; foo = Object:new{foo = <span class="string">'foo'</span>, bar = <span class="string">'bar'</span>}
+&gt; foo.foo
+foo
+&gt; foo.bar
+bar</pre>
+    </ul>
+
+</dd>
+    <dt>
     <a name = "Values"></a>
     <strong>Values</strong>
     </dt>
@@ -2045,7 +2077,7 @@ bam!</pre>
     <ol>
 
            <span class="types"><a class="type" href="../index.html#Object">Object</a></span>
-        A getterified object.
+        A getterified table.
     </ol>
 
 
@@ -2641,7 +2673,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     <h3>Returns:</h3>
     <ol>
 
-        The values the function returns.
+        The values returned by the function.
     </ol>
 
 
@@ -2728,6 +2760,11 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     See <a href="../index.html#http_get">http_get</a>.
 
 
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; <span class="comment">-- Query &lt;https://site.example?foo=1&amp;bar=2&gt;.
+</span>mt, con = url_query(<span class="string">'https://site.example'</span>, {foo = <span class="number">1</span>, bar = <span class="number">2</span>})</pre>
+    </ul>
 
 </dd>
 </dl>
@@ -2767,6 +2804,11 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
 
 
 
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; escape_markdown <span class="string">'*text*'</span>
+\*text*</pre>
+    </ul>
 
 </dd>
     <dt>
@@ -3363,6 +3405,11 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
 
 
 
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; csl_varname_normalise <span class="string">'Original date'</span>
+original-date</pre>
+    </ul>
 
 </dd>
     <dt>
@@ -3556,7 +3603,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     <ul>
         <li><span class="parameter">ckey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A zotxt Easy Citekey (e.g., <code>'doe2020:word'</code>).
+         A zotxt Easy Citekey (e.g., <code>'doe:2020word'</code>).
         </li>
     </ul>
 
@@ -4079,8 +4126,8 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">handle</span>
-            <span class="types"><a class="type" href="../index.html#connectors.Zotxt">connectors.Zotxt</a> or <a class="type" href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a></span>
-         An interface to Zotero.
+            <span class="types"><a class="type" href="../index.html#connectors.Zotero">connectors.Zotero</a> or <a class="type" href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a></span>
+         A Zotero interface.
         </li>
         <li><span class="parameter">fname</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -4089,7 +4136,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
         <li><span class="parameter">ckeys</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
          The citation keys of the items to add
-  (e.g., <code>{'doe:2020word', 'DoeWord2020'}</code>).
+  (e.g., <code>{'doe:2020word'}</code>).
         </li>
     </ul>
 
@@ -4325,111 +4372,35 @@ but not &lsquo;Blocks&rsquo; or &lsquo;Inlines&rsquo;.</li>
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Configuration_parsing"></a>Configuration parsing </h2>
+    <h2 class="section-header "><a name="Option_parsing"></a>Option parsing </h2>
 
     <dl class="function">
     <dt>
-    <a name = "Setting"></a>
-    <strong>Setting</strong>
+    <a name = "Option"></a>
+    <strong>Option</strong>
     </dt>
     <dd>
-    A configuration setting.
-
-    </ul>
-    </ul>
-    </ul>
-    <h3>Prototype:</h3>
-    <ul>
-         <a href="../index.html#Object">Object</a>
-    </ul>
-
-
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="../index.html#Setting:new">Setting:new</a>
-    </ul>
-
-
-</dd>
-    <dt>
-    <a name = "Setting:new"></a>
-    <strong>Setting:new</strong>
-    </dt>
-    <dd>
-    Create a new setting.</p>
-
-<p> <h3>Mapping of setting names to metadata fieldnames:</h3></p>
-
-<p> Every setting has a name. The metadata fieldname that is looked up by
- <a href="../index.html#Setting:get">Setting:get</a> is that name with underscores replaced by dashes.</p>
-
-<p> Settings may have prefixes. If so, the setting name is prefixed with
- that prefix <em>and</em> &lsquo;-&rsquo; before being translated into a fieldname. In Lua:</p>
-
-<pre><code>if prefix and prefix ~= '' then name = prefix .. '-' .. name end
-fieldname = name:gsub('_', '-')
-</code></pre>
-
-<p> <h3>Type declaration grammar:</h3></p>
-
-<p> Configuration values can be of one of three types: &lsquo;number&rsquo;, &lsquo;string&rsquo;,
- or &lsquo;list&rsquo;.</p>
-
-<p> The scalar types &lsquo;number&rsquo; and &lsquo;string&rsquo; declare that a value must be of
- (and should be coerced to) the Lua type of the same name.</p>
-
-<p> The type &lsquo;list&rsquo; declares that a value must be a <code>pandoc.List</code>. All
- items in a list must be of the same type, which you declare by
- appending &lsquo;&lt;<em>T</em>>&rsquo; to a &lsquo;list&rsquo;, where <em>T</em> is either the name of a
- scalar type or &lsquo;list&lt;&hellip;>&rsquo;. If you do not declare that type, it
- defaults to &lsquo;string&rsquo;. If a scalar value is encountered, but a list
- is expected, the scalar value is put into a single-item list.</p>
-
-<p> Prefix a type with &lsquo;?&rsquo; to declare that a setting is optional.</p>
-
-<p> Whitespace is ignored.</p>
-
-<p> In <a href="https://en.wikipedia.org/wiki/EBNF">Extended Backus-Naur Form</a>:</p>
-
-<blockquote><p>Whitespace = &lsquo; &rsquo; | TAB | CR | LF</p>
-
-<p>Simple type = &lsquo;number&rsquo; | &lsquo;string&rsquo;</p>
-
-<p>List = &lsquo;list&rsquo;, {whitespace},
-       [&lsquo;&lt;&rsquo;, {whitespace}, (simple type | list), {whitespace}, [&lsquo;>&rsquo;] ]</p>
-
-<p>Type declaration = {whitespace},
-                   [&lsquo;?&rsquo;], {whitespace},
-                   (simple type | list), {whitespace}</p></blockquote>
-
-<p> <h3>Check protocol:</h3></p>
-
-<p> You can give a function that checks whether a setting&rsquo;s value is
- valid. That function is run after the value has been coerced to the
- requested type. It must return <code>true</code> if the value is valid and <code>nil</code>
- and an error message otherwise.
+    An option definition
 
     </ul>
     </ul>
     </ul>
     </ul>
 
-    <h3>Named parameters:</h3>
+    <h3>Fields:</h3>
     <ul>
         <li><span class="parameter">name</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A name.
+         A optiona name.
         </li>
         <li><span class="parameter">type</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A type to coerce the setting&rsquo;s value to.
-         (<em>default</em> '?string')
+         A type to coerce the option&rsquo;s value to.
+         (<em>default</em> 'string')
         </li>
         <li><span class="parameter">check</span>
             <span class="types"><span class="type">func</span></span>
-         A function that checks the setting&rsquo;s value.
+         A function that checks the option&rsquo;s value.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">prefix</span>
@@ -4443,88 +4414,17 @@ fieldname = name:gsub('_', '-')
 
     <h3>See also:</h3>
     <ul>
-         <a href="../index.html#Setting:get">Setting:get</a>
+         <a href="../index.html#Options:add">Options:add</a>
     </ul>
 
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example">setting = Setting:new{
-    name = <span class="string">'bar'</span>,
-    <span class="global">type</span> = <span class="string">'?number'</span>,
-    check = <span class="keyword">function</span> (x)
-        <span class="keyword">if</span> x &gt; <span class="number">0</span> <span class="keyword">return</span> <span class="keyword">true</span> <span class="keyword">end</span>
-        <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">'not a positive number.'</span>
-    <span class="keyword">end</span>
-}</pre>
-    </ul>
 
 </dd>
     <dt>
-    <a name = "Setting:get"></a>
-    <strong>Setting:get (meta)</strong>
+    <a name = "Options"></a>
+    <strong>Options</strong>
     </dt>
     <dd>
-    Get a setting&rsquo;s value from a metadata block.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">pandoc.MetaMap</span></span>
-         A metadata block.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        The value of the setting.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the settings was not given.
-    </ol>
-
-    <h3>Raises:</h3>
-     An error if the setting is missing,
-  of the wrong type, or invalid.
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="../index.html#Setting:new">Setting:new</a>
-    </ul>
-
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example">&gt; setting = Setting:new{
-&gt;    prefix = <span class="string">'foo'</span>,
-&gt;    name = <span class="string">'bar'</span>,
-&gt;    <span class="global">type</span> = <span class="string">'number'</span>
-&gt; }
-&gt; meta = pandoc.MetaMap{
-&gt;   [<span class="string">'foo-bar'</span>] = pandoc.MetaInlines(pandoc.List{
-&gt;           pandoc.Str <span class="string">"0123"</span>
-&gt;   })
-&gt; bar = setting:get(meta)
-&gt; bar
-<span class="number">123</span>
-&gt; <span class="global">type</span>(bar)
-number</pre>
-    </ul>
-
-</dd>
-    <dt>
-    <a name = "Settings"></a>
-    <strong>Settings</strong>
-    </dt>
-    <dd>
-    A configuration parser.
+    An option parser.
 
     </ul>
     </ul>
@@ -4539,18 +4439,111 @@ number</pre>
 
     <h3>See also:</h3>
     <ul>
-         <li><a href="../index.html#Settings:add">Settings:add</a></li>
-         <li><a href="../index.html#Settings:parse">Settings:parse</a></li>
+         <li><a href="../index.html#Options:new">Options:new</a></li>
+         <li><a href="../index.html#Options:add">Options:add</a></li>
+         <li><a href="../index.html#Options:parse">Options:parse</a></li>
     </ul>
 
 
 </dd>
     <dt>
-    <a name = "Settings:add"></a>
-    <strong>Settings:add (...)</strong>
+    <a name = "Options:new"></a>
+    <strong>Options:new ()</strong>
     </dt>
     <dd>
-    Add settings to the parser.
+    <p>Create a new option parser.</p>
+
+<pre><code>  parser = Options:new{name = 'foo'}
+</code></pre>
+
+<p> is equivalent to:</p>
+
+<pre><code>  parser = Options()
+  parser:add{name = 'foo'}
+</code></pre>
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../index.html#Options:add">Options:add</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "Options:add"></a>
+    <strong>Options:add (...)</strong>
+    </dt>
+    <dd>
+    Add an option definition to the parser.</p>
+
+<p> <h3>Mapping of option names to metadata fieldnames:</h3></p>
+
+<p> The name of the metadata field that is looked up by <a href="../index.html#Options:parse">Options:parse</a> is
+ the name of the option with underscores replaced by dashes.</p>
+
+<p> However, options may have prefixes. If so, the option name is prefixed
+ with that prefix <em>and</em> &lsquo;-&rsquo; before being translated into a fieldname.</p>
+
+<p> In Lua:</p>
+
+<pre><code>if prefix then name = prefix .. '-' .. name end
+fieldname = name:gsub('_', '-')
+</code></pre>
+
+<p> <h3>Type declaration grammar:</h3></p>
+
+<p> Configuration values can be of one of three types:</p>
+
+<ul>
+<li>&lsquo;number&rsquo;</li>
+<li>&lsquo;string&rsquo;</li>
+<li>&lsquo;list&rsquo;</li>
+</ul>
+
+
+<p> If you declare an option to be of the scalar types &lsquo;number&rsquo; or
+ &lsquo;string&rsquo;, its value is required to be of the Lua type of the
+ same name. Values are converted automatically if possible.</p>
+
+<p> If you declare an option to be of the type &lsquo;list&rsquo;, its value is
+ required to be a <code>pandoc.List</code>. If a scalar is encountered where
+ a list was expected, the value is wrapped in a single-item list.</p>
+
+<p> The items of a list must all be of the same type, which you declare
+ by appending &lsquo;&lt;<em>T</em>>&rsquo; to the literal &lsquo;list&rsquo;, where <em>T</em> is either the
+ name of a scalar type or &lsquo;list&lt;&hellip;>&rsquo; and defaults to &lsquo;string&rsquo;.</p>
+
+<p> Whitespace is ignored.</p>
+
+<p> In <a href="https://en.wikipedia.org/wiki/EBNF">Extended Backus-Naur Form</a>:</p>
+
+<blockquote><p>Whitespace = &lsquo; &rsquo; | TAB | CR | LF</p>
+
+<p>Simple type = &lsquo;number&rsquo; | &lsquo;string&rsquo;</p>
+
+<p>List = &lsquo;list&rsquo;, {whitespace},
+       [&lsquo;&lt;&rsquo;, {whitespace}, (simple type | list), {whitespace}, &lsquo;>&rsquo;? ]</p>
+
+<p>Type declaration = {whitespace}, (simple type | list), {whitespace}</p></blockquote>
+
+<p> No checks are performed if a value is <code>nil</code>.</p>
+
+<p> <h3>Check protocol:</h3></p>
+
+<p> You can give a function that checks whether a setting&rsquo;s value is
+ valid. That function is called after the value has been coerced
+ to the requested type and should map valid values to <code>true</code> and
+ invalid values to <code>nil</code> and an error message.</p>
+
+<p> No checks are performed if a value is <code>nil</code>.
 
     </ul>
     </ul>
@@ -4560,8 +4553,8 @@ number</pre>
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">...</span>
-            <span class="types"><a class="type" href="../index.html#Setting">Setting</a></span>
-         Settings.
+            <span class="types"><a class="type" href="../index.html#Option">Option</a></span>
+         Options.
         </li>
     </ul>
 
@@ -4569,29 +4562,29 @@ number</pre>
 
     <h3>See also:</h3>
     <ul>
-         <a href="../index.html#Settings:parse">Settings:parse</a>
+         <a href="../index.html#Options:parse">Options:parse</a>
     </ul>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">settings = Settings()
-settings:add(Setting:new{
+        <pre class="example">parser = Options()
+parser:add{
     name = <span class="string">'bar'</span>,
-    <span class="global">type</span> = <span class="string">'?number'</span>,
+    <span class="global">type</span> = <span class="string">'number'</span>,
     check = <span class="keyword">function</span> (x)
         <span class="keyword">if</span> x &gt; <span class="number">0</span> <span class="keyword">return</span> <span class="keyword">true</span> <span class="keyword">end</span>
         <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">'not a positive number.'</span>
     <span class="keyword">end</span>
-})</pre>
+}</pre>
     </ul>
 
 </dd>
     <dt>
-    <a name = "Settings:parse"></a>
-    <strong>Settings:parse (meta)</strong>
+    <a name = "Options:parse"></a>
+    <strong>Options:parse (meta)</strong>
     </dt>
     <dd>
-    Get configuration settings from a metadata block.
+    Get configuration options from a metadata block.
 
     </ul>
     </ul>
@@ -4616,69 +4609,30 @@ settings:add(Setting:new{
 
     <h3>See also:</h3>
     <ul>
-         <a href="../index.html#Settings:add">Settings:add</a>
+         <a href="../index.html#Options:add">Options:add</a>
     </ul>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">&gt; settings = Settings()
-&gt; settings:add(Setting:new{
+        <pre class="example">&gt; parser = Options()
+&gt; parser:add{
 &gt;     name = <span class="string">'bar'</span>,
-&gt;     <span class="global">type</span> = <span class="string">'?number'</span>,
+&gt;     <span class="global">type</span> = <span class="string">'number'</span>,
 &gt;     check = <span class="keyword">function</span> (x)
 &gt;         <span class="keyword">if</span> x &gt; <span class="number">0</span> <span class="keyword">return</span> <span class="keyword">true</span> <span class="keyword">end</span>
 &gt;         <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">'not a positive number.'</span>
 &gt;     <span class="keyword">end</span>
-&gt; })
+&gt; }
 &gt; meta = pandoc.MetaMap{
 &gt;     [<span class="string">'foo-bar'</span>] = pandoc.MetaInlines(pandoc.List{
 &gt;         pandoc.Str <span class="string">"0123"</span>
 &gt;     })
-&gt; conf = settings:get(meta)
-&gt; conf.bar
+&gt; opts = parser:parse(meta)
+&gt; opts.bars
 <span class="number">123</span>
-&gt; <span class="global">type</span>(conf.bar)
+&gt; <span class="global">type</span>(opts.bar)
 number</pre>
     </ul>
-
-</dd>
-    <dt>
-    <a name = "ZotSetting"></a>
-    <strong>ZotSetting</strong>
-    </dt>
-    <dd>
-    A configuration setting prototype with the prefix &lsquo;zotero&rsquo;.
-
-    </ul>
-    </ul>
-    </ul>
-    <h3>Prototype:</h3>
-    <ul>
-         Setting
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "ZotSetting.prefix"></a>
-    <strong>ZotSetting.prefix</strong>
-    </dt>
-    <dd>
-    Set to &lsquo;zotero&rsquo;.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
 
 </dd>
 </dl>
@@ -4704,8 +4658,8 @@ number</pre>
 
 </dd>
     <dt>
-    <a name = "connectors.Zotxt"></a>
-    <strong>connectors.Zotxt</strong>
+    <a name = "connectors.Zotero"></a>
+    <strong>connectors.Zotero</strong>
     </dt>
     <dd>
     Interface to <a href="https://github.com/egh/zotxt">zotxt</a>.
@@ -4724,14 +4678,38 @@ number</pre>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">handle = connectors.Zotxt()
+        <pre class="example">handle = connectors.Zotero:new()
 item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ul>
 
 </dd>
     <dt>
-    <a name = "connectors.Zotxt.citekey_types"></a>
-    <strong>connectors.Zotxt.citekey_types</strong>
+    <a name = "connectors.Zotero.options"></a>
+    <strong>connectors.Zotero.options</strong>
+    </dt>
+    <dd>
+    Zotero options.</p>
+
+<p> Defines <code>zotero-citekey-types</code>.
+ See the manual for details.
+
+    </ul>
+    </ul>
+    </ul>
+    <h3>Prototype:</h3>
+    <ul>
+         <a href="../index.html#Options">Options</a>.
+    </ul>
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "connectors.Zotero.citekey_types"></a>
+    <strong>connectors.Zotero.citekey_types</strong>
     </dt>
     <dd>
     Types of citation keys to expect.
@@ -4748,32 +4726,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.Zotxt.settings"></a>
-    <strong>connectors.Zotxt.settings</strong>
-    </dt>
-    <dd>
-    Settings of the connector.</p>
-
-<p> Defines <code>zotero-citekey-types</code>.
- See the manual for details.
-
-    </ul>
-    </ul>
-    </ul>
-    <h3>Prototype:</h3>
-    <ul>
-         <a href="../index.html#Settings">Settings</a>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "connectors.Zotxt:fetch"></a>
-    <strong>connectors.Zotxt:fetch (ckey)</strong>
+    <a name = "connectors.Zotero:fetch"></a>
+    <strong>connectors.Zotero:fetch (ckey)</strong>
     </dt>
     <dd>
     Fetch a CSL item via zotxt.
@@ -4814,54 +4768,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.Zotxt:configure"></a>
-    <strong>connectors.Zotxt:configure (meta)</strong>
-    </dt>
-    <dd>
-    Configure the connector.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">pandoc.MetaMap</span></span>
-         A metadata block.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">bool</span></span>
-        <code>true</code> if the connector was configured.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if a configuration setting is missing.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    An error if the configuration cannot be parsed.
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="../index.html#connectors.Zotxt.settings">connectors.Zotxt.settings</a>
-    </ul>
-
-
-</dd>
-    <dt>
-    <a name = "connectors.ZotWeb"></a>
-    <strong>connectors.ZotWeb</strong>
+    <a name = "connectors.ZoteroWeb"></a>
+    <strong>connectors.ZoteroWeb</strong>
     </dt>
     <dd>
     Interface to <a href="https://www.zotero.org/support/dev/web_api">Zotero&rsquo;s Web API</a>
@@ -4871,7 +4779,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ul>
     <h3>Prototype:</h3>
     <ul>
-         <a href="../index.html#connectors.Zotxt">connectors.Zotxt</a>
+         <a href="../index.html#connectors.Zotero">connectors.Zotero</a>
     </ul>
 
     <h3>Uninitialised properties:</h3>
@@ -4903,14 +4811,14 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">handle = connectors.ZotWeb{api_key = <span class="string">'lettersandnumbers'</span>}
+        <pre class="example">handle = connectors.ZoteroWeb{api_key = <span class="string">'lettersandnumbers'</span>}
 item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ul>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.citekey_types"></a>
-    <strong>connectors.ZotWeb.citekey_types</strong>
+    <a name = "connectors.ZoteroWeb.citekey_types"></a>
+    <strong>connectors.ZoteroWeb.citekey_types</strong>
     </dt>
     <dd>
     Types of citation keys to expect.</p>
@@ -4929,11 +4837,11 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.settings"></a>
-    <strong>connectors.ZotWeb.settings</strong>
+    <a name = "connectors.ZoteroWeb.options"></a>
+    <strong>connectors.ZoteroWeb.options</strong>
     </dt>
     <dd>
-    Zotero Web API settings.</p>
+    Zotero Web API options.</p>
 
 <p> Defines:</p>
 
@@ -4952,7 +4860,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ul>
     <h3>Prototype:</h3>
     <ul>
-         Copy of <a href="../index.html#connectors.Zotxt.settings">connectors.Zotxt.settings</a>.
+         Copy of <a href="../index.html#connectors.Zotero.options">connectors.Zotero.options</a>.
     </ul>
 
 
@@ -4962,8 +4870,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.mt"></a>
-    <strong>connectors.ZotWeb.mt</strong>
+    <a name = "connectors.ZoteroWeb.mt"></a>
+    <strong>connectors.ZoteroWeb.mt</strong>
     </dt>
     <dd>
     Metatable for Zotero Web API connectors.
@@ -4980,8 +4888,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.mt.__call"></a>
-    <strong>connectors.ZotWeb.mt.__call ()</strong>
+    <a name = "connectors.ZoteroWeb.mt.__call"></a>
+    <strong>connectors.ZoteroWeb.mt.__call ()</strong>
     </dt>
     <dd>
     Delegate to the Zotero Web API interface.
@@ -5002,8 +4910,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.mt.getters"></a>
-    <strong>connectors.ZotWeb.mt.getters</strong>
+    <a name = "connectors.ZoteroWeb.mt.getters"></a>
+    <strong>connectors.ZoteroWeb.mt.getters</strong>
     </dt>
     <dd>
     Getters for Zotero Web API connectors.
@@ -5024,8 +4932,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.mt.getters.user_id"></a>
-    <strong>connectors.ZotWeb.mt.getters.user_id (obj)</strong>
+    <a name = "connectors.ZoteroWeb.mt.getters.user_id"></a>
+    <strong>connectors.ZoteroWeb.mt.getters.user_id (obj)</strong>
     </dt>
     <dd>
     Get the user ID for the given API key.
@@ -5038,7 +4946,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">obj</span>
-            <span class="types"><a class="type" href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a></span>
+            <span class="types"><a class="type" href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a></span>
          A Zotero Web API handle.
         </li>
     </ul>
@@ -5066,8 +4974,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb.mt.getters.groups"></a>
-    <strong>connectors.ZotWeb.mt.getters.groups (obj)</strong>
+    <a name = "connectors.ZoteroWeb.mt.getters.groups"></a>
+    <strong>connectors.ZoteroWeb.mt.getters.groups (obj)</strong>
     </dt>
     <dd>
     Get the IDs of the groups the current user is a member of.
@@ -5080,7 +4988,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">obj</span>
-            <span class="types"><a class="type" href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a></span>
+            <span class="types"><a class="type" href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a></span>
          A Zotero Web API handle.
         </li>
     </ul>
@@ -5107,8 +5015,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb:endpoints"></a>
-    <strong>connectors.ZotWeb:endpoints ([id])</strong>
+    <a name = "connectors.ZoteroWeb:endpoints"></a>
+    <strong>connectors.ZoteroWeb:endpoints ([id])</strong>
     </dt>
     <dd>
     Iterate over item endpoint URLs.
@@ -5139,8 +5047,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb:search"></a>
-    <strong>connectors.ZotWeb:search (...)</strong>
+    <a name = "connectors.ZoteroWeb:search"></a>
+    <strong>connectors.ZoteroWeb:search (...)</strong>
     </dt>
     <dd>
     Search items by their author, publication year, and title.
@@ -5181,15 +5089,15 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-     See <a href="../index.html#connectors.ZotWeb.mt.getters.user_id">connectors.ZotWeb.mt.getters.user_id</a> and
-  <a href="../index.html#connectors.ZotWeb.mt.getters.groups">connectors.ZotWeb.mt.getters.groups</a>.
+     See <a href="../index.html#connectors.ZoteroWeb.mt.getters.user_id">connectors.ZoteroWeb.mt.getters.user_id</a> and
+  <a href="../index.html#connectors.ZoteroWeb.mt.getters.groups">connectors.ZoteroWeb.mt.getters.groups</a>.
 
 
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb:lookup"></a>
-    <strong>connectors.ZotWeb:lookup (id)</strong>
+    <a name = "connectors.ZoteroWeb:lookup"></a>
+    <strong>connectors.ZoteroWeb:lookup (id)</strong>
     </dt>
     <dd>
     Look up a CSL item by its Zotero ID.
@@ -5224,15 +5132,15 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-     See <a href="../index.html#connectors.ZotWeb.mt.getters.user_id">connectors.ZotWeb.mt.getters.user_id</a> and
-  <a href="../index.html#connectors.ZotWeb.mt.getters.groups">connectors.ZotWeb.mt.getters.groups</a>.
+     See <a href="../index.html#connectors.ZoteroWeb.mt.getters.user_id">connectors.ZoteroWeb.mt.getters.user_id</a> and
+  <a href="../index.html#connectors.ZoteroWeb.mt.getters.groups">connectors.ZoteroWeb.mt.getters.groups</a>.
 
 
 
 </dd>
     <dt>
-    <a name = "connectors.ZotWeb:fetch"></a>
-    <strong>connectors.ZotWeb:fetch (ckey)</strong>
+    <a name = "connectors.ZoteroWeb:fetch"></a>
+    <strong>connectors.ZoteroWeb:fetch (ckey)</strong>
     </dt>
     <dd>
     Fetch a CSL item from Zotero.
@@ -5271,50 +5179,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-     See <a href="../index.html#connectors.ZotWeb.mt.getters.user_id">connectors.ZotWeb.mt.getters.user_id</a> and
-  <a href="../index.html#connectors.ZotWeb.mt.getters.groups">connectors.ZotWeb.mt.getters.groups</a>.
-
-
-
-</dd>
-    <dt>
-    <a name = "connectors.ZotWeb:configure"></a>
-    <strong>connectors.ZotWeb:configure (meta)</strong>
-    </dt>
-    <dd>
-    Configure the connector.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">meta</span>
-            <span class="types"><span class="type">pandoc.MetaMap</span></span>
-         A metadata block.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">bool</span></span>
-        <code>true</code> if the connector was configured.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if a configuration setting is missing.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    An error if the configuration cannot be parsed.
+     See <a href="../index.html#connectors.ZoteroWeb.mt.getters.user_id">connectors.ZoteroWeb.mt.getters.user_id</a> and
+  <a href="../index.html#connectors.ZoteroWeb.mt.getters.groups">connectors.ZoteroWeb.mt.getters.groups</a>.
 
 
 
@@ -5353,8 +5219,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
          A filename for the bibliography file.
         </li>
         <li><span class="parameter">handle</span>
-            <span class="types"><a class="type" href="../index.html#connectors.Zotxt">connectors.Zotxt</a> or <a class="type" href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a></span>
-         An interface to Zotero.
+            <span class="types"><a class="type" href="../index.html#connectors.Zotero">connectors.Zotero</a> or <a class="type" href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a></span>
+         A Zotero interface.
         </li>
         <li><span class="parameter">doc</span>
             <span class="types"><span class="type">pandoc.Pandoc</span></span>
@@ -5379,7 +5245,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#connectors.Zotxt">connectors.Zotxt</a> and <a href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a>.
+    See <a href="../index.html#connectors.Zotero">connectors.Zotero</a> and <a href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a>.
 
 
 
@@ -5402,8 +5268,8 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">handle</span>
-            <span class="types"><a class="type" href="../index.html#connectors.Zotxt">connectors.Zotxt</a> or <a class="type" href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a></span>
-         An interface to Zotero.
+            <span class="types"><a class="type" href="../index.html#connectors.Zotero">connectors.Zotero</a> or <a class="type" href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a></span>
+         A Zotero interface.
         </li>
         <li><span class="parameter">doc</span>
             <span class="types"><span class="type">pandoc.Pandoc</span></span>
@@ -5428,7 +5294,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#connectors.Zotxt">connectors.Zotxt</a> and <a href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a>.
+    See <a href="../index.html#connectors.Zotero">connectors.Zotero</a> and <a href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a>.
 
 
 
@@ -5472,7 +5338,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     </ol>
 
     <h3>Raises:</h3>
-    See <a href="../index.html#connectors.Zotxt">connectors.Zotxt</a> and <a href="../index.html#connectors.ZotWeb">connectors.ZotWeb</a>.
+    See <a href="../index.html#connectors.Zotero">connectors.Zotero</a> and <a href="../index.html#connectors.ZoteroWeb">connectors.ZoteroWeb</a>.
 
 
 
@@ -5484,7 +5350,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2021-12-28 17:11:53 </i>
+<i style="float:right;">Last updated 2022-01-02 18:34:36 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

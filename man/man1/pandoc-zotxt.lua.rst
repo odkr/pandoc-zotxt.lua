@@ -102,9 +102,9 @@ You can use citation keys of multitple types:
 ``key``             Zotero item ID             A1BC23D4
 =================== ========================== =============
 
-However, Better BibTeX citation keys are sometimes, if rarely, misinterpreted
-as Easy Citekeys and still match an item, though *not* the one that they are
-the citation key of.
+However, Better BibTeX citation keys are sometimes, if rarely,
+misinterpreted as Easy Citekeys and still match an item,
+though not the one that they are the citation key of.
 
 If this happens, disable Easy Citekeys by only listing BetterBibTeX citation
 keys and, if you use them, Zotero item IDs in the "zotero-citekey-types"
@@ -222,7 +222,7 @@ Fetch data from the Zotero Web API *only*:
    pandoc -L pandoc-zotxt.lua -C <<EOF
    ---
    zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
-   zotero-connectors: zotweb
+   zotero-connectors: zoteroweb
    ...
    See @DoeTitle2020 for details.
    EOF

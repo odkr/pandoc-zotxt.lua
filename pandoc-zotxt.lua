@@ -194,7 +194,7 @@
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
 --     zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
---     zotero-connectors: zotweb
+--     zotero-connectors: zoteroweb
 --     ...
 --     See @DoeTitle2020 for details.
 --     EOF
@@ -245,7 +245,7 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.1.0b4
+-- @release 1.1.0b5
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021 Odin Kroeger
 -- @license MIT
@@ -626,7 +626,7 @@ end
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '1.1.0b4'
+VERSION = '1.1.0b5'
 
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
@@ -1185,7 +1185,6 @@ setmetatable(Object, Object.mt)
 -- bam!
 --
 -- @function Object.mt.__call
--- @fixme DEBUG
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, tab)
         local mt = copy(getmetatable(proto))
@@ -1194,7 +1193,20 @@ Object.mt.__call = typed_args('table', '?table')(
     end
 )
 
--- @fixme
+--- Initialise a new object.
+--
+-- `Object:new(props)` is equivalent to `Object(copy(props))`.
+--
+-- @tab proto A prototype.
+-- @tab[opt] props Properties.
+-- @treturn Object An object.
+--
+-- @usage
+-- > foo = Object:new{foo = 'foo', bar = 'bar'}
+-- > foo.foo
+-- foo
+-- > foo.bar
+-- bar
 Object.new = typed_args('table', '?table')(
     function (proto, props)
         return proto(copy(props))
@@ -3349,9 +3361,9 @@ end
 
 --- An option definition
 --
--- @string name A name.
--- @string[opt='string'] type A type to coerce the setting's value to.
--- @func[opt] check A function that checks the setting's value.
+-- @string name A optiona name.
+-- @string[opt='string'] type A type to coerce the option's value to.
+-- @func[opt] check A function that checks the option's value.
 -- @string[opt] prefix A prefix.
 --
 -- @see Options:add
@@ -3366,8 +3378,16 @@ end
 -- @proto @{Object}
 Options = Object()
 
---- dada
--- @fixme
+--- Create a new option parser.
+--
+--      parser = Options:new{name = 'foo'}
+--
+-- is equivalent to:
+--
+--      parser = Options()
+--      parser:add{name = 'foo'}
+--
+-- @see Options:add
 -- @function Options:new
 Options.new = typed_args('table', '...')(
     typed_keyword_args{
@@ -3526,8 +3546,8 @@ do
     -- @tparam Option ... Options.
     --
     -- @usage
-    -- options = Options()
-    -- options:add{
+    -- parser = Options()
+    -- parser:add{
     --     name = 'bar',
     --     type = 'number',
     --     check = function (x)
@@ -3577,8 +3597,8 @@ do
     -- @treturn tab A mapping of setting names to values.
     --
     -- @usage
-    -- > options = Options()
-    -- > options:add{
+    -- > parser = Options()
+    -- > parser:add{
     -- >     name = 'bar',
     -- >     type = 'number',
     -- >     check = function (x)
@@ -3590,18 +3610,18 @@ do
     -- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
     -- >         pandoc.Str "0123"
     -- >     })
-    -- > conf = options:parse(meta)
-    -- > conf.bars
+    -- > opts = parser:parse(meta)
+    -- > opts.bars
     -- 123
-    -- > type(conf.bar)
+    -- > type(opts.bar)
     -- number
     --
     -- @see Options:add
     -- @function Options:parse
     Options.parse = typed_args('table', 'table|userdata')(
         function (self, meta)
-            local conf = {}
-            if not meta then return conf end
+            local opts = {}
+            if not meta then return opts end
             for name, opt in pairs(self) do
                 local key = name
                 if opt.prefix then key = opt.prefix .. '-' .. key end
@@ -3616,10 +3636,10 @@ do
                         local ok, err = opt.check(val)
                         if not ok then error(key .. ': ' .. err, 0) end
                     end
-                    conf[name] = val
+                    opts[name] = val
                 end
             end
-            return conf
+            return opts
         end
     )
 end
@@ -4152,7 +4172,7 @@ add_refs = typed_args('table', 'table|userdata')(
 )
 
 do
-    local options = Options:new(
+    local parser = Options:new(
         {prefix = 'zotero', name = 'bibliography'},
         {
             prefix = 'zotero',
@@ -4187,10 +4207,10 @@ do
     -- @treturn[2] nil `nil` if nothing was done or an error occurred.
     -- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
     function main (doc)
-        local conf = options:parse(doc.meta)
+        local opts = parser:parse(doc.meta)
 
         local handles = Values()
-        if not conf.connectors then
+        if not opts.connectors then
             for _, conn in sorted(connectors, order{'zotero'}) do
                 local args
                 if conn.options then args = conn.options:parse(doc.meta) end
@@ -4198,8 +4218,8 @@ do
                 if ok then handles:add(handle) end
             end
         else
-            for i = 1, #conf.connectors do
-                local conn = connectors[conf.connectors[i]]
+            for i = 1, #opts.connectors do
+                local conn = connectors[opts.connectors[i]]
                 local args
                 if conn.options then args = conn.options:parse(doc.meta) end
                 local handle, err = conn:new(args)
@@ -4209,9 +4229,9 @@ do
         end
 
         local add_sources
-        if conf.bibliography then
+        if opts.bibliography then
             function add_sources (...)
-                return add_biblio(conf.bibliography, ...)
+                return add_biblio(opts.bibliography, ...)
             end
         else
             add_sources = add_refs
