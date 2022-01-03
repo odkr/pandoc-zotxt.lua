@@ -317,6 +317,7 @@
 -- Run in debugging mode?
 -- luacheck: push ignore DEBUG
 local DEBUG = DEBUG or false
+DEBUG = true -- for testing @fixme
 -- luacheck: pop
 
 -- Built-in functions.
@@ -550,17 +551,15 @@ if PATH_SEP == '\\' then EOL = '\r\n' end
 
 --- Join multiple path segments.
 --
+-- @caveats Accepts empty strings as arguments.
+--
 -- @string ... Path segments.
 -- @treturn string A path.
 --
 -- @function path_join
 path_join = typed_args('string', '...')(
     function (...)
-        local segs = pack(...)
-        for i = 1, segs.n do
-            assert(segs[i] ~= '', format('segment %d is the empty string.', i))
-        end
-        return path_normalise(concat(segs, PATH_SEP))
+        return path_normalise(concat({...}, PATH_SEP))
     end
 )
 
@@ -2889,8 +2888,13 @@ biblio.types.yaml.decode = typed_args('string')(
         if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
         local doc = read(str, 'markdown')
         if not doc.meta.references then return {} end
-        local refs = elem_walk(doc.meta.references,
-                                {MetaInlines = markdownify})
+        local refs = elem_walk(doc.meta.references, {
+            -- what about MetaBlocks at any rate? @fixme
+            Meta = function (e) xwarn('@error', 'DEBUG: ', e) end,
+            Inlines = markdownify,
+            Blocks = markdownify,
+            MetaInlines = markdownify,
+        })
         for i = 1, #refs do refs[i] = csl_item_normalise_vars(refs[i]) end
         return refs
     end
@@ -3074,61 +3078,27 @@ else
     elem_clone = typed_args('table|userdata')(
         function (elem)
             if elem.clone then return elem:clone() end
-            return Pandoc(elem.blocks:clone(), elem.meta:clone())
+            local meta
+            if elem.meta.clone
+                then meta = elem.meta:clone()
+                else meta = copy(elem.meta)
+            end
+            return Pandoc(elem.blocks:clone(), meta)
         end
     )
 end
 
---- Get the type of a Pandoc AST element.
---
--- @tparam pandoc.AstElement elem A Pandoc AST element.
--- @treturn[1] string A type (e.g., 'MetaMap', 'Plain').
--- @treturn[1] string A super-type (e.g., 'Block' or 'MetaValue').
--- @treturn[1] string 'AstElement'.
--- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
--- @treturn[2] string An error message.
---
--- @function elem_type
--- @fixme It's unclear whether this code ignores pandoc.Doc
---        in favour of pandoc.Pandoc (as it should) in Pandoc <v2.15/2.14.
-if not pandoc.types or PANDOC_VERSION < {2, 15} then
-    local super = {}
-
-    for k, v in sorted(pandoc) do
-        if type(v) == 'table' and not super[v] and k ~= 'Doc' then
-            local t = Values()
-            t:add(k)
-            local mt = getmetatable(v)
-            while mt and t.n < 16 do
-                if not mt.name or mt.name == 'Type' then break end
-                t:add(mt.name)
-                mt = getmetatable(mt)
-            end
-            if t[t.n] == 'AstElement' then super[v] = t end
-        end
-    end
-
-    function elem_type (elem)
-        if type(elem) == 'table' then
-            local mt = getmetatable(elem)
-            if mt and mt.__type then
-                local ets = super[mt.__type]
-                if ets then return unpack(ets) end
-            end
-        end
-        return nil, 'not a Pandoc AST element.'
-    end
-else
+do
+    -- @fixme
     local super = {
-        Pandoc = 'AstElement',
         Meta = 'AstElement',
         MetaValue = 'AstElement',
-        MetaBlocks = 'MetaValue',
-        MetaBool = 'MetaValue',
-        MetaInlines = 'MetaValue',
-        MetaList = 'MetaValue',
-        MetaMap = 'MetaValue',
-        MetaString = 'MetaValue',
+        MetaBlocks = 'Meta',
+        MetaBool = 'Meta',
+        MetaInlines = 'Meta',
+        MetaList = 'Meta',
+        MetaMap = 'Meta',
+        MetaString = 'Meta',
         Block = 'AstElement',
         BlockQuote = 'Block',
         BulletList = 'Block',
@@ -3167,26 +3137,110 @@ else
         Underline = 'Inline'
     }
 
-    function elem_type (elem)
-        local t = type(elem)
-        if t == 'table' or t == 'userdata' then
-            local et = elem.tag
-            -- There is no better way.
-            if  not et          and
-                elem.meta       and
-                elem.blocks     and
-                t == 'userdata'
-            then
-                et = 'Pandoc'
-            end
-            local ets = Values()
-            while et do
-                ets:add(et)
-                et = super[et]
-            end
-            if ets.n > 0 then return unpack(ets) end
+    -- @fixme
+    local function get_items_et (elem, ...)
+        -- Lists of similar AST elements.
+        local cnt = {}
+        local n = 0
+        while true do
+            local i = n + 1
+            local item = elem[i]
+            if item == nil then break end
+            n = i
+            local et, est = elem_type(item, ...)
+            if not et or not est then break end
+            cnt[est] = cnt[est] or 0 + 1
         end
-        return nil, 'not a Pandoc AST element.'
+        local st, ntypes = next(cnt)
+        if st and n == ntypes then return st end
+        return nil, 'not a list of Pandoc elements.'
+    end
+
+    -- @fixme
+    local get_et
+    if not pandoc.types or PANDOC_VERSION < {2, 15} then
+        function get_et (elem, ...)
+            if type(elem) == 'table' then
+                -- This works even if elem.tag does not.
+                local mt = getmetatable(elem)
+                if mt and mt.__type and mt.__type.name then
+                    return mt.__type.name
+                end
+
+                -- Lists of similar AST elements.
+                local lt = get_items_et(elem, ...)
+                if lt then return lt .. 's' end
+            end
+            return nil, 'not a Pandoc AST element.'
+        end
+    else
+        local pandoc_type = pandoc.utils.type
+
+        function get_et (elem, ...)
+            local t = type(elem)
+            if t == 'table' or t == 'userdata' then
+                -- Check if we can use the type pandoc.utils.type returns.
+                if pandoc_type then
+                    local pt = pandoc_type(elem)
+                    if
+                        pt ~= 'table'    and
+                        pt ~= 'userdata' and
+                        pt ~= 'Inline'   and
+                        pt ~= 'Block'    and
+                        pt ~= 'Meta'     and
+                        pt ~= 'List'
+                    then return pt end
+                end
+
+                -- If not, use the tag, if there is one.
+                if elem.tag then return elem.tag end
+
+                -- Lists of similar AST elements ('Inlines', 'Blocks').
+                if t == 'table' then
+                    local lt = get_items_et(elem, ...)
+                    if lt then return lt .. 's' end
+                end
+
+                -- There is no better way to determine whether
+                -- an element is a Pandoc document.
+                if
+                    elem.meta       and
+                    elem.blocks     and
+                    t == 'userdata'
+                then return 'Pandoc' end
+            end
+            return nil, 'not a Pandoc AST element.'
+        end
+    end
+
+    --- Get the type of a Pandoc AST element.
+    --
+    -- @tparam pandoc.AstElement elem A Pandoc AST element.
+    -- @treturn[1] string A type (e.g., 'MetaMap', 'Plain').
+    -- @treturn[1] string|nil A super-type (e.g., 'Block' or 'MetaValue').
+    -- @treturn[1] string|nil ⋮.
+    -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
+    -- @treturn[2] string An error message.
+    --
+    -- @function elem_type
+    function elem_type (elem, _seen)
+        if     not _seen   then _seen = {}
+        elseif _seen[elem] then return nil, 'cycle in data tree.'
+        else                    _seen[elem] = true
+        end
+        local et, err = get_et(elem, _seen)
+        if not et then return nil, err end
+        -- local ets = Values()
+        -- while et do
+        --     ets:add(et)
+        --     et = super[et]
+        -- end
+        local ets = {}
+        while et do
+            table.insert(ets, et)
+            et = super[et]
+        end
+        return unpack(ets)
     end
 end
 
@@ -3217,20 +3271,22 @@ do
         MetaMap = walk_table,
         BulletList = walk_list_elem,
         OrderedList = walk_list_elem,
+        Inlines = walk_table,
+        Blocks = walk_table,
+        Metas = walk_table,
         Pandoc = walk_doc
     }
 
     --- Walk an AST and apply a filter to matching elements.
     --
-    -- Differs from `pandoc.walk_block` and `pandoc.walk_inline` by:
+    -- Differs from Pandoc's walkers by:
     --
-    --  * accepting AST elements of any type (inluding documents and metadata),
-    --  * walking the AST bottom-up and
-    --    applying the filter to the given element itself,
+    --  * walking AST elements of any type (inluding documents and metadata),
+    --  * walking the AST bottom-up,
+    --  * applying the filter to the given element itself,
     --  * allowing functions in the filter to return data of arbitrary types,
     --  * never modifying the original element, and
-    --  * accepting 'AstElement' as filter keyword,
-    --    but not 'Blocks' or 'Inlines'.
+    --  * accepting 'AstElement' as filter keyword.
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
@@ -3245,67 +3301,82 @@ do
             assert(_rd < 128, 'recursion limit exceeded.')
             local ets = {elem_type(elem)}
             local et = ets[1]
-            if not et then return elem end
-            elem = elem_clone(elem)
-            _rd = _rd + 1
-            local walker = walkers[et]
-            if     walker       then walker(elem, filter, _rd)
-            elseif elem.content then walk_table(elem.content, filter, _rd)
-            end
-            for i = 1, #ets do
-                local func = filter[ets[i]]
-                if func then
-                    local new = func(elem)
-                    if new ~= nil then elem = new end
+            if et then
+                elem = elem_clone(elem)
+                _rd = _rd + 1
+                local walker = walkers[et]
+                if     walker       then walker(elem, filter, _rd)
+                elseif elem.content then walk_table(elem.content, filter, _rd)
                 end
+                for i = 1, #ets do
+                    local func = filter[ets[i]]
+                    if func then
+                        local new = func(elem)
+                        if new ~= nil then elem = new end
+                    end
+                end
+            elseif type(elem) == 'table' then
+                -- @fixme can this work, can we copy userdata?
+                elem = copy(elem)
+                -- a shallow copy would do! FIXME
+                walk_table(elem, filter, _rd)
             end
             return elem
         end
     )
 end
 
---- Collect bibliographic data.
---
--- Reads the `references` metadata field and every bibliography file.
---
--- @side May print error messages to STDERR.
---
--- @tparam pandoc.MetaMap meta A metadata block.
--- @treturn pandoc.List CSL items.
---
--- @function meta_sources
-meta_sources = typed_args('table|userdata')(
-    function (meta)
-        local data = List()
-        if not meta then return data end
-        if meta.references then data:extend(meta.references) end
-        if meta.bibliography then
-            local fnames
-            local bibliography = meta.bibliography
-            if bibliography.tag == 'MetaInlines' then
-                fnames = {stringify(bibliography)}
-            elseif bibliography.tag == 'MetaList' then
-                fnames = bibliography:map(stringify)
-            else
-                xwarn('@error', 'cannot parse metadata field "bibliography".')
-                return data
-            end
-            for i = 1, #fnames do
-                -- luacheck: no redefined
-                local fname, err = file_locate(fnames[i])
-                if fname then
-                    local items, err = biblio:read(fname)
-                    if items then data:extend(items)
-                             else xwarn('@error', '@plain', err)
-                    end
+do
+    local pandoc_type = pandoc.utils.type
+
+    --- Collect bibliographic data.
+    --
+    -- Reads the `references` metadata field and every bibliography file.
+    --
+    -- @side May print error messages to STDERR.
+    --
+    -- @tparam pandoc.MetaMap meta A metadata block.
+    -- @treturn pandoc.List CSL items.
+    --
+    -- @function meta_sources
+    meta_sources = typed_args('table|userdata')(
+        function (meta)
+            local data = List()
+            if not meta then return data end
+            if meta.references then data:extend(meta.references) end
+            if meta.bibliography then
+                local fnames
+                local bibliography = meta.bibliography
+                local et
+                if pandoc_type then et = pandoc_type(bibliography)
+                               else et = bibliography.tag
+                end
+                if et == 'Inlines' or et == 'MetaInlines' then
+                    fnames = {stringify(bibliography)}
+                elseif et == 'List' or et == 'MetaList' then
+                    fnames = bibliography:map(stringify)
                 else
-                    xwarn('@error', '@plain', err)
+                    -- @fixme
+                    xwarn('@error', 'cannot parse metadata field "bibliography".')
+                    return data
+                end
+                for i = 1, #fnames do
+                    -- luacheck: no redefined
+                    local fname, err = file_locate(fnames[i])
+                    if fname then
+                        local items, err = biblio:read(fname)
+                        if items then data:extend(items)
+                                else xwarn('@error', '@plain', err)
+                        end
+                    else
+                        xwarn('@error', '@plain', err)
+                    end
                 end
             end
+            return data
         end
-        return data
-    end
-)
+    )
+end
 
 do
     -- Save citation keys that are *not* members of one set into another one.
