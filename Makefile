@@ -81,23 +81,45 @@ $(COMMON_TESTS): tmpdir
 	                   -L "$(TEST_SCPT_DIR)/use-citeproc.lua" \
 	                   /dev/null; \
 	    then \
-	    	"$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	            -o "$(TMP_DIR)/$@.html" \
-	    	            -M zotero-connectors="$$CONN" \
-	    	            -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	            -L "$(SCRIPT)" -F pandoc-citeproc \
-	    	            "$(TEST_DATA_DIR)/$@.md"; \
-	    	cmp "$(TMP_DIR)/$@.html" \
-	    	    "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
+	        "$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                    -o "$(TMP_DIR)/$@.html" \
+	                    -M zotero-connectors="$$CONN" \
+	                    -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                    -L "$(SCRIPT)" -F pandoc-citeproc \
+	                    "$(TEST_DATA_DIR)/$@.md"; \
+	        VERS="$(PANDOC_VERS)"; \
+	        while true; \
+	        do \
+	            NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	            [ -e "$$NORM" ] && break; \
+	            case $$VERS in \
+	                (*.*) VERS="$${VERS%.*}" ;; \
+	                (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                             "$(PANDOC_VERSION)" >&2; \
+	                      exit 1; \
+	            esac; \
+	        done; \
+	        cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
 	    else \
-	    	$(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	          -o "$(TMP_DIR)/$@.html" \
-	    	          -M zotero-connectors="$$CONN" \
-	    	          -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	          -L "$(SCRIPT)" -C \
-	    	          "$(TEST_DATA_DIR)/$@.md"; \
-	    	cmp "$(TMP_DIR)/$@.html" \
-	    	    "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
+	        $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                  -o "$(TMP_DIR)/$@.html" \
+	                  -M zotero-connectors="$$CONN" \
+	                  -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                  -L "$(SCRIPT)" -C \
+	                  "$(TEST_DATA_DIR)/$@.md"; \
+	        VERS="$(PANDOC_VERS)"; \
+	        while true; \
+	        do \
+	            NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	            [ -e "$$NORM" ] && break; \
+	            case $$VERS in \
+	                (*.*) VERS="$${VERS%.*}" ;; \
+	                (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                             "$(PANDOC_VERSION)" >&2; \
+	                      exit 1; \
+	            esac; \
+	        done; \
+	        cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
 	    fi \
 	done
 
@@ -105,29 +127,51 @@ $(ZOTXT_TESTS): tmpdir
 	@set -eu; \
 	for CONN in $(CONNECTORS); do \
 	    if [ "$$CONN" = zotxt ]; then \
-	    	printf 'Testing %s with zotxt ...\n' "$@" >&2; \
-	    	if "$(PANDOC)" $(PANDOC_FMTS) \
-	    	               -L "$(TEST_SCPT_DIR)/use-citeproc.lua" \
-	    	               -o /dev/null /dev/null; \
-	    	then \
-	    	    "$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	                -o "$(TMP_DIR)/$@.html" \
-	    	                -M zotero-connectors="$$CONN" \
-	    	                -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	                -L "$(SCRIPT)" -F pandoc-citeproc \
-	    	                "$(TEST_DATA_DIR)/zotxt/$@.md"; \
-	    	    cmp "$(TMP_DIR)/$@.html" \
-	    	        "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
-	    	else \
-	    	    $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	              -o "$(TMP_DIR)/$@.html" \
-	    	              -M zotero-connectors="$$CONN" \
-	    	              -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	              -L "$(SCRIPT)" -C \
-	    	              "$(TEST_DATA_DIR)/zotxt/$@.md"; \
-	    	    cmp "$(TMP_DIR)/$@.html" \
-	    	        "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
-	    	fi \
+	        printf 'Testing %s with zotxt ...\n' "$@" >&2; \
+	        if "$(PANDOC)" $(PANDOC_FMTS) \
+	                       -L "$(TEST_SCPT_DIR)/use-citeproc.lua" \
+	                       -o /dev/null /dev/null; \
+	        then \
+	            "$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                        -o "$(TMP_DIR)/$@.html" \
+	                        -M zotero-connectors="$$CONN" \
+	                        -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                        -L "$(SCRIPT)" -F pandoc-citeproc \
+	                        "$(TEST_DATA_DIR)/zotxt/$@.md"; \
+	            VERS="$(PANDOC_VERS)"; \
+	            while true; \
+	            do \
+	                NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	                [ -e "$$NORM" ] && break; \
+	                case $$VERS in \
+	                    (*.*) VERS="$${VERS%.*}" ;; \
+	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                                 "$(PANDOC_VERSION)" >&2; \
+	                          exit 1; \
+	                esac; \
+	            done; \
+	            cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
+	        else \
+	            $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                      -o "$(TMP_DIR)/$@.html" \
+	                      -M zotero-connectors="$$CONN" \
+	                      -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                      -L "$(SCRIPT)" -C \
+	                      "$(TEST_DATA_DIR)/zotxt/$@.md"; \
+	            VERS="$(PANDOC_VERS)"; \
+	            while true; \
+	            do \
+	                NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	                [ -e "$$NORM" ] && break; \
+	                case $$VERS in \
+	                    (*.*) VERS="$${VERS%.*}" ;; \
+	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                                 "$(PANDOC_VERSION)" >&2; \
+	                          exit 1; \
+	                esac; \
+	            done; \
+	            cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
+	        fi \
 	    fi \
 	done
 
@@ -135,29 +179,51 @@ $(ZOTWEB_TESTS): tmpdir
 	@set -eu; \
 	for CONN in $(CONNECTORS); do \
 	    if [ "$$CONN" = zotweb ]; then \
-	    	printf 'Testing %s with zotweb ...\n' "$@" >&2; \
-	    	if "$(PANDOC)" $(PANDOC_FMTS) \
-	    	               -L "$(TEST_SCPT_DIR)/use-citeproc.lua" \
-	    	               -o /dev/null /dev/null; \
-	    	then \
-	    	    "$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	                -o "$(TMP_DIR)/$@.html" \
-	    	                -M zotero-connectors="$$CONN" \
-	    	                -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	                -L "$(SCRIPT)" -F pandoc-citeproc \
-	    	                "$(TEST_DATA_DIR)/zotweb/$@.md"; \
-	    	    cmp "$(TMP_DIR)/$@.html" \
-	    	        "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
-	    	else \
-	    	    $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
-	    	              -o "$(TMP_DIR)/$@.html" \
-	    	              -M zotero-connectors="$$CONN" \
-	    	              -M zotero-api-key="$(ZOTERO_API_KEY)" \
-	    	              -L "$(SCRIPT)" -C \
-	    	              "$(TEST_DATA_DIR)/zotweb/$@.md"; \
-	    	    cmp "$(TMP_DIR)/$@.html" \
-	    	        "$(TEST_NORM_DIR)/$(PANDOC_VERS)/$@.html"; \
-	    	fi \
+	        printf 'Testing %s with zotweb ...\n' "$@" >&2; \
+	        if "$(PANDOC)" $(PANDOC_FMTS) \
+	                       -L "$(TEST_SCPT_DIR)/use-citeproc.lua" \
+	                       -o /dev/null /dev/null; \
+	        then \
+	            "$(PANDOC)" $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                        -o "$(TMP_DIR)/$@.html" \
+	                        -M zotero-connectors="$$CONN" \
+	                        -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                        -L "$(SCRIPT)" -F pandoc-citeproc \
+	                        "$(TEST_DATA_DIR)/zotweb/$@.md"; \
+	            VERS="$(PANDOC_VERS)"; \
+	            while true; \
+	            do \
+	                NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	                [ -e "$$NORM" ] && break; \
+	                case $$VERS in \
+	                    (*.*) VERS="$${VERS%.*}" ;; \
+	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                                 "$(PANDOC_VERSION)" >&2; \
+	                          exit 1; \
+	                esac; \
+	            done; \
+	            cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
+	        else \
+	            $(PANDOC) $(PANDOC_ARGS) $(PANDOC_FMTS) \
+	                      -o "$(TMP_DIR)/$@.html" \
+	                      -M zotero-connectors="$$CONN" \
+	                      -M zotero-api-key="$(ZOTERO_API_KEY)" \
+	                      -L "$(SCRIPT)" -C \
+	                      "$(TEST_DATA_DIR)/zotweb/$@.md"; \
+	            VERS="$(PANDOC_VERS)"; \
+	            while true; \
+	            do \
+	                NORM="$(TEST_NORM_DIR)/$$VERS/$@.html"; \
+	                [ -e "$$NORM" ] && break; \
+	                case $$VERS in \
+	                    (*.*) VERS="$${VERS%.*}" ;; \
+	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
+	                                 "$(PANDOC_VERSION)" >&2; \
+	                          exit 1; \
+	                esac; \
+	            done; \
+	            cmp "$(TMP_DIR)/$@.html" "$$NORM"; \
+	        fi \
 	    fi \
 	done
 

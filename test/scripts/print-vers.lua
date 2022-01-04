@@ -18,4 +18,4 @@
 -- @script print-pandoc-vers
 -- @author Odin Kroeger
 -- luacheck: ignore
-print(tostring(PANDOC_VERSION):match '^(%d+%.?%d*)')
+print(tostring(PANDOC_VERSION))
