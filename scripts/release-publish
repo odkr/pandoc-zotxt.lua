@@ -91,12 +91,12 @@ temp_dir_make -d . -p rp
 # MAIN
 # ====
 
-warn 'verifying branch ...'
+warn -e "$SMSO" 'verifying branch ...'
 
 [ "$(git branch --show-current)" = main ] ||
 	panic 'not on "%s" branch.' "main"
 
-warn 'verifying version number ...'
+warn -e "$SMSO" 'verifying version number ...'
 
 tag="$(
 	git tag --list 'v*' --sort version:refname |
@@ -130,11 +130,11 @@ do
 	esac
 done <"$manifest"
 
-warn 'testing release ...'
+warn -e "$SMSO" 'testing release ...'
 
 test/script/test-pandoc-vers
 
-warn 'testing under real-world conditions ...'
+warn -e "$SMSO" 'testing under real-world conditions ...'
 
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
@@ -142,7 +142,7 @@ make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 name="$(basename "$REPO")" && [ "$name" ] ||
 	panic '%s: failed to determine basename.' "$REPO"
 
-warn 'packaging release ...'
+warn -e "$SMSO" 'packaging release ...'
 
 (
 	cd -P "$TEMP_DIR" || exit 69
@@ -188,11 +188,11 @@ warn 'packaging release ...'
 	gpg --detach-sign --output "$zip.sig" "$zip"
 )
 
-warn 'pushing tag %s to github ...' "v${tag}"
+warn -e "$SMSO" 'pushing tag %s to github ...' "${BOLD}v${tag}${SGR0}${SMSO}"
 
 git push origin "v$tag"
 
-warn 'drafting release ...'
+warn -e "$SMSO" 'drafting release ...'
 
 pre=
 case $tag in (*[a-z]*)

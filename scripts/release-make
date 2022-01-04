@@ -120,17 +120,17 @@ do
 	esac
 done <"$manifest"
 
-warn -e "$RMSO" 'updating documentation ...'
+warn -e "$SMSO" 'updating documentation ...'
 
 make docs
 git add "$filter" man docs
-git commit -m 'docs: updated.'
+git commit --quiet --message='docs: updated.' || :
 
-warn -e "$RMSO" 'testing release ...'
+warn -e "$SMSO" 'testing release ...'
 
 test/scripts/test-pandoc-vers
 
-warn -e "$RMSO" 'testing under real-world conditions ...'
+warn -e "$SMSO" 'testing under real-world conditions ...'
 
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
@@ -138,16 +138,16 @@ make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 # DEBUG
 for branch in develop # main
 do
-	warn -e "$RMSO" 'merging %s to %s ...' \
-	     "$BOLD$release_branch$SGR0" "$BOLD$branch$SGR0"
+	warn -e "$SMSO" 'merging %s to %s ...' \
+	     "$BOLD$release_branch$SGR0$SMSO" "$BOLD$branch$SGR0$SMSO"
 	git checkout "$branch"
 	git merge "$release_branch"
 	
-	warn -e "$RMSO" 'pushing changes ...'
+	warn -e "$SMSO" 'pushing changes ...'
 	git push origin "$branch"
 done
 
-warn -e "$RMSO" 'adding tag %s ...' "${BOLD}v${vers}${SGR0}${RMSO}"
+warn -e "$SMSO" 'adding tag %s ...' "${BOLD}v${vers}${SGR0}${SMSO}"
 
 last="$(
 	git tag --list 'v*' --sort version:refname |
@@ -155,7 +155,7 @@ last="$(
 )" && [ "$last" ] ||
 	panic 'failed to determine current release.'
 
-warn -e "$RMSO" 'collecting log ...'
+warn -e "$SMSO" 'collecting log ...'
 
 log="$TEMP_DIR/log"
 git log "^$last" HEAD >"$log"
