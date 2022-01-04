@@ -3538,7 +3538,7 @@ do
     -- @treturn[1] string A string.
     -- @treturn[2] nil `nil` if the value cannot be converted to a string.
     -- @treturn[2] string An error message.
-    -- @fixme Test whether stringify could do all the work.
+    -- @todo Test whether stringify could do all the work.
     function converters.string (val)
         local t = type(val)
         if t == 'string' then
