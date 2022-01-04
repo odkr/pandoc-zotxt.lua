@@ -259,7 +259,7 @@
 --- Types
 -- @section
 
---- Meta-programming
+--- Variables
 -- @section
 
 --- Tables
@@ -650,7 +650,7 @@ local json = require 'lunajson'
 
 
 -------------------
--- Meta-programming
+-- Variables
 --
 -- @section
 
