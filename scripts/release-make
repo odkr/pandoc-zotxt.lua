@@ -135,6 +135,10 @@ warn -e "$SMSO" 'testing under real-world conditions ...'
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
 
+warn -e "$SMSO" 'pushing changes in %s ...' "$BOLD$release_branch$SGR0$SMSO"
+
+git push origin "$release_branch"
+
 for branch in develop main
 do
 	warn -e "$SMSO" 'merging %s to %s ...' \
@@ -142,8 +146,12 @@ do
 	git checkout "$branch"
 	git merge "$release_branch"
 	
-	warn -e "$SMSO" 'pushing changes ...'
-	git push origin "$branch"
+	if [ "$branch" != main ]
+	then
+		warn -e "$SMSO" 'pushing changes in %s ...' \
+		        "$BOLD$branch$SGR0$SMSO"
+		git push origin "$branch"
+	fi
 done
 
 warn -e "$SMSO" 'adding tag %s ...' "${BOLD}v${vers}${SGR0}${SMSO}"
