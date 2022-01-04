@@ -445,7 +445,7 @@ end
 -- @treturn func A function that adds type checks to a function.
 --
 -- @usage
--- copy = typed_args('?*', '?table')(
+-- copy_deep = typed_args('?*', '?table')(
 --     function (val, _seen)
 --         if type(val) ~= 'table' then return val end
 --         if     not _seen  then _seen = {}
@@ -454,14 +454,14 @@ end
 --         local ret = setmetatable({}, getmetatable(val))
 --         _seen[val] = ret
 --         for k, v in next, val do
---             rawset(ret, copy(k, _seen), copy(v, _seen))
+--             rawset(ret, copy_deep(k, _seen), copy_deep(v, _seen))
 --         end
 --         return ret
 --     end
 -- )
 --
 -- @function typed_args
--- @fixme No unit-test.
+-- @fixme Not unit-tested.
 function typed_args (...)
     local types = pack(...)
     return function (func)
@@ -506,7 +506,7 @@ end
 -- }(getmetatable(Foo).__call)
 --
 -- @function typed_keyword_args
--- @fixme No unit test!
+-- @fixme Not unit-tested.
 typed_keyword_args = typed_args('table')(
     function (types)
         return function (const)
@@ -685,7 +685,7 @@ vars_get = typed_args('?number')(
         assert(level > 0, 'level is not a positive number.')
         local info = debug.getinfo(level, 'f')
         if not info then return nil, tostring(level) .. ': no such level.' end
-        local vars = copy(_ENV)
+        local vars = copy_deep(_ENV)
         for i = 1, 2 do
             local iter, arg
             if     i == 1 then iter, arg = debug.getupvalue, info.func
@@ -695,7 +695,7 @@ vars_get = typed_args('?number')(
             while true do
                 local k, v = iter(arg, j)
                 if not k then break end
-                vars[k] = copy(v)
+                vars[k] = copy_deep(v)
                 j = j + 1
             end
         end
@@ -718,7 +718,7 @@ vars_get = typed_args('?number')(
 -- > tab.foo
 -- bar
 --
--- @fixme No unit test.
+-- @fixme Not unit-tested.
 ignore_case = {}
 
 --- Look up an item.
@@ -726,7 +726,7 @@ ignore_case = {}
 -- @tab tab A table.
 -- @param key A key.
 -- @return The item.
--- @fixme No unit test.
+-- @fixme Not unit-tested.
 function ignore_case.__index (tab, key)
     if type(key) == 'string' and key:match '%u' then
         return tab[key:lower()]
@@ -738,7 +738,7 @@ end
 -- @tab tab A table.
 -- @param key A key.
 -- @param val A value.
--- @fixme No unit test.
+-- @fixme Not unit-tested.
 function ignore_case.__newindex (tab, key, val)
     if type(key) == 'string' then rawset(tab, key:lower(), val)
                              else rawset(tab, key, val)
@@ -755,13 +755,13 @@ end
 -- @usage
 -- > foo = {1, 2, 3}
 -- > bar = {foo, 4}
--- > baz = copy(bar)
+-- > baz = copy_deep(bar)
 -- > foo[#foo + 1] = 4
 -- > table.unpack(baz, 1)
 -- 1    2    3
 --
--- @function copy
-copy = typed_args('?*', '?table')(
+-- @function copy_deep
+copy_deep = typed_args('?*', '?table')(
     function (val, _seen)
         -- Borrows from:
         -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
@@ -773,11 +773,35 @@ copy = typed_args('?*', '?table')(
         local ret = setmetatable({}, getmetatable(val))
         _seen[val] = ret
         for k, v in next, val do
-            rawset(ret, copy(k, _seen), copy(v, _seen))
+            rawset(ret, copy_deep(k, _seen), copy_deep(v, _seen))
         end
         return ret
     end
 )
+
+--- Make a shallow copy of a value.
+--
+-- @caveats Bypasses metamethods.
+--
+-- @param val A value.
+-- @return A shallow copy.
+--
+-- @usage
+-- > foo = {1, 2, 3}
+-- > bar = {foo, 4}
+-- > baz = copy_shallow(bar)
+-- > foo[#foo + 1] = 4
+-- > table.unpack(baz, 1)
+-- 1    2    3    4
+--
+-- @function copy_shallow
+-- @fixme Not unit-tested.
+function copy_shallow (val)
+    if type(val) ~= 'table' then return val end
+    local ret = setmetatable({}, getmetatable(val))
+    for k, v in next, val do rawset(ret, k, v) end
+    return ret
+end
 
 --- Get the keys and the number of items in a table.
 --
@@ -875,7 +899,7 @@ sorted = typed_args('table', '?function')(
 -- key    value
 --
 -- @function tabulate
--- @fixme Stateless iterators are untested.
+-- @fixme Stateless iterators are not unit-tested.
 tabulate = typed_args('function')(
     function (iter, tab, key)
         local vals = Values()
@@ -884,13 +908,13 @@ tabulate = typed_args('function')(
     end
 )
 
---- Walk a graph and apply a function to every node.
+--- Walk a tree and apply a function to every node.
 --
 -- A node is only changed if the function does *not* return `nil`.
 --
 -- @param val A value.
 -- @func func A function.
--- @return The transformed graph.
+-- @return The transformed tree.
 --
 -- @function walk
 walk = typed_args('*', 'function', '?table')(
@@ -1104,7 +1128,7 @@ do
     -- @treturn string A transformed string.
     --
     -- @function vars_sub
-    -- @fixme Improve error messages.
+    -- @todo Improve error messages.
     vars_sub = typed_args('string', 'table', '?number')(
         function (str, vars, _rd)
             if not _rd then _rd = 0 end
@@ -1186,7 +1210,7 @@ setmetatable(Object, Object.mt)
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, tab)
-        local mt = copy(getmetatable(proto))
+        local mt = copy_deep(getmetatable(proto))
         mt.__index = proto
         return setmetatable(tab or {}, mt)
     end
@@ -1194,7 +1218,7 @@ Object.mt.__call = typed_args('table', '?table')(
 
 --- Initialise a new object.
 --
--- `Object:new(props)` is equivalent to `Object(copy(props))`.
+-- `Object:new(props)` is equivalent to `Object(copy_deep(props))`.
 --
 -- @tab proto A prototype.
 -- @tab[opt] props Properties.
@@ -1206,7 +1230,7 @@ Object.mt.__call = typed_args('table', '?table')(
 -- foo
 Object.new = typed_args('table', '?table')(
     function (proto, props)
-        return proto(copy(props))
+        return proto(copy_deep(props))
     end
 )
 
@@ -1281,10 +1305,10 @@ Values.add = typed_args('table')(
 -- bam!
 --
 -- @function getterify
--- @fixme Untested.
+-- @fixme Not unit-tested.
 getterify = typed_args('table')(
     function (tab)
-        local mt = copy(getmetatable(tab))
+        local mt = copy_deep(getmetatable(tab))
         local index = mt.__index
         mt.__index = typed_args('table')(
             -- luacheck: ignore tab
@@ -1628,7 +1652,7 @@ do
     -- @treturn[2] int An error number.
     --
     -- @function file_write
-    -- @fixme Legacy version is untested.
+    -- @fixme Legacy version is not unit-tested.
     file_write_legacy = typed_args('string')(
         function (fname, ...)
             assert(fname ~= '', 'filename is the empty string.')
@@ -2099,7 +2123,7 @@ do
     -- @treturn[2] string An error message.
     --
     -- @function yamlify
-    -- @fixme Indentation and sorting is not unit-tested.
+    -- @fixme Indentation and sorting are not unit-tested.
     yamlify = typed_args('*', '?number', '?function', '?number')(
         -- luacheck: ignore sort
         function (val, ind, sort, _col, _rd)
@@ -2409,7 +2433,7 @@ do
     -- @function csl_item_add_extras
     csl_item_add_extras = typed_args('table')(
         function (item)
-            local ret = copy(item)
+            local ret = copy_deep(item)
             for k, v in csl_item_extras(item) do
                 local f = parsers[k]
                 if not ret[k] or f == parse_date or k == 'type' then
@@ -2503,7 +2527,7 @@ do
     --
     -- @tab tab A table.
     -- @treturn pandoc.MetaMapping The table.
-    -- @fixme Recursion protection is not tested.
+    -- @fixme Recursion protection is not unit-tested.
     function converters.table (tab, _rd)
         if not _rd then _rd = 0 end
         assert(_rd < 128, 'recursion limit exceeded.')
@@ -2529,7 +2553,7 @@ do
     --  a Pandoc metadata value.
     --
     -- @function csl_item_to_meta
-    -- @fixme No unit test.
+    -- @fixme Not unit-tested.
     csl_item_to_meta = typed_args('table')(convert)
 end
 
@@ -2540,7 +2564,7 @@ end
 -- @treturn {tab,...} Items with that citation key.
 --
 -- @function csl_items_filter_by_ckey
--- @fixme No unit test.
+-- @fixme Not unit-tested.
 csl_items_filter_by_ckey = typed_args('table', 'string')(
     function (items, ckey)
         local filtered = Values()
@@ -2701,7 +2725,7 @@ do
     -- @treturn[2] string An error message.
     --
     -- @function citekey.parsers.betterbibtexkey
-    -- @fixme No unit test.
+    -- @fixme Not unit-tested.
     citekey.parsers.betterbibtexkey = typed_args('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
@@ -2740,7 +2764,7 @@ do
     -- @treturn[2] string An error message.
     --
     -- @function Citekey.parsers.easykey
-    -- @fixme No unit test.
+    -- @fixme Not unit-tested.
     citekey.parsers.easykey = typed_args('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
@@ -2889,11 +2913,10 @@ biblio.types.yaml.decode = typed_args('string')(
         local doc = read(str, 'markdown')
         if not doc.meta.references then return {} end
         local refs = elem_walk(doc.meta.references, {
-            -- what about MetaBlocks at any rate? @fixme
-            Meta = function (e) xwarn('@error', 'DEBUG: ', e) end,
-            Inlines = markdownify,
             Blocks = markdownify,
-            MetaInlines = markdownify,
+            Inlines = markdownify,
+            MetaBlocks = markdownify,
+            MetaInlines = markdownify
         })
         for i = 1, #refs do refs[i] = csl_item_normalise_vars(refs[i]) end
         return refs
@@ -3062,34 +3085,36 @@ biblio.update = typed_args('table', 'table', 'string', 'table')(
 --
 -- @tparam pandoc.AstElement elem A Pandoc AST element.
 -- @treturn pandoc.AstElement The clone.
--- @fixme No unit test.
+-- @fixme Not unit-tested.
 --
 -- @function elem_clone
 if not pandoc.types or PANDOC_VERSION < {2, 15} then
     elem_clone = typed_args('table')(
         function (elem)
             if elem.clone then return elem:clone() end
-            local copy = setmetatable({}, getmetatable(elem))
-            for k, v in next, elem do rawset(copy, k, v) end
-            return copy
+            return copy_shallow(elem)
         end
     )
 else
     elem_clone = typed_args('table|userdata')(
         function (elem)
             if elem.clone then return elem:clone() end
-            local meta
-            if elem.meta.clone
-                then meta = elem.meta:clone()
-                else meta = copy(elem.meta)
+            local clone = {}
+            for k, v in pairs(elem) do
+                local t = type(v)
+                if t == 'userdata' or t == 'table' then
+                    if v.clone then clone[k] = v:clone()
+                            else clone[k] = copy_deep(v)
+                    end
+                end
             end
-            return Pandoc(elem.blocks:clone(), meta)
+            return Pandoc(clone.blocks, clone.meta)
         end
     )
 end
 
 do
-    -- @fixme
+    -- A mapping of types to their higher-order types.
     local super = {
         Meta = 'AstElement',
         MetaValue = 'AstElement',
@@ -3137,14 +3162,18 @@ do
         Underline = 'Inline'
     }
 
-    -- @fixme
-    local function get_items_et (elem, ...)
-        -- Lists of similar AST elements.
+    -- Get the type of list items, if all list are of the same type.
+    --
+    -- @tparam pandoc.List items Items.
+    -- @treturn[1] string A Pandoc AST type.
+    -- @treturn[2] nil `nil` if the given value is not a list.
+    -- @treturn[2] string An error message.
+    local function items_type (items, ...)
         local cnt = {}
         local n = 0
         while true do
             local i = n + 1
-            local item = elem[i]
+            local item = items[i]
             if item == nil then break end
             n = i
             local et, est = elem_type(item, ...)
@@ -3156,56 +3185,62 @@ do
         return nil, 'not a list of Pandoc elements.'
     end
 
-    -- @fixme
-    local get_et
+    -- Get the type of a Pandoc element (worker).
+    --
+    -- @tparam pandoc.AstElement el A Pandoc AST element.
+    -- @treturn[1] string A type (e.g., 'Str').
+    -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
+    -- @treturn[2] string An error message.
+    --
+    -- @function et_type
+    local el_type
     if not pandoc.types or PANDOC_VERSION < {2, 15} then
-        function get_et (elem, ...)
-            if type(elem) == 'table' then
+        function el_type (el, ...)
+            if type(el) == 'table' then
                 -- This works even if elem.tag does not.
-                local mt = getmetatable(elem)
+                local mt = getmetatable(el)
                 if mt and mt.__type and mt.__type.name then
                     return mt.__type.name
                 end
 
                 -- Lists of similar AST elements.
-                local lt = get_items_et(elem, ...)
+                local lt = items_type(el, ...)
                 if lt then return lt .. 's' end
             end
             return nil, 'not a Pandoc AST element.'
         end
     else
+        -- @todo This works for the development version of Pandoc
+        --       as of commit 60fc05e and is subject to change.
+        --       See <https://github.com/jgm/pandoc/issues/7796>.
         local pandoc_type = pandoc.utils.type
 
-        function get_et (elem, ...)
-            local t = type(elem)
-            if t == 'table' or t == 'userdata' then
-                -- Check if we can use the type pandoc.utils.type returns.
+        function el_type (el, ...)
+            local t = type(el)
+            if t == 'userdata' or t == 'table' then
+                -- Use the tag, if there is one.
+                if el.tag then return el.tag end
+
+                -- Check if we can use pandoc.utils.type.
                 if pandoc_type then
-                    local pt = pandoc_type(elem)
+                    local pt = pandoc_type(el)
                     if
-                        pt ~= 'table'    and
-                        pt ~= 'userdata' and
-                        pt ~= 'Inline'   and
-                        pt ~= 'Block'    and
-                        pt ~= 'Meta'     and
+                        pt:match '^[A-Z]' and
+                        pt ~= 'Meta'      and
                         pt ~= 'List'
                     then return pt end
-                end
 
-                -- If not, use the tag, if there is one.
-                if elem.tag then return elem.tag end
-
-                -- Lists of similar AST elements ('Inlines', 'Blocks').
-                if t == 'table' then
-                    local lt = get_items_et(elem, ...)
+                -- Lists of AST elements of the same type (e.g., 'Inlines').
+                elseif t == 'table' then
+                    local lt = items_type(el, ...)
                     if lt then return lt .. 's' end
                 end
 
-                -- There is no better way to determine whether
-                -- an element is a Pandoc document.
+                -- If this point is reached, then there is no better way to
+                -- determine whether an element is a Pandoc document.
                 if
-                    elem.meta       and
-                    elem.blocks     and
+                    el.meta   and
+                    el.blocks and
                     t == 'userdata'
                 then return 'Pandoc' end
             end
@@ -3216,8 +3251,8 @@ do
     --- Get the type of a Pandoc AST element.
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
-    -- @treturn[1] string A type (e.g., 'MetaMap', 'Plain').
-    -- @treturn[1] string|nil A super-type (e.g., 'Block' or 'MetaValue').
+    -- @treturn[1] string A type (e.g., 'Str').
+    -- @treturn[1] string|nil A super-type (e.g., 'Block' or 'Meta').
     -- @treturn[1] string|nil ⋮.
     -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
     -- @treturn[2] string An error message.
@@ -3228,16 +3263,11 @@ do
         elseif _seen[elem] then return nil, 'cycle in data tree.'
         else                    _seen[elem] = true
         end
-        local et, err = get_et(elem, _seen)
+        local et, err = el_type(elem, _seen)
         if not et then return nil, err end
-        -- local ets = Values()
-        -- while et do
-        --     ets:add(et)
-        --     et = super[et]
-        -- end
-        local ets = {}
+        local ets = Values()
         while et do
-            table.insert(ets, et)
+            ets:add(et)
             et = super[et]
         end
         return unpack(ets)
@@ -3316,9 +3346,9 @@ do
                     end
                 end
             elseif type(elem) == 'table' then
-                -- @fixme can this work, can we copy userdata?
-                elem = copy(elem)
-                -- a shallow copy would do! FIXME
+                if elem.clone then elem = elem:clone()
+                              else elem = copy_shallow(elem)
+                end
                 walk_table(elem, filter, _rd)
             end
             return elem
@@ -3327,6 +3357,9 @@ do
 end
 
 do
+    -- @todo This works for the development version of Pandoc
+    --       as of commit 60fc05e and is subject to change.
+    --       See <https://github.com/jgm/pandoc/issues/7796>.
     local pandoc_type = pandoc.utils.type
 
     --- Collect bibliographic data.
@@ -3356,8 +3389,7 @@ do
                 elseif et == 'List' or et == 'MetaList' then
                     fnames = bibliography:map(stringify)
                 else
-                    -- @fixme
-                    xwarn('@error', 'cannot parse metadata field "bibliography".')
+                    xwarn('@error', 'bibliography: cannot parse.')
                     return data
                 end
                 for i = 1, #fnames do
@@ -3410,8 +3442,9 @@ do
             local blocks = doc.blocks
             local old = {}
             local new = {}
+            local flt = {}
             if undef then old = csl_items_ids(meta_sources(meta)) end
-            local flt = {Cite = function (cite) return ids(cite, old, new) end}
+            function flt.Cite (cite) return ids(cite, old, new) end
             if meta then
                 for k, v in pairs(meta) do
                     if k ~= 'references' then elem_walk(v, flt) end
@@ -3475,6 +3508,11 @@ Options.new = typed_args('table', '...')(
 
 
 do
+    -- @todo This works for the development version of Pandoc
+    --       as of commit 60fc05e and is subject to change.
+    --       See <https://github.com/jgm/pandoc/issues/7796>.
+    local pandoc_type = pandoc.utils.type
+
     -- A mapping of configuration value types to parers.
     local converters = {}
 
@@ -3500,7 +3538,7 @@ do
     -- @treturn[1] string A string.
     -- @treturn[2] nil `nil` if the value cannot be converted to a string.
     -- @treturn[2] string An error message.
-    -- @fixme Test if we cannot let stringify do all of the work.
+    -- @fixme Test whether stringify could do all the work.
     function converters.string (val)
         local t = type(val)
         if t == 'string' then
@@ -3540,16 +3578,20 @@ do
     function converters.list (val, decl)
         if decl == '' then decl = 'string' end
         local function conv (v) return convert(v, decl) end
-        -- @fixme and not elem_type is to deal with Pandoc <v2.14?
-        -- @this is only needed for some versions, not all < something.
-        -- 2.14? 2.15? check!
-        local et = elem_type(val)
-        if
-            type(val) == 'table' and
-            not et               or
-            et == 'MetaMap'      or
-            et == 'MetaList'
-        then return List(val):map(conv) end
+        local t = type(val)
+        if t == 'userdata' or t == 'table' then
+            if pandoc_type then
+                local pt = pandoc_type(val)
+                if pt == 'List' then return val:map(conv) end
+            else
+                local et = elem_type(val)
+                if et == 'MetaList' then
+                    return val:map(conv)
+                elseif t == 'table' and not et then
+                    return List(val):map(conv)
+                end
+            end
+        end
         return List{conv(val)}
     end
 
@@ -3850,7 +3892,7 @@ connectors.ZoteroWeb.citekey_types = List {
 --
 -- @object connectors.ZoteroWeb.options
 -- @proto Copy of @{connectors.Zotero.options}.
-connectors.ZoteroWeb.options = copy(connectors.Zotero.options)
+connectors.ZoteroWeb.options = copy_deep(connectors.Zotero.options)
 connectors.ZoteroWeb.options:add(
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},
@@ -4063,7 +4105,12 @@ do
     --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
     -- @function connectors.ZoteroWeb:search
-    connectors.ZoteroWeb.search = typed_args('table', 'string', '?string', '...')(
+    connectors.ZoteroWeb.search = typed_args(
+        'table',
+        'string',
+        '?string',
+        '...'
+    )(
         function (self, ...)
             local q = concat({...}, '+')
             local params = {v = 3, key = self.api_key,
@@ -4171,43 +4218,59 @@ end
 --
 -- @section
 
---- Add data to a bibliography file and the file to the document's metadata.
---
--- Updates the bibliography file as needed and adds its to the `bibliography`
--- metadata field. Interpretes relative filenames as relative to the directory
--- of the first input file passed to **pandoc**, or, if no input files were
--- given, as relative to the current working directory.
---
--- @caveats @{file_write}.
--- @side May print error messages to STDERR.
---
--- @string fname A filename for the bibliography file.
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
--- @tparam pandoc.Pandoc doc A Pandoc document.
--- @treturn[1] pandoc.Meta An updated metadata block.
--- @treturn[2] nil `nil` if nothing was done or an error occurred.
--- @treturn[2] string An error message, if applicable.
--- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
---
--- @function add_biblio
-add_biblio = typed_args('string', 'table', 'table|userdata')(
-    function (fname, handle, doc)
-        local ckeys = doc_ckeys(doc, true)
-        if #ckeys == 0 then return end
-        local meta = doc.meta
-        if not path_is_abs(fname) then fname = path_join(wd(), fname) end
-        local ok, err = biblio:update(handle, fname, ckeys)
-        if not ok then return nil, err end
-        if not meta.bibliography then
-            meta.bibliography = fname
-        elseif meta.bibliography.tag == 'MetaInlines' then
-            meta.bibliography = List{fname, meta.bibliography}
-        elseif meta.bibliography.tag == 'MetaList'
-            then meta.bibliography = List{unpack(meta.bibliography), fname}
+do
+    -- @todo This works for the development version of Pandoc
+    --       as of commit 60fc05e and is subject to change.
+    --       See <https://github.com/jgm/pandoc/issues/7796>.
+    local pandoc_type = pandoc.utils.type
+
+    --- Add data to a bibliography file and the file to the document's metadata.
+    --
+    -- Updates the bibliography file as needed and adds its to the `bibliography`
+    -- metadata field. Interpretes relative filenames as relative to the directory
+    -- of the first input file passed to **pandoc**, or, if no input files were
+    -- given, as relative to the current working directory.
+    --
+    -- @caveats @{file_write}.
+    -- @side May print error messages to STDERR.
+    --
+    -- @string fname A filename for the bibliography file.
+    -- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
+    -- @tparam pandoc.Pandoc doc A Pandoc document.
+    -- @treturn[1] pandoc.Meta An updated metadata block.
+    -- @treturn[2] nil `nil` if nothing was done or an error occurred.
+    -- @treturn[2] string An error message, if applicable.
+    -- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
+    --
+    -- @function add_biblio
+    add_biblio = typed_args('string', 'table', 'table|userdata')(
+        function (fname, handle, doc)
+            local ckeys = doc_ckeys(doc, true)
+            if #ckeys == 0 then return end
+            local meta = doc.meta
+            if not path_is_abs(fname) then fname = path_join(wd(), fname) end
+            local ok, err = biblio:update(handle, fname, ckeys)
+            if not ok then return nil, err end
+            local bibliography = meta.bibliography
+            if not bibliography then
+                meta.bibliography = fname
+            else
+                local et
+                if pandoc_type then et = pandoc_type(bibliography)
+                               else et = bibliography.tag
+                end
+                if et == 'Inlines' or et == 'MetaInlines' then
+                    meta.bibliography = List{fname, meta.bibliography}
+                elseif et == 'List' or et == 'MetaList'
+                    then meta.bibliography:insert(fname)
+                else
+                    return nil, 'bibliography: cannot parse.'
+                end
+            end
+            return meta
         end
-        return meta
-    end
-)
+    )
+end
 
 --- Add bibliographic data to the `references` metadata field.
 --
