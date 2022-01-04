@@ -3134,6 +3134,7 @@ else
                     end
                 end
             end
+            assert(elem_type(elem) == 'Pandoc', 'expected a Pandoc document.')
             return Pandoc(clone.blocks, clone.meta)
         end
     )
