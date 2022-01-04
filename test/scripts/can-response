@@ -64,13 +64,13 @@ update_can() (
 
 	temp_can="$TEMP_DIR/$can" actual_can="$CAN_DIR/$can"
 
-	warn 'fetching %s ...' "$encoded"
+	warn 'fetching %s ...' "$BOLD$encoded$SGR0"
 	curl -s -D - >"$temp_can" "$encoded" ||
 		panic failed.
 
 	mv "$temp_can" "$actual_can"
 
-	warn 'stored as %s.' "$(path_prettify "$actual_can")"
+	warn 'stored as %s.' "$BOLD$(path_prettify "$actual_can")$SGR0"
 )
 
 
@@ -99,7 +99,7 @@ do
 	esac
 done
 shift $((OPTIND - 1))
-[ $# -gt 0 ] || panic -s 64 'no URL given.'
+[ $# -gt 0 ] || panic -s 64 'no URLs given.'
 
 
 # PRELUDE

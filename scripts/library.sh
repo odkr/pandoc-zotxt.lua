@@ -44,19 +44,20 @@ unset signame signo
 readonly TEMP_NAME_GEN="$REPO/scripts/temp-name-gen"
 
 # Colours!
-BLD='' BDO='' CVV='' CNV='' RED='' GRN='' RST=''
+SMSO='' RMSO='' CVVIS='' CNORM='' RED='' GREEN='' SGR0=''
 case $TERM in (*color|*colour*)
-	BLD="$(tput smso)"    || BLD=
-	BDO="$(tput rmso)"    || BDO=
-	CVV="$(tput cvvis)"   || CVV=
-	CNV="$(tput cnorm)"   || CNV=
-	CYA="$(tput setaf 6)" || CYA=
-	GRN="$(tput setaf 2)" || GRN=
-	RED="$(tput setaf 1)" || RED=
-	RST="$(tput sgr0)"    || RST=
+	SMSO="$(tput smso)"     || SMSO=
+	RMSO="$(tput rmso)"     || RMSO=
+	BOLD="$(tput bold)"	|| BOLD=
+	CVVIS="$(tput cvvis)"   || CVVIS=
+	CNORM="$(tput cnorm)"   || CNORM=
+	BLUE="$(tput setaf 4)"  || BLUE=
+	GREEN="$(tput setaf 2)" || GREEN=
+	RED="$(tput setaf 1)"   || RED=
+	SGR0="$(tput sgr0)"     || SGR0=
 esac
 # shellcheck disable=2034
-readonly BLD BDO CVV CNV CYA GRN RED RST
+readonly SMSO RMSO CVVIS CNORM BLUE GREEN RED SGR0
 
 
 # GLOBALS
@@ -107,7 +108,7 @@ warn() (
 	printf '%s: ' "$SCPT_NAME"
 	[ "$escape" ] && printf '%b' "$escape"
 	printf -- "$@"
-	[ "$escape" ] && printf '%b' "$RST"
+	[ "$escape" ] && printf '%b' "$SGR0"
 	[ "$linefeed" ] && echo
 	return 0
 )
@@ -164,7 +165,7 @@ panic() {
 catch() {
 	tput dl1 >&2
 	printf '\r' >&2
-	warn -e "$CYA" 'caught %s.' "$1"
+	warn -e "$BLUE" 'caught %s.' "$1"
 	eval "SIGNO=\"\$SIG_$1\""
 	if [ "$SIGNO" ]
 		then SIGNAME="$1"
@@ -193,7 +194,7 @@ cleanup() {
 		eval "$CLEANUP"
 		unset CLEANUP
 	fi
-	printf '%b\r' "$RST" >&2
+	printf '%b\r' "$SGR0" >&2
 	exit "${STATUS:-69}"
 }
 

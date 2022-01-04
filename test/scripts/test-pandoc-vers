@@ -55,12 +55,13 @@ do
 		                     -L "$VERS_PRINT" /dev/null)"
 
 		warn -n 'testing with %s (v%s) ... %s%s' \
-		     "$(path_prettify "$pandoc")$BDO" "$version" "$CVV"
+		     "$BOLD$(path_prettify "$pandoc")$SGR0" \
+		     "$version" "$CVVIS"
 		if make -e PANDOC="$pandoc" "$@" >/dev/null 2>&1
 		then
-			echo "${CNV}${GRN}pass${RST}" >&2
+			echo "${CNORM}${GREEN}pass${SGR0}" >&2
 		else
-			echo "${CNV}${RED}fail${RST}" >&2
+			echo "${CNORM}${RED}fail${SGR0}" >&2
 			failures=$((failures + 1))
 		fi
 	done

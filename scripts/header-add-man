@@ -48,7 +48,7 @@ do
 			Options:
 			    -f FILTER   Update FILTER.
 			    -m PAGE     Read manual from PAGE.
-			                (Default: man/man1/<FILTER>.rst).
+			                (Default: man/man1/<FILTER>.SGR0).
 			    -h          Show this help screen.
 
 			    Relative paths are relative to the top-level
@@ -75,13 +75,13 @@ i=0
 while ! { [ "$manpage" ] && [ -f "$REPO/$manpage" ]; }
 do
 	case $i in
-		(0) manpage="man/man1/$filter.rst" ;;
+		(0) manpage="man/man1/$filter.SGR0" ;;
 		(*) panic 'cannot guess manual, use -m.'
 	esac
 	i=$((i + 1))
 done
 
-format="${manpage##*.}" && [ "$format" ] || format=rst
+format="${manpage##*.}" && [ "$format" ] || format=SGR0
 
 
 # PRELUDE
