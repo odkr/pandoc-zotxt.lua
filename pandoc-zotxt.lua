@@ -813,12 +813,12 @@ do
     -- @usage
     -- > foo = {1, 2, 3}
     -- > bar = {foo, 4}
-    -- > baz = copy_deep(bar)
+    -- > baz = copy(bar)
     -- > foo[#foo + 1] = 4
     -- > table.unpack(baz, 1)
     -- 1    2    3
     --
-    -- @function copy_deep
+    -- @function copy
     copy = typed_args('?*', '?boolean')(
         function (val, deep)
             if deep == false then return copy_shallow(val) end
@@ -1252,6 +1252,8 @@ Object.mt.__call = typed_args('table', '?table')(
 -- > foo = Object:new{foo = 'foo'}
 -- > foo.foo
 -- foo
+--
+-- @function Object:new
 Object.new = typed_args('table', '?table')(
     function (proto, props)
         return proto(copy(props))
@@ -3785,6 +3787,22 @@ end
 -- @section
 
 --- A case-insensitive namespace for connector prototypes.
+--
+-- <h3>Connector protocol:</h3>
+--
+-- A connector prototype *must* provide two methods:
+--
+-- A `new` method that is called to create a new connector object. `new` must
+-- have the same function signature as @{Object:new}. It should return `nil`
+-- and an error message if the object cannot be created.
+--
+-- A `fetch` method that fetches bibliographc data. `fetch` should take a
+-- a citation key and return either a CSL item or `nil` and an error message.
+--
+-- Connector prototypes may register configuration settings by providing
+-- an `options` property that points to an @{Options} object. That object's
+-- @{Options:parse} method is then called with the document's metadata block
+-- as argument and whatever it returns is passed to `new` as argument.
 connectors = setmetatable({}, ignore_case)
 
 --- Interface to [zotxt](https://github.com/egh/zotxt).
