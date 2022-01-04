@@ -36,7 +36,7 @@ into a Bourne-compatible shell:
 ```sh
 ( set -eu
   : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
-  name=pandoc-zotxt.lua vers=1.1.0b5
+  name=pandoc-zotxt.lua vers=1.1.0b6
   release="$name-$vers"
   url="https://github.com/odkr/$name/releases/download/v$vers/$release.tgz"
   for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
@@ -50,7 +50,7 @@ into a Bourne-compatible shell:
 ```
 
 If you want to use the manual page that ships with this release,
-add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b5/man`
+add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b6/man`
 to your `MANPATH`.
 
 
