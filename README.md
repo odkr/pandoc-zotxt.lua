@@ -75,7 +75,7 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 2. [Pandoc](https://www.pandoc.org/) v2.0 to v2.16.2.
 3. [GNU Make](https://www.gnu.org/software/make/).
 
-Note, the test suite has only been tested with Pandoc >= v2.10.1.
+Note, the test suite has only been tested with Pandoc >= v2.10.
 It may or may not work with development versions of Pandoc.
 
 
@@ -108,9 +108,9 @@ Zotero library.
 
 Moreover, you will need:
 
-* Zotero (v5 or newer)
-* zotxt (v5 or newer)
-* Better BibTeX for Zotero (v5 or newer)
+* Zotero >= v5.
+* zotxt >= v5.
+* Better BibTeX for Zotero >= v5.
 
 
 ## License
