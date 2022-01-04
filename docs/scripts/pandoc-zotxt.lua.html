@@ -428,8 +428,12 @@ EOF
 	<td class="summary">Store a new item.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#copy">copy (val)</a></td>
+	<td class="name" nowrap><a href="#copy_deep">copy_deep (val)</a></td>
 	<td class="summary">Make a deep copy of a value.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copy_shallow">copy_shallow (val)</a></td>
+	<td class="summary">Make a shallow copy of a value.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#keys">keys (tab)</a></td>
@@ -449,7 +453,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#walk">walk (val, func)</a></td>
-	<td class="summary">Walk a graph and apply a function to every node.</td>
+	<td class="summary">Walk a tree and apply a function to every node.</td>
 	</tr>
 </table>
 <h2><a href="#Strings">Strings </a></h2>
@@ -841,7 +845,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#connectors.ZoteroWeb.mt.getters.groups">connectors.ZoteroWeb.mt.getters.groups (obj)</a></td>
-	<td class="summary">Get the IDs of the groups the current user is a member of.</td>
+	<td class="summary">Get the groups the user is a member of.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#connectors.ZoteroWeb:endpoints">connectors.ZoteroWeb:endpoints ([id])</a></td>
@@ -857,7 +861,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#connectors.ZoteroWeb:fetch">connectors.ZoteroWeb:fetch (ckey)</a></td>
-	<td class="summary">Fetch a CSL item from Zotero.</td>
+	<td class="summary">Fetch a CSL item from the Zotero Web API.</td>
 	</tr>
 </table>
 <h2><a href="#Main">Main </a></h2>
@@ -1063,7 +1067,7 @@ EOF
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">copy = typed_args(<span class="string">'?*'</span>, <span class="string">'?table'</span>)(
+        <pre class="example">copy_deep = typed_args(<span class="string">'?*'</span>, <span class="string">'?table'</span>)(
     <span class="keyword">function</span> (val, _seen)
         <span class="keyword">if</span> <span class="global">type</span>(val) ~= <span class="string">'table'</span> <span class="keyword">then</span> <span class="keyword">return</span> val <span class="keyword">end</span>
         <span class="keyword">if</span>     <span class="keyword">not</span> _seen  <span class="keyword">then</span> _seen = {}
@@ -1072,7 +1076,7 @@ EOF
         <span class="keyword">local</span> ret = <span class="global">setmetatable</span>({}, <span class="global">getmetatable</span>(val))
         _seen[val] = ret
         <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">next</span>, val <span class="keyword">do</span>
-            <span class="global">rawset</span>(ret, copy(k, _seen), copy(v, _seen))
+            <span class="global">rawset</span>(ret, copy_deep(k, _seen), copy_deep(v, _seen))
         <span class="keyword">end</span>
         <span class="keyword">return</span> ret
     <span class="keyword">end</span>
@@ -1282,8 +1286,8 @@ bar</pre>
 
 </dd>
     <dt>
-    <a name = "copy"></a>
-    <strong>copy (val)</strong>
+    <a name = "copy_deep"></a>
+    <strong>copy_deep (val)</strong>
     </dt>
     <dd>
     Make a deep copy of a value.
@@ -1315,10 +1319,51 @@ bar</pre>
     <ul>
         <pre class="example">&gt; foo = {<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>}
 &gt; bar = {foo, <span class="number">4</span>}
-&gt; baz = copy(bar)
+&gt; baz = copy_deep(bar)
 &gt; foo[#foo + <span class="number">1</span>] = <span class="number">4</span>
 &gt; <span class="global">table</span>.<span class="global">unpack</span>(baz, <span class="number">1</span>)
 <span class="number">1</span>    <span class="number">2</span>    <span class="number">3</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copy_shallow"></a>
+    <strong>copy_shallow (val)</strong>
+    </dt>
+    <dd>
+    Make a shallow copy of a value.
+
+    <h3>Caveats:</h3>
+    <ul>
+         Bypasses metamethods.
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">val</span>
+         A value.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        A shallow copy.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; foo = {<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>}
+&gt; bar = {foo, <span class="number">4</span>}
+&gt; baz = copy_shallow(bar)
+&gt; foo[#foo + <span class="number">1</span>] = <span class="number">4</span>
+&gt; <span class="global">table</span>.<span class="global">unpack</span>(baz, <span class="number">1</span>)
+<span class="number">1</span>    <span class="number">2</span>    <span class="number">3</span>    <span class="number">4</span></pre>
     </ul>
 
 </dd>
@@ -1496,7 +1541,7 @@ key    value</pre>
     <strong>walk (val, func)</strong>
     </dt>
     <dd>
-    Walk a graph and apply a function to every node.</p>
+    Walk a tree and apply a function to every node.</p>
 
 <p> A node is only changed if the function does <em>not</em> return <code>nil</code>.
 
@@ -1519,7 +1564,7 @@ key    value</pre>
     <h3>Returns:</h3>
     <ol>
 
-        The transformed graph.
+        The transformed tree.
     </ol>
 
 
@@ -1875,7 +1920,7 @@ bam!</pre>
     <dd>
     Initialise a new object.</p>
 
-<p> <code>Object:new(props)</code> is equivalent to <code>Object(copy(props))</code>.
+<p> <code>Object:new(props)</code> is equivalent to <code>Object(copy_deep(props))</code>.
 
     </ul>
     </ul>
@@ -2193,6 +2238,9 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     <dd>
     Join multiple path segments.
 
+    <h3>Caveats:</h3>
+    <ul>
+         Accepts empty strings as arguments.
     </ul>
     </ul>
     </ul>
@@ -4222,13 +4270,13 @@ original-date</pre>
     <ol>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A type (e.g., &lsquo;MetaMap&rsquo;, &lsquo;Plain&rsquo;).</li>
+        A type (e.g., &lsquo;Str&rsquo;).</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A super-type (e.g., &lsquo;Block&rsquo; or &lsquo;MetaValue&rsquo;).</li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">nil</span></span>
+        A super-type (e.g., &lsquo;Block&rsquo; or &lsquo;Meta&rsquo;).</li>
         <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        &lsquo;AstElement&rsquo;.</li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">nil</span></span>
+        ⋮.</li>
     </ol>
      <h3>Or</h3>
     <ol>
@@ -4251,16 +4299,15 @@ original-date</pre>
     <dd>
     <p>Walk an AST and apply a filter to matching elements.</p>
 
-<p> Differs from <code>pandoc.walk_block</code> and <code>pandoc.walk_inline</code> by:</p>
+<p> Differs from Pandoc&rsquo;s walkers by:</p>
 
 <ul>
-<li>accepting AST elements of any type (inluding documents and metadata),</li>
-<li>walking the AST bottom-up and
-applying the filter to the given element itself,</li>
+<li>walking AST elements of any type (inluding documents and metadata),</li>
+<li>walking the AST bottom-up,</li>
+<li>applying the filter to the given element itself,</li>
 <li>allowing functions in the filter to return data of arbitrary types,</li>
 <li>never modifying the original element, and</li>
-<li>accepting &lsquo;AstElement&rsquo; as filter keyword,
-but not &lsquo;Blocks&rsquo; or &lsquo;Inlines&rsquo;.</li>
+<li>accepting &lsquo;AstElement&rsquo; as filter keyword.</li>
 </ul>
 
 
@@ -4976,7 +5023,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     <strong>connectors.ZoteroWeb.mt.getters.groups (obj)</strong>
     </dt>
     <dd>
-    Get the IDs of the groups the current user is a member of.
+    Get the groups the user is a member of.
 
     </ul>
     </ul>
@@ -5141,7 +5188,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     <strong>connectors.ZoteroWeb:fetch (ckey)</strong>
     </dt>
     <dd>
-    Fetch a CSL item from Zotero.
+    Fetch a CSL item from the Zotero Web API.
 
     </ul>
     <h3>Side-effects:</h3>
@@ -5348,7 +5395,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-01-02 19:21:13 </i>
+<i style="float:right;">Last updated 2022-01-04 16:56:11 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
