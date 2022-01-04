@@ -822,26 +822,26 @@ function test_copy ()
     }
 
     for _, v in ipairs(simple) do
-        local t = M.copy_deep(v)
+        local t = M.copy(v)
         lu.assert_items_equals(t, v)
     end
 
     -- Test a nested table.
     local t = {1, 2, 3, {1, 2, 3, {4, 5, 6}}}
-    local c = M.copy_deep(t)
+    local c = M.copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a self-referential table.
     t = {1, 2, 3}
     t.t = t
-    c = M.copy_deep(t)
+    c = M.copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a table that has another table as key.
     t = {1, 2, 3}
     local u = {1, 2, 3, {4, 5, 6}}
     u[t] = 7
-    c = M.copy_deep(u)
+    c = M.copy(u)
     lu.assert_items_equals(c, u)
 
     -- Test a table that overrides `__pairs`.
@@ -849,7 +849,7 @@ function test_copy ()
         return function () end
     end}
     t = setmetatable({1, 2, 3}, single)
-    c = M.copy_deep(t)
+    c = M.copy(t)
     lu.assert_items_equals(c, t)
 
     -- Test a table that does all of this.
@@ -857,7 +857,7 @@ function test_copy ()
     u = {1, 2, 3, {4, 5, 6}}
     t[u] = {1, 2, 3, {4, 5}}
     t.t = t
-    c = M.copy_deep(t)
+    c = M.copy(t)
     lu.assert_items_equals(c, t)
 end
 
@@ -1388,7 +1388,7 @@ function test_csl_item_add_extras ()
         title = 'Unit testing',
         type = 'book'
     }
-    lu.assert_items_equals(M.csl_item_add_extras(M.copy_deep(input)), output)
+    lu.assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
 
     input = {
         author = {{family = 'Doe', given = 'John'}},
@@ -1417,7 +1417,7 @@ function test_csl_item_add_extras ()
         type = 'book'
     }
 
-    lu.assert_items_equals(M.csl_item_add_extras(M.copy_deep(input)), output)
+    lu.assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
 end
 
 function test_csl_vars_sort ()
@@ -1638,7 +1638,7 @@ function test_biblio_update ()
     data, err = read_json_file(fname)
     lu.assert_nil(err)
     lu.assert_not_nil(data)
-    local csl = M.copy_deep(ZOTXT_CSL)
+    local csl = M.copy(ZOTXT_CSL)
     csl[1].id = 'haslanger:2012resisting'
     lu.assert_equals(data, rconv_nums_to_strs(csl))
 

@@ -445,7 +445,7 @@ end
 -- @treturn func A function that adds type checks to a function.
 --
 -- @usage
--- copy_deep = typed_args('?*', '?table')(
+-- copy = typed_args('?*', '?table')(
 --     function (val, _seen)
 --         if type(val) ~= 'table' then return val end
 --         if     not _seen  then _seen = {}
@@ -454,7 +454,7 @@ end
 --         local ret = setmetatable({}, getmetatable(val))
 --         _seen[val] = ret
 --         for k, v in next, val do
---             rawset(ret, copy_deep(k, _seen), copy_deep(v, _seen))
+--             rawset(ret, copy(k, _seen), copy(v, _seen))
 --         end
 --         return ret
 --     end
@@ -685,7 +685,7 @@ vars_get = typed_args('?number')(
         assert(level > 0, 'level is not a positive number.')
         local info = debug.getinfo(level, 'f')
         if not info then return nil, tostring(level) .. ': no such level.' end
-        local vars = copy_deep(_ENV)
+        local vars = copy(_ENV)
         for i = 1, 2 do
             local iter, arg
             if     i == 1 then iter, arg = debug.getupvalue, info.func
@@ -695,7 +695,7 @@ vars_get = typed_args('?number')(
             while true do
                 local k, v = iter(arg, j)
                 if not k then break end
-                vars[k] = copy_deep(v)
+                vars[k] = copy(v)
                 j = j + 1
             end
         end
@@ -745,24 +745,24 @@ function ignore_case.__newindex (tab, key, val)
     end
 end
 
---- Make a deep copy of a value.
---
--- @caveats Bypasses metamethods.
---
--- @param val A value.
--- @return A deep copy.
---
--- @usage
--- > foo = {1, 2, 3}
--- > bar = {foo, 4}
--- > baz = copy_deep(bar)
--- > foo[#foo + 1] = 4
--- > table.unpack(baz, 1)
--- 1    2    3
---
--- @function copy_deep
-copy_deep = typed_args('?*', '?table')(
-    function (val, _seen)
+do
+    -- Make a deep copy of a value.
+    --
+    -- @caveats Bypasses metamethods.
+    --
+    -- @param val A value.
+    -- @return A deep copy.
+    --
+    -- @usage
+    -- > foo = {1, 2, 3}
+    -- > bar = {foo, 4}
+    -- > baz = copy_deep(bar)
+    -- > foo[#foo + 1] = 4
+    -- > table.unpack(baz, 1)
+    -- 1    2    3
+    --
+    -- @function copy_deep
+    local function copy_deep (val, _seen)
         -- Borrows from:
         -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
         -- * <http://lua-users.org/wiki/CopyTable>
@@ -777,30 +777,54 @@ copy_deep = typed_args('?*', '?table')(
         end
         return ret
     end
-)
 
---- Make a shallow copy of a value.
---
--- @caveats Bypasses metamethods.
---
--- @param val A value.
--- @return A shallow copy.
---
--- @usage
--- > foo = {1, 2, 3}
--- > bar = {foo, 4}
--- > baz = copy_shallow(bar)
--- > foo[#foo + 1] = 4
--- > table.unpack(baz, 1)
--- 1    2    3    4
---
--- @function copy_shallow
--- @fixme Not unit-tested.
-function copy_shallow (val)
-    if type(val) ~= 'table' then return val end
-    local ret = setmetatable({}, getmetatable(val))
-    for k, v in next, val do rawset(ret, k, v) end
-    return ret
+    -- Make a shallow copy of a value.
+    --
+    -- @caveats Bypasses metamethods.
+    --
+    -- @param val A value.
+    -- @return A shallow copy.
+    --
+    -- @usage
+    -- > foo = {1, 2, 3}
+    -- > bar = {foo, 4}
+    -- > baz = copy_shallow(bar)
+    -- > foo[#foo + 1] = 4
+    -- > table.unpack(baz, 1)
+    -- 1    2    3    4
+    --
+    -- @function copy_shallow
+    -- @fixme Not unit-tested.
+    local function copy_shallow (val)
+        if type(val) ~= 'table' then return val end
+        local ret = setmetatable({}, getmetatable(val))
+        for k, v in next, val do rawset(ret, k, v) end
+        return ret
+    end
+
+    --- Copy a value.
+    --
+    -- @caveats Bypasses metamethods.
+    --
+    -- @param val A value.
+    -- @bool[opt=true] deep Make a deep copy?
+    -- @return A copy.
+    --
+    -- @usage
+    -- > foo = {1, 2, 3}
+    -- > bar = {foo, 4}
+    -- > baz = copy_deep(bar)
+    -- > foo[#foo + 1] = 4
+    -- > table.unpack(baz, 1)
+    -- 1    2    3
+    --
+    -- @function copy_deep
+    copy = typed_args('?*', '?boolean')(
+        function (val, deep)
+            if deep == false then return copy_shallow(val) end
+            return copy_deep(val)
+        end
+    )
 end
 
 --- Get the keys and the number of items in a table.
@@ -1210,7 +1234,7 @@ setmetatable(Object, Object.mt)
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, tab)
-        local mt = copy_deep(getmetatable(proto))
+        local mt = copy(getmetatable(proto))
         mt.__index = proto
         return setmetatable(tab or {}, mt)
     end
@@ -1218,7 +1242,7 @@ Object.mt.__call = typed_args('table', '?table')(
 
 --- Initialise a new object.
 --
--- `Object:new(props)` is equivalent to `Object(copy_deep(props))`.
+-- `Object:new(props)` is equivalent to `Object(copy(props))`.
 --
 -- @tab proto A prototype.
 -- @tab[opt] props Properties.
@@ -1230,7 +1254,7 @@ Object.mt.__call = typed_args('table', '?table')(
 -- foo
 Object.new = typed_args('table', '?table')(
     function (proto, props)
-        return proto(copy_deep(props))
+        return proto(copy(props))
     end
 )
 
@@ -1308,7 +1332,7 @@ Values.add = typed_args('table')(
 -- @fixme Not unit-tested.
 getterify = typed_args('table')(
     function (tab)
-        local mt = copy_deep(getmetatable(tab))
+        local mt = copy(getmetatable(tab))
         local index = mt.__index
         mt.__index = typed_args('table')(
             -- luacheck: ignore tab
@@ -2433,7 +2457,7 @@ do
     -- @function csl_item_add_extras
     csl_item_add_extras = typed_args('table')(
         function (item)
-            local ret = copy_deep(item)
+            local ret = copy(item)
             for k, v in csl_item_extras(item) do
                 local f = parsers[k]
                 if not ret[k] or f == parse_date or k == 'type' then
@@ -3092,7 +3116,7 @@ if not pandoc.types or PANDOC_VERSION < {2, 15} then
     elem_clone = typed_args('table')(
         function (elem)
             if elem.clone then return elem:clone() end
-            return copy_shallow(elem)
+            return copy(elem, false)
         end
     )
 else
@@ -3104,7 +3128,7 @@ else
                 local t = type(v)
                 if t == 'userdata' or t == 'table' then
                     if v.clone then clone[k] = v:clone()
-                            else clone[k] = copy_deep(v)
+                            else clone[k] = copy(v)
                     end
                 end
             end
@@ -3347,7 +3371,7 @@ do
                 end
             elseif type(elem) == 'table' then
                 if elem.clone then elem = elem:clone()
-                              else elem = copy_shallow(elem)
+                              else elem = copy(elem, false)
                 end
                 walk_table(elem, filter, _rd)
             end
@@ -3892,7 +3916,7 @@ connectors.ZoteroWeb.citekey_types = List {
 --
 -- @object connectors.ZoteroWeb.options
 -- @proto Copy of @{connectors.Zotero.options}.
-connectors.ZoteroWeb.options = copy_deep(connectors.Zotero.options)
+connectors.ZoteroWeb.options = copy(connectors.Zotero.options)
 connectors.ZoteroWeb.options:add(
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},

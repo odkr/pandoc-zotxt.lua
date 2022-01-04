@@ -46,7 +46,7 @@ update_can() (
 	
 	# shellcheck disable=2086
 	params="$(IFS='&'; set -- $data; unset IFS
-		  printf '"%s"\n' "$@" | jq --raw-output '@uri' |
+	          printf '"%s"\n' "$@" | jq --raw-output '@uri' |
 	          sed 's/%3D/=/; s/%2B/+/g')"
 	n=0
 	encoded="$endpoint"
@@ -58,7 +58,7 @@ update_can() (
 			(*) encoded="$encoded&$param" ;;
 		esac
 	done
-	
+
 	can="$(printf %s "$url" | sha1sum | cut -b 1-8)" && [ "$can" ] ||
 		panic '%s: failed to derive SHA-1' "$url"
 
