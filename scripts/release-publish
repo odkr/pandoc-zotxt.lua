@@ -199,4 +199,5 @@ case $tag in (*[a-z]*)
 	pre=--prerelease ;;
 esac
 
-gh release create --draft $pre "v$tag" "$TEMP_DIR/$name-$tag."*
+gh release create $pre --draft --title="v$tag" \
+                  "v$tag" "$TEMP_DIR/$name-$tag."*
