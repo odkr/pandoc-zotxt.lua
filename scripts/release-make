@@ -135,8 +135,7 @@ warn -e "$SMSO" 'testing under real-world conditions ...'
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
 
-# DEBUG
-for branch in develop # main
+for branch in develop main
 do
 	warn -e "$SMSO" 'merging %s to %s ...' \
 	     "$BOLD$release_branch$SGR0$SMSO" "$BOLD$branch$SGR0$SMSO"
@@ -160,5 +159,6 @@ warn -e "$SMSO" 'collecting log ...'
 log="$TEMP_DIR/log"
 git log "^$last" HEAD >"$log"
 
-# DEBUG
-echo git tag --file "$log" --edit "v$vers"
+git tag --file "$log" --edit "v$vers"
+
+warn -e "$GREEN" done.
