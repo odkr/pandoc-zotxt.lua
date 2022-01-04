@@ -102,7 +102,7 @@ tag="$(
 	git tag --list 'v*' --sort version:refname |
 	tail -n1                                   |
 	sed 's/^v//'
-)" && [ "$last" ] ||
+)" && [ "$tag" ] ||
 	panic 'failed to determine current release.'
 
 release="$(sed -n 's/-- *@release *//p;' "$filter")" && [ "$release" ] ||
@@ -132,7 +132,7 @@ done <"$manifest"
 
 warn -e "$SMSO" 'testing release ...'
 
-test/script/test-pandoc-vers
+test/scripts/test-pandoc-vers
 
 warn -e "$SMSO" 'testing under real-world conditions ...'
 
@@ -145,6 +145,7 @@ name="$(basename "$REPO")" && [ "$name" ] ||
 warn -e "$SMSO" 'packaging release ...'
 
 (
+	manifest="$REPO/$manifest"
 	cd -P "$TEMP_DIR" || exit 69
 	relname="$name-$tag"
 
@@ -166,8 +167,7 @@ warn -e "$SMSO" 'packaging release ...'
 		esac
 		[ -e "$fname" ] ||
 			panic -s 66 '%s: line %d: %s: no such file or directory.' \
-			      "$manifest" "$lineno" \
-			      "$fname"
+			      "$manifest" "$lineno" "$fname"
 		dirname="$(dirname "$fname")" && [ "$dirname" ] ||
 			panic '%s: line %d: %s: failed to get directory.' \
 			      "$manifest" "$lineno" \
