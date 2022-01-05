@@ -320,7 +320,6 @@
 -- Run in debugging mode?
 -- luacheck: push ignore DEBUG
 local DEBUG = DEBUG or false
-DEBUG = true -- for testing @fixme
 -- luacheck: pop
 
 -- Built-in functions.
@@ -554,7 +553,7 @@ PATH_SEP = package.config:sub(1, 1)
 EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
 
---- The type of the given operating system.
+--- What type of operating system is the script running under?
 OS_TYPE = 'POSIX'
 if PATH_SEP == '\\' then OS_TYPE = 'Windows' end
 
@@ -1054,8 +1053,9 @@ do
     -- @string str A string.
     -- @treturn string A percent-encoded string.
     --
+    -- See [RFC 3987](https://datatracker.ietf.org/doc/html/rfc3987).
+    --
     -- @function escape_uri
-    -- @fixme Reference the RFC. See the Wikipedia.
     -- @fixme Not unit-tested.
     escape_uri = typed_args('string')(
         function (str)
