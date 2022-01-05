@@ -2352,8 +2352,7 @@ do
                     if i ~= nkeys then strs:add(EOL) end
                 end
             end
-            if _rd == 0 then return concat(strs) end
-            return unpack(strs)
+            return concat(strs)
         end
     )
 end
