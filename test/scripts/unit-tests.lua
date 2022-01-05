@@ -1210,7 +1210,7 @@ end
 -- --------------
 
 -- function test_zoteroweb_get_user_id ()
---     local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+--     local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
 --     local ret, err = zoteroweb:get_user_id()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
@@ -1218,7 +1218,7 @@ end
 -- end
 
 -- function test_zoteroweb_get_groups ()
---     local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+--     local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
 --     local ret, err = zoteroweb:get_groups()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
@@ -1226,7 +1226,7 @@ end
 -- end
 
 function test_zoteroweb_endpoints ()
-    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
     local iter, err = zoteroweb:endpoints()
     lu.assert_not_nil(iter)
     lu.assert_nil(err)
@@ -1247,7 +1247,7 @@ function test_zoteroweb_endpoints ()
 end
 
 function test_zoteroweb_search ()
-    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
 
     local items, err = zoteroweb:search('haslanger', '2012', 'Resisting', 'Reality', 'Social')
     lu.assert_not_nil(items)
@@ -1258,7 +1258,7 @@ function test_zoteroweb_search ()
 end
 
 function test_zoteroweb_lookup ()
-    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
 
     local item, err = zoteroweb:lookup 'D9HEKNWD'
     lu.assert_not_nil(item)
@@ -1268,7 +1268,7 @@ function test_zoteroweb_lookup ()
 end
 
 function test_zoteroweb_fetch ()
-    local zoteroweb = M.connectors.zoteroweb{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
 
     local ret, err = zoteroweb:fetch('haslanger2012ResistingRealitySocial')
     lu.assert_not_nil(ret)

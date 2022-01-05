@@ -256,6 +256,9 @@
 --- Metadata
 -- @section Metadata
 
+--- Operating system
+-- @section
+
 --- Types
 -- @section
 
@@ -268,10 +271,10 @@
 --- Strings
 -- @section
 
---- Basic prototypes
+--- Prototypes
 -- @section
 
---- Warnings
+--- Errors
 -- @section
 
 --- File I/O
@@ -537,8 +540,8 @@ function typed_keyword_args ()
 end
 
 
------------
--- File I/O
+-------------------
+-- Operating system
 --
 -- @section
 
@@ -548,6 +551,16 @@ PATH_SEP = package.config:sub(1, 1)
 --- The end of line sequence used on the given operating system.
 EOL = '\n'
 if PATH_SEP == '\\' then EOL = '\r\n' end
+
+--- The type of the given operating system.
+OS_TYPE = 'POSIX'
+if PATH_SEP == '\\' then OS_TYPE = 'Windows' end
+
+
+-----------
+-- File I/O
+--
+-- @section
 
 --- Join multiple path segments.
 --
@@ -649,12 +662,12 @@ end
 local json = require 'lunajson'
 
 
--------------------
+------------
 -- Variables
 --
 -- @section
 
---- Get a copy of the variables that a function can access.
+--- Get a copy of a function's local variables and upvalues.
 --
 -- @int[opt=2] level A stack level, where
 --
@@ -685,7 +698,7 @@ vars_get = typed_args('?number')(
         assert(level > 0, 'level is not a positive number.')
         local info = debug.getinfo(level, 'f')
         if not info then return nil, tostring(level) .. ': no such level.' end
-        local vars = copy(_ENV)
+        local vars = {}
         for i = 1, 2 do
             local iter, arg
             if     i == 1 then iter, arg = debug.getupvalue, info.func
@@ -846,6 +859,28 @@ keys = typed_args('table')(
     end
 )
 
+--- Merge tables.
+--
+-- The returned table has the same metatable as the first table given.
+--
+-- @tab ... Tables.
+-- @treturn tab A new table.
+--
+-- @function merge
+-- @fixme Not unit-tested.
+merge = typed_args('table', '?table', '...')(
+    function (...)
+        local tabs = pack(...)
+        local tab = setmetatable({}, getmetatable(tabs[1]))
+        for i = 1, tabs.n do
+            if tabs[i] then
+                for k, v in pairs(tabs[i]) do tab[k] = v end
+            end
+        end
+        return tab
+    end
+)
+
 --- Define a sorting function from a list of values.
 --
 -- @tab values Values.
@@ -970,6 +1005,45 @@ walk = typed_args('*', 'function', '?table')(
 --
 -- @section
 
+do
+    -- Percent-encode a character for use in an URI.
+    --
+    -- @string char A character.
+    -- @treturn string A percent-encoding.
+    --
+    -- @see escape_uri
+    local function escape (char)
+        return format('%%%02x', string.byte(char))
+    end
+
+    --- Percent-encode a string for use in an URI.
+    --
+    -- @string str A string.
+    -- @treturn string A percent-encoded string.
+    --
+    -- @function escape_uri
+    -- @fixme Reference the RFC. See the Wikipedia.
+    -- @fixme Not unit-tested.
+    escape_uri = typed_args('string')(
+        function (str)
+            return str:gsub('[^%w%-_%.~]', escape)
+        end
+    )
+end
+
+--- Escape a [Lua pattern](https://www.lua.org/manual/5.4/manual.html#6.4.1).
+--
+-- @string str A string.
+-- @treturn string A string with magic characters escaped.
+--
+-- @function escape_pattern
+-- @fixme Not unit-tested.
+escape_pattern = typed_args('string')(
+    function (str)
+        return str:gsub('([%^%$%(%)%%%.%[%]%*%+%-%?])', '%%%1')
+    end
+)
+
 --- Iterate over substrings of a string.
 --
 -- @caveats Supports neither multi-byte characters nor frontier patterns.
@@ -1039,7 +1113,6 @@ trim = typed_args('string')(
     end
 )
 
-
 do
     -- Lookup a path in a namespace.
     --
@@ -1067,6 +1140,7 @@ do
     local function evaluate (rd, vars, exp)
         local path, func = tabulate(split(exp:sub(2, -2), '|', 2))
         local v = lookup(vars, path)
+        if type(v) == 'string' then v = vars_sub(v, vars, rd + 1) end
         if func then v = lookup(vars, func)(v) end
         return vars_sub(tostring(v), vars, rd + 1)
     end
@@ -1164,42 +1238,12 @@ do
 end
 
 
--------------------
--- Basic prototypes
+-------------
+-- Prototypes
 --
 -- @section
 
 --- Base prototype.
---
--- @usage
--- > -- Delegate to Object.
--- > Foo = Object()
--- > mt = getmetatable(Foo)
--- > mt.__tostring = function () return 'foo' end
--- > Foo.bar = 'bar'
--- > -- Objects inherit the prototype's properties.
--- > foo = Foo()
--- > tostring(obj)
--- foo
--- > foo.bar
--- bar
--- > -- The prototype's metatable is copied, so
--- > -- changing it does not alter a delegating object's behaviour.
--- > mt.__tostring = function () return 'baz' end
--- > tostring(obj)
--- foo
--- > -- But changing non-overriden properties does.
--- > Foo.bar = 'baz'
--- > foo.bar
--- baz
--- > -- The object can override properties, of course.
--- > foo.bar = 'bam!'
--- > foo.bar
--- bam!
--- > -- And objects can be prototypes.
--- > bar = foo()
--- > bar.bar
--- bam!
 --
 -- @object Object
 Object = {}
@@ -1210,39 +1254,44 @@ setmetatable(Object, Object.mt)
 
 --- Delegate to a prototype.
 --
--- Set a table's metatable to a copy of the prototype's metatable
--- and then set the `__index` field of that metatable to the prototype.
---
--- @caveats If a table is given, it is modified *in-place*.
+-- Set a table's metatable to a copy of the prototype's metatable,
+-- add the given metavalues to that new metatable, and set its `__index`
+-- field to the prototype.
 --
 -- @tab proto A prototype.
--- @tab[opt] tab A table.
+-- @tab[opt] meta Metavalues.
 -- @treturn Object An object.
 --
 -- @usage
--- > foo = Object{foo = 'foo', bar = 'bar'}
--- > foo.foo
--- foo
--- > foo.bar
+-- > foo = Object{__tostring = function (t) return t.bar end}
+-- > foo.bar = 'bar'
+-- > foo.baz = 'baz'
+-- > tostring(foo)
 -- bar
--- > bar = foo{bar = 'bam!'}
--- > bar.foo
--- foo
+-- > bar = foo()
+-- > bar.baz = 'bam!'
 -- > bar.bar
+-- bar
+-- > bar.baz
+-- bam!
+-- > tostring(bar)
+-- bar
+-- > baz = bar{__tostring = function (t) return t.baz end}
+-- > tostring(baz)
 -- bam!
 --
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
-    function (proto, tab)
-        local mt = copy(getmetatable(proto))
+    function (proto, meta)
+        local mt = merge(getmetatable(proto), meta)
         mt.__index = proto
-        return setmetatable(tab or {}, mt)
+        return setmetatable({}, mt)
     end
 )
 
 --- Initialise a new object.
 --
--- `Object:new(props)` is equivalent to `Object(copy(props))`.
+-- `Object:new(props)` is equivalent to `merge(Object(), props)`.
 --
 -- @tab proto A prototype.
 -- @tab[opt] props Properties.
@@ -1256,7 +1305,7 @@ Object.mt.__call = typed_args('table', '?table')(
 -- @function Object:new
 Object.new = typed_args('table', '?table')(
     function (proto, props)
-        return proto(copy(props))
+        return merge(proto(), props)
     end
 )
 
@@ -1313,7 +1362,8 @@ Values.add = typed_args('table')(
 --
 -- @usage
 -- > -- Enable getters for an object.
--- > foo = getterify(Object{foo = 'bar'})
+-- > foo = getterify(Object())
+-- > foo.foo = 'bar'
 -- > mt = getmetatable(foo)
 -- > mt.getters = {}
 -- > function mt.getters.bar () return self.foo end
@@ -1321,12 +1371,14 @@ Values.add = typed_args('table')(
 -- bar
 -- > -- The getter is reached via the prototype chain,
 -- > -- so it sees foo.foo, not bar.foo:
--- > baz = foo{foo = 'bam!'}
+-- > baz = foo()
+-- > baz.foo = 'bam!'
 -- > baz.bar
 -- bar
 -- > -- But you can make getters quasi-inheritable:
 -- > mt.__call = delegate_with_getters
--- > baz = foo{foo = 'bam!'}
+-- > baz = foo()
+-- > baz.foo = 'bam!'
 -- > baz.bar
 -- bam!
 --
@@ -1372,10 +1424,44 @@ delegate_with_getters = typed_args('table', '?table')(
 )
 
 
------------
--- Warnings
+---------
+-- Errors
 --
 -- @section
+
+--- A prototype for errors.
+--
+-- @object Error
+-- @proto Object
+-- @see xerror
+-- @see xassert
+Error = Object()
+
+--- A metatable for errors.
+Error.mt = getmetatable(Error)
+
+--- Convert error objects to strings.
+--
+-- Take @{Error.mt.template}, replace variables with the properties of the
+-- same names and return the result. See @{vars_sub} for the variable syntax.
+--
+-- @tab tab An error object.
+-- @treturn string An error message.
+--
+-- @usage
+-- > SomeError = Error{template = 'Something went ${severity} wrong!'}
+-- > err = SomeError:new{severity = 'slightly'}
+-- > tostring(err)
+-- Something went slightly wrong!
+--
+-- @fixme Not unit-tested.
+function Error.mt.__tostring (tab)
+    local mt = getmetatable(tab)
+    return vars_sub(mt.template, tab)
+end
+
+--- A default template for error messages.
+Error.mt.template = 'something went wrong.'
 
 do
     -- Priority levels for messages.
@@ -1411,8 +1497,9 @@ do
     -- <h3>Variable substitution:</h3>
     --
     -- If string values contain variable names, they are replaced with the
-    -- values of those variables as seen by the function calling `xwarn`.
-    -- See @{vars_sub} for the syntax.
+    -- values of local variables or upvalues of the calling function or, if
+    -- there are no local variables or upvalues of the given names, of global
+    -- variables of the module. See @{vars_sub} for the syntax.
     --
     -- <h3>Options:</h3>
     --
@@ -1465,7 +1552,9 @@ do
                 if type(msg) == 'string' then
                     if not opts_get(msg) then
                         if do_vars_sub then
-                            if not vars then vars = vars_get(3) end
+                            if not vars then
+                                vars = merge(_ENV, vars_get(3))
+                            end
                             msg = vars_sub(msg, vars)
                         end
                         write(msg)
@@ -1477,6 +1566,45 @@ do
             write(EOL)
         end
     )
+end
+
+--- Raise an error.
+--
+-- `xerror` should be used for run-time errors that may bubble up to the user.
+-- If an error should either never be triggered to begin with or be caught
+-- before it bubbles up to the user, use @{error}.
+--
+-- `xerror(msg)` is equivalent to
+-- `error(Error{template = msg}:new(merge(_ENV, vars_get())))`.
+--
+-- @string msg A message template. See @{Error.mt.__tostring}.
+-- @tab[opt] vars Variables. See @{xwarn}.
+--
+-- @function xerror
+-- @fixme Not unit-tested.
+xerror = typed_args('string', '?table')(
+    function (msg, vars)
+        if not vars then vars = vars_get(3) end
+        error(Error{template = msg}:new(merge(_ENV, vars)))
+    end
+)
+
+--- Raise an error if an assertion fails.
+--
+-- `xassert` is to @{assert} what @{xerror} is to @{error}.
+--
+-- @param cond A condition.
+-- @string msg A message template. See @{xerror}.
+-- @tab[opt] vars Variables. See @{xwarn}.
+-- @return The given arguments.
+--
+-- @function xassert
+-- @fixme Not unit-tested.
+function xassert(...)
+    if ... then return ... end
+    local _, msg, vars = ...
+    if not vars then vars = vars_get(3) end
+    xerror(msg, vars)
 end
 
 
@@ -1875,7 +2003,7 @@ http_get = typed_args('string')(
 -- @raise See @{http_get}.
 --
 -- @usage
--- > -- Query <https://site.example?foo=1&bar=2>.
+-- -- Query <https://site.example?foo=1&bar=2>.
 -- mt, con = url_query('https://site.example', {foo = 1, bar = 2})
 --
 -- @function url_query
@@ -2211,10 +2339,7 @@ zotero_to_html = typed_args('string')(
         if n == 0 then return pseudo end
         closed, m = opened:gsub('</sc>',
                                 '</span>')
-        if m ~= n then
-            error(format('%s: contains %d <sc>, but %d </sc> tags.',
-                         pseudo, n, m), 0)
-        end
+        xassert(m == n, '"${pseudo}": contains ${n} <sc> but ${m} </sc> tags.')
         return closed
     end
 )
@@ -2235,9 +2360,7 @@ zotero_to_markdown = typed_args('string')(
     function (pseudo)
         local html = zotero_to_html(pseudo)
         local ok, doc = pcall(read, html, 'html')
-        if not ok then
-            error(pseudo .. ': cannot parse Zotero pseudo-HTML.', 0)
-        end
+        xassert(ok, '${pseudo}: cannot parse Zotero pseudo-HTML.')
         return markdownify(doc)
     end
 )
@@ -2622,8 +2745,9 @@ csl_items_ids = typed_args('table')(
         for i = 1, #items do
             local id = items[i].id
             local t = type(id)
-            if     t == 'number' then id = tostring(id)
-            elseif t == 'table'  then id = stringify(id)
+            if     t == 'number'   then id = tostring(id)
+            elseif t == 'userdata' then id = stringify(id)
+            elseif t == 'table'    then id = stringify(id)
             end
             if type(id) == 'string' and id ~= ''
                 then ids[id] = true
@@ -3766,13 +3890,14 @@ do
                 key = key:gsub('_', '-')
                 local val = meta[key]
                 if val ~= nil then
+                    -- luacheck: ignore err
                     local err
                     val, err = convert(val, opt.type)
-                    if not val then error(key .. ': ' .. err, 0) end
+                    xassert(val, '${key}: ${err}')
                     if opt.check then
                         -- luacheck: ignore err
                         local ok, err = opt.check(val)
-                        if not ok then error(key .. ': ' .. err, 0) end
+                        xassert(ok, '${key}: ${err}')
                     end
                     opts[name] = val
                 end
@@ -3860,9 +3985,7 @@ do
                 -- response (for Better BibTeX citation keys).
                 local ok, mt, str = pcall(url_query, items_url,
                                           {[ckey_types[i]] = ckey})
-                if not ok then
-                    error('failed to connect to Zotero desktop client.', 0)
-                end
+                xassert(ok, 'failed to connect to Zotero desktop client.')
                 if not mt or mt == '' then
                     err = ckey .. ': response has no MIME type.'
                 elseif not str or str == '' then
@@ -3906,7 +4029,7 @@ end
 -- @tparam[opt] {number,...} public_groups Public Zotero groups to search in.
 --
 -- @usage
--- handle = connectors.ZoteroWeb{api_key = 'lettersandnumbers'}
+-- handle = connectors.ZoteroWeb:new{api_key = 'lettersandnumbers'}
 -- item = handle:fetch 'DoeWord2020'
 --
 -- @object connectors.ZoteroWeb
@@ -3977,7 +4100,7 @@ do
     -- @raise See `http_get`.
     local function zotero_query (url, params)
         local ok, mt, str = pcall(url_query, url, params)
-        if not ok then error('failed to connect to Zotero Web API.', 0) end
+        xassert(ok, 'failed to connect to Zotero Web API.')
         if not mt or mt == '' then
             return nil, 'response has no MIME type.'
         elseif not str or str == '' then
@@ -4033,6 +4156,7 @@ do
     -- @function connectors.ZoteroWeb.mt.getters.user_id
     connectors.ZoteroWeb.mt.getters.user_id = typed_args('table')(
         function (obj)
+            -- luacheck: ignore err
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(user_id_url, obj)
             local str, err = zotero_query(ep, {v = 3})
@@ -4050,7 +4174,7 @@ do
                     end
                 end
             end
-            error('Zotero user ID lookup: ' .. err, 0)
+            xerror 'Zotero user ID lookup: {err}'
         end
     )
 
@@ -4068,6 +4192,7 @@ do
     -- @function connectors.ZoteroWeb.mt.getters.groups
     connectors.ZoteroWeb.mt.getters.groups = typed_args('table')(
         function (obj)
+            -- luacheck: ignore err
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = vars_sub(groups_url, obj)
             local str, err = zotero_query(ep, {v = 3, key = obj.api_key})
@@ -4086,7 +4211,7 @@ do
                     return groups
                 end
             end
-            error('Zotero groups lookup: ' .. err, 0)
+            xerror 'Zotero groups lookup: {err}'
         end
     )
 
@@ -4398,7 +4523,7 @@ do
                 local args
                 if conn.options then args = conn.options:parse(doc.meta) end
                 local handle, err = conn:new(args)
-                if not handle then error(err, 0) end
+                xassert(handle, err)
                 handles:add(handle)
             end
         end
@@ -4430,12 +4555,59 @@ end
 -- Returning the whole script, rather than only a list of mappings of
 -- Pandoc data types to functions, allows to do unit testing.
 
+
+
 M[1] = {Pandoc = function (doc)
-    if DEBUG then return main(doc) end
-    local ok, ret = pcall(main, doc)
-    if ok then return ret end
-    xwarn('@error', '@plain', ret)
-    os.exit(69, true)
+    -- No special error handling in debugging mode.
+    --if DEBUG then return main(doc) end
+
+    -- Catch errors, users should not be bothered with stack traces.
+    local vs = pack(pcall(main, doc))
+    local ok, err = unpack(vs, 1, 2)
+    if ok then return unpack(vs, 2) end
+
+    -- An error object signifies an 'ordinary' run-time error.
+    if type(err) == 'table' then
+        xwarn('@error', '@plain', err)
+        xwarn('@plain', 'aborted')
+        return
+    end
+
+    -- This point should not be reached.
+    local message = [[
+------------------------------------------------------------------------------
+Sorry, you have found a bug. Be so kind and report it at:
+
+https://github.com/odkr/${repo|e}/issues/new?title=${title|e}&body=${body|e}
+
+Please include:
+* The stack trace below.
+* The command line with which you called Pandoc.
+* All input files, if feasible.
+* A minimal example that reproduces the bug, if possible.
+
+Thank you for taking the time!
+------------------------------------------------------------------------------
+${error}]]
+
+    -- Title and body for the GitHub issue.
+    local title = 'v${version} - aborts with "${error}"'
+    local body = [[
+---
+OS type: ${os_type}
+Pandoc version: ${pandoc_version}
+]]
+
+    xerror(message:gsub('\n', EOL), {
+        repo = SCRIPT_NAME,
+        title = title,
+        body = body,
+        error = err:match(escape_pattern(SCRIPT_NAME) .. ':(.*)') or err,
+        version = VERSION,
+        os_type = OS_TYPE,
+        pandoc_version = PANDOC_VERSION,
+        e = escape_uri
+    })
 end}
 
 return M
