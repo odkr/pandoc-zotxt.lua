@@ -240,7 +240,7 @@ $(ZOTWEB_TESTS): tmpdir
 %.lua: man/man1/%.lua.rst
 	scripts/header-add-man -f $@ 
 
-docs/index.html: pandoc-zotxt.lua 
+docs/index.html: pandoc-zotxt.lua ldoc/config.ld ldoc/ldoc.css
 	ldoc -c ldoc/config.ld .
 
 docs: pandoc-zotxt.lua docs/index.html man/man1/pandoc-zotxt.lua.1.gz
