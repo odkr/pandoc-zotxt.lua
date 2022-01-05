@@ -94,7 +94,7 @@ $(COMMON_TESTS): tmpdir
 	            [ -e "$$NORM" ] && break; \
 	            case $$VERS in \
 	                (*.*) VERS="$${VERS%.*}" ;; \
-	                (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                             "$@" "$(PANDOC_VERS)" >&2; \
 	                      exit 1; \
 	            esac; \
@@ -114,7 +114,7 @@ $(COMMON_TESTS): tmpdir
 	            [ -e "$$NORM" ] && break; \
 	            case $$VERS in \
 	                (*.*) VERS="$${VERS%.*}" ;; \
-	                (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                             "$@" "$(PANDOC_VERS)" >&2; \
 	                      exit 1; \
 	            esac; \
@@ -145,7 +145,7 @@ $(ZOTXT_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                    (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
@@ -165,7 +165,7 @@ $(ZOTXT_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                    (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
@@ -197,7 +197,7 @@ $(ZOTWEB_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                    (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
@@ -217,7 +217,7 @@ $(ZOTWEB_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                    (*)   printf '"%s" not defined for Pandoc v%s.\n' \
 	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
