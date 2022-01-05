@@ -722,6 +722,15 @@ vars_get = typed_args('?number')(
 --
 -- @section
 
+--- A set
+--
+-- Sets are tables that map items to boolean values.
+-- If `set[item]` equals `true`, `item` is a member of `set`.
+--
+-- See *Progamming in Lua* ([chap. 11.5](https://www.lua.org/pil/11.5.html)).
+--
+-- @table Set
+
 --- A metatable to make tables ignore case.
 --
 -- @usage
@@ -1199,12 +1208,13 @@ do
     -- Expressions are evaluated recursively.
     --
     --    > vars_sub(
-    --    >     '${foo} is bar.', {
+    --    >     '${foo|baz_to_bar} is bar.', {
     --    >         foo = '${bar}',
     --    >         bar = 'baz'
+    --    >         baz_to_bar = function (s) return s:gsub('baz', 'bar') end
     --    >     }
     --    > )
-    --    baz is bar.
+    --    bar is bar.
     --
     -- @caveats
     --
@@ -2735,8 +2745,7 @@ csl_items_filter_by_ckey = typed_args('table', 'string')(
 -- @side May print error messages to STDERR.
 --
 -- @tparam {tab,...} items CSL items.
--- @treturn {[string]=true,...}
---  A [set](https://www.lua.org/pil/11.5.html) of item IDs.
+-- @treturn Set Item IDs.
 --
 -- @function csl_items_ids
 csl_items_ids = typed_args('table')(
@@ -3564,11 +3573,11 @@ end
 do
     -- Save citation keys that are *not* members of one set into another one.
     --
+    -- @caveats The new set is modified *in-place*.
+    --
     -- @tparam pandoc.Cite A citation.
-    -- @tparam {string=boolean,...} old
-    --  A [set](https://www.lua.org/pil/11.5.html) of
-    --  IDs that should be ignored.
-    -- @treturn {string=boolean,...} new The set to save the IDs in.
+    -- @tparam Set old IDs that should be ignored.
+    -- @treturn Set new The set to save the IDs in.
     local function ids (cite, old, new)
         local citations = cite.citations
         for i = 1, #citations do
