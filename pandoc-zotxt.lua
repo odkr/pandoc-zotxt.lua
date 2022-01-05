@@ -767,6 +767,27 @@ function ignore_case.__newindex (tab, key, val)
     end
 end
 
+--- Subtract one table from another.
+--
+-- The returned table has the same metatable as the first
+-- of the two given tables.
+--
+-- @tab a A table.
+-- @tab b Another table.
+-- @treturn tab A – B.
+--
+-- @function complement
+-- @see union
+complement = typed_args('table', 'table')(
+    function (a, b)
+        local comp = setmetatable({}, getmetatable(a))
+        for k, v in pairs(a) do
+            if b[k] == nil then comp[k] = copy(v) end
+        end
+        return comp
+    end
+)
+
 do
     -- Make a deep copy of a value.
     --
@@ -868,28 +889,6 @@ keys = typed_args('table')(
     end
 )
 
---- Merge tables.
---
--- The returned table has the same metatable as the first table given.
---
--- @tab ... Tables.
--- @treturn tab A new table.
---
--- @function merge
--- @fixme Not unit-tested.
-merge = typed_args('table', '?table', '...')(
-    function (...)
-        local tabs = pack(...)
-        local tab = setmetatable({}, getmetatable(tabs[1]))
-        for i = 1, tabs.n do
-            if tabs[i] then
-                for k, v in pairs(tabs[i]) do tab[k] = v end
-            end
-        end
-        return tab
-    end
-)
-
 --- Define a sorting function from a list of values.
 --
 -- @tab values Values.
@@ -973,6 +972,29 @@ tabulate = typed_args('function')(
         local vals = Values()
         for v in iter, tab, key do vals:add(v) end
         return unpack(vals)
+    end
+)
+
+--- Merge tables.
+--
+-- The returned table has the same metatable as the first of the given tables.
+--
+-- @tab ... Tables.
+-- @treturn tab A new table.
+--
+-- @function union
+-- @see complement
+-- @fixme Not unit-tested.
+union = typed_args('table', '?table', '...')(
+    function (...)
+        local tabs = pack(...)
+        local tab = setmetatable({}, getmetatable(tabs[1]))
+        for i = 1, tabs.n do
+            if tabs[i] then
+                for k, v in pairs(tabs[i]) do tab[k] = v end
+            end
+        end
+        return tab
     end
 )
 
@@ -1208,10 +1230,10 @@ do
     -- Expressions are evaluated recursively.
     --
     --    > vars_sub(
-    --    >     '${foo|baz_to_bar} is bar.', {
+    --    >     '${foo|barify} is bar.', {
     --    >         foo = '${bar}',
     --    >         bar = 'baz'
-    --    >         baz_to_bar = function (s) return s:gsub('baz', 'bar') end
+    --    >         barify = function (s) return s:gsub('baz', 'bar') end
     --    >     }
     --    > )
     --    bar is bar.
@@ -1264,9 +1286,9 @@ setmetatable(Object, Object.mt)
 
 --- Delegate to a prototype.
 --
--- Set a table's metatable to a copy of the prototype's metatable,
--- add the given metavalues to that new metatable, and set its `__index`
--- field to the prototype.
+-- Set a table's metatable to a copy of the prototype's metatable, then
+-- set the given metavalues, and finally set the `__index` metavalue to
+-- the prototype.
 --
 -- @tab proto A prototype.
 -- @tab[opt] meta Metavalues.
@@ -1293,7 +1315,7 @@ setmetatable(Object, Object.mt)
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, meta)
-        local mt = merge(getmetatable(proto), meta)
+        local mt = union(getmetatable(proto), meta)
         mt.__index = proto
         return setmetatable({}, mt)
     end
@@ -1301,7 +1323,7 @@ Object.mt.__call = typed_args('table', '?table')(
 
 --- Initialise a new object.
 --
--- `Object:new(props)` is equivalent to `merge(Object(), props)`.
+-- `Object:new(props)` is equivalent to `union(Object(), props)`.
 --
 -- @tab proto A prototype.
 -- @tab[opt] props Properties.
@@ -1315,7 +1337,7 @@ Object.mt.__call = typed_args('table', '?table')(
 -- @function Object:new
 Object.new = typed_args('table', '?table')(
     function (proto, props)
-        return merge(proto(), props)
+        return union(proto(), props)
     end
 )
 
@@ -1563,7 +1585,7 @@ do
                     if not opts_get(msg) then
                         if do_vars_sub then
                             if not vars then
-                                vars = merge(_ENV, vars_get(3))
+                                vars = union(_ENV, vars_get(3))
                             end
                             msg = vars_sub(msg, vars)
                         end
@@ -1585,7 +1607,7 @@ end
 -- before it bubbles up to the user, use @{error}.
 --
 -- `xerror(msg)` is equivalent to
--- `error(Error{template = msg}:new(merge(_ENV, vars_get())))`.
+-- `error(Error{template = msg}:new(union(_ENV, vars_get())))`.
 --
 -- @string msg A message template. See @{Error.mt.__tostring}.
 -- @tab[opt] vars Variables. See @{xwarn}.
@@ -1595,7 +1617,7 @@ end
 xerror = typed_args('string', '?table')(
     function (msg, vars)
         if not vars then vars = vars_get(3) end
-        error(Error{template = msg}:new(merge(_ENV, vars)))
+        error(Error{template = msg}:new(union(_ENV, vars)))
     end
 )
 
@@ -3570,51 +3592,38 @@ do
     )
 end
 
-do
-    -- Save citation keys that are *not* members of one set into another one.
-    --
-    -- @caveats The new set is modified *in-place*.
-    --
-    -- @tparam pandoc.Cite A citation.
-    -- @tparam Set old IDs that should be ignored.
-    -- @treturn Set new The set to save the IDs in.
-    local function ids (cite, old, new)
-        local citations = cite.citations
-        for i = 1, #citations do
-            local id = citations[i].id
-            if id and not old[id] then new[id] = true end
-        end
-    end
-
-    --- Collect the citation keys used in a document.
-    --
-    -- @side May print error messages to STDERR.
-    --
-    -- @tparam pandoc.Pandoc doc A document.
-    -- @bool[opt] undef Collect only undefind citation keys?
-    -- @treturn {string,...} Citation keys.
-    -- @treturn int The number of citation keys found.
-    --
-    -- @function doc_ckeys
-    doc_ckeys = typed_args('table|userdata', '?boolean')(
-        function (doc, undef)
-            local meta = doc.meta
-            local blocks = doc.blocks
-            local old = {}
-            local new = {}
-            local flt = {}
-            if undef then old = csl_items_ids(meta_sources(meta)) end
-            function flt.Cite (cite) return ids(cite, old, new) end
-            if meta then
-                for k, v in pairs(meta) do
-                    if k ~= 'references' then elem_walk(v, flt) end
-                end
+--- Collect the citation keys used in a document.
+--
+-- @side May print error messages to STDERR.
+--
+-- @tparam pandoc.Pandoc doc A document.
+-- @bool[opt] undef Collect only undefind citation keys?
+-- @treturn {string,...} Citation keys.
+-- @treturn int The number of citation keys found.
+--
+-- @function doc_ckeys
+doc_ckeys = typed_args('table|userdata', '?boolean')(
+    function (doc, undef)
+        local meta = doc.meta or {}
+        local blocks = doc.blocks
+        local ckeys = {}
+        local filter = {
+            Cite = function (cite)
+                ckeys = union(ckeys, csl_items_ids(cite.citations))
             end
-            for i = 1, #blocks do pandoc.walk_block(blocks[i], flt) end
-            return keys(new)
+        }
+        for k, v in pairs(meta) do
+            if k ~= 'references' then elem_walk(v, filter) end
         end
-    )
-end
+        for i = 1, #blocks do
+            pandoc.walk_block(blocks[i], filter)
+        end
+        if undef then
+            ckeys = complement(ckeys, csl_items_ids(meta_sources(meta)))
+        end
+        return keys(ckeys)
+    end
+)
 
 
 -----------------
