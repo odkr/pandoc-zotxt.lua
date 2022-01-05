@@ -94,8 +94,8 @@ $(COMMON_TESTS): tmpdir
 	            [ -e "$$NORM" ] && break; \
 	            case $$VERS in \
 	                (*.*) VERS="$${VERS%.*}" ;; \
-	                (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                             "$(PANDOC_VERSION)" >&2; \
+	                (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                             "$@" "$(PANDOC_VERS)" >&2; \
 	                      exit 1; \
 	            esac; \
 	        done; \
@@ -114,8 +114,8 @@ $(COMMON_TESTS): tmpdir
 	            [ -e "$$NORM" ] && break; \
 	            case $$VERS in \
 	                (*.*) VERS="$${VERS%.*}" ;; \
-	                (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                             "$(PANDOC_VERSION)" >&2; \
+	                (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                             "$@" "$(PANDOC_VERS)" >&2; \
 	                      exit 1; \
 	            esac; \
 	        done; \
@@ -145,8 +145,8 @@ $(ZOTXT_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                                 "$(PANDOC_VERSION)" >&2; \
+	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
 	            done; \
@@ -165,8 +165,8 @@ $(ZOTXT_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                                 "$(PANDOC_VERSION)" >&2; \
+	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
 	            done; \
@@ -197,8 +197,8 @@ $(ZOTWEB_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                                 "$(PANDOC_VERSION)" >&2; \
+	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
 	            done; \
@@ -217,8 +217,8 @@ $(ZOTWEB_TESTS): tmpdir
 	                [ -e "$$NORM" ] && break; \
 	                case $$VERS in \
 	                    (*.*) VERS="$${VERS%.*}" ;; \
-	                    (*)   printf 'Cannot test Pandoc v%s.\n' \
-	                                 "$(PANDOC_VERSION)" >&2; \
+	                    (*)   printf 'Cannot run "%s" with Pandoc v%s.\n' \
+	                                 "$@" "$(PANDOC_VERS)" >&2; \
 	                          exit 1; \
 	                esac; \
 	            done; \
