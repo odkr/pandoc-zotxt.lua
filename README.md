@@ -76,7 +76,7 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 3. [GNU Make](https://www.gnu.org/software/make/).
 
 Note, the test suite has only been tested with Pandoc >= v2.10.
-It may or may not work with development versions of Pandoc.
+And it may or may not work with development versions of Pandoc.
 
 
 ### Running the tests
@@ -87,13 +87,13 @@ Simply say:
     make
 ```
 
-Note, some tests report errors even if they succeed. *Not* every error message
+Note, some tests report errors even if they succeed. Not every error message
 indicates that **pandoc-zotxt.lua** failed a test. If it does fail a test,
 `make` will exit with a non-zero status.
 
 ### The real-world test suite
 
-By default, the test suite doesn't connect to a Zotero instance,
+By default, the test suite does not connect to a Zotero instance,
 but uses canned responses. You can force the test suite to connect
 to a local Zotero database by:
 
