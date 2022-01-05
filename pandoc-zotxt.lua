@@ -1995,9 +1995,9 @@ with_tmp_file = typed_args('function', '?string', '?string')(
         local tmp_file, err = tmp_fname(dir, templ)
         if not tmp_file then return nil, err end
         local vs = pack(pcall(func, tmp_file))
-        local ok, ret = unpack(vs)
-        if not ok or not ret then
-            -- luacheck: no redefined
+        local ok, val = unpack(vs)
+        if not ok or not val then
+            -- luacheck: ignore ok err
             xwarn 'removing ${fname|path_prettify}.'
             local ok, err, errno = os.remove(tmp_file)
             if not ok and errno ~= 2 then xwarn('@error', '@plain', err) end
@@ -3220,7 +3220,7 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @todo Use sets so that the loop gets simpler.
 biblio.update = typed_args('table', 'table', 'string', 'table')(
     function (self, handle, fname, ckeys)
-        -- luacheck: no redefined
+        -- luacheck: ignore fmt err errno
         assert(fname ~= '', 'filename is the empty string')
         if #ckeys == 0 then return true end
         local fmt, err = self:write(fname)
@@ -3564,20 +3564,25 @@ do
             if meta.bibliography then
                 local fnames
                 local bibliography = meta.bibliography
-                local et
-                if pandoc_type then et = pandoc_type(bibliography)
-                               else et = bibliography.tag
+                local t, et
+                t = type(bibliography)
+                if t == 'userdata' or t == 'table' then
+                    if pandoc_type then et = pandoc_type(bibliography)
+                                    else et = bibliography.tag
+                    end
                 end
-                if et == 'Inlines' or et == 'MetaInlines' then
+                if t == 'string' then
+                    fnames = {bibliography}
+                elseif et:match 'Inlines$' then
                     fnames = {stringify(bibliography)}
-                elseif et == 'List' or et == 'MetaList' then
+                elseif et:match 'List$' then
                     fnames = bibliography:map(stringify)
                 else
                     xwarn('@error', 'bibliography: cannot parse.')
                     return data
                 end
                 for i = 1, #fnames do
-                    -- luacheck: no redefined
+                    -- luacheck: ignore err
                     local fname, err = file_locate(fnames[i])
                     if fname then
                         local items, err = biblio:read(fname)
@@ -3915,7 +3920,6 @@ do
                     val, err = convert(val, opt.type)
                     xassert(val, '${key}: ${err}')
                     if opt.check then
-                        -- luacheck: ignore err
                         local ok, err = opt.check(val)
                         xassert(ok, '${key}: ${err}')
                     end
@@ -4443,14 +4447,17 @@ do
             if not bibliography then
                 meta.bibliography = fname
             else
-                local et
-                if pandoc_type then et = pandoc_type(bibliography)
-                               else et = bibliography.tag
+                local t, et
+                t = type(bibliography)
+                if t == 'userdata' or t == 'table' then
+                    if pandoc_type then et = pandoc_type(bibliography)
+                                   else et = bibliography.tag
+                    end
                 end
-                if et == 'Inlines' or et == 'MetaInlines' then
+                if t == 'string' or et:match 'Inlines$' then
                     meta.bibliography = List{fname, meta.bibliography}
-                elseif et == 'List' or et == 'MetaList'
-                    then meta.bibliography:insert(fname)
+                elseif et:match 'List$' then
+                    meta.bibliography:insert(fname)
                 else
                     return nil, 'bibliography: cannot parse.'
                 end
