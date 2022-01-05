@@ -4009,15 +4009,10 @@ do
                 local ok, mt, str = pcall(url_query, items_url,
                                           {[ckey_types[i]] = ckey})
                 xassert(ok, 'failed to connect to Zotero desktop client.')
-                if not mt or mt == '' then
-                    err = ckey .. ': response has no MIME type.'
-                elseif not str or str == '' then
-                    err = ckey .. ': response is empty.'
-                elseif not mt:match '^text/plain%f[%A]' then
-                    err = format('%s: response is of wrong MIME type %s.',
-                                 ckey, mt)
+                if not mt or mt == '' or not str or str == '' then
+                    err = ckey .. ': zotxt response is empty.'
                 elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
-                    err = ckey .. ': response is not encoded in UTF-8.'
+                    err = ckey .. ': zotxt response is not encoded in UTF-8.'
                 else
                     local data = csl_json_to_items(str)
                     if data then
@@ -4035,7 +4030,7 @@ do
                                   else err = ckey .. ': too many matches.'
                         end
                     else
-                        err = ckey .. ': got unparsable response: ' .. str
+                        err = ckey .. ': cannot parse Zotero response: ' .. str
                     end
                 end
             end
@@ -4125,15 +4120,15 @@ do
         local ok, mt, str = pcall(url_query, url, params)
         xassert(ok, 'failed to connect to Zotero Web API.')
         if not mt or mt == '' then
-            return nil, 'response has no MIME type.'
+            return nil, 'Zotero response declares no MIME type.'
         elseif not str or str == '' then
-            return nil, 'response is empty.'
+            return nil, 'Zotero response is empty.'
         elseif mt:match '%f[%a]json%f[%A]' then
             return str
         elseif not mt:match '^text/' then
-            return nil, format('response is of wrong MIME type %s.', mt)
+            return nil, format('Zotero response is of wrong MIME type %s.', mt)
         elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
-            return nil, 'response is not encoded in UTF-8.'
+            return nil, 'Zotero response is not encoded in UTF-8.'
         end
         return nil, 'got error: ' .. str
     end
