@@ -116,7 +116,7 @@ metadata field:
    ---
    zotero-citekey-types: betterbibtexkey
    ...
-   Forces @DoeTitle to be treated as a BetterBibTeX citation key.
+   Forces @DoeTitle to be treated as BetterBibTeX citation key.
    EOF
 
 
