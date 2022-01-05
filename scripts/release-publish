@@ -86,17 +86,18 @@ unset file
 # =======
 
 temp_dir_make -d . -p rp
+CLEANUP="git checkout develop; ${CLEANUP-}"
 
 
 # MAIN
 # ====
 
-warn -e "$SMSO" 'verifying branch ...'
+warn 'verifying branch ...'
 
 [ "$(git branch --show-current)" = main ] ||
 	panic 'not on "%s" branch.' "main"
 
-warn -e "$SMSO" 'verifying version number ...'
+warn 'verifying version number ...'
 
 tag="$(
 	git tag --list 'v*' --sort version:refname |
@@ -130,11 +131,11 @@ do
 	esac
 done <"$manifest"
 
-warn -e "$SMSO" 'testing release ...'
+warn 'testing release ...'
 
 test/scripts/test-pandoc-vers
 
-warn -e "$SMSO" 'testing under real-world conditions ...'
+warn 'testing under real-world conditions ...'
 
 make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 	panic 'at least one test failed.'
@@ -142,7 +143,7 @@ make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
 name="$(basename "$REPO")" && [ "$name" ] ||
 	panic '%s: failed to determine basename.' "$REPO"
 
-warn -e "$SMSO" 'packaging release ...'
+warn 'packaging release ...'
 
 (
 	manifest="$REPO/$manifest"
@@ -188,11 +189,11 @@ warn -e "$SMSO" 'packaging release ...'
 	gpg --detach-sign --output "$zip.sig" "$zip"
 )
 
-warn -e "$SMSO" 'pushing tag %s to github ...' "${BOLD}v${tag}${SGR0}${SMSO}"
+warn 'pushing tag %s to github ...' "${BOLD}v${tag}${SGR0}${SMSO}"
 
 git push origin "v$tag"
 
-warn -e "$SMSO" 'drafting release ...'
+warn 'drafting release ...'
 
 pre=
 case $tag in (*[a-z]*)
@@ -209,3 +210,5 @@ perl -ne '
 
 gh release create $pre --draft --title="v$tag" --notes-file="$notes_file" \
                   "v$tag" "$TEMP_DIR/$name-$tag."*
+
+warn -e "$GREEN" done.

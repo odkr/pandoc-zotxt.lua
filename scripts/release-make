@@ -86,6 +86,7 @@ unset file
 # =======
 
 temp_dir_make -d . -p rm
+CLEANUP="git checkout develop; ${CLEANUP-}"
 
 
 # MAIN
@@ -166,7 +167,9 @@ warn -e "$SMSO" 'collecting log ...'
 
 log="$TEMP_DIR/log"
 git log "^$last" HEAD >"$log"
-
 git tag --file="$log" --edit "v$vers"
+
+warn -e "$SMSO" 'switching back to develop.'
+git checkout develop
 
 warn -e "$GREEN" done.
