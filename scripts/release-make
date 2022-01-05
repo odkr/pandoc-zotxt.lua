@@ -167,6 +167,6 @@ warn -e "$SMSO" 'collecting log ...'
 log="$TEMP_DIR/log"
 git log "^$last" HEAD >"$log"
 
-git tag --file "$log" --edit "v$vers"
+git tag --file="$log" --edit "v$vers"
 
 warn -e "$GREEN" done.
