@@ -97,8 +97,8 @@
 -- | `key`             | Zotero item ID             | A1BC23D4      |
 --
 -- However, Better BibTeX citation keys are sometimes, if rarely,
--- misinterpreted as Easy Citekeys and still match an item, though *not* the
--- one that they are the citation key of.
+-- misinterpreted as Easy Citekeys and still match an item, though not the one
+-- that they are the citation key of.
 --
 -- If this happens, disable Easy Citekeys by only listing BetterBibTeX
 -- citation keys and, if you use them, Zotero item IDs in the
@@ -108,7 +108,7 @@
 --     ---
 --     zotero-citekey-types: betterbibtexkey
 --     ...
---     Forces @DoeTitle to be treated as a BetterBibTeX citation key.
+--     Forces @DoeTitle to be treated as BetterBibTeX citation key.
 --     EOF
 --
 -- SETTINGS
