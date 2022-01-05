@@ -199,5 +199,13 @@ case $tag in (*[a-z]*)
 	pre=--prerelease ;;
 esac
 
-gh release create $pre --draft --title="v$tag" \
+notes_file="$TEMP_DIR/notes"
+git show "v$tag" |
+perl -ne '
+	exit if /BEGIN PGP SIGNATURE/;
+	print if $do_print;
+	$do_print = 1 if /^$/;
+' >"$notes_file"
+
+gh release create $pre --draft --title="v$tag" --notes-file="$notes_file" \
                   "v$tag" "$TEMP_DIR/$name-$tag."*
