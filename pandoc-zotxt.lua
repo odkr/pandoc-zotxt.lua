@@ -535,8 +535,10 @@ typed_keyword_args = typed_args('table')(
     end
 )
 
-function typed_keyword_args ()
-    return function (...) return ... end
+if not DEBUG then
+    function typed_keyword_args ()
+        return function (...) return ... end
+    end
 end
 
 
