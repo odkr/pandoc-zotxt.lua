@@ -209,6 +209,6 @@ perl -ne '
 ' >"$notes_file"
 
 gh release create $pre --draft --title="v$tag" --notes-file="$notes_file" \
-                  "v$tag" "$TEMP_DIR/$name-$tag."*
+                  "v$tag" "$TEMP_DIR/$name-$tag."* scripts/dl.sh
 
 warn -e "$GREEN" done.
