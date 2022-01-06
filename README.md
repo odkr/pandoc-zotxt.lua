@@ -2,7 +2,7 @@
 
 **pandoc-zotxt.lua** looks up the bibliographic data of citations in
 [Zotero](https://www.zotero.org/) and adds them either to the `references`
-metadata field or to a bibliography file, where Pandoc can pick them up.
+metadata field or to a bibliography file, where Pandoc can pick it up.
 See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 
 
@@ -34,19 +34,11 @@ Linux, or macOS) and have [curl](https://curl.haxx.se/) or
 into a Bourne-compatible shell:
 
 ```sh
-( set -eu
-  : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
-  name=pandoc-zotxt.lua vers=1.1.0b7
-  release="$name-$vers"
-  url="https://github.com/odkr/$name/releases/download/v$vers/$release.tgz"
-  for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
-    [ -d "$data_dir" ] && break
-  done
-  filters_dir="$data_dir/filters"
-  mkdir -p "$filters_dir" && cd -P "$filters_dir" || exit
-  { curl -L "$url" || err=$?
-    [ "${err-0}" -eq 127 ] && wget -O - "$url"; } | tar -xz
-  ln -fs "$name" "$release/$name" .; )
+( vers=1.1.0b7
+  url="https://github.com/odkr/pandoc-zotxt.lua/releases/download/v$vers/dl.sh"
+  { curl --silent --show-error --location "$url" || err=$?
+    [ "${err-0}" -eq 127 ] && wget --output-document=- "$url"
+  } | VERSION="$vers" sh; )
 ```
 
 If you want to use the manual page that ships with this release,
@@ -75,9 +67,7 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 2. [Pandoc](https://www.pandoc.org/) v2.0 to v2.16.2.
 3. [GNU Make](https://www.gnu.org/software/make/).
 
-Note, the test suite has only been tested with Pandoc >= v2.10.
-And it may or may not work with development versions of Pandoc.
-
+The test suite has only been tested with Pandoc ≥ v2.10.
 
 ### Running the tests
 
@@ -93,9 +83,9 @@ indicates that **pandoc-zotxt.lua** failed a test. If it does fail a test,
 
 ### The real-world test suite
 
-By default, the test suite does not connect to a Zotero instance,
-but uses canned responses. You can force the test suite to connect
-to a local Zotero database by:
+By default, the test suite neither connects to a Zotero desktop client
+instance nor to the Zotero Web API, but but uses canned responses.
+You can force the test suite to connect to a local Zotero database by:
 
 ```sh
     make test -e SCRIPT=./pandoc-zotxt.lua
@@ -108,9 +98,9 @@ Zotero library.
 
 Moreover, you will need:
 
-* Zotero >= v5.
-* zotxt >= v5.
-* Better BibTeX for Zotero >= v5.
+* Zotero ≥ v5.
+* zotxt ≥ v5.
+* Better BibTeX for Zotero ≥ v5.
 
 
 ## License
