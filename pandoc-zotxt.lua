@@ -1001,7 +1001,7 @@ update = typed_args('table', '?table', '...')(
 -- @function walk
 walk = typed_args('*', 'function', '?table')(
     function (val, func, _seen)
-        if type(val) ~= 'table' then
+        if type(val) ~= 'table' and type(val) ~= 'userdata' then
             local ret = func(val)
             if ret == nil then return val end
             return ret
@@ -3135,7 +3135,7 @@ biblio.read = typed_args('table', 'string')(
         local str, err, errno = file_read(fname)
         if not str then return nil, err, errno end
         local ok, ret = pcall(decode, str)
-        if not ok then return nil, format('%s: %s', fname, ret) end
+        if not ok then return nil, fname .. ': ' .. ret end
         return ret
     end
 )
@@ -3168,7 +3168,7 @@ biblio.write = typed_args('table', 'string', '?table')(
         if not encode then return nil, fname .. ': cannot write format.' end
         if not items or #items == 0 then return suffix end
         ok, ret = pcall(encode, items)
-        if not ok then return nil, format('%s: %s', fname, ret) end
+        if not ok then return nil, fname .. ': ' .. ret end
         ok, err, errno = file_write(fname, ret, EOL)
         if not ok then return nil, err, errno end
         return suffix
@@ -3191,7 +3191,6 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @raise See @{http_get}.
 --
 -- @function biblio:update
--- @todo Move markup conversion to the YAML codec.
 -- @todo Use sets so that the loop gets simpler.
 biblio.update = typed_args('table', 'table', 'string', 'table')(
     function (self, handle, fname, ckeys)
@@ -3212,8 +3211,11 @@ biblio.update = typed_args('table', 'table', 'string', 'table')(
             local ckey = ckeys[i]
             if not ids[ckey] then
                 local vs = pack(pcall(handle.fetch, handle, ckey))
-                local ok, err = unpack(vs)
-                if not ok then return nil, tostring(err) end
+                local ok, err = unpack(vs, 1, 2)
+                if not ok then
+                    if type(err) ~= 'table' then error(err) end
+                    return nil, tostring(err)
+                end
                 local item, err = unpack(vs, 2)
                 if item then
                     n = n + 1
@@ -3224,10 +3226,7 @@ biblio.update = typed_args('table', 'table', 'string', 'table')(
             end
         end
         if n == nitems then return true end
-        local vs = pack(pcall(self.write, self, fname, items))
-        local ok, err = unpack(vs)
-        if not ok then return nil, err end
-        local fmt, err, errno = unpack(vs, 2)
+        local fmt, err, errno = self:write(fname, items)
         if not fmt then return nil, err, errno end
         return true
     end
@@ -3541,20 +3540,22 @@ do
                 local bibliography = meta.bibliography
                 local t, et
                 t = type(bibliography)
-                if t == 'userdata' or t == 'table' then
-                    if pandoc_type then et = pandoc_type(bibliography)
-                                    else et = bibliography.tag
-                    end
-                end
                 if t == 'string' then
                     fnames = {bibliography}
-                elseif et:match 'Inlines$' then
-                    fnames = {stringify(bibliography)}
-                elseif et:match 'List$' then
-                    fnames = bibliography:map(stringify)
                 else
-                    xwarn('@error', 'bibliography: cannot parse.')
-                    return data
+                    if pandoc_type then
+                        et = pandoc_type(bibliography)
+                    elseif t == 'userdata' or t == 'table' then
+                        et = bibliography.tag
+                    end
+                    if et:match 'Inlines$' then
+                        fnames = {stringify(bibliography)}
+                    elseif et:match 'List$' then
+                        fnames = bibliography:map(stringify)
+                    else
+                        xwarn('@error', 'bibliography: cannot parse.')
+                        return data
+                    end
                 end
                 for i = 1, #fnames do
                     -- luacheck: ignore err
@@ -4415,10 +4416,10 @@ do
             else
                 local t, et
                 t = type(bibliography)
-                if t == 'userdata' or t == 'table' then
-                    if pandoc_type then et = pandoc_type(bibliography)
-                                   else et = bibliography.tag
-                    end
+                if pandoc_type then
+                    et = pandoc_type(bibliography)
+                elseif t == 'userdata' or t == 'table' then
+                    et = bibliography.tag
                 end
                 if t == 'string' or et:match 'Inlines$' then
                     meta.bibliography = List{fname, meta.bibliography}
@@ -4570,27 +4571,21 @@ M[1] = {Pandoc = function (doc)
     end
 
     -- This point should not be reached.
-    local message = [[
----------------------------------------------------------------------
-Sorry, you have found a bug. Be so kind and report it at:
+    xerror([[
+=======================================================
+Sorry, you have encountered a bug. Please report it at:
+-------------------------------------------------------
 https://github.com/odkr/${repo|e}/issues/new?title=${title|e}&body=${body|e}
-Please include the command line you called Pandoc with. Thanks a lot!
----------------------------------------------------------------------
-]] .. err
-
-    -- Title and body for the GitHub issue.
-    local title = 'v${version} - aborts with "${err}"'
-    local body = [[
-OS type: ${os_type}
-Pandoc version: ${pandoc_version}
+=======================================================
+]] .. err:gsub('\r?\n', EOL), {
+        repo = SCRIPT_NAME,
+        title = 'v${version} - run-time error "${err}"',
+        body = [[---
 Stack trace:
 > ${stack_trace}
-]]
-
-    xerror(message:gsub('\n', EOL), {
-        repo = SCRIPT_NAME,
-        title = title,
-        body = body,
+---
+Pandoc version: ${pandoc_version}
+OS type: ${os_type}]],
         err = err,
         stack_trace = stack_trace,
         version = VERSION,
