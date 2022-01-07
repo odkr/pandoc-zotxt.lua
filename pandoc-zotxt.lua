@@ -495,7 +495,7 @@ end
 
 --- Type-check keyword arguments when running in debugging mode.
 --
--- FIXME: Mention that all argument names must be named.
+-- Also triggers errors if a keyword is unknown.
 --
 -- @caveats Wrong type names do *not* raise an error on declaration.
 --
