@@ -20,7 +20,8 @@ new_type('object', 'Prototypes', false, 'Uninitialised properties')
 
 custom_tags = {
     {'caveats', title = 'Caveats'},
-    {'side', title = 'Side-effects'},
+    {'proto', title = 'Prototype'},
     {'require', title = 'Requires'},
-    {'proto', title = 'Prototype'}
+    {'side', title = 'Side-effects'},
+    {'tip', title = 'Tip'}
 }
