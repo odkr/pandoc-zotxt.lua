@@ -1185,7 +1185,7 @@ function test_options_parse ()
     local conf_parser = M.Options()
     conf_parser:add({prefix = 'zotero', name = 'test'})
     conf_parser:add({prefix = 'zotero', name = 'list', type = 'list'})
-    conf_parser:add({prefix = 'zotero', name = 'num_list', type = 'list', check = id})
+    conf_parser:add({prefix = 'zotero', name = 'num_list', type = 'list', parse = id})
     conf_parser:add({prefix = 'zotero', name = 'higher_ord', type = 'list<list>'})
 
     local conf = conf_parser:parse(meta)
@@ -1222,7 +1222,7 @@ end
 --     local ret, err = zoteroweb:get_groups()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
---     lu.assert_items_equals(ret, {4513095, n = 1})
+--     lu.assert_items_equals(ret, {4513095})
 -- end
 
 function test_zoteroweb_endpoints ()
@@ -1532,14 +1532,14 @@ function test_citekey_to_terms ()
 
     local tests = {
         [''] = nil,
-        ['doe'] = {'doe', n = 1},
-        ['doeWord'] = {'doe', 'Word', n = 2},
+        ['doe'] = {'doe'},
+        ['doeWord'] = {'doe', 'Word'},
         ['doe:'] = nil,
-        ['doe2020'] = {'doe', '2020', n = 2},
-        ['doe:2020'] = {'doe', '2020', n = 2},
-        ['doeWord2020'] = {'doe', 'Word', '2020', n = 3},
-        ['doe:2020easy'] = {'doe', '2020', 'easy', n = 3},
-        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words', n = 4}
+        ['doe2020'] = {'doe', '2020'},
+        ['doe:2020'] = {'doe', '2020'},
+        ['doeWord2020'] = {'doe', 'Word', '2020'},
+        ['doe:2020easy'] = {'doe', '2020', 'easy'},
+        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
     }
 
     for k, v in pairs(tests) do
@@ -1683,14 +1683,14 @@ function test_elem_type ()
     -- end
 
     local tests = {
-        -- [Str 'test'] = {'Str', 'Inline', 'AstElement', n = 3},
-        -- [{Str ''}] = {'Inlines', n = 1},
-        -- [Para{Str ''}] = {'Para', 'Block', 'AstElement', n = 3},
-        -- [{Para{Str ''}}] = {'Blocks', n = 1},
-        -- [read_md_file(path_join(DATA_DIR, 'empty.md'))] = {'Pandoc', n = 1}
+        -- [Str 'test'] = {'Str', 'Inline', 'AstElement'},
+        -- [{Str ''}] = {'Inlines'},
+        -- [Para{Str ''}] = {'Para', 'Block', 'AstElement'},
+        -- [{Para{Str ''}}] = {'Blocks'},
+        -- [read_md_file(path_join(DATA_DIR, 'empty.md'))] = {'Pandoc'}
         -- @fixme Fails for the development version of Pandoc
         -- [MetaInlines{Str ''}] =
-        --     {'MetaInlines', 'MetaValue', 'AstElement', n = 3}
+        --     {'MetaInlines', 'MetaValue', 'AstElement'}
     }
 
     for k, v in pairs(tests) do

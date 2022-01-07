@@ -495,6 +495,8 @@ end
 
 --- Type-check keyword arguments when running in debugging mode.
 --
+-- FIXME: Mention that all argument names must be named.
+--
 -- @caveats Wrong type names do *not* raise an error on declaration.
 --
 -- @tparam {string=string,...} types A mapping of keywords
@@ -512,23 +514,28 @@ end
 -- @fixme Not unit-tested.
 typed_keyword_args = typed_args('table')(
     function (types)
-        return function (const)
+        return function (func)
             return typed_args('table', '?table')(
                 function (proto, args)
                     do
                         -- luacheck: ignore args type
                         local args = args
                         if not args then args = {} end
-                        for key, type in pairs(types) do
-                            if proto[key] == nil then
-                                local ok, err = type_match(args[key], type)
+                        for name, type in pairs(types) do
+                            if proto[name] == nil then
+                                local ok, err = type_match(args[name], type)
                                 if not ok then
-                                    error(key .. ': ' .. err, 2)
+                                    error(name .. ': ' .. err, 2)
                                 end
                             end
                         end
+                        for name in pairs(args) do
+                            if not types[name] then
+                                error(name .. ': no such argument.', 2)
+                            end
+                        end
                     end
-                    return const(proto, args)
+                    return func(proto, args)
                 end
             )
         end
@@ -745,7 +752,7 @@ vars_get = typed_args('?number')(
 --
 -- @table Set
 
---- A metatable to make tables ignore case.
+--- Metatable to make tables ignore case.
 --
 -- @usage
 --
@@ -1296,6 +1303,21 @@ Object.new = typed_args('table', '?table')(
 
 --- A simple list.
 --
+-- @tip
+--
+-- You can sparse-copy a list by using it as a prototype:
+--
+--    > foo = Values:new 'foo'
+--    > bar = foo()
+--    > bar:add 'bar'
+--    > #bar
+--    2
+--    > for i, v in ipairs(bar) do
+--    >     print(i, v)
+--    > end
+--    1    foo
+--    2    bar
+--
 -- @usage
 -- > list = Values()
 -- > list:add 'a string'
@@ -1306,8 +1328,60 @@ Object.new = typed_args('table', '?table')(
 -- @proto @{Object}
 Values = Object()
 
+--- Metatable for values.
+Values.mt = getmetatable(Values)
+
+--- Get the size of the list.
+--
+-- @tparam Values obj A list.
+-- @treturn number The size of the list.
+function Values.mt.__len (obj)
+    return obj.n
+end
+
+--- Iterate over list items.
+--
+-- @tparam Values obj A list.
+-- @treturn function A stateless iterator.
+function Values.mt.__pairs (obj)
+    return function (tab, idx)
+        if not idx then idx = 1
+                   else idx = idx + 1
+        end
+        if idx > tab.n then return end
+        return idx, tab[idx]
+    end, obj
+end
+
 --- The number of items in the list.
 Values.n = 0
+
+--- Create a new list.
+--
+--    list = Values:new(foo, bar)
+--
+-- is equivalent to:
+--
+--    list = Values()
+--    list:add(foo, bar)
+--
+-- @tip
+--
+-- You can convert an ordinary table to a `Values` object by:
+--
+--    tab.n = #tab
+--    setmetatable(tab, getmetatables(Values))
+--
+-- @param ... Items.
+--
+-- @function Values.new
+Values.new = typed_args('table')(
+    function (proto, ...)
+        local obj = Object.new(proto)
+        obj:add(...)
+        return obj
+    end
+)
 
 --- Add items to the list.
 --
@@ -1422,7 +1496,7 @@ delegate_with_getters = typed_args('table', '?table')(
 -- @see xassert
 Error = Object()
 
---- A metatable for errors.
+--- Metatable for errors.
 Error.mt = getmetatable(Error)
 
 --- Convert error objects to strings.
@@ -3180,7 +3254,7 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @caveats See @{file_write}.
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
 -- @string fname The name of the bibliography file.
 -- @tparam {string,...} ckeys The citation keys of the items to add
 --  (e.g., `{'doe:2020word'}`).
@@ -3514,66 +3588,42 @@ do
     )
 end
 
-do
-    -- @todo This works for the development version of Pandoc
-    --       as of commit 60fc05e and is subject to change.
-    --       See <https://github.com/jgm/pandoc/issues/7796>.
-    local pandoc_type = pandoc.utils.type
-
-    --- Collect bibliographic data.
-    --
-    -- Reads the `references` metadata field and every bibliography file.
-    --
-    -- @side May print error messages to STDERR.
-    --
-    -- @tparam pandoc.MetaMap meta A metadata block.
-    -- @treturn pandoc.List CSL items.
-    --
-    -- @function meta_sources
-    meta_sources = typed_args('table|userdata')(
-        function (meta)
-            local data = List()
-            if not meta then return data end
-            if meta.references then data:extend(meta.references) end
-            if meta.bibliography then
-                local fnames
-                local bibliography = meta.bibliography
-                local t, et
-                t = type(bibliography)
-                if t == 'string' then
-                    fnames = {bibliography}
+--- Collect bibliographic data.
+--
+-- Reads the `references` metadata field and every bibliography file.
+--
+-- @side May print error messages to STDERR.
+--
+-- @tparam pandoc.MetaMap meta A metadata block.
+-- @treturn pandoc.List CSL items.
+--
+-- @function meta_sources
+meta_sources = typed_args('table|userdata')(
+    function (meta)
+        local data = List()
+        if not meta then return data end
+        if meta.references then data:extend(meta.references) end
+        if meta.bibliography then
+            local fnames = opts_parse(meta, {
+                name = 'bibliography',
+                type = 'list'
+            }).bibliography
+            for i = 1, #fnames do
+                -- luacheck: ignore err
+                local fname, err = file_locate(fnames[i])
+                if fname then
+                    local items, err = biblio:read(fname)
+                    if items then data:extend(items)
+                             else xwarn('@error', '@plain', err)
+                    end
                 else
-                    if pandoc_type then
-                        et = pandoc_type(bibliography)
-                    elseif t == 'userdata' or t == 'table' then
-                        et = bibliography.tag
-                    end
-                    if et:match 'Inlines$' then
-                        fnames = {stringify(bibliography)}
-                    elseif et:match 'List$' then
-                        fnames = bibliography:map(stringify)
-                    else
-                        xwarn('@error', 'bibliography: cannot parse.')
-                        return data
-                    end
-                end
-                for i = 1, #fnames do
-                    -- luacheck: ignore err
-                    local fname, err = file_locate(fnames[i])
-                    if fname then
-                        local items, err = biblio:read(fname)
-                        if items then data:extend(items)
-                                else xwarn('@error', '@plain', err)
-                        end
-                    else
-                        xwarn('@error', '@plain', err)
-                    end
+                    xwarn('@error', '@plain', err)
                 end
             end
-            return data
         end
-    )
-end
+        return data
+    end
+)
 
 --- Collect the citation keys used in a document.
 --
@@ -3619,10 +3669,10 @@ doc_ckeys = typed_args('table|userdata', '?boolean')(
 --
 -- @string name An option name.
 -- @string[opt='string'] type A type to coerce the option's value to.
--- @func[opt] check A function that checks the option's value.
+-- @func[opt] parse A parser.
 -- @string[opt] prefix A prefix.
 --
--- @see Options:add
+-- @see opts_parse
 -- @table Option
 
 --- An option parser.
@@ -3631,8 +3681,8 @@ doc_ckeys = typed_args('table|userdata', '?boolean')(
 -- @see Options:add
 -- @see Options:parse
 -- @object Options
--- @proto @{Object}
-Options = Object()
+-- @proto @{Values}
+Options = Values()
 
 --- Create a new option parser.
 --
@@ -3643,23 +3693,84 @@ Options = Object()
 --    parser = Options()
 --    parser:add{name = 'foo'}
 --
+-- @tparam Option ... Options.
+--
 -- @see Options:add
 -- @function Options:new
 Options.new = typed_args('table', '...')(
     typed_keyword_args{
         name = 'string',
         type = '?string',
-        check = '?function',
+        parse = '?function',
+        prefix = '?string'
+    }(Values.new)
+)
+
+--- Add an option to the parser.
+--
+-- @tparam Option ... Options.
+--
+-- @usage
+-- parser = Options()
+-- parser:add{
+--     name = 'bar',
+--     type = 'number',
+--     parse = function (x)
+--         if x < 1 return return nil, 'not a positive number.' end
+--         return x
+--     end
+-- }
+--
+-- @see opts_parse
+-- @see Options:parse
+-- @function Options:add
+Options.add = typed_args('table', '...')(
+    typed_keyword_args{
+        name = 'string',
+        type = '?string',
+        parse = '?function',
         prefix = '?string'
     }(
-        function (proto, ...)
-            local obj = Object.new(proto)
-            obj:add(...)
-            return obj
+        function (self, opt, ...)
+            Values.add(self, opt)
+            if ... then self:add(...) end
         end
     )
 )
 
+--- Read configuration options from a metadata block.
+--
+-- @tparam pandoc.MetaMap meta A metadata block.
+-- @treturn tab A mapping of option names to values.
+--
+-- @usage
+-- > meta = pandoc.MetaMap{
+-- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
+-- >         pandoc.Str "0123"
+-- >     })
+-- > parser = Options()
+-- > parser:add{
+-- >     name = 'bar',
+-- >     type = 'number',
+-- >     parse = function (x)
+-- >         if x < 1 return return nil, 'not a positive number.' end
+-- >         return x
+-- >     end
+-- > }
+-- > opts = parser:parse(meta)
+-- > opts.bars
+-- 123
+-- > type(opts.bar)
+-- number
+--
+-- @see opts_parse
+-- @see Options:add
+-- @function Options:parse
+Options.parse = typed_args('table', 'table|userdata')(
+    function (self, meta)
+        return opts_parse(meta, unpack(self))
+    end
+)
 
 do
     -- @todo This works for the development version of Pandoc
@@ -3673,12 +3784,14 @@ do
     -- Convert a configuration value to a type.
     --
     -- @param val A value.
-    -- @string type A type declaration. See @{Options:add} for the grammar.
+    -- @string[opt='string'] type A type declaration.
+    --  See @{opts_parse} for the grammar.
     -- @return[1] A value of the given type.
     -- @treturn[2] nil `nil` if the value cannot be converted.
     -- @treturn[2] string An error message.
     -- @raise An error if a type declaration cannot be parsed.
     local function convert (val, decl)
+        if not decl then decl = 'string' end
         local head, tail = decl:match '^%s*(%l+)%s*<?%s*([%l<>%s]-)%s*>?%s*$'
         if not head then error(format('cannot parse type "%s".', decl), 3) end
         local conv = converters[head]
@@ -3749,20 +3862,18 @@ do
         return List{conv(val)}
     end
 
-    --- Add an option to the parser.
+    --- Read configuration options from a metadata block.
     --
     -- <h3>Mapping of option names to metadata fieldnames:</h3>
     --
     -- The name of the metadata field that is looked up by @{Options:parse} is
-    -- the name of the option with underscores replaced by dashes.
-    --
-    -- However, options may have prefixes. If so, the option name is prefixed
-    -- with that prefix *and* '-' before being translated into a fieldname.
+    -- the name of the option with underscores replaced by dashes. If the
+    -- option has a prefix, then the fieldname is prefixed with that prefix.
     --
     -- In Lua:
     --
-    --    if prefix then name = prefix .. '-' .. name end
     --    fieldname = name:gsub('_', '-')
+    --    if prefix then fieldname = prefix .. '-' .. fieldname end
     --
     -- <h3>Type declaration grammar:</h3>
     --
@@ -3797,111 +3908,57 @@ do
     -- >
     -- > Type declaration = {whitespace}, (simple type | list), {whitespace}
     --
-    -- No checks are performed if a value is `nil`.
+    -- No type checks or conversions are performed for `nil`.
     --
-    -- <h3>Check protocol:</h3>
+    -- <h3>Parse protocol:</h3>
     --
-    -- You can give a function that checks whether a setting's value is
-    -- valid. That function is called after the value has been coerced
-    -- to the requested type and should map valid values to `true` and
-    -- invalid values to `nil` and an error message.
+    -- A parser is a function that takes the converted value and
+    -- returns either a new value or `nil` and an error message.
     --
-    -- No checks are performed if a value is `nil`.
-    --
-    -- @tparam Option ... Options.
-    --
-    -- @usage
-    -- parser = Options()
-    -- parser:add{
-    --     name = 'bar',
-    --     type = 'number',
-    --     check = function (x)
-    --         if x > 0 return true end
-    --         return nil, 'not a positive number.'
-    --     end
-    -- }
-    --
-    -- @see Options:parse
-    -- @function Options:add
-    Options.add = typed_args('table', '...')(
-        typed_keyword_args{
-            name = 'string',
-            type = '?string',
-            check = '?function',
-            prefix = '?string'
-        }(
-            function (self, opt, ...)
-                for _, key in pairs{'name', 'prefix', 'type'} do
-                    if opt[key] == '' then
-                        error(key .. ': is the empty string.', 2)
-                    end
-                end
-                local name = opt.name
-                if self[name] then
-                    error(format('name "%s" is already in use.', name), 2)
-                end
-                if opt.type then
-                    -- Raise an error if the type declaration is wrong.
-                    local cycle = {}
-                    cycle[1] = cycle
-                    convert(cycle, opt.type)
-                end
-                self[name] = {
-                    type = opt.type or 'string',
-                    check = opt.check,
-                    prefix = opt.prefix
-                }
-                if ... then self:add(...) end
-            end
-        )
-    )
-
-    --- Read configuration options from a metadata block.
+    -- Parsers are not called for `nil`.
     --
     -- @tparam pandoc.MetaMap meta A metadata block.
-    -- @treturn tab A mapping of setting names to values.
+    -- @tparam Option ... Options.
+    -- @treturn tab A mapping of option names to values.
     --
     -- @usage
-    -- > parser = Options()
-    -- > parser:add{
-    -- >     name = 'bar',
-    -- >     type = 'number',
-    -- >     check = function (x)
-    -- >         if x > 0 return true end
-    -- >         return nil, 'not a positive number.'
-    -- >     end
-    -- > }
     -- > meta = pandoc.MetaMap{
     -- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
     -- >         pandoc.Str "0123"
     -- >     })
-    -- > opts = parser:parse(meta)
+    -- > opts = opts_parse(meta, {
+    -- >     name = 'bar',
+    -- >     type = 'number',
+    -- >     parse = function (x)
+    -- >         if x < 1 return return nil, 'not a positive number.' end
+    -- >         return x
+    -- >     end
+    -- > })
     -- > opts.bars
     -- 123
     -- > type(opts.bar)
     -- number
     --
-    -- @see Options:add
-    -- @function Options:parse
-    Options.parse = typed_args('table', 'table|userdata')(
-        function (self, meta)
+    -- @see Options
+    -- @function opts_parse
+    opts_parse = typed_args('table|userdata', '?table', '...')(
+        function (meta, ...)
             local opts = {}
-            if not meta then return opts end
-            for name, opt in pairs(self) do
-                local key = name
-                if opt.prefix then key = opt.prefix .. '-' .. key end
-                key = key:gsub('_', '-')
+            local defs = pack(...)
+            if not meta or defs.n == 0 then return opts end
+            for i = 1, defs.n do
+                local def = defs[i]
+                local key = def.name:gsub('_', '-')
+                if def.prefix then key = def.prefix .. '-' .. key end
                 local val = meta[key]
                 if val ~= nil then
-                    -- luacheck: ignore err
                     local err
-                    val, err = convert(val, opt.type)
-                    xassert(val, '${key}: ${err}')
-                    if opt.check then
-                        local ok, err = opt.check(val)
-                        xassert(ok, '${key}: ${err}')
+                    for _, func in pairs{convert, def.parse} do
+                        if not func then break end
+                        val, err = func(val, def.type)
+                        if not val then xerror(key .. ': ' .. err) end
                     end
-                    opts[name] = val
+                    opts[def.name] = val
                 end
             end
             return opts
@@ -4054,9 +4111,8 @@ connectors.ZoteroWeb.citekey_types = List {
 -- See the manual for details.
 --
 -- @object connectors.ZoteroWeb.options
--- @proto Copy of @{connectors.Zotero.options}.
-connectors.ZoteroWeb.options = copy(connectors.Zotero.options)
-connectors.ZoteroWeb.options:add(
+-- @proto @{connectors.Zotero.options}.
+connectors.ZoteroWeb.options = connectors.Zotero.options:new(
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},
     {prefix = 'zotero', name = 'groups', type = 'list<number>'},
@@ -4377,68 +4433,49 @@ end
 --
 -- @section
 
-do
-    -- @todo This works for the development version of Pandoc
-    --       as of commit 60fc05e and is subject to change.
-    --       See <https://github.com/jgm/pandoc/issues/7796>.
-    local pandoc_type = pandoc.utils.type
-
-    --- Add data to a bibliography file and the file to the document's metadata.
-    --
-    -- Updates the bibliography file as needed and adds its to the `bibliography`
-    -- metadata field. Interpretes relative filenames as relative to the directory
-    -- of the first input file passed to **pandoc**, or, if no input files were
-    -- given, as relative to the current working directory.
-    --
-    -- @caveats @{file_write}.
-    -- @side May print error messages to STDERR.
-    --
-    -- @string fname A filename for the bibliography file.
-    -- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
-    -- @tparam pandoc.Pandoc doc A Pandoc document.
-    -- @treturn[1] pandoc.Meta An updated metadata block.
-    -- @treturn[2] nil `nil` if nothing was done or an error occurred.
-    -- @treturn[2] string An error message, if applicable.
-    -- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
-    --
-    -- @function add_biblio
-    add_biblio = typed_args('string', 'table', 'table|userdata')(
-        function (fname, handle, doc)
-            local ckeys = doc_ckeys(doc, true)
-            if #ckeys == 0 then return end
-            local meta = doc.meta
-            if not path_is_abs(fname) then fname = path_join(wd(), fname) end
-            local ok, err = biblio:update(handle, fname, ckeys)
-            if not ok then return nil, err end
-            local bibliography = meta.bibliography
-            if not bibliography then
-                meta.bibliography = fname
-            else
-                local t, et
-                t = type(bibliography)
-                if pandoc_type then
-                    et = pandoc_type(bibliography)
-                elseif t == 'userdata' or t == 'table' then
-                    et = bibliography.tag
-                end
-                if t == 'string' or et:match 'Inlines$' then
-                    meta.bibliography = List{fname, meta.bibliography}
-                elseif et:match 'List$' then
-                    meta.bibliography:insert(fname)
-                else
-                    return nil, 'bibliography: cannot parse.'
-                end
-            end
-            return meta
-        end
-    )
-end
+--- Add data to a bibliography file.
+--
+-- Updates the bibliography file as needed and adds its to the
+-- `bibliography` metadata field. Interpretes relative filenames
+-- as relative to the directory of the first input file passed
+-- to **pandoc**, or, if no input files were given, as relative
+-- to the current working directory.
+--
+-- @caveats @{file_write}.
+-- @side May print error messages to STDERR.
+--
+-- @string fname A filename for the bibliography file.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
+-- @tparam pandoc.Pandoc doc A Pandoc document.
+-- @treturn[1] pandoc.Meta An updated metadata block.
+-- @treturn[2] nil `nil` if nothing was done or an error occurred.
+-- @treturn[2] string An error message, if applicable.
+-- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
+--
+-- @function add_biblio
+add_biblio = typed_args('string', 'table', 'table|userdata')(
+    function (fname, handle, doc)
+        local ckeys = doc_ckeys(doc, true)
+        if #ckeys == 0 then return end
+        local meta = doc.meta
+        if not path_is_abs(fname) then fname = path_join(wd(), fname) end
+        local ok, err = biblio:update(handle, fname, ckeys)
+        if not ok then return nil, err end
+        local fnames = opts_parse(meta, {
+            name = 'bibliography',
+            type = 'list'
+        }).bibliography or List()
+        fnames:insert(fname)
+        meta.bibliography = fnames
+        return meta
+    end
+)
 
 --- Add bibliographic data to the `references` metadata field.
 --
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero interface.
+-- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] table An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
@@ -4472,20 +4509,21 @@ do
             prefix = 'zotero',
             name = 'connectors',
             type = 'list',
-            check = function (names)
+            parse = function (names)
+                local conn
                 for i = 1, #names do
                     local name = names[i]
                     if not name:match '^%a[%w_]+$' then
                         return nil, name .. ': not a connector name.'
                     end
-                    local conn = connectors[name]
+                    conn = connectors[name]
                     if not conn then
                         return nil, name .. ': no such connector.'
                     elseif not (conn.new and conn.fetch) then
                         return nil, name .. ': connector violates protocol.'
                     end
                 end
-                return true
+                return conn
             end
         }
     )
@@ -4513,11 +4551,11 @@ do
             end
         else
             for i = 1, #opts.connectors do
-                local conn = connectors[opts.connectors[i]]
+                local conn = opts.connectors[i]
                 local args
                 if conn.options then args = conn.options:parse(doc.meta) end
                 local handle, err = conn:new(args)
-                xassert(handle, err, {})
+                if not handle then xerror(err) end
                 handles:add(handle)
             end
         end
