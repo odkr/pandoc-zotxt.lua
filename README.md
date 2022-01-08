@@ -34,11 +34,18 @@ Linux, or macOS) and have [curl](https://curl.haxx.se/) or
 into a Bourne-compatible shell:
 
 ```sh
-( vers=1.1.0b7
-  url="https://github.com/odkr/pandoc-zotxt.lua/releases/download/v$vers/dl.sh"
+( set -eu
+  : "${HOME:?}" "${XDG_DATA_HOME:="$HOME/.local/share"}"
+  name=pandoc-zotxt.lua vers=1.1.0b7
+  url="https://github.com/odkr/$name/releases/download/v$vers/$name-$vers.tgz"
+  for data_dir in "$HOME/.pandoc" "$XDG_DATA_HOME/pandoc"; do
+    [ -d "$data_dir" ] && break
+  done
+  filters_dir="$data_dir/filters"
+  mkdir -p "$filters_dir" && cd -P "$filters_dir" || exit 69
   { curl --silent --show-error --location "$url" || err=$?
     [ "${err-0}" -eq 127 ] && wget --output-document=- "$url"
-  } | VERSION="$vers" sh; )
+  } | tar -xz && ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
 If you want to use the manual page that ships with this release,
