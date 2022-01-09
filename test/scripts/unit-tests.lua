@@ -331,11 +331,12 @@ do
     function make_type_match_test (func)
         return function ()
             for td, pattern in pairs{
-                [true] = '.-: expected a string.$',
-                ['0'] = '^cannot parse type "0"%.$',
-                ['-nil'] = '^cannot parse type "%-nil"%.$'
+                [true] = '.-%f[%a]expected a string.$',
+                [''] = '.-%f[%a]type declaration is the empty string.$',
+                ['0'] = '.-%f[%a]cannot parse type "0"%.$',
+                ['-nil'] = '.-%f[%a]cannot parse type "%-nil"%.$'
             } do
-                assert_error_msg_matches(pattern, func, nil, td)
+                assert_error_msg_matches(pattern, func, true, td, true)
             end
             
             local ok, err    
@@ -356,13 +357,13 @@ do
                             assert_true(ok)
                         elseif type_spec ~= '' then
                             local ok, err = func(v, type_spec)
-                            assert_nil(ok)
+                            assert_true(ok == nil or ok == false)
                             assert_str_matches(err, err_pattern)
                             if v == nil then
                                 assert_true(func(v, opt_type_spec))
                             else
                                 ok, err = func(v, opt_type_spec)
-                                assert_nil(ok)
+                                assert_true(ok == nil or ok == false)
                                 assert_str_matches(err, err_pattern)
                             end
                         end
@@ -375,7 +376,7 @@ do
                     local v = vs[i]
                     if v == nil then
                         ok, err = func(v, '*')
-                        assert_nil(ok)
+                        assert_true(ok == nil or ok == false)
                         assert_str_matches(err, err_pattern)
                     else
                         ok, err = func(v, '*')
@@ -395,9 +396,11 @@ do
     function test_typed_args ()
         local typed_args = M.typed_args
     
-        make_type_match_test(function (v, t)
-            return pcall(typed_args(t)(nilify), v)
-        end)
+        make_type_match_test(function (val, td, unprotected)
+            local func = typed_args(td)(nilify)
+            if unprotected then return func(val) end
+            return pcall(func, val)
+        end)()
         
         for t, vs in pairs(values) do
             local func = M.typed_args(t, '...')(nilify)
@@ -436,6 +439,26 @@ do
             end
         end
         return true
+    end
+    
+    function test_typed_keyword_args ()
+        local typed_keyword_args = M.typed_keyword_args
+        
+        make_type_match_test(function (val, td, unprotected)
+            local func = typed_keyword_args{foo = td}(nilify)
+            if unprotected then return func{foo = val} end
+            return pcall(func, {foo = val})
+        end)()
+        
+        local func = typed_keyword_args{foo = 'string'}(nilify)
+        
+        for args, pattern in pairs{
+            --[{true}] = 'yo'
+        } do
+            assert_error_msg_matches(pattern, func, unpack(args))
+        end
+        -- @fixme test undeclared arg names
+        -- @fixme test error if arg is not a table
     end
 end
 
