@@ -422,6 +422,7 @@ local Pandoc = pandoc.Pandoc
 -- @treturn[2] string An error message.
 -- @raise An error if the type declaration cannot be parsed.
 function type_match (val, decl)
+    assert(type(decl) == 'string', 'expected a string.')
     if decl == '?*' then return true end
     if decl == '*' then
         if val ~= nil then return true end
@@ -434,7 +435,7 @@ function type_match (val, decl)
     return nil, format('expected %s, but got %s.', ts:gsub('|', ' or '), obs)
 end
 
---- Type-check function arguments when running in debugging mode.
+--- Type-check function arguments in debugging mode.
 --
 -- <h3>Type declaration grammar:</h3>
 --
@@ -496,7 +497,7 @@ if not DEBUG then
     end
 end
 
---- Type-check keyword arguments when running in debugging mode.
+--- Type-check keyword arguments in debugging mode.
 --
 -- Also triggers errors if a keyword is unknown.
 --

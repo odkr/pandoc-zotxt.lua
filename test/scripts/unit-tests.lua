@@ -143,6 +143,14 @@ local yaml = require 'tinyyaml'
 
 local M = require 'test-wrapper'
 
+-- Shorthands.
+local assert_error_msg_matches = lu.assert_error_msg_matches
+local assert_false = lu.assert_false
+local assert_nil = lu.assert_nil
+local assert_not_nil = lu.assert_not_nil
+local assert_str_matches = lu.assert_str_matches
+local assert_true = lu.assert_true
+
 
 --- Constants
 -- @section
@@ -308,15 +316,7 @@ end
 -- @section
 
 do
-    local assert_err_msg_equals = lu.assert_err_msg_equals
-    local assert_false = lu.assert_false
-    local assert_nil = lu.assert_nil
-    local assert_not_nil = lu.assert_not_nil
-    local assert_str_matches = lu.assert_str_matches
-    local assert_true = lu.assert_true
-
     local err_pattern = '.-%f[%a]expected [%a%s]+, but got %a+%.$'
-
     local values = {
         ['nil'] = {nil},
         ['boolean'] = {true, false},
@@ -330,6 +330,14 @@ do
 
     function make_type_match_test (func)
         return function ()
+            for td, pattern in pairs{
+                [true] = '.-: expected a string.$',
+                ['0'] = '^cannot parse type "0"%.$',
+                ['-nil'] = '^cannot parse type "%-nil"%.$'
+            } do
+                assert_error_msg_matches(pattern, func, nil, td)
+            end
+            
             local ok, err    
             for i = 1, type_lists.n do
                 local type_list = type_lists[i]
