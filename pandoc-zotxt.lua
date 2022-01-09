@@ -464,7 +464,6 @@ end
 -- )
 --
 -- @function typed_args
--- @fixme Not unit-tested.
 function typed_args (...)
     local types = pack(...)
     return function (func)
@@ -1374,7 +1373,7 @@ Values.n = 0
 --
 -- @param ... Items.
 --
--- @function Values.new
+-- @function Values:new
 Values.new = typed_args('table')(
     function (proto, ...)
         local obj = Object.new(proto)
@@ -1409,7 +1408,7 @@ Values.add = typed_args('table')(
 -- index, then that function is called with the table as only argument and
 -- whatever it returns is returned as the value for the index. If `getters`
 -- contains no function of that name, the name is looked up in the table's
--- `__index` metavalue.
+-- *old* `__index` metavalue.
 --
 -- @caveats
 --
@@ -3543,19 +3542,17 @@ do
     --
     -- Differs from Pandoc's walkers by:
     --
-    --  * walking AST elements of any type (inluding documents and metadata),
-    --  * walking the AST bottom-up,
-    --  * applying the filter to the given element itself,
-    --  * allowing functions in the filter to return data of arbitrary types,
-    --  * never modifying the original element, and
-    --  * accepting 'AstElement' as filter keyword.
+    -- * walking AST elements of any type (inluding documents and metadata),
+    -- * walking the AST bottom-up,
+    -- * applying the filter to the given element itself,
+    -- * allowing functions in the filter to return data of arbitrary types,
+    -- * never modifying the original element, and
+    -- * accepting 'AstElement' as element type.
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
     -- @return Typically but not necessarily, a new Pandoc AST element.
     --
-    -- @todo Try to make the filter more similar to Pandoc's walkers,
-    --  so that some of the documentation can be removed.
     -- @function elem_walk
     elem_walk = typed_args('*', 'table', '?number')(
         function (elem, filter, _rd)
