@@ -225,7 +225,7 @@ function id (...) return ... end
 --- Return `nil`.
 --
 -- @treturn nil `nil`.
-function nilify () return nil end
+function nilify () return end
 
 --- Read a Markdown file.
 --
@@ -307,85 +307,134 @@ end
 --- Tests
 -- @section
 
+do
+    local assert_err_msg_equals = lu.assert_err_msg_equals
+    local assert_false = lu.assert_false
+    local assert_nil = lu.assert_nil
+    local assert_not_nil = lu.assert_not_nil
+    local assert_str_matches = lu.assert_str_matches
+    local assert_true = lu.assert_true
 
-function make_type_match_test (func)
-    return function ()
-        local assert_str_matches = lu.assert_str_matches
-        local assert_nil = lu.assert_nil
-        local assert_true = lu.assert_true
-        local err_pattern = '^expected .-, but got .-%.$'
+    local err_pattern = '.-%f[%a]expected [%a%s]+, but got %a+%.$'
 
-        local values = {
-            ['nil'] = {nil},
-            ['boolean'] = {true, false},
-            ['number'] = {math.huge * -1, 0, 1, math.huge},
-            ['string'] = {''},
-            ['table'] = {{}},
-            ['function'] = {function () end},
-            ['thread'] = {coroutine.create(function () end)}
-        }
-        local type_lists = powerset(M.keys(values))
-    
-        for i = 1, type_lists.n do
-            local type_list = type_lists[i]
-            local type_spec = concat(type_list, '|')
-            for t, vs in pairs(values) do
-                for j = 1, #vs do
-                    local v = vs[j]
-                    local t = type(v)
-                    local opt_type_spec = '?' .. type_spec
-                    if type_spec:match(t) then
-                        assert_true(func(v, type_spec))
-                        assert_true(func(v, opt_type_spec))
-                    elseif type_spec ~= '' then
-                        local ok, err = func(v, type_spec)
-                        assert_nil(ok)
-                        assert_str_matches(err, err_pattern)
-                        if v == nil then
-                            assert_true(func(v, opt_type_spec))
-                        else
+    local values = {
+        ['nil'] = {nil},
+        ['boolean'] = {true, false},
+        ['number'] = {math.huge * -1, 0, 1, math.huge},
+        ['string'] = {''},
+        ['table'] = {{}},
+        ['function'] = {function () end},
+        ['thread'] = {coroutine.create(function () end)}
+    }
+    local type_lists = powerset(M.keys(values))
+
+    function make_type_match_test (func)
+        return function ()
+            local ok, err    
+            for i = 1, type_lists.n do
+                local type_list = type_lists[i]
+                local type_spec = concat(type_list, '|')
+                for t, vs in pairs(values) do
+                    for j = 1, #vs do
+                        local v = vs[j]
+                        local t = type(v)
+                        local opt_type_spec = '?' .. type_spec
+                        if type_spec:match(t) then
+                            ok, err = func(v, type_spec)
+                            assert_nil(err)
+                            assert_true(ok)
                             ok, err = func(v, opt_type_spec)
+                            assert_nil(err)
+                            assert_true(ok)
+                        elseif type_spec ~= '' then
+                            local ok, err = func(v, type_spec)
                             assert_nil(ok)
                             assert_str_matches(err, err_pattern)
+                            if v == nil then
+                                assert_true(func(v, opt_type_spec))
+                            else
+                                ok, err = func(v, opt_type_spec)
+                                assert_nil(ok)
+                                assert_str_matches(err, err_pattern)
+                            end
+                        end
+                    end
+                end
+            end
+    
+            for t, vs in pairs(values) do
+                for i = 1, #vs do
+                    local v = vs[i]
+                    if v == nil then
+                        ok, err = func(v, '*')
+                        assert_nil(ok)
+                        assert_str_matches(err, err_pattern)
+                    else
+                        ok, err = func(v, '*')
+                        assert_nil(err)
+                        assert_true(ok)
+                    end
+                    ok, err = func(v, '?*')
+                    assert_nil(err)
+                    assert_true(ok)
+                end
+            end
+        end
+    end
+
+    test_type_match = make_type_match_test(M.type_match)
+
+    function test_typed_args ()
+        local typed_args = M.typed_args
+    
+        make_type_match_test(function (v, t)
+            return pcall(typed_args(t)(nilify), v)
+        end)
+        
+        for t, vs in pairs(values) do
+            local func = M.typed_args(t, '...')(nilify)
+            local ok, err
+            for i = 1, #vs do
+                local v = vs[i]
+                for _, args in ipairs{
+                    {v, v},
+                    {v, v, v}
+                } do
+                    ok, err = pcall(func, unpack(args))
+                    assert_nil(err)
+                    assert_true(ok)
+                end
+                for at, avs in pairs(values) do
+                    if at ~= t then
+                        for j = 1, #avs do
+                            local av = avs[j]
+                            if av ~= nil then
+                                for _, args in ipairs{
+                                    {v},
+                                    {v, av},
+                                    {v, av, v},
+                                    {v, v, av},
+                                    {v, va, av},
+                                    {v, v, v, av}
+                                } do
+                                    ok, err = pcall(func, unpack(args))
+                                    assert_false(ok)
+                                    assert_str_matches(err, err_pattern)
+                                end
+                            end
                         end
                     end
                 end
             end
         end
-    
-        for t, vs in pairs(values) do
-            for i = 1, #vs do
-                local v = vs[i]
-                if v == nil then
-                    local ok, err = func(v, '*')
-                    assert_nil(ok)
-                    assert_str_matches(err, err_pattern)
-                else
-                    assert_true(func(v, '*'))
-                end
-                assert_true(func(v, '?*'))
-            end
-        end
+        return true
     end
 end
 
-test_type_match = make_type_match_test(M.type_match)
-
-test_typed_args = make_type_match_test(function (v, t)
-    local ok, err
-    local function func () return end
-    ok, err = pcall(M.typed_args(t)(func), v)
-    if not ok then return nil, err end
-    for v2 in _, ipairs{false, 0, '', {}, func, coroutine.create(func)} do
-        ok, err = pcall(M.typed_args(t)(func), v, v2)
-        if not ok then return nil, err end
-    end
-    ok, err = pcall(M.typed_args(t, '...')(func), v, v)
-    if not ok then return nil, err end
-    return true
-end)
-
-
+-- test_typed_keyword_args = make_type_match_test(function (v, t)
+--    local ok, err
+--    local function func () return end
+-- end)
 
 
 

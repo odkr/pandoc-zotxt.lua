@@ -420,6 +420,7 @@ local Pandoc = pandoc.Pandoc
 -- @treturn[1] bool `true` if the value is of the declared type(s).
 -- @treturn[2] nil `nil` otherwise.
 -- @treturn[2] string An error message.
+-- @raise An error if the type declaration cannot be parsed.
 function type_match (val, decl)
     if decl == '?*' then return true end
     if decl == '*' then
@@ -427,7 +428,7 @@ function type_match (val, decl)
         return nil, 'expected type other than nil.'
     end
     local ts = decl:gsub('^%?', 'nil|'):match ('^([%l|]+)$')
-    if not ts then error(format('cannot parse type "%s".', decl), 3) end
+    if not ts then error(format('cannot parse type "%s".', decl), 2) end
     local obs = type(val)
     for exp in ts:gmatch '[^|]+' do if obs == exp then return true end end
     return nil, format('expected %s, but got %s.', ts:gsub('|', ' or '), obs)
@@ -437,10 +438,13 @@ end
 --
 -- <h3>Type declaration grammar:</h3>
 --
--- The type declaration syntax is that of @{type_match}, save for that
--- you can use '`...`' to declare that an argument is of the same type
--- as the previous one; if '`...`' is the last type declaration, then
--- the previous type declaration applies to all remaning arguments.
+-- The type declaration syntax is that of @{type_match}, save for that you
+-- can use '`...`' to declare that an argument is of the same type as the
+-- previous one; if '`...`' is the last type declaration, then the previous
+-- type declaration applies to all remaining arguments.
+--
+-- @tip If you get weird Lua errors after you have added type declarations
+-- to a function, check if you forget the quotes around `'...'`.
 --
 -- @caveats Wrong type names do *not* raise an error on declaration.
 --
