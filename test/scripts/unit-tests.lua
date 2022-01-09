@@ -288,98 +288,82 @@ do
     end
 end
 
+
+--- Generate the list of all partial lists of a list.
+--
+-- @tab list A list.
+-- @treturn M.Value The list of all partial lists of the list.
+function powerset (list)
+    local power = M.Values:new(M.Values:new())
+    for i = 1, #list do
+        for j = 1, power.n do
+            power:add(power[j]:new(list[i]))
+        end
+    end
+    return power
+end
+
+
 --- Tests
 -- @section
 
 function test_type_match ()
-    -- @fixme replace with powerset and auto-generate.
+    local type_match = M.type_match
+    local assert_str_matches = lu.assert_str_matches
+    local assert_nil = lu.assert_nil
+    local assert_true = lu.assert_true
+    local err_pattern = '^expected .-, but got .-%.$'
 
-
-    local all = 'boolean|function|nil||number|string|table|thread|userdata'
-    local optional_all = '?' .. all
-    for args, exp in pairs{
-        -- True base cases.
-        [{nil, 'nil'}] = true,
-        [{true, 'boolean'}] = true,
-        [{false, 'boolean'}] = true,
-        [{-1, 'number'}] = true,
-        [{0, 'number'}] = true,
-        [{1, 'number'}] = true,
-        [{math.huge, 'number'}] = true,
-        [{math.huge * -1, 'number'}] = true,
-        [{'', 'string'}] = true,
-        [{'text', 'string'}] = true,
-        [{'1', 'string'}] = true,
-        [{{}, 'table'}] = true,
-        [{{{}}, 'table'}] = true,
-        [{function () end, 'function'}] = true,
-        [{coroutine.create(function () end), 'thread'}] = true,
-        -- Making them optional should not chage anything.
-        [{nil, '?nil'}] = true,
-        [{true, '?boolean'}] = true,
-        [{false, '?boolean'}] = true,
-        [{-1, '?number'}] = true,
-        [{0, '?number'}] = true,
-        [{1, '?number'}] = true,
-        [{math.huge, '?number'}] = true,
-        [{math.huge * -1, '?number'}] = true,
-        [{'', '?string'}] = true,
-        [{'text', '?string'}] = true,
-        [{'1', '?string'}] = true,
-        [{{}, '?table'}] = true,
-        [{{{}}, '?table'}] = true,
-        [{function () end, '?function'}] = true,
-        [{coroutine.create(function () end), '?thread'}] = true,
-        -- Adding irrelevant types should not change anything either.
-        [{nil, 'nil|nil'}] = true,
-        [{true, 'nil|boolean'}] = true,
-        [{false, 'nil|boolean'}] = true,
-        [{-1, 'nil|number'}] = true,
-        [{0, 'nil|number'}] = true,
-        [{1, 'nil|number'}] = true,
-        [{math.huge, 'nil|number'}] = true,
-        [{math.huge * -1, 'nil|number'}] = true,
-        [{'', 'nil|string'}] = true,
-        [{'text', 'nil|string'}] = true,
-        [{'1', 'nil|string'}] = true,
-        [{{}, 'nil|table'}] = true,
-        [{{{}}, 'nil|table'}] = true,
-        [{function () end, 'nil|function'}] = true,
-        [{coroutine.create(function () end), 'nil|thread'}] = true,
-        -- Adding even more irrelevant types.
-        [{nil, all}] = true,
-        [{true, all}] = true,
-        [{false, all}] = true,
-        [{-1, all}] = true,
-        [{0, all}] = true,
-        [{1, all}] = true,
-        [{math.huge, all}] = true,
-        [{math.huge * -1, all}] = true,
-        [{'', all}] = true,
-        [{'text', all}] = true,
-        [{'1', all}] = true,
-        [{{}, all}] = true,
-        [{{{}}, all}] = true,
-        [{function () end, all}] = true,
-        -- Let's make them optional.
-        [{nil, optional_all}] = true,
-        [{true, optional_all}] = true,
-        [{false, optional_all}] = true,
-        [{-1, optional_all}] = true,
-        [{0, optional_all}] = true,
-        [{1, optional_all}] = true,
-        [{math.huge, optional_all}] = true,
-        [{math.huge * -1, optional_all}] = true,
-        [{'', optional_all}] = true,
-        [{'text', optional_all}] = true,
-        [{'1', optional_all}] = true,
-        [{{}, optional_all}] = true,
-        [{{{}}, optional_all}] = true,
-        [{function () end, optional_all}] = true,
-        [{coroutine.create(function () end), optional_all}] = true,
-        -- Let's
-    } do
-        lu.assert_equals(M.type_match(unpack(args)), exp)
+    local values = {
+        ['nil'] = {nil},
+        ['boolean'] = {true, false},
+        ['number'] = {math.huge * -1, 0, 1, math.huge},
+        ['string'] = {''},
+        ['table'] = {{}},
+        ['function'] = {function () end},
+        ['thread'] = {coroutine.create(function () end)}
+    }
+    local type_lists = powerset(M.keys(values))
+    
+    for i = 1, type_lists.n do
+        local type_list = type_lists[i]
+        local type_spec = concat(type_list, '|')
+        for t, vs in pairs(values) do
+            for j = 1, #vs do
+                local v = vs[j]
+                local t = type(v)
+                local opt_type_spec = '?' .. type_spec
+                if type_spec:match(t) then
+                    assert_true(type_match(v, type_spec))
+                    assert_true(type_match(v, opt_type_spec))
+                elseif type_spec ~= '' then
+                    local ok, err = type_match(v, type_spec)
+                    assert_nil(ok)
+                    assert_str_matches(err, err_pattern)
+                    if v == nil then
+                        assert_true(type_match(v, opt_type_spec))
+                    else
+                        ok, err = type_match(v, opt_type_spec)
+                        assert_nil(ok)
+                        assert_str_matches(err, err_pattern)
+                    end
+                end
+            end
+        end
+    end
+    
+    for t, vs in pairs(values) do
+        for i = 1, #vs do
+            local v = vs[i]
+            if v == nil then
+                local ok, err = type_match(v, '*')
+                assert_nil(ok)
+                assert_str_matches(err, err_pattern)
+            else
+                assert_true(type_match(v, '*'))
+            end
+            assert_true(type_match(v, '?*'))
+        end
     end
 end
 
