@@ -1210,9 +1210,9 @@ setmetatable(Object, Object.mt)
 
 --- Delegate to a prototype.
 --
--- Create a new table, set its metatable to a copy of the prototype's metatable,
--- set the `__index` metavalue to the prototype, and merge with the given metatable,
--- in that order.
+-- Create a new table, set its metatable to a copy of the prototype's
+-- metatable, set the `__index` metavalue to the prototype, and merge
+-- with the given metatable, in that order.
 --
 --    obj = Object(mt)
 --
@@ -1254,7 +1254,7 @@ Object.mt.__call = typed_args('table', '?table')(
 
 --- Initialise a new object.
 --
--- `Object:new(props)` is equivalent to `update(Object(), props)`.
+-- `Object:new(props)` is short for `update(Object(), props)`.
 --
 -- @tab proto A prototype.
 -- @tab[opt] props Properties.
@@ -3901,7 +3901,12 @@ do
     --
     -- @see Options
     -- @function opts_parse
-    opts_parse = typed_args('table|userdata', '?table', '...')(
+    opts_parse = typed_args('table|userdata', {
+        name = 'string',
+        type = '?string',
+        parse = '?function',
+        prefix = '?string'
+    }, '...')(
         function (meta, ...)
             local opts = {}
             local defs = pack(...)
@@ -3986,6 +3991,8 @@ do
 
     --- Fetch a CSL item via zotxt.
     --
+    -- @side May re-order the elements of @{connectors.Zotero.citekey_types}.
+    --
     -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
     -- @treturn[1] table A CSL item.
     -- @treturn[2] nil `nil` if an error occurred.
@@ -3993,7 +4000,7 @@ do
     -- @raise See @{http_get}.
     --
     -- @function connectors.Zotero:fetch
-    connectors.Zotero.fetch = typed_args('table', 'string')(
+    connectors.Zotero.fetch = typed_args({citekey_types = 'table'}, 'string')(
         function (self, ckey)
             local ckey_types = self.citekey_types
             local err = nil
