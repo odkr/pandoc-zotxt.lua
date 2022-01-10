@@ -147,7 +147,6 @@ local M = require 'test-wrapper'
 local assert_error_msg_matches = lu.assert_error_msg_matches
 local assert_false = lu.assert_false
 local assert_nil = lu.assert_nil
-local assert_not_nil = lu.assert_not_nil
 local assert_str_matches = lu.assert_str_matches
 local assert_true = lu.assert_true
 
@@ -330,12 +329,17 @@ do
 
     function make_type_match_test (func)
         return function ()
-            for td, pattern in pairs{
-                [true] = '.-%f[%a]expected string or table, got boolean.',
-                [''] = '.-%f[%a]malformed type declaration%.$',
-                ['-nil'] = '.-%f[%a]malformed type declaration%.$',
+            local cycle = {}
+            cycle[1] = cycle
+
+            for args, pattern in pairs{
+                [{true, true}] = '.-%f[%a]expected string or table, got boolean.',
+                [{true, ''}] = '.-%f[%a]malformed type declaration%.$',
+                [{true, '-nil'}] = '.-%f[%a]malformed type declaration%.$',
+                [{cycle, cycle}] = '.-%f[%a]cycle in data tree.',
             } do
-                assert_error_msg_matches(pattern, func, true, td, true)
+                local val, td = unpack(args)
+                assert_error_msg_matches(pattern, func, val, td, true)
             end
 
             local ok, err
@@ -346,50 +350,106 @@ do
                     for j = 1, #vs do
                         local v = vs[j]
                         local opt_type_spec = '?' .. type_spec
+                        local star_spec = '*|' .. type_spec
                         if type_spec:match(t) then
-                            ok, err = func(v, type_spec)
-                            assert_nil(err)
-                            assert_true(ok)
-                            ok, err = func(v, opt_type_spec)
-                            assert_nil(err)
-                            assert_true(ok)
+                            for _, ts in pairs{
+                                type_spec,
+                                opt_type_spec,
+                                star_spec
+                            } do
+                                for _, argv in pairs{
+                                    {v, ts},
+                                    {{foo = v}, {foo = ts}}
+                                } do
+                                    ok, err = func(unpack(argv))
+                                    assert_nil(err)
+                                    assert_true(ok)
+                                end
+                            end
                         elseif type_spec ~= '' then
-                            ok, err = func(v, type_spec)
-                            assert_true(ok == nil or ok == false)
-                            assert_str_matches(err, err_pattern)
-                            if v == nil then
-                                assert_true(func(v, opt_type_spec))
-                            else
-                                ok, err = func(v, opt_type_spec)
+                            for _, argv in pairs{
+                                {v, type_spec},
+                                {{foo = v}, {foo = type_spec}}
+                            } do
+                                ok, err = func(unpack(argv))
                                 assert_true(ok == nil or ok == false)
                                 assert_str_matches(err, err_pattern)
+                                if v == nil then
+                                    ok, err = func(unpack(argv))
+                                    assert_nil(err)
+                                    assert_true(ok)
+                                else
+                                    ok, err = func(unpack(argv))
+                                    assert_true(ok == nil or ok == false)
+                                    assert_str_matches(err, err_pattern)
+                                end
                             end
+
                         end
                     end
+                end
+
+                local args = {}
+                local opt_type_list = {}
+                local star_list = {}
+                for j = 1, #type_list do
+                    args[j] = values[type_list[j]][1]
+                    opt_type_list[j] = '?' .. type_list[j]
+                    star_list[j] = '*|' .. type_list[j]
+                end
+                for _, tl in pairs{type_list, opt_type_list, star_list} do
+                    ok, err = func(args, tl)
+                    assert_nil(err)
+                    assert_true(ok)
                 end
             end
 
             for _, vs in pairs(values) do
                 for i = 1, #vs do
                     local v = vs[i]
-                    if v == nil then
-                        ok, err = func(v, '*')
-                        assert_true(ok == nil or ok == false)
-                        assert_str_matches(err, err_pattern)
-                    else
-                        ok, err = func(v, '*')
+                    for _, argv in pairs{
+                        {v, '*'},
+                        {{foo = v}, {foo = '*'}}
+                    } do
+                        if v == nil then
+                            ok, err = func(unpack(argv))
+                            assert_true(ok == nil or ok == false)
+                            assert_str_matches(err, err_pattern)
+                        else
+                            ok, err = func(unpack(argv))
+                            assert_nil(err)
+                            assert_true(ok)
+                        end
+                    end
+                    for _, argv in pairs{
+                        {v, '?*'},
+                        {{foo = v}, {foo = '?*'}}
+                    } do
+                        ok, err = func(unpack(argv))
                         assert_nil(err)
                         assert_true(ok)
                     end
-                    ok, err = func(v, '?*')
-                    assert_nil(err)
-                    assert_true(ok)
                 end
+            end
+
+            for argv, pattern in pairs{
+                [{{1, '2'}, {'number', 'number'}}] =
+                    '.-%f[%a]index 2: expected number, got string%.$',
+                [{{foo = 'bar'}, {foo = '?table'}}] =
+                    '.-%f[%a]index foo: expected table or nil, got string%.$',
+                [{'foo', {foo = '?table'}}] =
+                    '.-%f[%a]expected table or userdata, got string%.$'
+            } do
+                ok, err = func(unpack(argv))
+                assert_true(ok == nil or ok == false)
+                assert_str_matches(err, pattern)
             end
         end
     end
 
-    test_type_match = make_type_match_test(M.type_match)
+    test_type_match = make_type_match_test(function(val, td)
+        return M.type_match(val, td)
+    end)
 
     function test_typed_args ()
         local typed_args = M.typed_args
@@ -400,9 +460,6 @@ do
             return pcall(func, val)
         end)()
 
-        -- @fixme The dot syntax is not fully tested.
-        -- (Namely, the or nil condition if it's the final arg.)
-        -- And withint stuff.
         for t, vs in pairs(values) do
             local func = M.typed_args(t, '...')(nilify)
             local ok, err
@@ -410,6 +467,7 @@ do
                 local v = vs[i]
                 for _, args in ipairs{
                     {v, v},
+                    {v, v, nil},
                     {v, v, v}
                 } do
                     ok, err = pcall(func, unpack(args))
@@ -422,6 +480,7 @@ do
                             local av = avs[j]
                             if av ~= nil then
                                 for _, args in ipairs{
+                                    {v, nil, v},
                                     {v, av},
                                     {v, av, v},
                                     {v, v, av},
@@ -1192,7 +1251,7 @@ function test_options_add ()
         {'argument 2: expected table or userdata, got nil%.', add, options, nil},
         {'argument 2: expected table or userdata, got boolean%.', add, options, true},
         {'argument 2: index name: expected string, got nil%.', add, options, {}},
-        {'argument 2: index parse: expected nil or function, got boolean%.', add, options, {name = 'n', parse = true}}
+        {'argument 2: index parse: expected function or nil, got boolean%.', add, options, {name = 'n', parse = true}}
     }
 
     for _, v in ipairs(errors) do

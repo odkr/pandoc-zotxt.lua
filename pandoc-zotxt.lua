@@ -397,40 +397,52 @@ local Pandoc = pandoc.Pandoc
 do
     local abbrs = {
         ['%*'] = 'boolean|function|number|string|table|thread|userdata',
-        ['%?'] = 'nil|'
+        ['%?(.*)'] = '%1|nil'
     }
 
     --- Check whether a value is of a type.
     --
     -- <h3>Type declaration grammar:</h3>
     --
-    -- Give one or more Lua type names separated by '|' to declare that the
-    -- given value may be of any of those types (e.g., `'string|table'`).
-    -- '`*`' is short for a list of all types but `nil`. '`?T`' is short
-    -- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`).
+    -- One or more Lua type names separated by '|' require the given value to
+    -- be of one of the given types (e.g., `'string|table'` requires the value
+    -- to be a string or a table). `'*'` is short for the list of all types
+    -- save for `nil`. `'?T'` is short for `'T|nil'` (e.g., `'?table'` is
+    -- short for `'table|nil'`).
     --
     -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
     --
     -- > Type = 'boolean' | 'function' | 'nil'    | 'number'   |
     -- >        'string'  | 'table'    | 'thread' | 'userdata'
     -- >
-    -- > Type list = ['?'], ('*' | (type, {'|', type list}))
+    -- > Type list = [ '?' ], ( '*' | type, { '|', type list } )
     --
-    -- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
+    -- <h3>Composite types:</h3>
+    --
+    -- You can perform more granular type-checks for tables and userdata
+    -- by giving a table that maps indices to type declarations.
+    --
+    --    > type_check({1, '2'}, {'number', 'number'})
+    --    nil    index 2: expected number, got string.
+    --    > type_check({foo = 'bar'}, {foo = '?table'})
+    --    nil    index foo: expected table or nil, got string.
+    --    > type_check('foo', {foo = '?table'})
+    --    nil    expected table or userdata, got string.
+    --
+    -- @caveats Non-referring type names (e.g., 'int') do *not* raise an error,
+    --  they just fail.
     --
     -- @param val A value.
-    -- @string td A type declaration (e.g., `'?number|string'`).
+    -- @tparam string|table td A type declaration.
     -- @treturn[1] bool `true` if the value is of the declared type(s).
     -- @treturn[2] nil `nil` otherwise.
     -- @treturn[2] string An error message.
-    -- @raise An error if the type declaration cannot be parsed.
-    -- @fixme Table syntax is undocumented.
-    -- @fixme Table sytax is not unit-tested.
-    function type_match (val, td)
+    -- @raise An error if the type declaration is malformed.
+    function type_match (val, td, _seen)
         local dt = type(td)
         if dt == 'string' then
             for pat, repl in pairs(abbrs) do td = td:gsub(pat, repl) end
-            assert(td:match ('^([%l|]+)$'), 'malformed type declaration.')
+            assert(td:match '^([%l|]+)$', 'malformed type declaration.')
             local t = type(val)
             for ex in td:gmatch '[^|]+' do if t == ex then return true end end
             local err = format('expected %s, got %s.', td:gsub('|', ' or '), t)
@@ -438,13 +450,16 @@ do
         elseif dt == 'table' then
             local ok, err = type_match(val, 'table|userdata')
             if not ok then return nil, err end
+            if not _seen then _seen = {} end
+            assert(not _seen[val], 'cycle in data tree.')
+            _seen[val] = true
             for k, t in pairs(td) do
-                ok, err = type_match(val[k], t)
+                ok, err = type_match(val[k], t, _seen)
                 if not ok then return nil, format('index %s: %s', k, err) end
             end
             return true
         end
-        error(format('expected string or table, got %s.', dt, 2))
+        error(format('expected string or table, got %s.', dt))
     end
 end
 
@@ -452,17 +467,18 @@ end
 --
 -- <h3>Type declaration grammar:</h3>
 --
--- The type declaration syntax is that of @{type_match}, save for that you
--- can use '`...`' to declare that an argument is of the same type as the
--- previous one; if '`...`' is the last type declaration, then the previous
--- type declaration applies to all remaining arguments.
+-- The type declaration syntax is that of @{type_match}, save for that '`...`'
+-- can be used to require that an argument is of the same type as the previous
+-- one. If '`...`' is the last type declaration, then the previous type
+-- declaration applies to all remaining arguments.
 --
 -- @tip If you get weird Lua errors after you have added type declarations
--- to a function, check if you forget the quotes around `'...'`.
+--  to a function, check if you forgot the quotes around `'...'`.
 --
--- @caveats Wrong type names do *not* raise an error on declaration.
+-- @caveats Non-referring type names (e.g., 'int') do *not* raise an error
+--  at time of declaration, they just fail at run-time.
 --
--- @string ... Type declarations.
+-- @tparam string|table ... Type declarations. See @{type_match}.
 -- @treturn func A function that adds type checks to a function.
 --
 -- @usage
@@ -482,7 +498,6 @@ end
 -- )
 --
 -- @function typed_args
--- @fixme Special condition that '...' at last position is optional is undocumented.
 function typed_args (...)
     local decls = pack(...)
     return function (func)
@@ -491,7 +506,7 @@ function typed_args (...)
             local args = pack(...)
             local td, prev
             local n = math.max(decls.n, args.n)
-            for i = 1, math.max(decls.n, args.n) do
+            for i = 1, n do
                 if     decls[i] == '...' then prev = true
                 elseif decls[i]          then prev = false
                                               td = decls[i]
@@ -1349,7 +1364,7 @@ Values.n = 0
 Values.new = typed_args({add = 'function'})(
     function (proto, ...)
         local obj = Object.new(proto)
-        if select('#', ...) > 0 then obj:add(unpack(pack(...))) end
+        if select('#', ...) > 0 then obj:add(...) end
         return obj
     end
 )
@@ -3464,8 +3479,8 @@ do
     function elem_type (elem, _seen)
         if     not _seen   then _seen = {}
         elseif _seen[elem] then return nil, 'cycle in data tree.'
-        else                    _seen[elem] = true
         end
+        _seen[elem] = true
         local et, err = el_type(elem, _seen)
         if not et then return nil, err end
         local ets = Values()
@@ -3859,14 +3874,12 @@ do
     --
     -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
     --
-    -- > Whitespace = ' ' | TAB | CR | LF
+    -- > Space = ' ' | TAB | CR | LF
     -- >
-    -- > Simple type = 'number' | 'string'
+    -- > Scalar = { space }, ( 'number' | 'string' ), { space }
     -- >
-    -- > List = 'list', {whitespace},
-    -- >        ['<', {whitespace}, (simple type | list), {whitespace}, '>'? ]
-    -- >
-    -- > Type declaration = {whitespace}, (simple type | list), {whitespace}
+    -- > List = { space }, 'list', { space },
+    -- >        [ '<', ( scalar | list ), '>'? ], { space }
     --
     -- No type checks or conversions are performed for `nil`.
     --
@@ -4287,7 +4300,10 @@ do
     --
     -- @function connectors.ZoteroWeb:search
     connectors.ZoteroWeb.search = typed_args(
-        'table',
+        {
+            endpoints = 'function',
+            query = 'function'
+        },
         'string',
         '?string',
         '...'
@@ -4320,7 +4336,10 @@ do
     --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
     -- @function connectors.ZoteroWeb:lookup
-    connectors.ZoteroWeb.lookup = typed_args('table', 'string')(
+    connectors.ZoteroWeb.lookup = typed_args({
+        endpoints = 'function',
+        query = 'function'
+    }, 'string')(
         function (self, id)
             local params = {v = 3, key = self.api_key,
                             format ='csljson', itemType='-attachment'}
@@ -4361,7 +4380,11 @@ do
     --  @{connectors.ZoteroWeb.mt.getters.groups}.
     --
     -- @function connectors.ZoteroWeb:fetch
-    connectors.ZoteroWeb.fetch = typed_args('table', 'string')(
+    connectors.ZoteroWeb.fetch = typed_args({
+        citekey_types = 'table',
+        lookup = 'function',
+        search = 'function'
+    }, 'string')(
         function (self, ckey)
             -- luacheck: ignore err
             assert(ckey ~= '', 'citation key is the empty string.')
