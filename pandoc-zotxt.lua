@@ -319,7 +319,7 @@
 
 -- Run in debugging mode?
 -- luacheck: push ignore DEBUG
-local DEBUG = DEBUG or false
+local DEBUG = true -- DEBUG or false
 -- luacheck: pop
 
 -- Built-in functions.
@@ -394,45 +394,58 @@ local Pandoc = pandoc.Pandoc
 --
 -- @section
 
---- Check whether a value is of a type.
---
--- <h3>Type declaration grammar:</h3>
---
--- Give one or more Lua type names separated by '|' to declare that the given
--- value may be of any of those types (e.g., `'string|table'`). Use '`*`' to
--- declare that the value may be of any type oter than `nil`. '`?T`' is short
--- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`). '`?*`' is
--- a special case; it signifies that the value may be of any type, even `nil`.
---
--- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
---
--- > Type = 'boolean' | 'function' | 'nil'    | 'number'   |
--- >        'string'  | 'table'    | 'thread' | 'userdata'
--- >
--- > List of types = (type, {'|', type}) | '*'
--- >
--- > Type declaration = ['?'], list of types
---
--- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
---
--- @param val A value.
--- @string decl A type declaration (e.g., `'?number|string'`).
--- @treturn[1] bool `true` if the value is of the declared type(s).
--- @treturn[2] nil `nil` otherwise.
--- @treturn[2] string An error message.
--- @raise An error if the type declaration cannot be parsed.
-function type_match (val, decl)
-    assert(type(decl) == 'string', 'expected a string.')
-    if decl == '?*' then return true end
-    if decl == '*' then
-        if val ~= nil then return true end
-        return nil, 'expected type other than nil.'
+do
+    local abbrs = {
+        ['%*'] = 'boolean|function|number|string|table|thread|userdata',
+        ['%?'] = 'nil|'
+    }
+
+    --- Check whether a value is of a type.
+    --
+    -- <h3>Type declaration grammar:</h3>
+    --
+    -- Give one or more Lua type names separated by '|' to declare that the
+    -- given value may be of any of those types (e.g., `'string|table'`).
+    -- '`*`' is short for a list of all types but `nil`. '`?T`' is short
+    -- for '`nil|T`' (e.g., `'?table'` is equivalent to `'nil|table'`).
+    --
+    -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
+    --
+    -- > Type = 'boolean' | 'function' | 'nil'    | 'number'   |
+    -- >        'string'  | 'table'    | 'thread' | 'userdata'
+    -- >
+    -- > Type list = ['?'], ('*' | (type, {'|', type list}))
+    --
+    -- @caveats Wrong type names (e.g., 'int') do *not* raise an error.
+    --
+    -- @param val A value.
+    -- @string td A type declaration (e.g., `'?number|string'`).
+    -- @treturn[1] bool `true` if the value is of the declared type(s).
+    -- @treturn[2] nil `nil` otherwise.
+    -- @treturn[2] string An error message.
+    -- @raise An error if the type declaration cannot be parsed.
+    -- @fixme Table syntax is undocumented.
+    -- @fixme Table sytax is not unit-tested.
+    function type_match (val, td)
+        local dt = type(td)
+        if dt == 'string' then
+            for pat, repl in pairs(abbrs) do td = td:gsub(pat, repl) end
+            assert(td:match ('^([%l|]+)$'), 'malformed type declaration.')
+            local t = type(val)
+            for ex in td:gmatch '[^|]+' do if t == ex then return true end end
+            local err = format('expected %s, got %s.', td:gsub('|', ' or '), t)
+            return nil, err
+        elseif dt == 'table' then
+            local ok, err = type_match(val, 'table|userdata')
+            if not ok then return nil, err end
+            for k, t in pairs(td) do
+                ok, err = type_match(val[k], t)
+                if not ok then return nil, format('index %s: %s', k, err) end
+            end
+            return true
+        end
+        error(format('expected string or table, got %s.', dt, 2))
     end
-    local ts = decl:gsub('^%?', 'nil|'):match ('^([%l|]+)$')
-    if not ts then error(format('cannot parse type "%s".', decl), 2) end
-    local obs = type(val)
-    for exp in ts:gmatch '[^|]+' do if obs == exp then return true end end
-    return nil, format('expected %s, but got %s.', ts:gsub('|', ' or '), obs)
 end
 
 --- Type-check function arguments in debugging mode.
@@ -469,22 +482,24 @@ end
 -- )
 --
 -- @function typed_args
+-- @fixme Special condition that '...' at last position is optional is undocumented.
 function typed_args (...)
-    local types = pack(...)
+    local decls = pack(...)
     return function (func)
         return function (...)
             -- luacheck: ignore type
             local args = pack(...)
-            local type, prev
-            for i = 1, math.max(types.n, args.n) do
-                if     types[i] == '...' then prev = true
-                elseif types[i]          then type = types[i]
+            local td, prev
+            local n = math.max(decls.n, args.n)
+            for i = 1, math.max(decls.n, args.n) do
+                if     decls[i] == '...' then prev = true
+                elseif decls[i]          then prev = false
+                                              td = decls[i]
                 elseif not prev          then break
                 end
-                local ok, err = type_match(args[i], type)
-                if not ok then
-                    error(format('argument %d: %s', i, err), 2)
-                end
+                if args[i] == nil and prev and i == n then break end
+                local ok, err = type_match(args[i], td)
+                if not ok then error(format('argument %d: %s', i, err), 2) end
             end
             return func(...)
         end
@@ -493,61 +508,6 @@ end
 
 if not DEBUG then
     function typed_args ()
-        return function (...) return ... end
-    end
-end
-
---- Type-check keyword arguments in debugging mode.
---
--- Also triggers errors if a keyword is unknown.
---
--- @caveats Wrong type names do *not* raise an error on declaration.
---
--- @tparam {string=string,...} types A mapping of keywords
---  to [type declarations](#type_match).
--- @treturn func A function that adds type checks to a function.
---
--- @usage
--- Foo = Object()
--- Foo.new = typed_keyword_args{
---     bar = 'number',
---     baz = '?string'
--- }(getmetatable(Foo).__call)
---
--- @function typed_keyword_args
--- @fixme Not unit-tested.
-typed_keyword_args = typed_args('table')(
-    function (types)
-        return function (func)
-            return typed_args('table', '?table')(
-                function (proto, args)
-                    do
-                        -- luacheck: ignore args type
-                        local args = args
-                        if not args then args = {} end
-                        for name, type in pairs(types) do
-                            if proto[name] == nil then
-                                local ok, err = type_match(args[name], type)
-                                if not ok then
-                                    error(name .. ': ' .. err, 2)
-                                end
-                            end
-                        end
-                        for name in pairs(args) do
-                            if not types[name] then
-                                error(name .. ': no such argument.', 2)
-                            end
-                        end
-                    end
-                    return func(proto, args)
-                end
-            )
-        end
-    end
-)
-
-if not DEBUG then
-    function typed_keyword_args ()
         return function (...) return ... end
     end
 end
@@ -1250,12 +1210,21 @@ setmetatable(Object, Object.mt)
 
 --- Delegate to a prototype.
 --
--- Set a table's metatable to a copy of the prototype's metatable, then
--- set the given metavalues, and finally set the `__index` metavalue to
--- the prototype.
+-- Create a new table, set its metatable to a copy of the prototype's metatable,
+-- set the `__index` metavalue to the prototype, and merge with the given metatable,
+-- in that order.
+--
+--    obj = Object(mt)
+--
+-- is short for
+--
+--    obj = setmetatable(
+--        {},
+--        update({}, getmetatable(Object), {__index = Object), mt)
+--    )
 --
 -- @tab proto A prototype.
--- @tab[opt] meta Metavalues.
+-- @tab[opt] mt A metatable.
 -- @treturn Object An object.
 --
 -- @usage
@@ -1278,10 +1247,8 @@ setmetatable(Object, Object.mt)
 --
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
-    function (proto, meta)
-        local mt = copy(getmetatable(proto), false)
-        update(mt, {__index = proto}, meta)
-        return setmetatable({}, mt)
+    function (proto, mt)
+        return setmetatable({}, update({}, getmetatable(proto), {__index = proto}, mt))
     end
 )
 
@@ -1379,10 +1346,10 @@ Values.n = 0
 -- @param ... Items.
 --
 -- @function Values:new
-Values.new = typed_args('table')(
+Values.new = typed_args({add = 'function'})(
     function (proto, ...)
         local obj = Object.new(proto)
-        obj:add(...)
+        if select('#', ...) > 0 then obj:add(unpack(pack(...))) end
         return obj
     end
 )
@@ -1394,7 +1361,7 @@ Values.new = typed_args('table')(
 -- @param ... Items.
 --
 -- @function Values:add
-Values.add = typed_args('table')(
+Values.add = typed_args({n = 'number'})(
     function (self, ...)
         local items = pack(...)
         local n = self.n
@@ -3699,14 +3666,12 @@ Options = Values()
 --
 -- @see Options:add
 -- @function Options:new
-Options.new = typed_args('table', '...')(
-    typed_keyword_args{
-        name = 'string',
-        type = '?string',
-        parse = '?function',
-        prefix = '?string'
-    }(Values.new)
-)
+Options.new = typed_args('table', {
+    name = 'string',
+    type = '?string',
+    parse = '?function',
+    prefix = '?string'
+})(Values.new)
 
 --- Add an option to the parser.
 --
@@ -3726,19 +3691,12 @@ Options.new = typed_args('table', '...')(
 -- @see opts_parse
 -- @see Options:parse
 -- @function Options:add
-Options.add = typed_args('table', '...')(
-    typed_keyword_args{
-        name = 'string',
-        type = '?string',
-        parse = '?function',
-        prefix = '?string'
-    }(
-        function (self, opt, ...)
-            Values.add(self, opt)
-            if ... then self:add(...) end
-        end
-    )
-)
+Options.add = typed_args('table', {
+    name = 'string',
+    type = '?string',
+    parse = '?function',
+    prefix = '?string'},
+'...')(Values.add)
 
 --- Read configuration options from a metadata block.
 --
@@ -4512,20 +4470,24 @@ do
             name = 'connectors',
             type = 'list',
             parse = function (names)
-                local conn
+                local conns = Values()
                 for i = 1, #names do
                     local name = names[i]
                     if not name:match '^%a[%w_]+$' then
                         return nil, name .. ': not a connector name.'
                     end
-                    conn = connectors[name]
+                    local conn = connectors[name]
                     if not conn then
                         return nil, name .. ': no such connector.'
-                    elseif not (conn.new and conn.fetch) then
+                    elseif not type_match(conn, {
+                        new = 'function',
+                        fetch = 'function'
+                    }) then
                         return nil, name .. ': connector violates protocol.'
                     end
+                    conns:add(conn)
                 end
-                return conn
+                return conns
             end
         }
     )
@@ -4544,7 +4506,8 @@ do
         local opts = parser:parse(doc.meta)
 
         local handles = Values()
-        if not opts.connectors then
+
+        if not opts.connectors or #opts.connectors == 0 then
             for _, conn in sorted(connectors, order{'zotero'}) do
                 local args
                 if conn.options then args = conn.options:parse(doc.meta) end
@@ -4612,11 +4575,11 @@ M[1] = {Pandoc = function (doc)
 
     -- This point should not be reached.
     xerror([[
-=======================================================
-Sorry, you have encountered a bug. Please report it at:
--------------------------------------------------------
+=================================================
+Sorry, you have found a bug. Please report it at:
+-------------------------------------------------
 https://github.com/odkr/${repo|e}/issues/new?title=${title|e}&body=${body|e}
-=======================================================
+=================================================
 ]] .. err:gsub('\r?\n', EOL), {
         repo = SCRIPT_NAME,
         title = 'v${version} - run-time error "${err}"',

@@ -316,7 +316,7 @@ end
 -- @section
 
 do
-    local err_pattern = '.-%f[%a]expected [%a%s]+, but got %a+%.$'
+    local err_pattern = '.-%f[%a]expected [%a%s]+, got %a+%.$'
     local values = {
         ['nil'] = {nil},
         ['boolean'] = {true, false},
@@ -331,22 +331,20 @@ do
     function make_type_match_test (func)
         return function ()
             for td, pattern in pairs{
-                [true] = '.-%f[%a]expected a string.$',
-                [''] = '.-%f[%a]type declaration is the empty string.$',
-                ['0'] = '.-%f[%a]cannot parse type "0"%.$',
-                ['-nil'] = '.-%f[%a]cannot parse type "%-nil"%.$'
+                [true] = '.-%f[%a]expected string or table, got boolean.',
+                [''] = '.-%f[%a]malformed type declaration%.$',
+                ['-nil'] = '.-%f[%a]malformed type declaration%.$',
             } do
                 assert_error_msg_matches(pattern, func, true, td, true)
             end
-            
-            local ok, err    
+
+            local ok, err
             for i = 1, type_lists.n do
                 local type_list = type_lists[i]
                 local type_spec = concat(type_list, '|')
                 for t, vs in pairs(values) do
                     for j = 1, #vs do
                         local v = vs[j]
-                        local t = type(v)
                         local opt_type_spec = '?' .. type_spec
                         if type_spec:match(t) then
                             ok, err = func(v, type_spec)
@@ -356,7 +354,7 @@ do
                             assert_nil(err)
                             assert_true(ok)
                         elseif type_spec ~= '' then
-                            local ok, err = func(v, type_spec)
+                            ok, err = func(v, type_spec)
                             assert_true(ok == nil or ok == false)
                             assert_str_matches(err, err_pattern)
                             if v == nil then
@@ -370,8 +368,8 @@ do
                     end
                 end
             end
-    
-            for t, vs in pairs(values) do
+
+            for _, vs in pairs(values) do
                 for i = 1, #vs do
                     local v = vs[i]
                     if v == nil then
@@ -395,13 +393,16 @@ do
 
     function test_typed_args ()
         local typed_args = M.typed_args
-    
+
         make_type_match_test(function (val, td, unprotected)
             local func = typed_args(td)(nilify)
             if unprotected then return func(val) end
             return pcall(func, val)
         end)()
-        
+
+        -- @fixme The dot syntax is not fully tested.
+        -- (Namely, the or nil condition if it's the final arg.)
+        -- And withint stuff.
         for t, vs in pairs(values) do
             local func = M.typed_args(t, '...')(nilify)
             local ok, err
@@ -421,11 +422,10 @@ do
                             local av = avs[j]
                             if av ~= nil then
                                 for _, args in ipairs{
-                                    {v},
                                     {v, av},
                                     {v, av, v},
                                     {v, v, av},
-                                    {v, va, av},
+                                    {v, av, av},
                                     {v, v, v, av}
                                 } do
                                     ok, err = pcall(func, unpack(args))
@@ -439,26 +439,6 @@ do
             end
         end
         return true
-    end
-    
-    function test_typed_keyword_args ()
-        local typed_keyword_args = M.typed_keyword_args
-        
-        make_type_match_test(function (val, td, unprotected)
-            local func = typed_keyword_args{foo = td}(nilify)
-            if unprotected then return func{foo = val} end
-            return pcall(func, {foo = val})
-        end)()
-        
-        local func = typed_keyword_args{foo = 'string'}(nilify)
-        
-        for args, pattern in pairs{
-            --[{true}] = 'yo'
-        } do
-            assert_error_msg_matches(pattern, func, unpack(args))
-        end
-        -- @fixme test undeclared arg names
-        -- @fixme test error if arg is not a table
     end
 end
 
@@ -1208,14 +1188,11 @@ function test_options_add ()
     local add = options.add
 
     local errors = {
-        -- @fixme: why is that? why no prefix?
-        {'argument 2: expected table, but got nil%.', add, options},
-        {'argument 2: expected table, but got nil%.', add, options, nil},
-        {'argument 2: expected table, but got boolean%.', add, options, true},
-        --{'.-: nada: no such type%.', add, options, M.Setting:new{name = 'n', type ='nada'}},
-        --{'.+: name: expected string, but got nil%.', add, options, M.Setting:new{}},
-        --{'.+: name: is the empty string%.', add, options, M.Setting:new{name = ''}},
-        --{'.+: check: expected nil or function, but got boolean%.', add, options, M.Setting:new{name = 'n', check = true}}
+        {'argument 2: expected table or userdata, got nil%.', add, options},
+        {'argument 2: expected table or userdata, got nil%.', add, options, nil},
+        {'argument 2: expected table or userdata, got boolean%.', add, options, true},
+        {'argument 2: index name: expected string, got nil%.', add, options, {}},
+        {'argument 2: index parse: expected nil or function, got boolean%.', add, options, {name = 'n', parse = true}}
     }
 
     for _, v in ipairs(errors) do
