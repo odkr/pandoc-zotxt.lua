@@ -31,11 +31,12 @@ You use **pandoc-zotxt.lua** at your own risk.
 
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
-2. Unpack the repository.
-3. Move the unpacked repository to the `filters` sub-directory of your Pandoc
-   data directory (`pandoc --version` tells you where that is).
-4. Symlink or move the file `pandoc-zotxt.lua` from the repository
-   up into the `filters` directory.
+2. Unpack it.
+3. Move the `pandoc-zotxt.lua-1.1.0b7` directory to
+   the `filters` sub-directory of your Pandoc data directory
+   (`pandoc --version` tells you where that is).
+4. Symlink or move the file `pandoc-zotxt.lua` from the
+   `pandoc-zotxt.lua-1.1.0b7` directory up to the `filters` directory.
 
 If you are running a POSIX-compliant operating system (e.g., *BSD,
 Linux, or macOS) and have [curl](https://curl.haxx.se/) or 
@@ -58,8 +59,8 @@ into a Bourne-compatible shell:
   } | tar -xz && ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
-If you want to use the manual page that ships with this release,
-add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b7/man`
+If you want to use the manual page that ships with this release, you
+can add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0b7/man`
 to your `MANPATH`.
 
 
@@ -116,7 +117,7 @@ Zotero library.
 
 ## License
 
-Copyright 2018, 2019, 2020, 2021 Odin Kroeger
+Copyright 2018–2022 Odin Kroeger
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
