@@ -242,7 +242,7 @@ temp_dir_make() {
 		done
 		shift $((OPTIND - 1))
 		: "${dir:="${TMPDIR:-"${HOME:?}"}"}" "${pre:=tmp}"
-		fname="$("$TEMP_NAME_GEN")" && [ "$fname" ] || exit 70
+		fname="$(awk -f "$TEMP_NAME_GEN")" && [ "$fname" ] || exit 70
 		printf '%s/%s-%s\n' "${dir%/}" "$pre" "$fname"
 	)" && [ "$TEMP_DIR" ] || 
 		panic 'failed to generate name for temporary directory.'

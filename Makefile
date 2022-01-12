@@ -65,16 +65,16 @@ unit-tests:
 .SECONDEXPANSION:
 
 $(COMMON_DOCS):
-	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                             -f $(FILTER) $@
+	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                                -f $(FILTER) $@
 
 $(ZOTERO_DOCS):
-	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                             -f $(FILTER) -c zotero $@
+	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                                -f $(FILTER) -c zotero $@
 
 $(ZOTWEB_DOCS):
-	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                             -f $(FILTER) -c zoteroweb $@
+	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                                -f $(FILTER) -c zoteroweb $@
 
 $(COMMON_ABBR): test/data/$$@.md
 
@@ -95,7 +95,7 @@ zoteroweb/%: test/data/$$@.md
 	gzip --force $<
 
 %.lua: man/man1/%.lua.rst
-	scripts/header-add-man -f $@ 
+	$(SHELL) scripts/header-add-man -f $@ 
 
 docs/index.html: pandoc-zotxt.lua ldoc/config.ld ldoc/ldoc.css
 	ldoc -c ldoc/config.ld .
