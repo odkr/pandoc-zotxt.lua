@@ -18,7 +18,7 @@ See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 It should work under every operating system supported by Pandoc;
 it has *not* been tested under Windows, however.
 
-Your version of Pandoc must also support Lua ≥ v5.3 -- which it, most likely,
+Your version of Pandoc must also support Lua ≥ v5.3 — which it, most likely,
 does! By default, Pandoc uses [Lua](https://www.lua.org/) v5.3 since v2.0.3.
 However, the Pandoc package provided by your operating system may use an older
 version of Lua. Notably, Debian v10 ("Buster") ships with Pandoc v2.2,
