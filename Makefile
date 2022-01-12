@@ -65,16 +65,16 @@ unit-tests:
 .SECONDEXPANSION:
 
 $(COMMON_DOCS):
-	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                       -f $(FILTER) $@
+	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                             -f $(FILTER) $@
 
 $(ZOTERO_DOCS):
-	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                       -f $(FILTER) -c zotero $@
+	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                             -f $(FILTER) -c zotero $@
 
 $(ZOTWEB_DOCS):
-	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                       -f $(FILTER) -c zoteroweb $@
+	@$(SH) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	                             -f $(FILTER) -c zoteroweb $@
 
 $(COMMON_ABBR): test/data/$$@.md
 
