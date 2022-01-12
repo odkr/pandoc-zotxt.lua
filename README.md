@@ -74,7 +74,7 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 2. [Pandoc](https://www.pandoc.org/) v2.0 to v2.16.2.
 3. [GNU Make](https://www.gnu.org/software/make/).
 
-The test suite has only been tested with Pandoc ≥ v2.10.
+The test suite has been tested with Pandoc ≥ v2.9.
 
 ### Running the tests
 
@@ -95,7 +95,7 @@ instance nor to the Zotero Web API, but but uses canned responses.
 You can force the test suite to connect to a local Zotero database by:
 
 ```sh
-    make test -e SCRIPT=./pandoc-zotxt.lua
+    make test -e FILTER=./pandoc-zotxt.lua
 ```
 
 Note, you will have to adapt the test suite to your database (or vice versa;
