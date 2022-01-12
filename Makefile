@@ -9,14 +9,14 @@ SCPT_DIR	:= $(BASE_DIR)/scripts
 # PROGRAMMES
 # ==========
 
-PANDOC	?= pandoc
-SHELL	?= sh
+PANDOC		?= pandoc
+SHELL		?= sh
 
 
 # FILES
 # =====
 
-FILTER	?= $(SCPT_DIR)/test-wrapper.lua
+FILTER		?= $(SCPT_DIR)/test-wrapper.lua
 
 
 # PANDOC
@@ -29,8 +29,10 @@ PANDOC_ARGS	?= --quiet
 # =======
 
 COMMON_DOCS	= $(wildcard $(DATA_DIR)/*.md)
-ZOTXT_DOCS	= $(wildcard $(DATA_DIR)/zotero/*.md)
+COMMON_ABBR	= $(notdir $(COMMON_DOCS:.md=))
+ZOTERO_DOCS	= $(wildcard $(DATA_DIR)/zotero/*.md)
 ZOTWEB_DOCS	= $(wildcard $(DATA_DIR)/zoteroweb/*.md)
+
 
 
 # ZOTERO CONNECTORS
@@ -48,7 +50,7 @@ ZOTERO_API_KEY ?= MO2GHxbkLnWgCqPtpoewgwIl
 # TESTS
 # =====
 
-test: linter unit-tests $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
+test: linter unit-tests $(COMMON_DOCS) $(ZOTERO_DOCS) $(ZOTWEB_DOCS)
 
 linter:
 	@printf 'Linting ...\n' >&2
@@ -60,17 +62,27 @@ unit-tests:
 	@"$(PANDOC)" $(PANDOC_ARGS) --from markdown --to html \
 	             --lua-filter="$(SCPT_DIR)/unit-tests.lua" /dev/null
 
+.SECONDEXPANSION:
+
 $(COMMON_DOCS):
 	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                       -f $(FILTER) $@
 
-$(ZOTXT_DOCS):
+$(ZOTERO_DOCS):
 	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                       -f $(FILTER) -c zotero $@
 
 $(ZOTWEB_DOCS):
 	@$(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                       -f $(FILTER) -c zoteroweb $@
+
+$(COMMON_ABBR): test/data/$$@.md
+
+zotero/%: test/data/$$@.md
+	@:
+
+zoteroweb/%: test/data/$$@.md
+	@:
 
 %.1: %.rst
 	$(PANDOC) -f rst -t man -s --output=$@ \
@@ -92,5 +104,7 @@ docs: pandoc-zotxt.lua docs/index.html man/man1/pandoc-zotxt.lua.1.gz
 
 all: test docs
 
-.PHONY: all docs linter unit-tests test tmpdir \
-        $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
+.PHONY: all docs linter unit-tests test \
+        $(COMMON_DOCS) $(COMMON_ABBR) \
+	$(ZOTERO_DOCS) zotero/% \
+	$(ZOTWEB_DOCS) zoteroweb/%
