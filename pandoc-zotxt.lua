@@ -476,7 +476,7 @@ end
 --  to a function, check if you forgot the quotes around `'...'`.
 --
 -- @caveats Non-referring type names (e.g., 'int') do *not* raise an error
---  at time of declaration, they just fail at run-time.
+--  at compile-time, they just fail at run-time.
 --
 -- @tparam string|table ... Type declarations. See @{type_match}.
 -- @treturn func A function that adds type checks to a function.
@@ -655,13 +655,7 @@ local json = require 'lunajson'
 --
 -- @section
 
---- Get a copy of a function's variables.
---
--- That is, get a copy of:
---
--- 1. a function's local variables,
--- 2. a function's upvalues, and
--- 3. variables in `_ENV` that have not been overriden *by (1) or (2)*.
+--- Get a copy of the variables of a function and of `_ENV`.
 --
 -- @caveats
 --
@@ -682,7 +676,7 @@ local json = require 'lunajson'
 --
 -- @usage
 -- > function bar ()
--- >     print(get_vars(3)['foo'])
+-- >     print(vars_get(3).foo)
 -- > end
 -- > function foo ()
 -- >     foo = 'foo'
@@ -739,8 +733,6 @@ vars_get = typed_args('?number')(
 -- > tab.FOO = 'bar'
 -- > tab.foo
 -- bar
---
--- @fixme Not unit-tested.
 ignore_case = {}
 
 --- Look up an item.
@@ -748,7 +740,6 @@ ignore_case = {}
 -- @tab tab A table.
 -- @param key A key.
 -- @return The item.
--- @fixme Not unit-tested.
 function ignore_case.__index (tab, key)
     if type(key) == 'string' and key:match '%u' then
         return tab[key:lower()]
@@ -760,7 +751,6 @@ end
 -- @tab tab A table.
 -- @param key A key.
 -- @param val A value.
--- @fixme Not unit-tested.
 function ignore_case.__newindex (tab, key, val)
     if type(key) == 'string' then rawset(tab, key:lower(), val)
                              else rawset(tab, key, val)
@@ -816,7 +806,6 @@ do
     -- 1    2    3    4
     --
     -- @function copy_shallow
-    -- @fixme Not unit-tested.
     local function copy_shallow (val)
         if type(val) ~= 'table' then return val end
         local ret = setmetatable({}, getmetatable(val))
@@ -931,7 +920,7 @@ sorted = typed_args('table', '?function')(
 
 --- Tabulate the values an iterator returns.
 --
--- The iterator must accept the same arguments as @{next}.
+-- The iterator is given the same arguments as @{next}.
 --
 -- @func iter An iterator.
 -- @param[opt] tab A table to iterate over.
@@ -962,7 +951,6 @@ tabulate = typed_args('function')(
 -- @treturn tab The first table.
 --
 -- @function update
--- @fixme Not unit-tested.
 update = typed_args('table', '?table', '...')(
     function (...)
         local tabs = pack(...)
@@ -1233,10 +1221,10 @@ setmetatable(Object, Object.mt)
 --
 -- is short for
 --
---    obj = setmetatable(
---        {},
---        update({}, getmetatable(Object), {__index = Object), mt)
---    )
+--    do
+--        local mt = update({}, getmetatable(Object), {__index = Object}, mt)
+--        obj = setmetatable({}, mt)
+--    end
 --
 -- @tab proto A prototype.
 -- @tab[opt] mt A metatable.
@@ -1263,7 +1251,9 @@ setmetatable(Object, Object.mt)
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, mt)
-        return setmetatable({}, update({}, getmetatable(proto), {__index = proto}, mt))
+        return setmetatable({}, update(
+            {}, getmetatable(proto), {__index = proto}, mt)
+        )
     end
 )
 

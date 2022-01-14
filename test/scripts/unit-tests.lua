@@ -570,15 +570,20 @@ function test_ignore_case ()
     end
 end
 
--- todo Add test for shallow copies?
 function test_copy ()
     -- Test a shallow copy.
     local mt = {}
-    local tab = setmetatable(mt, {foo = 'bar', bar = {baz = true}})
+    local tab = setmetatable({foo = 'bar', bar = {baz = true}}, mt)
+    local cp = M.copy(tab, false)
+    assert_items_equals(tab, cp)
+    assert_equals(getmetatable(cp), getmetatable(tab))
 
+    cp.bar.baz = false
+    assert_items_equals(tab, cp)
+    assert_false(tab.bar.baz)
 
     -- Test simple copies.
-    local simple = {
+    for _, val in ipairs{
         nil, false, true, 0, 1, '', 'test', {},
         {1, 2, 3},
         {5, 2, 3, 9},
@@ -598,79 +603,81 @@ function test_copy ()
             for i = 33, 126 do t[i-32] = string.char(i) end
             return t
             end)(),
-    }
-
-    for _, v in ipairs(simple) do
-        local t = M.copy(v)
-        assert_items_equals(t, v)
+    } do
+        cp = M.copy(val)
+        assert_items_equals(cp, val)
     end
 
     -- Test a nested table.
     tab = {1, 2, 3, {1, 2, 3, {4, 5, 6}}}
-    local c = M.copy(tab)
-    assert_items_equals(c, tab)
+    cp = M.copy(tab)
+    assert_items_equals(cp, tab)
 
     -- Test a self-referential table.
     tab = {1, 2, 3}
     tab.tab = tab
-    c = M.copy(tab)
-    assert_items_equals(c, tab)
+    cp = M.copy(tab)
+    assert_items_equals(cp, tab)
 
     -- Test a table that has another table as key.
     tab = {1, 2, 3}
-    local u = {1, 2, 3, {4, 5, 6}}
-    u[tab] = 7
-    c = M.copy(u)
-    assert_items_equals(c, u)
+    local other_tab = {1, 2, 3, {4, 5, 6}}
+    other_tab[tab] = 7
+    cp = M.copy(other_tab)
+    assert_items_equals(cp, other_tab)
 
     -- Test a table that overrides `__pairs`.
     local single = {__pairs = function ()
         return function () end
     end}
     tab = setmetatable({1, 2, 3}, single)
-    c = M.copy(tab)
-    assert_items_equals(c, tab)
+    cp = M.copy(tab)
+    assert_items_equals(cp, tab)
 
     -- Test a table that does all of this.
     tab = setmetatable({1, 2, 3, {4, 5}}, single)
-    u = {1, 2, 3, {4, 5, 6}}
-    tab[u] = {1, 2, 3, {4, 5}}
+    other_tab = {1, 2, 3, {4, 5, 6}}
+    tab[other_tab] = {1, 2, 3, {4, 5}}
     tab.tab = tab
-    c = M.copy(tab)
-    assert_items_equals(c, tab)
+    cp = M.copy(tab)
+    assert_items_equals(cp, tab)
 end
 
 function test_keys ()
-    local tests = {
-        [{}] = {{}, 0},
-        [{1, 2, 3}] = {{1, 2, 3}, 3},
-        [{a=1, b=2, c=3}] = {{'a', 'b', 'c'}, 3},
-        [{a=1, [{}]=2}] = {{'a', {}}, 2},
-        [{[{}]='a'}] = {{{}}, 1},
-        [{[{}]='a', [false]='b'}] = {{{}, false}, 2}
-    }
-
-    for k, v in pairs(tests) do
-        local ks, n = M.keys(k)
-        assert_items_equals(ks, v[1])
-        assert_equals(n, v[2])
+    for input, output in pairs{
+        [{}] =        {keys = {},        n = 0},
+        [{1, 2, 3}] = {keys = {1, 2, 3}, n = 3},
+        [{a = 1, b = 2, c = 3}] = {
+            keys = {'a', 'b', 'c'},
+            n = 3
+        },
+        [{a = 1, [{}] = 2}] = {
+            keys = {'a', {}},
+            n = 2
+        },
+        [{[{}]='a'}] = {keys = {{}},     n = 1},
+        [{[{}]='a', [false]='b'}] = {
+            keys = {{}, false},
+            n = 2
+        }
+    } do
+        local keys, n = M.keys(input)
+        assert_items_equals(keys, output.keys)
+        assert_equals(n, output.n)
     end
 end
 
 function test_order ()
-    local tests = {
-        [{{3}, {1, 2, 3}}] = {3, 1, 2},
-        [{{}, {3, 2, 1}}] = {1, 2, 3},
-        [{{3, 2}, {1, 2, 3}}] = {3, 2, 1},
-        [{{3, 2}, {}}] = {},
-        [{{}, {}}] = {}
-    }
-
-    for k, v in pairs(tests) do
-        local f = M.order(k[1])
-        local t = k[2]
-        table.sort(t, f)
-        assert_equals(t, v)
+    for input, output in pairs{
+        [{order = {3},    data = {1, 2, 3}}] = {3, 1, 2},
+        [{order = {},     data = {3, 2, 1}}] = {1, 2, 3},
+        [{order = {3, 2}, data = {1, 2, 3}}] = {3, 2, 1},
+        [{order = {3, 2}, data = {}}] = {},
+        [{order = {},     data = {}}] = {}
+    } do
+        local func = M.order(input.order)
+        table.sort(input.data, func)
+        assert_equals(input.data, output)
     end
 end
 
@@ -695,9 +702,73 @@ function test_sorted ()
     end
 end
 
+function test_tabulate ()
+    local function make_stateful_iterator (n)
+        local i = n
+        return function ()
+            if i > 3 then return end
+            i = i + 1
+            return i
+        end
+    end
 
+    local tests = {
+        [make_stateful_iterator(0)] = {},
+        [make_stateful_iterator(1)] = {1},
+        [make_stateful_iterator(3)] = {1, 2, 3},
+        [M.split('a/b/c', '/')] = {'a', 'b', 'c'},
+        [M.split('a/b/c', 'x')] = {'a/b/c'},
+        [function () end] = {}
+    }
 
+    for k, v in ipairs(tests) do
+        assert_items_equal(table.pack(k), v)
+    end
+end
 
+function test_update ()
+    local tab = {foo = 'bar'}
+    local other_tab = {bar = 'baz', baz = {}}
+    M.update(tab, other_tab)
+    assert_items_equals(tab, {foo = 'bar', bar = 'baz', baz = {}})
+    assert_nil(other_tab.foo)
+    table.insert(tab.baz, 'bam!')
+    assert_equals(other_tab.baz[1], 'bam!')
+end
+
+function test_walk ()
+    local cycle = {}
+    cycle.cycle = cycle
+
+    for _, tab in ipairs{
+        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
+        false, {['false']=1}, {{{[false]=true}, 0}}, 'string',
+        cycle
+    } do
+        assert_equals(M.walk(tab, id), tab)
+        assert_equals(M.walk(tab, nilify), tab)
+    end
+
+    local function inc (v)
+        if type(v) ~= 'number' then return v end
+        return v + 1
+    end
+
+    for input, output in pairs{
+        [{{}}] = {{}},
+        [1] = 2,
+        [false] = false,
+        [{['false'] = 1}] = {['false'] = 2},
+        [{{{[false] = true}, 0}}] = {{{[false] = true}, 1}},
+        ['string'] = 'string',
+        [{1}] = {2},
+        [{2}] = {3},
+        [{1, {2}}] = {2, {3}},
+        [{dont = 3, 3}] = {dont = 4, 4}
+    } do
+        assert_equals(M.walk(input, inc), output)
+    end
+end
 
 
 
@@ -1032,70 +1103,7 @@ end
 -- ------------------
 
 
-function test_walk ()
-    local cycle = {}
-    cycle.cycle = cycle
 
-    local tests = {
-        {{}}, 1, ZOTXT_CSL, ZOTXT_JSON, ZOTXT_YAML, ZOTXT_META,
-        false, {['false']=1}, {{{[false]=true}, 0}}, 'string',
-        cycle
-    }
-
-    for _, v in ipairs(tests) do
-        assert_equals(M.walk(v, id), v)
-        assert_equals(M.walk(v, nilify), v)
-    end
-
-    local function inc (v)
-        if type(v) ~= 'number' then return v end
-        return v + 1
-    end
-
-    tests = {
-        [{{}}] = {{}},
-        [1] = 2,
-        [false] = false,
-        [{['false'] = 1}] = {['false'] = 2},
-        [{{{[false] = true}, 0}}] = {{{[false] = true}, 1}},
-        ['string'] = 'string',
-        [{1}] = {2},
-        [{2}] = {3},
-        [{1, {2}}] = {2, {3}},
-        [{dont = 3, 3}] = {dont = 4, 4}
-    }
-
-    for k, v in pairs(tests) do
-        assert_equals(M.walk(k, inc), v)
-    end
-end
-
-
-
-function test_tabulate ()
-
-    local function make_iterator (n)
-        local i = n
-        return function ()
-            if i > 3 then return end
-            i = i + 1
-            return i
-        end
-    end
-
-    local tests = {
-        [make_iterator(0)] = {},
-        [make_iterator(1)] = {1},
-        [make_iterator(3)] = {1, 2, 3},
-        [M.split('a/b/c', '/')] = {'a', 'b', 'c'},
-        [M.split('a/b/c', 'x')] = {'a/b/c'},
-        [function () end] = {}
-    }
-
-    for _, v in ipairs(tests) do
-        assert_items_equal(table.pack(k), v)
-    end
-end
 
 
 
