@@ -2737,20 +2737,22 @@ do
     -- @tab tab A table.
     -- @treturn pandoc.MetaMapping The table.
     -- @fixme Recursion protection is not unit-tested.
-    function converters.table (tab, _rd)
-        if not _rd then _rd = 0 end
-        assert(_rd < 128, 'recursion limit exceeded.')
+    function converters.table (tab, _seen)
+        if     not _seen  then _seen = {}
+        elseif _seen[tab] then error 'cycle in data tree.'
+        end
+        _seen[tab] = true
         local nkeys = select(2, keys(tab))
         local n = #tab
         if n == nkeys then
             local list = MetaList{}
             for i = 1, n do
-                list[i] = convert(tab[i], _rd + 1)
+                list[i] = convert(tab[i], _seen)
             end
             return list
         end
         local map = MetaMap{}
-        for k, v in pairs(tab) do map[k] = convert(v, _rd + 1) end
+        for k, v in pairs(tab) do map[k] = convert(v, _seen) end
         return map
     end
 
