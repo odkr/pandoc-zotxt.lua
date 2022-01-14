@@ -2338,7 +2338,7 @@ do
     --
     -- @function yamlify
     -- @fixme Indentation and sorting are not unit-tested.
-    yamlify = typed_args('*', '?number', '?function', '?number')(
+    yamlify = typed_args('*', '?number', '?function', '?number', '?table')(
         -- luacheck: ignore sort
         function (val, ind, sort, _col, _seen)
             if not _seen then _seen = {} end
@@ -3534,18 +3534,20 @@ do
     -- @return Typically but not necessarily, a new Pandoc AST element.
     --
     -- @function elem_walk
-    elem_walk = typed_args('*', 'table', '?number')(
-        function (elem, filter, _rd)
-            if not _rd then _rd = 0 end
-            assert(_rd < 128, 'recursion limit exceeded.')
+    elem_walk = typed_args('*', 'table', '?table')(
+        function (elem, filter, _seen)
+            if not _seen then _seen = {} end
+            assert(not _seen[elem], 'cycle in data tree.')
             local ets = {elem_type(elem)}
             local et = ets[1]
             if et then
+                _seen[elem] = true
                 elem = elem_clone(elem)
-                _rd = _rd + 1
                 local walker = walkers[et]
-                if     walker       then walker(elem, filter, _rd)
-                elseif elem.content then walk_table(elem.content, filter, _rd)
+                if walker then
+                    walker(elem, filter, _seen)
+                elseif elem.content then
+                    walk_table(elem.content, filter, _seen)
                 end
                 for i = 1, #ets do
                     local func = filter[ets[i]]
@@ -3555,10 +3557,11 @@ do
                     end
                 end
             elseif type(elem) == 'table' then
+                _seen[elem] = true
                 if elem.clone then elem = elem:clone()
                               else elem = copy(elem, false)
                 end
-                walk_table(elem, filter, _rd)
+                walk_table(elem, filter, _seen)
             end
             return elem
         end
