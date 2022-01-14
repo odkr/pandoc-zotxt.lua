@@ -1303,8 +1303,7 @@ end
 function test_yamlify ()
     local cycle = {}
     cycle.cycle = cycle
-    lu.assert_error_msg_matches('.+: recursion limit exceeded%.',
-                                M.yamlify, cycle)
+    lu.assert_error_msg_matches('.+: cycle in data tree%.', M.yamlify, cycle)
 
     local tests = {
         [3] = "3",

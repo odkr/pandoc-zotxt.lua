@@ -2340,14 +2340,15 @@ do
     -- @fixme Indentation and sorting are not unit-tested.
     yamlify = typed_args('*', '?number', '?function', '?number')(
         -- luacheck: ignore sort
-        function (val, ind, sort, _col, _rd)
-            if not _rd then _rd = 0 end
+        function (val, ind, sort, _col, _seen)
+            if not _seen then _seen = {} end
+            assert(not _seen[val], 'cycle in data tree.')
             if not ind then ind = 4 end
-            assert(_rd < 64, 'recursion limit exceeded.')
             local t = type(val)
             local conv = converters[t]
             if conv then return conv(val) end
             assert(t == 'table', t .. ': cannot be expressed in YAML.')
+            _seen[val] = true
             if not _col then _col = 0 end
             local strs = Values()
             local n = #val
@@ -2358,7 +2359,7 @@ do
                 for i = 1, n do
                     local v = val[i]
                     if i > 1 then strs:add(sp) end
-                    strs:add('- ', yamlify(v, ind, sort, col, _rd + 1))
+                    strs:add('- ', yamlify(v, ind, sort, col, _seen))
                     if i ~= n then strs:add(EOL) end
                 end
             else
@@ -2374,7 +2375,7 @@ do
                     if type(v) == 'table' then strs:add(EOL, spaces(col))
                                           else strs:add ' '
                     end
-                    strs:add(yamlify(v, ind, sort, col, _rd + 1))
+                    strs:add(yamlify(v, ind, sort, col, _seen))
                     if i ~= nkeys then strs:add(EOL) end
                 end
             end
