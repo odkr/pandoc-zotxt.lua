@@ -18,11 +18,11 @@ See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 It should work under every operating system supported by Pandoc;
 it has *not* been tested under Windows, however.
 
-Your version of Pandoc must also support Lua ≥ v5.3 — which it, most likely,
-does! By default, Pandoc uses [Lua](https://www.lua.org/) v5.3 since v2.0.3.
-However, the Pandoc package provided by your operating system may use an older
-version of Lua. Notably, Debian v10 ("Buster") ships with Pandoc v2.2,
-but compiles it to support Lua v5.1 only.
+Your version of Pandoc must also support Lua ≥ v5.3, which it, most likely,
+does! By default, Pandoc ≥ v2.0.3 uses [Lua](https://www.lua.org/) v5.3.
+However, the Pandoc package provided by your operating system vendor may use
+an older version. Notably, the version of Pandoc available in the package
+repository of Debian v10 ("Buster") only supports Lua v5.1.
 
 
 ## Installation
@@ -32,8 +32,8 @@ You use **pandoc-zotxt.lua** at your own risk.
 1. Download the
    [latest release](https://github.com/odkr/pandoc-zotxt.lua/releases/latest).
 2. Unpack it.
-3. Move the `pandoc-zotxt.lua-1.1.0b7` directory to
-   the `filters` sub-directory of your Pandoc data directory
+3. Move the `pandoc-zotxt.lua-1.1.0b7` directory into the
+   `filters` sub-directory of your Pandoc data directory
    (`pandoc --version` tells you where that is).
 4. Symlink or move the file `pandoc-zotxt.lua` from the
    `pandoc-zotxt.lua-1.1.0b7` directory up to the `filters` directory.
