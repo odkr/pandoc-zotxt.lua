@@ -1043,7 +1043,7 @@ function test_split ()
 end
 
 function test_vars_sub ()
-    lu.assert_error_msg_matches('.+: recursion limit exceeded%.',
+    lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
                                 M.vars_sub, '${a}', {a = '${b}', b = '${a}'})
 
     local tests = {

@@ -1067,7 +1067,7 @@ split = typed_args('string', 'string', '?number', '?string')(
 -- @function trim
 trim = typed_args('string')(
     function (str)
-        return str:gsub('^%s+', ''):gsub('%s*$', '')
+        return str:gsub('^%s+', ''):gsub('%s*$', ''), nil
     end
 )
 
@@ -1090,17 +1090,19 @@ do
     --
     -- See @{vars_sub} for the expression syntax.
     --
-    -- @int rd The current recursion depth.
+    -- @tparam Set seen The variables encounterd so far.
     -- @tab vars A mapping of variable names to values.
     -- @string exp A variable expression.
     -- @treturn string The value of the expression.
     -- @raise See @{vars_sub}.
-    local function evaluate (rd, vars, exp)
+    local function evaluate (seen, vars, exp)
         local path, func = tabulate(split(exp:sub(2, -2), '|', 2))
+        assert(not seen[path], 'cycle in variable lookup.')
+        seen[path] = true
         local v = lookup(vars, path)
-        if type(v) == 'string' then v = vars_sub(v, vars, rd + 1) end
+        if type(v) == 'string' then v = vars_sub(v, vars, seen) end
         if func then v = lookup(vars, func)(v) end
-        return vars_sub(tostring(v), vars, rd + 1)
+        return vars_sub(tostring(v), vars, seen)
     end
 
     --- Substitute variables in strings.
@@ -1186,12 +1188,11 @@ do
     --
     -- @function vars_sub
     -- @todo Improve error messages.
-    vars_sub = typed_args('string', 'table', '?number')(
-        function (str, vars, _rd)
-            if not _rd then _rd = 0 end
-            assert(_rd < 64, 'recursion limit exceeded.')
-            local function eval (...) return evaluate(_rd, vars, ...) end
-            return str:gsub('%f[%$]%$(%b{})', eval):gsub('%$(%$*)', '%1')
+    vars_sub = typed_args('string', 'table', '?table')(
+        function (str, vars, _seen)
+            if not _seen then _seen = {} end
+            local function eval (...) return evaluate(_seen, vars, ...) end
+            return str:gsub('%f[%$]%$(%b{})', eval):gsub('%$(%$*)', '%1'), nil
         end
     )
 end
@@ -2049,7 +2050,7 @@ do
     -- @fixme Not unit-tested.
     uri_escape = typed_args('string')(
         function (str)
-            return str:gsub('[^%w%-_%.~]', escape)
+            return str:gsub('[^%w%-_%.~]', escape), nil
         end
     )
 end
