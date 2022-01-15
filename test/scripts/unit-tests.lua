@@ -1400,7 +1400,7 @@ end
 -- -----
 
 function test_zotero_fetch ()
-    local ret, err = M.connectors.zotero:fetch('haslanger2012ResistingRealitySocial')
+    local ret, err = M.connectors.Zotxt:fetch('haslanger2012ResistingRealitySocial')
     lu.assert_nil(err)
     assert_equals(ret, rconv_nums_to_strs(ZOTXT_CSL[1]))
 end
@@ -1409,7 +1409,7 @@ end
 -- --------------
 
 -- function test_zoteroweb_get_user_id ()
---     local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+--     local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 --     local ret, err = zoteroweb:get_user_id()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
@@ -1417,7 +1417,7 @@ end
 -- end
 
 -- function test_zoteroweb_get_groups ()
---     local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+--     local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 --     local ret, err = zoteroweb:get_groups()
 --     lu.assert_not_nil(ret)
 --     lu.assert_nil(err)
@@ -1425,7 +1425,7 @@ end
 -- end
 
 function test_zoteroweb_endpoints ()
-    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
     local iter, err = zoteroweb:endpoints()
     lu.assert_not_nil(iter)
     lu.assert_nil(err)
@@ -1446,7 +1446,7 @@ function test_zoteroweb_endpoints ()
 end
 
 function test_zoteroweb_search ()
-    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 
     local items, err = zoteroweb:search('haslanger', '2012', 'Resisting', 'Reality', 'Social')
     lu.assert_not_nil(items)
@@ -1457,7 +1457,7 @@ function test_zoteroweb_search ()
 end
 
 function test_zoteroweb_lookup ()
-    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 
     local item, err = zoteroweb:lookup 'D9HEKNWD'
     lu.assert_not_nil(item)
@@ -1467,7 +1467,7 @@ function test_zoteroweb_lookup ()
 end
 
 function test_zoteroweb_fetch ()
-    local zoteroweb = M.connectors.zoteroweb:new{api_key = ZOTWEB_API_KEY}
+    local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 
     local ret, err = zoteroweb:fetch('haslanger2012ResistingRealitySocial')
     lu.assert_not_nil(ret)
@@ -1727,7 +1727,7 @@ function test_csl_json_to_items ()
 end
 
 function test_citekey_to_terms ()
-    local citekey_types = M.connectors.zoteroweb.citekey_types
+    local citekey_types = M.connectors.ZoteroWeb.citekey_types
 
     local tests = {
         [''] = nil,
@@ -1812,7 +1812,7 @@ end
 function test_biblio_update ()
     local wrong = {'nosuffix', 'n.', 'n.wrongformat'}
     for _, v in ipairs(wrong) do
-        local ok, err =  M.biblio:update(M.connectors.zotero, v, {'<n/a>'})
+        local ok, err =  M.biblio:update(M.connectors.Zotxt, v, {'<n/a>'})
         lu.assert_nil(ok)
         lu.assert_not_nil(err)
     end
@@ -1825,13 +1825,13 @@ function test_biblio_update ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.biblio:update(M.connectors.zotero, fname, {})
+    ok, err = M.biblio:update(M.connectors.Zotxt, fname, {})
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.biblio:update(M.connectors.zotero, fname, {'haslanger:2012resisting'})
+    ok, err = M.biblio:update(M.connectors.Zotxt, fname, {'haslanger:2012resisting'})
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1844,7 +1844,7 @@ function test_biblio_update ()
     -- Checks adding a new citation.
     local new
     ckeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -1852,7 +1852,7 @@ function test_biblio_update ()
     lu.assert_not_nil(data)
     assert_equals(#data, 2)
 
-    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = read_json_file(fname)
@@ -1862,7 +1862,7 @@ function test_biblio_update ()
 
     -- This should not change the file.
     local post
-    ok, err = M.biblio:update(M.connectors.zotero, fname, ckeys)
+    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = read_json_file(fname)

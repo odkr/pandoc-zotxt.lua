@@ -30,7 +30,7 @@ PANDOC_ARGS	?= --quiet
 
 COMMON_DOCS	= $(wildcard $(DATA_DIR)/*.md)
 COMMON_ABBR	= $(notdir $(COMMON_DOCS:.md=))
-ZOTERO_DOCS	= $(wildcard $(DATA_DIR)/zotero/*.md)
+ZOTXT_DOCS	= $(wildcard $(DATA_DIR)/zotxt/*.md)
 ZOTWEB_DOCS	= $(wildcard $(DATA_DIR)/zoteroweb/*.md)
 
 
@@ -38,7 +38,7 @@ ZOTWEB_DOCS	= $(wildcard $(DATA_DIR)/zoteroweb/*.md)
 # ZOTERO CONNECTORS
 # =================
 
-CONNECTORS ?= zotero zoteroweb
+CONNECTORS ?= zotxt zoteroweb
 
 
 # ZOTERO CREDENTIALS
@@ -50,7 +50,7 @@ ZOTERO_API_KEY ?= MO2GHxbkLnWgCqPtpoewgwIl
 # TESTS
 # =====
 
-test: linter unit-tests $(COMMON_DOCS) $(ZOTERO_DOCS) $(ZOTWEB_DOCS)
+test: linter unit-tests $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
 
 linter:
 	@printf 'Linting ...\n' >&2
@@ -68,9 +68,9 @@ $(COMMON_DOCS):
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                                -f $(FILTER) $@
 
-$(ZOTERO_DOCS):
+$(ZOTXT_DOCS):
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
-	                                -f $(FILTER) -c zotero $@
+	                                -f $(FILTER) -c zotxt $@
 
 $(ZOTWEB_DOCS):
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
@@ -78,7 +78,7 @@ $(ZOTWEB_DOCS):
 
 $(COMMON_ABBR): test/data/$$@.md
 
-zotero/%: test/data/$$@.md
+zotxt/%: test/data/$$@.md
 	@:
 
 zoteroweb/%: test/data/$$@.md
@@ -106,5 +106,5 @@ all: test docs
 
 .PHONY: all docs linter unit-tests test \
         $(COMMON_DOCS) $(COMMON_ABBR) \
-	$(ZOTERO_DOCS) zotero/% \
+	$(ZOTXT_DOCS) zotxt/% \
 	$(ZOTWEB_DOCS) zoteroweb/%

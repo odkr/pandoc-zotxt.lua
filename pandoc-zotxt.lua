@@ -3234,7 +3234,7 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @caveats See @{file_write}.
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
+-- @tparam connectors.Zotxt|connectors.ZoteroWeb handle A Zotero handle.
 -- @string fname The name of the bibliography file.
 -- @tparam {string,...} ckeys The citation keys of the items to add
 --  (e.g., `{'doe:2020word'}`).
@@ -3968,28 +3968,28 @@ connectors = setmetatable({}, ignore_case)
 --- Interface to [zotxt](https://github.com/egh/zotxt).
 --
 -- @usage
--- handle = connectors.Zotero:new()
+-- handle = connectors.Zotxt:new()
 -- item = handle:fetch 'DoeWord2020'
 --
--- @object connectors.Zotero
+-- @object connectors.Zotxt
 -- @proto @{Object}
-connectors.Zotero = Object()
+connectors.Zotxt = Object()
 
 --- Zotero options.
 --
 -- Defines `zotero-citekey-types`.
 -- See the manual for details.
 --
--- @object connectors.Zotero.options
+-- @object connectors.Zotxt.options
 -- @proto @{Options}.
-connectors.Zotero.options = Options:new{
+connectors.Zotxt.options = Options:new{
     prefix = 'zotero',
     name = 'citekey_types',
     type = 'list'
 }
 
 --- Types of citation keys to expect.
-connectors.Zotero.citekey_types = List{
+connectors.Zotxt.citekey_types = List{
     'betterbibtexkey',  -- Better BibTeX citation key
     'easykey',          -- zotxt easy citekey
     'key',              -- Zotero item ID
@@ -4001,7 +4001,7 @@ do
 
     --- Fetch a CSL item via zotxt.
     --
-    -- @side May re-order the elements of @{connectors.Zotero.citekey_types}.
+    -- @side May re-order the elements of @{connectors.Zotxt.citekey_types}.
     --
     -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
     -- @treturn[1] table A CSL item.
@@ -4009,8 +4009,8 @@ do
     -- @treturn[2] string An error message.
     -- @raise See @{http_get}.
     --
-    -- @function connectors.Zotero:fetch
-    connectors.Zotero.fetch = typed_args({citekey_types = 'table'}, 'string')(
+    -- @function connectors.Zotxt:fetch
+    connectors.Zotxt.fetch = typed_args({citekey_types = 'table'}, 'string')(
         function (self, ckey)
             local ckey_types = self.citekey_types
             local err = nil
@@ -4064,8 +4064,8 @@ end
 -- item = handle:fetch 'DoeWord2020'
 --
 -- @object connectors.ZoteroWeb
--- @proto @{connectors.Zotero}
-connectors.ZoteroWeb = connectors.Zotero()
+-- @proto @{connectors.Zotxt}
+connectors.ZoteroWeb = connectors.Zotxt()
 
 --- Types of citation keys to expect.
 --
@@ -4088,8 +4088,8 @@ connectors.ZoteroWeb.citekey_types = List {
 -- See the manual for details.
 --
 -- @object connectors.ZoteroWeb.options
--- @proto @{connectors.Zotero.options}.
-connectors.ZoteroWeb.options = connectors.Zotero.options:new(
+-- @proto @{connectors.Zotxt.options}.
+connectors.ZoteroWeb.options = connectors.Zotxt.options:new(
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},
     {prefix = 'zotero', name = 'groups', type = 'list<number>'},
@@ -4432,12 +4432,12 @@ end
 -- @side May print error messages to STDERR.
 --
 -- @string fname A filename for the bibliography file.
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
+-- @tparam connectors.Zotxt|connectors.ZoteroWeb handle A Zotero handle.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] pandoc.Meta An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
+-- @raise See @{connectors.Zotxt} and @{connectors.ZoteroWeb}.
 --
 -- @function add_biblio
 add_biblio = typed_args('string', 'table', 'table|userdata')(
@@ -4462,12 +4462,12 @@ add_biblio = typed_args('string', 'table', 'table|userdata')(
 --
 -- @side May print error messages to STDERR.
 --
--- @tparam connectors.Zotero|connectors.ZoteroWeb handle A Zotero handle.
+-- @tparam connectors.Zotxt|connectors.ZoteroWeb handle A Zotero handle.
 -- @tparam pandoc.Pandoc doc A Pandoc document.
 -- @treturn[1] table An updated metadata block.
 -- @treturn[2] nil `nil` if nothing was done or an error occurred.
 -- @treturn[2] string An error message, if applicable.
--- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
+-- @raise See @{connectors.Zotxt} and @{connectors.ZoteroWeb}.
 --
 -- @function add_refs
 add_refs = typed_args('table', 'table|userdata')(
@@ -4528,7 +4528,7 @@ do
     -- @tparam pandoc.Pandoc doc A document.
     -- @treturn[1] pandoc.Pandoc The document with bibliographic data added.
     -- @treturn[2] nil `nil` if nothing was done or an error occurred.
-    -- @raise See @{connectors.Zotero} and @{connectors.ZoteroWeb}.
+    -- @raise See @{connectors.Zotxt} and @{connectors.ZoteroWeb}.
     function main (doc)
         local opts = parser:parse(doc.meta)
 

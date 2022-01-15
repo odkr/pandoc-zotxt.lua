@@ -103,7 +103,7 @@ done
 shift $((OPTIND - 1))
 [ $# -gt 0 ] || panic -s 64 'no tests given.'
 
-: "${CONNECTORS:="zotero zoteroweb"}"
+: "${CONNECTORS:="zotxt zoteroweb"}"
 
 : "${PANDOC_ARGS:=--quiet}"
 
