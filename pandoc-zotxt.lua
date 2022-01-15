@@ -723,6 +723,7 @@ vars_get = typed_args('?number')(
 --
 -- See *Progamming in Lua* ([chap. 11.5](https://www.lua.org/pil/11.5.html)).
 --
+-- @caveats This table exists in documentation only.
 -- @table Set
 
 --- Metatable to make index lookups case-insensitive.
@@ -1754,7 +1755,7 @@ do
 
     --- Locate a file in Pandoc's resource path.
     --
-    -- @caveats Absolute filenames are returned as is.
+    -- @caveats Absolute filenames are returned as they are.
     --
     -- @string fname A filename.
     -- @treturn[1] string A filename in Pandoc's resource path.
@@ -2017,7 +2018,7 @@ with_tmp_file = typed_args('function', '?string', '?string')(
 -- @treturn string The MIME type of the HTTP content.
 -- @treturn string The HTTP content itself.
 -- @raise An error if the host cannot be reached.
---  This error can only be caught since Pandoc v2.11.
+--  This error can be caught starting with Pandoc v2.11.
 --
 -- @function http_get
 http_get = typed_args('string')(
@@ -2321,7 +2322,7 @@ do
 
     --- Generate a YAML representation of a value.
     --
-    -- Lines are termined with @{EOL}.
+    -- Terminates lines with @{EOL}.
     --
     -- @caveats
     --
@@ -2390,7 +2391,8 @@ end
 -- @treturn string HTML code.
 --
 -- @function zotero_to_html
--- @raise An error if opening `<sc>` and closing `</sc>` tags are unbalanced.
+-- @raise An @{Error} if the opening `<sc>` and the closing `</sc>`
+--  tags are unbalanced.
 zotero_to_html = typed_args('string')(
     function (pseudo)
         local opened, closed, n, m
@@ -3013,11 +3015,10 @@ end
 --
 -- @caveats
 --
--- The citation key types 'key' and 'easykey' go before 'betterbibtexkey',
--- for while it is unlikely for the Zotero item ID parser or the Easy Citekey
--- parser to parse a Better BibTeX citation key, it is possible for the
--- BetterBibTeX citation parser to parse a Zotero item ID and quite likely
--- for it to parse an Easy Citekey -- and it would do it wrong.
+-- The citation key types 'key' and 'easykey' go before 'betterbibtexkey'.
+-- It is unlikely that the Zotero item ID parser or the Easy Citekey would
+-- parse a Better BibTeX citation key. But the BetterBibTeX citation parser
+-- does 'parse' Zotero item IDs as well as Easy Citekey, wrongly.
 --
 -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
 -- @tparam {string,...} types Types to try to parse the citation key as.
@@ -3198,11 +3199,13 @@ biblio.read = typed_args('table', 'string')(
 -- The filename suffix determines the file's format.
 -- @{biblio.types} must contain a matching encoder.
 --
+-- If no CSL items are given, tests whether data can be serialised
+-- in the given format *without* chaging the file.
+--
 -- @caveats See @{file_write}.
 --
 -- @string fname A filename.
--- @tab[opt] items CSL items. If none are given, tests
---  whether the data can be written in the given format.
+-- @tab[opt] items CSL items.
 -- @treturn[1] string The filename suffix.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
@@ -3524,10 +3527,11 @@ do
     --
     -- * walking AST elements of any type (inluding documents and metadata),
     -- * walking the AST bottom-up,
+    -- * *not* accepting the `traverse` keyword,
     -- * applying the filter to the given element itself,
     -- * allowing functions in the filter to return data of arbitrary types,
     -- * never modifying the original element, and
-    -- * accepting 'AstElement' as element type.
+    -- * accepting 'AstElement' as type that matches any element.
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @tparam {string=func,...} filter A filter.
@@ -3652,6 +3656,7 @@ doc_ckeys = typed_args('table|userdata', '?boolean')(
 -- @func[opt] parse A parser.
 -- @string[opt] prefix A prefix.
 --
+-- @caveats This table exists in documentation only.
 -- @see opts_parse
 -- @table Option
 
@@ -3839,7 +3844,8 @@ do
     --
     -- The name of the metadata field that is looked up by @{Options:parse} is
     -- the name of the option with underscores replaced by dashes. If the
-    -- option has a prefix, then the fieldname is prefixed with that prefix.
+    -- option has a prefix, then the fieldname is prefixed with that prefix
+    -- and a dash *after* underscores have been replaced with dashes.
     --
     -- In Lua:
     --
@@ -3862,27 +3868,22 @@ do
     -- required to be a `pandoc.List`. If a scalar is encountered where
     -- a list was expected, the value is wrapped in a single-item list.
     --
-    -- The items of a list must all be of the same type, which you declare
-    -- by appending '<*T*>' to the literal 'list', where *T* is either the
-    -- name of a scalar type or 'list<...>' and defaults to 'string'.
-    --
-    -- Whitespace is ignored.
+    -- The items of a list must all be of the same type, which you declare by
+    -- appending '<*T*>' to the literal 'list', where *T* is either the name
+    -- of a scalar type or another list declaration and defaults to 'string'.
     --
     -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
     --
-    -- > Space = ' ' | TAB | CR | LF
+    -- > Scalar = ( 'number' | 'string' )
     -- >
-    -- > Scalar = { space }, ( 'number' | 'string' ), { space }
-    -- >
-    -- > List = { space }, 'list', { space },
-    -- >        [ '<', ( scalar | list ), '>'? ], { space }
+    -- > List = 'list', [ '<', ( scalar | list ), '>' ]
     --
     -- No type checks or conversions are performed for `nil`.
     --
     -- <h3>Parse protocol:</h3>
     --
     -- A parser is a function that takes the converted value and
-    -- returns either a new value or `nil` and an error message.
+    -- returns a new one or `nil` and an error message.
     --
     -- Parsers are not called for `nil`.
     --
@@ -3951,17 +3952,17 @@ end
 --
 -- A connector prototype *must* provide two methods:
 --
--- A `new` method that is called to create a new connector object. `new` must
--- have the same function signature as @{Object:new}. It should return `nil`
--- and an error message if the object cannot be created.
+-- * `new`: Called to create handles.
+--   Must have the same function signature as @{Object:new} and
+--   return `nil` and an error message if the handle cannot be created.
 --
--- A `fetch` method that fetches bibliographc data. `fetch` should take a
--- a citation key and return either a CSL item or `nil` and an error message.
+-- * `fetch`: Called to fetch bibliographc data. Must take a citation key and
+--   return either a CSL item or `nil` and an error message.
 --
 -- Connector prototypes may register configuration settings by providing
 -- an `options` property that points to an @{Options} object. That object's
 -- @{Options:parse} method is then called with the document's metadata block
--- as argument and whatever it returns is passed to `new` as argument.
+-- as argument and whatever it returns is passed on to `new`.
 connectors = setmetatable({}, ignore_case)
 
 --- Interface to [zotxt](https://github.com/egh/zotxt).
@@ -3977,7 +3978,7 @@ connectors.Zotxt = Object()
 --- Zotero options.
 --
 -- Defines `zotero-citekey-types`.
--- See the manual for details.
+-- See the [manual](#content) for details.
 --
 -- @object connectors.Zotxt.options
 -- @proto @{Options}.
@@ -3988,6 +3989,9 @@ connectors.Zotxt.options = Options:new{
 }
 
 --- Types of citation keys to expect.
+--
+-- `pandoc.List` of @{string}s.
+-- For example, `pandoc.List{'betterbibtexkey', 'easykey'}`.
 connectors.Zotxt.citekey_types = List{
     'betterbibtexkey',  -- Better BibTeX citation key
     'easykey',          -- zotxt easy citekey
@@ -4068,7 +4072,8 @@ connectors.ZoteroWeb = connectors.Zotxt()
 
 --- Types of citation keys to expect.
 --
--- See @{citekey:guess_terms} for caveats.
+-- See @{connectors.Zotxt.citekey_types} for details
+-- and @{citekey:guess_terms} for caveats.
 connectors.ZoteroWeb.citekey_types = List {
     'key',              -- Zotero item IDs
     'easykey',          -- zotxt Easy Citekey
@@ -4084,7 +4089,7 @@ connectors.ZoteroWeb.citekey_types = List {
 --  * `zotero-groups`
 --  * `zotero-public-groups`
 --
--- See the manual for details.
+-- See the [manual](#content) for details.
 --
 -- @object connectors.ZoteroWeb.options
 -- @proto @{connectors.Zotxt.options}.
@@ -4136,13 +4141,12 @@ do
     --
     -- @tparam connectors.ZoteroWeb obj A Zotero Web API handle.
     -- @treturn string A Zotero user ID.
-    -- @raise An error if:
+    -- @raise
     --
-    --  * the `api_key` field is not set,
-    --  * the Zotero Web API could not be reached
-    --    (see @{http_get} for details),
-    --  * the API's response cannot be parsed,
-    --  * no user ID could be found for the given Zotero API key.
+    -- * @{string}: If the `api_key` field is not set.
+    -- * @{Error}: If the Zotero Web API could not be reached,
+    --   (see @{http_get} for details), the API's response cannot be parsed,
+    --   or no user ID could be found for the given Zotero API key.
     --
     -- @function connectors.ZoteroWeb.mt.getters.user_id
     connectors.ZoteroWeb.mt.getters.user_id = typed_args('table')(
@@ -4173,12 +4177,12 @@ do
     --
     -- @tparam connectors.ZoteroWeb obj A Zotero Web API handle.
     -- @treturn {string,...} Zotero group IDs.
-    -- @raise An error if:
+    -- @raise
     --
-    --  * the `api_key` field is not set,
-    --  * the Zotero Web API could not be reached
-    --    (see @{http_get} for details),
-    --  * the API's response cannot be parsed.
+    --  * @{string}: If the `api_key` field is not set,
+    --  * @{Error}: If the Zotero Web API could not be reached
+    --    (see @{http_get} for details) or the API's response
+    --    cannot be parsed.
     --
     -- @function connectors.ZoteroWeb.mt.getters.groups
     connectors.ZoteroWeb.mt.getters.groups = typed_args('table')(
@@ -4209,8 +4213,7 @@ do
     --- Retrieve data from the Zotero Web API.
     --
     -- @string ep An endpoint URL.
-    -- @tparam {string=string,...} params Request parameters
-    --  (e.g., `{v = 3, api_key = 'a0Bc1De2Fg3Hi4Jk5Lm6No7'}`).
+    -- @tparam {string=string,...} params Request parameters.
     -- @treturn[1] string The response of the Zotero Web API.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
@@ -4520,7 +4523,7 @@ do
 
     --- Collect citations and add bibliographic data to the document.
     --
-    -- See the manual for details.
+    -- See the [manual](#content) for details.
     --
     -- @side May print error messages to STDERR.
     --
