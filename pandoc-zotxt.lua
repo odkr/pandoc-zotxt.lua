@@ -246,7 +246,7 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.1.0b7
+-- @release 1.1.0b8
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021 Odin Kroeger
 -- @license MIT
@@ -627,7 +627,7 @@ end
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '1.1.0b7'
+VERSION = '1.1.0b8'
 
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
