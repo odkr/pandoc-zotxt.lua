@@ -123,9 +123,12 @@ done <"$manifest"
 
 warn -e "$SMSO" 'updating documentation ...'
 
+git checkout docs
 make docs
 git add "$filter" man docs
 git commit --quiet --message='docs: updated.' || :
+git checkout develop
+git merge docs
 
 warn -e "$SMSO" 'testing release ...'
 
