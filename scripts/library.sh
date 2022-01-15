@@ -75,8 +75,9 @@ unset TEMP_DIR
 
 # Print a message to STDERR.
 #
-# Messages are prefixed with `SCPT_NAME` and ': ' and
-# terminated with a linefeed.
+# Messages are prefixed with `SCPT_NAME` and ': ' and terminated with an SGR
+# reset and a linefeed. The SGR reset is omitted if the terminal does not
+# support colours.
 #
 # Synopis:
 #	warn [-e ESC] [-n] MSG [ARG [ARG [...]]]
@@ -87,17 +88,16 @@ unset TEMP_DIR
 #
 # Options:
 #	-n      Do not terminate the warning with a linefeed.
-#	-e ESC  Prefix the message with an escape code
-#               and terminate it with an SGR reset.
+#	-e ESC  Prefix the message with an escape code.
 warn() (
 	: "${1:?}"
 
-	escape='' linefeed=x
+	linefeed=x escape=
 	OPTIND=1 OPTARG='' opt=''
 	while getopts e:n opt
 	do
 		case $opt in
-			(e) escape="$OPTARG" ;;
+			(e) escape="${escape-}$OPTARG" ;;
 			(n) linefeed= ;;
 			(*) return 70
 		esac
@@ -105,11 +105,12 @@ warn() (
 	shift $((OPTIND - 1))
 
 	exec >&2
-	printf '%s: ' "$SCPT_NAME"
-	[ "$escape" ] && printf '%b' "$escape"
+
+	printf '%s: %b' "$SCPT_NAME" "$escape"
 	printf -- "$@"
-	[ "$escape" ] && printf '%b' "$SGR0"
+	printf '%b' "$SGR0"
 	[ "$linefeed" ] && echo
+
 	return 0
 )
 
