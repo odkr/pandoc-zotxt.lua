@@ -405,11 +405,11 @@ do
     --
     -- <h3>Type declaration grammar:</h3>
     --
-    -- One or more Lua type names separated by '|' require the given value to
-    -- be of one of the given types (e.g., `'string|table'` requires the value
-    -- to be a string or a table). `'*'` is short for the list of all types
-    -- save for `nil`. `'?T'` is short for `'T|nil'` (e.g., `'?table'` is
-    -- short for `'table|nil'`).
+    -- Declare one or more Lua type names separated by '|' to require that
+    -- the given value to be of one of the given types (e.g., `'string|table'`
+    -- requires the value to be a string or a table). `'*'` is short for the
+    -- list of all types but `nil`. `'?T'` is short for `'T|nil'` (e.g.,
+    -- `'?table'` is short for `'table|nil'`).
     --
     -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
     --
@@ -418,10 +418,10 @@ do
     -- >
     -- > Type list = [ '?' ], ( '*' | type, { '|', type list } )
     --
-    -- <h3>Composite types:</h3>
+    -- <h3>Complex types:</h3>
     --
-    -- You can perform more granular type-checks for tables and userdata
-    -- by giving a table that maps indices to type declarations.
+    -- Check types of table or userdata fields by declaring
+    -- a table that maps indices to type declarations.
     --
     --    > type_check({1, '2'}, {'number', 'number'})
     --    nil    index 2: expected number, got string.
@@ -431,7 +431,7 @@ do
     --    nil    expected table or userdata, got string.
     --
     -- @caveats Non-referring type names (e.g., 'int') do *not* raise an error,
-    --  they just fail.
+    --  they just fail for any given value.
     --
     -- @param val A value.
     -- @tparam string|table td A type declaration.
@@ -468,13 +468,13 @@ end
 --
 -- <h3>Type declaration grammar:</h3>
 --
--- The type declaration syntax is that of @{type_match}, save for that '`...`'
+-- The type declaration syntax is that of @{type_match}, save for that `'...'`
 -- can be used to require that an argument is of the same type as the previous
--- one. If '`...`' is the last type declaration, then the previous type
--- declaration applies to all remaining arguments.
+-- one. If `'...'` is the last type declaration, the previous declaration
+-- applies to all remaining arguments.
 --
--- @tip If you get weird Lua errors after you have added type declarations
---  to a function, check if you forgot the quotes around `'...'`.
+-- @tip If you get obscure Lua errors after you have added type checks to
+--  a function, you may have forgotten the quotes around '`...`'.
 --
 -- @caveats Non-referring type names (e.g., 'int') do *not* raise an error
 --  at compile-time, they just fail at run-time.
@@ -656,7 +656,7 @@ local json = require 'lunajson'
 --
 -- @section
 
---- Get a copy of the variables of a function as well as of `_ENV`.
+--- Get a copy of the variables of a function and of `_ENV`.
 --
 -- @caveats
 --
@@ -719,7 +719,7 @@ vars_get = typed_args('?number')(
 
 ---
 -- Sets are tables that map items to boolean values.
--- If `set[item]` equals `true`, `item` is a member of `set`.
+-- If `set[item]` is `true`, `item` is a member of `set`.
 --
 -- See *Progamming in Lua* ([chap. 11.5](https://www.lua.org/pil/11.5.html)).
 --
@@ -920,7 +920,7 @@ sorted = typed_args('table', '?function')(
 
 --- Tabulate the values an iterator returns.
 --
--- The iterator is given the same arguments as @{next}.
+-- The iterator must accept the same arguments as @{next}.
 --
 -- @func iter An iterator.
 -- @param[opt] tab A table to iterate over.
@@ -1123,21 +1123,21 @@ do
     -- dollar signs is replaced with *n* – 1 dollar signs.
     --
     --    > vars_sub(
-    --    >     '$${v1} costs $$23.',
-    --    >     {v1 = 'foo'}
+    --    >     '$${var} costs $$1.',
+    --    >     {var = 'foo'}
     --    > )
-    --    ${v1} costs $23.
+    --    ${var} costs $1.
     --
     -- If a variable name is followed by a pipe symbol ('|'), then the string
     -- of characters between the pipe symbol and the closing brace ('}') is
     -- treated as a function name; the value of the variable is then passed to
     -- that function, and the whole expression `${<variable>|<function>}` is
     -- replaced with the first value that this function returns. Variable
-    -- names must *not* contain the pipe symbol, but function names may.
+    -- names cannot contain the pipe symbol, but function names may.
     --
     --    > vars_sub(
-    --    >     '${v1|barify} is bar!', {
-    --    >         v1 = 'foo',
+    --    >     '${var|barify} is bar!', {
+    --    >         var = 'foo',
     --    >         barify = function (s)
     --    >             return s:gsub('foo', 'bar')
     --    >         end
@@ -1147,7 +1147,7 @@ do
     --
     -- You can lookup values in tables by joining the name of the variable
     -- and that of the table index with a dot ('.'). Neither variable nor
-    -- function names may contain dots.
+    -- function names can contain dots.
     --
     --    > vars_sub(
     --    >     '${foo.bar} is baz.', {
@@ -1216,7 +1216,9 @@ setmetatable(Object, Object.mt)
 --
 -- Create a new table, set its metatable to a copy of the prototype's
 -- metatable, set the `__index` metavalue to the prototype, and merge
--- with the given metatable, in that order.
+-- its metatable with the given metatable, in that order.
+--
+-- That is,
 --
 --    obj = Object(mt)
 --
@@ -1232,22 +1234,15 @@ setmetatable(Object, Object.mt)
 -- @treturn Object An object.
 --
 -- @usage
--- > foo = Object{__tostring = function (t) return t.bar end}
--- > foo.bar = 'bar'
--- > foo.baz = 'baz'
+-- > Foo = Object{__tostring = function (t) return t.bar end}
+-- > Foo.bar = 'bar'
 -- > tostring(foo)
--- bar
--- > bar = foo()
--- > bar.baz = 'bam!'
--- > bar.bar
--- bar
--- > bar.baz
--- bam!
+-- > bar = Foo()
 -- > tostring(bar)
 -- bar
--- > baz = bar{__tostring = function (t) return t.baz end}
--- > tostring(baz)
--- bam!
+-- > bar.bar = 'baz'
+-- > tostring(bar)
+-- baz
 --
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
@@ -1347,7 +1342,7 @@ Values.n = 0
 -- You can convert an ordinary table to a `Values` object by:
 --
 --    tab.n = #tab
---    setmetatable(tab, getmetatables(Values))
+--    setmetatable(tab, getmetatable(Values))
 --
 -- @param ... Items.
 --
@@ -1382,11 +1377,11 @@ Values.add = typed_args({n = 'number'})(
 --
 -- If an index is not present in a the table, look for a function of the same
 -- name in the table's `getters` metavalue. That metavalue must be a mapping
--- of indices to functions. If it contains a function of the same name as the
--- index, then that function is called with the table as only argument and
--- whatever it returns is returned as the value for the index. If `getters`
--- contains no function of that name, the name is looked up in the table's
--- *old* `__index` metavalue.
+-- of indices to functions. If it contains a function of that name, then that
+-- function is called with the table as its only argument and whatever it
+-- returns is returned as the value of the given index. If `getters` contains
+-- no function of that name, the name is looked up in the table's *old*
+-- `__index` metavalue.
 --
 -- @caveats
 --
@@ -1447,6 +1442,9 @@ getterify = typed_args('table')(
 
 --- Delegate to a prototype and add getters.
 --
+-- `delegate_with_getters(obj, mt)` is short for
+-- `getterify(getmetatable(Object).__call(obj, mt))`.
+--
 -- @tab proto A prototype.
 -- @tab[opt] tab A table.
 -- @treturn Object A getterified table.
@@ -1479,7 +1477,8 @@ Error.mt = getmetatable(Error)
 --- Convert error objects to strings.
 --
 -- Take @{Error.mt.template}, replace variables with the properties of the
--- same names and return the result. See @{vars_sub} for the variable syntax.
+-- same names and return the result. See @{vars_sub} for the variable
+-- substitution syntax.
 --
 -- @tab tab An error object.
 -- @treturn string An error message.
@@ -1533,9 +1532,10 @@ do
     -- <h3>Variable substitution:</h3>
     --
     -- If string values contain variable names, they are replaced with the
-    -- values of local variables or upvalues of the calling function or, if
-    -- there are no local variables or upvalues of the given names, of global
-    -- variables of the module. See @{vars_sub} for the syntax.
+    -- values of the local variables or the upvalues of the calling function
+    -- or, if there are no local variables or upvalues of the given names,
+    -- with values of the global variables of the module. See @{vars_sub} for
+    -- the syntax and @{vars_get} for limitationss.
     --
     -- <h3>Options:</h3>
     --
@@ -1629,7 +1629,6 @@ xerror = typed_args('string', '?table')(
 -- @param cond A condition.
 -- @string msg A message template. See @{vars_sub}.
 -- @tab[opt] vars Variables. Defaults to the variables of the calling function.
---  See @{vars_get} and @{xwarn} for details.
 -- @return The given arguments.
 --
 -- @function xassert
@@ -1673,7 +1672,7 @@ do
 
     local home_dir
     do
-        if PATH_SEP == '/' then
+        if OS_TYPE == 'POSIX' then
             local env_home = os.getenv('HOME')
             if env_home and path_is_abs(env_home) then
                 home_dir = path_normalise(env_home)
@@ -1689,7 +1688,7 @@ do
     -- @string path A path.
     -- @treturn string A prettier path.
     -- @require The working directory is removed from the
-    --  beginning of the path since Pandoc v2.12.
+    --  beginning of the path starting with Pandoc v2.12.
     --
     -- @function path_prettify
     path_prettify = typed_args('string')(
@@ -4420,7 +4419,7 @@ end
 --
 -- @section
 
---- Add data to a bibliography file.
+--- Add bibliographic data to a bibliography file.
 --
 -- Updates the bibliography file as needed and adds its to the
 -- `bibliography` metadata field. Interpretes relative filenames
