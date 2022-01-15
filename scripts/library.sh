@@ -44,7 +44,7 @@ unset signame signo
 readonly TEMP_NAME_GEN="$REPO/scripts/temp-name-gen"
 
 # Colours!
-SMSO='' RMSO='' CVVIS='' CNORM='' RED='' GREEN='' SGR0=''
+SMSO='' RMSO='' BOLD='' CVVIS='' CNORM='' BLUE='' RED='' GREEN='' SGR0=''
 case $TERM in (*color|*colour*)
 	SMSO="$(tput smso)"     || SMSO=
 	RMSO="$(tput rmso)"     || RMSO=
@@ -57,7 +57,7 @@ case $TERM in (*color|*colour*)
 	SGR0="$(tput sgr0)"     || SGR0=
 esac
 # shellcheck disable=2034
-readonly SMSO RMSO CVVIS CNORM BLUE GREEN RED SGR0
+readonly SMSO RMSO BOLD CVVIS CNORM BLUE GREEN RED SGR0
 
 
 # GLOBALS
