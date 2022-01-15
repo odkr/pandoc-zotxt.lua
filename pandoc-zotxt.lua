@@ -656,7 +656,7 @@ local json = require 'lunajson'
 --
 -- @section
 
---- Get a copy of the variables of a function and of `_ENV`.
+--- Get a copy of the variables of a function as well as of `_ENV`.
 --
 -- @caveats
 --
@@ -717,8 +717,7 @@ vars_get = typed_args('?number')(
 --
 -- @section
 
---- A set
---
+---
 -- Sets are tables that map items to boolean values.
 -- If `set[item]` equals `true`, `item` is a member of `set`.
 --
@@ -726,7 +725,7 @@ vars_get = typed_args('?number')(
 --
 -- @table Set
 
---- Metatable to make tables ignore case.
+--- Metatable to make index lookups case-insensitive.
 --
 -- @usage
 --
@@ -2894,8 +2893,8 @@ do
     -- @treturn[2] nil `nil` if the string cannot be parsed.
     -- @treturn[2] string An error message.
     --
-    -- @function csl_json_to_items
-    csl_json_to_items = typed_args('string')(
+    -- @function csl_json_parse
+    csl_json_parse = typed_args('string')(
         function (str)
             if str == '' then return nil, 'got the empty string.' end
             local ok, data = pcall(decode, str)
@@ -3096,7 +3095,7 @@ biblio.types.json = {}
 -- @treturn {tab,...} CSL items.
 --
 -- @function biblio.types.json.decode
-biblio.types.json.decode = csl_json_to_items
+biblio.types.json.decode = csl_json_parse
 
 --- Serialise a list of CSL items to a JSON string.
 --
@@ -4028,7 +4027,7 @@ do
                 elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
                     err = ckey .. ': zotxt response is not encoded in UTF-8.'
                 else
-                    local data = csl_json_to_items(str)
+                    local data = csl_json_parse(str)
                     if data then
                         local n = #data
                         if n == 1 then
@@ -4315,7 +4314,7 @@ do
                 -- luacheck: ignore err
                 local str, err = self.query(ep, params)
                 if not str then return nil, err end
-                local data, err = csl_json_to_items(str)
+                local data, err = csl_json_parse(str)
                 if not data then return nil, err end
                 local items = data.items
                 if items and #items > 0 then return items end
@@ -4344,7 +4343,7 @@ do
             for ep in self:endpoints(id) do
                 local str = self.query(ep, params)
                 if str then
-                    local data, err = csl_json_to_items(str)
+                    local data, err = csl_json_parse(str)
                     if not data then return nil, err end
                     local items = data.items
                     if items then
