@@ -141,17 +141,16 @@ do
 			panic '%s: failed to determine directory name.' "$test"
 		[ "$dirname" != . ] && mkdir -p "$TEMP_DIR/$dirname"
 		output="$TEMP_DIR/$test.html"
+		
 		vers="$PANDOC_VERS"
 		while true
 		do
 			norm="$NORM_DIR/$vers/${test}.html"
 			[ -e "$norm" ] && break
-			case $vers in (*.*)
-				vers="${vers%.*}"
-				continue
+			case $vers in
+				(*.*) vers="${vers%.*}" ;;
+				(*)   break ;;
 			esac
-			panic 'test "%s" is not defined for Pandoc v%s.' \
-			      "$test" "$vers"
 		done
 
 		if "$PANDOC" --from markdown --to html \
@@ -176,10 +175,26 @@ do
 		                  --citeproc \
 		                  "$DATA_DIR/$test.md"
 		fi
-		cmp "$output" "$norm" || {
-			warn -e "$RED" failed.
-			failures=$((failures + 1))
-		}
+		if [ -e "$norm" ]
+		then
+			cmp "$output" "$norm" || {
+				warn -e "$RED" failed.
+				failures=$((failures + 1))
+			}
+		else
+			warn -e "$RED" \
+			     '%s is not defined for Pandoc v%s.' \
+			     "$BOLD$test$SGR0$RED" "$vers"
+			name="$(basename "$output")" && [ "$name" ] ||
+				panic 'failed to get basename of %s.' "$output"
+			target="${REPO%/}/$name"
+			[ -e "$target" ] &&
+				panic '%s exists, not overwriting.' \
+				      "$(path_prettify "$target")"
+			mv "$output" "$REPO"
+			panic 'moved %s to %s.' \
+			      "$name" "$(path_prettify "$REPO")"
+		fi
 	done
 done
 
