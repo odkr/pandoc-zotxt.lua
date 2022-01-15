@@ -104,6 +104,15 @@ vers="$(sed -n "s/^ *VERSION *= *['\"]\([^'\"]*\)['\"].*/\1/p;" "$filter")" &&
 	panic -s 65 '%s: @release %s does not match VERSION v%s.' \
 	       "$filter" "$release" "$vers"
 
+for tag in $(git tag --list 'v*' --sort version:refname)
+do
+	[ "$tag" = "v$vers" ] &&
+		panic 'v%s has been released already.' "$vers"
+done
+last="$tag"
+
+[ "$last" ] || panic 'failed to determine latest release.'
+
 warn 'verifying branch ...'
 
 release_branch="release-$vers"
@@ -123,12 +132,9 @@ done <"$manifest"
 
 warn -e "$SMSO" 'updating documentation ...'
 
-git checkout docs
 make docs
 git add "$filter" man docs
 git commit --quiet --message='docs: updated.' || :
-git checkout develop
-git merge docs
 
 warn -e "$SMSO" 'testing release ...'
 
@@ -158,18 +164,13 @@ do
 	fi
 done
 
-warn -e "$SMSO" 'adding tag %s ...' "${BOLD}v${vers}${SGR0}${SMSO}"
-
-last="$(
-	git tag --list 'v*' --sort version:refname |
-	tail -n1
-)" && [ "$last" ] ||
-	panic 'failed to determine current release.'
-
 warn -e "$SMSO" 'collecting log ...'
 
 log="$TEMP_DIR/log"
 git log "^$last" HEAD >"$log"
+
+warn -e "$SMSO" 'adding tag %s ...' "${BOLD}v${vers}${SGR0}${SMSO}"
+
 git tag --file="$log" --edit "v$vers"
 
 warn -e "$GREEN" done.
