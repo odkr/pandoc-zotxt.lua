@@ -58,8 +58,8 @@
 -- you can do so by 'pinning' the citation key. Alternatively, you can cite
 -- the source using its Zotero item ID.
 --
--- BIBLIOGRAPHY FILES
--- ==================
+-- CACHING SOURCES WITH A BIBLIOGRAPHY FILE
+-- ========================================
 --
 -- Bibliographic data can be added to a bibliography file, rather than to the
 -- "references" metadata field. This speeds up subsequent processing of the
@@ -131,17 +131,18 @@
 --
 --   | **Key**   | **Fetch data from**   |
 --   | --------- | --------------------- |
---   | zotero    | Zotero desktop client |
+--   | zotxt     | Zotero desktop client |
 --   | zoteroweb | Zotero Web API        |
 --
 --   Data is fetched via the listed connectors only.
 --
 --   By default, the Zotero desktop client is searched first. If you have set
---   a Zotero API key and the client could not be reached or some citations
---   not be found, the Zotero Web API is searched next.
+--   a Zotero API key and the client could not be reached or if some citations
+--   could not be found, the Zotero Web API is searched next.
 --
--- * `zotero-groups`: A list of Zotero group IDs. Only the listed groups are
--- searched. By default, all groups that you are a member of are searched.
+-- * `zotero-groups`: A list of Zotero group IDs to search. By default, all
+-- groups that you are a member of are searched. Only respected by the Zotero
+-- Web API connectors.
 --
 -- * `zotero-public-groups`: A list of Zotero group IDs. Listed groups are
 -- searched in addition to the groups that you are a member of, if any. These
