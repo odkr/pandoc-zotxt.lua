@@ -248,7 +248,7 @@
 -- @script pandoc-zotxt.lua
 -- @release 1.1.0b8
 -- @author Odin Kroeger
--- @copyright 2018, 2019, 2020, 2021 Odin Kroeger
+-- @copyright 2018, 2019, 2020, 2021, 2022 Odin Kroeger
 -- @license MIT
 
 -- Table of Contents
