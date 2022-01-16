@@ -3583,33 +3583,38 @@ end
 -- @tparam pandoc.MetaMap meta A metadata block.
 -- @treturn pandoc.List CSL items.
 --
--- @function meta_sources
-meta_sources = typed_args('table|userdata')(
-    function (meta)
-        local data = List()
-        if not meta then return data end
-        if meta.references then data:extend(meta.references) end
-        if meta.bibliography then
-            local fnames = opts_parse(meta, {
-                name = 'bibliography',
-                type = 'list'
-            }).bibliography
-            for i = 1, #fnames do
-                -- luacheck: ignore err
-                local fname, err = file_locate(fnames[i])
-                if fname then
-                    local items, err = biblio:read(fname)
-                    if items then data:extend(items)
-                             else xwarn('@error', '@plain', err)
+-- @function doc_sources
+if not pandoc.types or PANDOC_VERSION < {2, 17} then
+    doc_sources = typed_args('table|userdata')(
+        function (doc)
+            local data = List()
+            if not doc or not doc.meta then return data end
+            local meta = doc.meta
+            if meta.references then data:extend(meta.references) end
+            if meta.bibliography then
+                local fnames = opts_parse(meta, {
+                    name = 'bibliography',
+                    type = 'list'
+                }).bibliography
+                for i = 1, #fnames do
+                    -- luacheck: ignore err
+                    local fname, err = file_locate(fnames[i])
+                    if fname then
+                        local items, err = biblio:read(fname)
+                        if items then data:extend(items)
+                                else xwarn('@error', '@plain', err)
+                        end
+                    else
+                        xwarn('@error', '@plain', err)
                     end
-                else
-                    xwarn('@error', '@plain', err)
                 end
             end
+            return data
         end
-        return data
-    end
-)
+    )
+else
+    doc_sources = pandoc.utils.references
+end
 
 --- Collect the citation keys used in a document.
 --
@@ -3638,7 +3643,7 @@ doc_ckeys = typed_args('table|userdata', '?boolean')(
             pandoc.walk_block(blocks[i], filter)
         end
         if undef then
-            for ckey in pairs(csl_items_ids(meta_sources(meta))) do
+            for ckey in pairs(csl_items_ids(doc_sources(doc))) do
                 ckeys[ckey] = nil
             end
         end
