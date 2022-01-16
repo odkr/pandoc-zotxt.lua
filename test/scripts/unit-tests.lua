@@ -816,7 +816,20 @@ function test_split ()
     end
 end
 
-
+function test_trim ()
+    local ws = powerset{'\t', '\n', ' ', '\r'}
+    for _, cs in pairs(ws) do
+        local sp = concat(cs)
+        for i = 1, 3 do
+            local str
+            if     i == 1 then str = sp .. 'string'
+            elseif i == 2 then str = 'string' .. sp
+            elseif i == 3 then str = sp .. 'string' .. sp
+            end
+            assert_items_equals(pack(M.trim(str)), {'string', n = 2})
+        end
+    end
+end
 
 
 
