@@ -324,7 +324,7 @@
 
 -- Run in debugging mode?
 -- luacheck: push ignore DEBUG
-local DEBUG = true -- DEBUG or false
+local DEBUG = DEBUG or false
 -- luacheck: pop
 
 -- Built-in functions.
