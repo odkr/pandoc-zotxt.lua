@@ -3425,29 +3425,15 @@ do
             end
             return nil, 'not a Pandoc AST element.'
         end
-    else
-        -- @todo This works for the development version of Pandoc
-        --       as of commit 60fc05e and is subject to change.
-        --       See <https://github.com/jgm/pandoc/issues/7796>.
-        local pandoc_type = pandoc.utils.type
-
+    elseif PANDOC_VERSION < {2, 17} then
         function el_type (el, ...)
             local t = type(el)
             if t == 'userdata' or t == 'table' then
                 -- Use the tag, if there is one.
                 if el.tag then return el.tag end
 
-                -- Check if we can use pandoc.utils.type.
-                if pandoc_type then
-                    local pt = pandoc_type(el)
-                    if
-                        pt:match '^[A-Z]' and
-                        pt ~= 'Meta'      and
-                        pt ~= 'List'
-                    then return pt end
-
                 -- Lists of AST elements of the same type (e.g., 'Inlines').
-                elseif t == 'table' then
+                if t == 'table' then
                     local lt = items_type(el, ...)
                     if lt then return lt .. 's' end
                 end
@@ -3459,6 +3445,25 @@ do
                     el.blocks and
                     t == 'userdata'
                 then return 'Pandoc' end
+            end
+            return nil, 'not a Pandoc AST element.'
+        end
+    else
+        local pandoc_type = pandoc.utils.type
+
+        function el_type (el)
+            local t = type(el)
+            if t == 'userdata' or t == 'table' then
+                -- Use the tag, if there is one.
+                if el.tag then return el.tag end
+
+                -- Otherwise, use pandoc.utils.type.
+                local et = pandoc_type(el)
+                if
+                    et:match '^[A-Z]' and
+                    et ~= 'Meta'      and
+                    et ~= 'List'
+                then return et end
             end
             return nil, 'not a Pandoc AST element.'
         end
@@ -3756,9 +3761,6 @@ Options.parse = typed_args('table', 'table|userdata')(
 )
 
 do
-    -- @todo This works for the development version of Pandoc
-    --       as of commit 60fc05e and is subject to change.
-    --       See <https://github.com/jgm/pandoc/issues/7796>.
     local pandoc_type = pandoc.utils.type
 
     -- A mapping of configuration value types to parers.
