@@ -161,7 +161,7 @@ ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
-ZOTXT_CSL = M.csl_json_to_items(ZOTXT_JSON)
+ZOTXT_CSL = M.csl_json_parse(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
@@ -1670,7 +1670,7 @@ function test_biblio_read ()
     assert_items_equals(data, ZOTXT_YAML)
 end
 
-function test_csl_json_to_items ()
+function test_csl_json_parse ()
     local output = {
         author = {{family = 'Doe', given = 'John'}},
         issued = {['date-parts'] = {{'2021'}}},
@@ -1722,7 +1722,7 @@ function test_csl_json_to_items ()
     }
 
     for _, v in ipairs(tests) do
-        assert_items_equals(M.csl_json_to_items(v), output)
+        assert_items_equals(M.csl_json_parse(v), output)
     end
 end
 

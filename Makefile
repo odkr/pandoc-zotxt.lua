@@ -4,12 +4,15 @@
 BASE_DIR	:= test
 DATA_DIR	:= $(BASE_DIR)/data
 SCPT_DIR	:= $(BASE_DIR)/scripts
+TEMP_DIR	:= $(BASE_DIR)/tmp
 
 
 # PROGRAMMES
 # ==========
 
+MKDIR		?= mkdir
 PANDOC		?= pandoc
+RM		?= rm
 SHELL		?= sh
 
 
@@ -56,7 +59,11 @@ linter:
 	@printf 'Linting ...\n' >&2
 	@luacheck pandoc-zotxt.lua || [ $$? -eq 127 ]
 
-unit-tests:
+tempdir:
+	@$(RM) -rf $(TEMP_DIR)
+	@$(MKDIR) -p $(TEMP_DIR)
+
+unit-tests: tempdir
 	@[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
 	@printf 'Running unit tests ...\n' >&2
 	@"$(PANDOC)" $(PANDOC_ARGS) --from markdown --to html \
