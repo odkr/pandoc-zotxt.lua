@@ -107,11 +107,15 @@ zoteroweb/%: test/data/$$@.md
 docs/index.html: pandoc-zotxt.lua ldoc/config.ld ldoc/ldoc.css
 	ldoc -c ldoc/config.ld .
 
+man: man/man1/pandoc-zotxt.lua.1.gz
+
+ldoc: docs/index.html
+
 docs: pandoc-zotxt.lua docs/index.html man/man1/pandoc-zotxt.lua.1.gz
 
 all: test docs
 
-.PHONY: all docs linter unit-tests test \
+.PHONY: all man ldoc docs linter unit-tests test \
         $(COMMON_DOCS) $(COMMON_ABBR) \
 	$(ZOTXT_DOCS) zotxt/% \
 	$(ZOTWEB_DOCS) zoteroweb/%
