@@ -832,6 +832,59 @@ function test_trim ()
 end
 
 
+function test_vars_sub ()
+    lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
+                                M.vars_sub, '${a}', {a = '${b}', b = '${a}'})
+
+    for input, output in pairs{
+        [{'${test}', {}}] = 'nil',
+        [{'${test}', {}}] = 'nil',
+        [{'$${test}$', {test = 'nok'}}] = '${test}',
+        [{'${test}$', {test = 'ok'}}] = 'ok',
+        [{'$${test|func}', {
+            test = 'nok',
+            func = function ()
+                return 'NOK'
+            end }}] = '${test|func}',
+        [{'${test|func}', {
+            test = 'nok',
+            func = function (s)
+                return s:gsub('nok', 'ok')
+            end }}] = 'ok',
+        [{'${test.test}', {
+            test = { test = 'ok' }
+        }}] = 'ok',
+        [{'${test.test.test.test}', {
+            test = { test = { test = { test ='ok' } } }
+        }}] = 'ok',
+        [{'${test|func}', {
+            test = 'nok',
+            func = function (s)
+                return s:gsub('nok', '${v2|f2}')
+            end,
+            v2 = 'nok2',
+            f2 = function (s)
+                return s:gsub('nok2', 'ok')
+            end
+        }}] = 'ok',
+        [{'${2}', {['2'] = 'ok'}}] = 'ok',
+        [{'${test.test.test|test.func}', {
+            test = {
+                test = {test = 'nok'},
+                func = function (s)
+                    return s:gsub('nok', '${v2|f2}')
+                end
+            },
+            v2 = 'nok2',
+            f2 = function (s)
+                return s:gsub('nok2', 'ok')
+            end
+        }}] = 'ok',
+        [{'${2}', {['2'] = 'ok'}}] = 'ok'
+    } do
+        assert_equals(M.vars_sub(unpack(input)), output)
+    end
+end
 
 
 
@@ -1081,71 +1134,6 @@ function test_values_add ()
     assert_equals(t.n, 32)
     assert_equals(t.n, #t)
 end
-
-
--- String manipulation
--- -------------------
-
-
-function test_vars_sub ()
-    lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
-                                M.vars_sub, '${a}', {a = '${b}', b = '${a}'})
-
-    local tests = {
-        [{'${test}', {}}] = 'nil',
-        [{'${test}', {}}] = 'nil',
-        [{'$${test}$', {test = 'nok'}}] = '${test}',
-        [{'${test}$', {test = 'ok'}}] = 'ok',
-        [{'$${test|func}', {
-            test = 'nok',
-            func = function ()
-                return 'NOK'
-            end }}] = '${test|func}',
-        [{'${test|func}', {
-            test = 'nok',
-            func = function (s)
-                return s:gsub('nok', 'ok')
-            end }}] = 'ok',
-        [{'${test.test}', {
-            test = { test = 'ok' }
-        }}] = 'ok',
-        [{'${test.test.test.test}', {
-            test = { test = { test = { test ='ok' } } }
-        }}] = 'ok',
-        [{'${test|func}', {
-            test = 'nok',
-            func = function (s)
-                return s:gsub('nok', '${v2|f2}')
-            end,
-            v2 = 'nok2',
-            f2 = function (s)
-                return s:gsub('nok2', 'ok')
-            end
-        }}] = 'ok',
-        [{'${2}', {['2'] = 'ok'}}] = 'ok',
-        [{'${test.test.test|test.func}', {
-            test = {
-                test = {test = 'nok'},
-                func = function (s)
-                    return s:gsub('nok', '${v2|f2}')
-                end
-            },
-            v2 = 'nok2',
-            f2 = function (s)
-                return s:gsub('nok2', 'ok')
-            end
-        }}] = 'ok',
-        [{'${2}', {['2'] = 'ok'}}] = 'ok'
-    }
-
-    for k, v in pairs(tests) do
-        assert_equals(M.vars_sub(unpack(k)), v)
-    end
-end
-
-
--- Table manipulation
--- ------------------
 
 
 
