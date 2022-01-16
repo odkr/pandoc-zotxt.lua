@@ -784,6 +784,48 @@ function test_walk ()
 end
 
 
+--- Strings
+-- @section
+
+function test_split ()
+    for input, message in pairs{
+        [{'string', '%f[%a]'}] = '.-%f[%a]split does not support %%f%.$',
+        [{'string', 'ri', nil, ''}] = '.-%f[%a]expecting "l" or "r"%.$'
+    } do
+        assert_error_msg_matches(message, M.split, unpack(input))
+    end
+
+    for input, output in pairs{
+        [{'string', '%s*:%s*'}] = {'string', n = 1},
+        [{'key: value:', '%s*:%s*'}] = {'key', 'value', '', n = 3},
+        [{'val, val, val', ',%s*'}] = {'val', 'val', 'val', n = 3},
+        [{', val , val', '%s*,%s*'}] = {'', 'val', 'val', n = 3},
+        [{'key: value', ': '}] = {'key', 'value', n = 2},
+        [{'key: value:x', '%s*:%s*', 2}] = {'key', 'value:x', n = 2},
+        [{'val, val, val', ',%s*', 2}] = {'val', 'val, val', n = 2},
+        [{'CamelCaseTest', '%u', nil, 'l'}] =
+            {'', 'Camel', 'Case', 'Test', n = 4},
+        [{'CamelCaseTest', '%u', nil, 'r'}] =
+            {'C', 'amelC', 'aseT', 'est', n = 4},
+        [{'CamelCaseTest', '%u', 2, 'l'}] =
+            {'', 'CamelCaseTest', n = 2},
+        [{'CamelCaseTest', '%u', 2, 'r'}] =
+            {'C', 'amelCaseTest', n = 2}
+    } do
+        assert_items_equals(pack(M.tabulate(M.split(unpack(input)))), output)
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
 
 -- File I/O
 -- --------
@@ -1031,29 +1073,6 @@ end
 -- String manipulation
 -- -------------------
 
-function test_split ()
-    local tests = {
-        [{'string', '%s*:%s*'}] = {'string', n = 1},
-        [{'key: value:', '%s*:%s*'}] = {'key', 'value', '', n = 3},
-        [{'val, val, val', ',%s*'}] = {'val', 'val', 'val', n = 3},
-        [{', val , val', '%s*,%s*'}] = {'', 'val', 'val', n = 3},
-        [{'key: value', ': '}] = {'key', 'value', n = 2},
-        [{'key: value:x', '%s*:%s*', 2}] = {'key', 'value:x', n = 2},
-        [{'val, val, val', ',%s*', 2}] = {'val', 'val, val', n = 2},
-        [{'CamelCaseTest', '%u', nil, 'l'}] =
-            {'', 'Camel', 'Case', 'Test', n = 4},
-        [{'CamelCaseTest', '%u', nil, 'r'}] =
-            {'C', 'amelC', 'aseT', 'est', n = 4},
-        [{'CamelCaseTest', '%u', 2, 'l'}] =
-            {'', 'CamelCaseTest', n = 2},
-        [{'CamelCaseTest', '%u', 2, 'r'}] =
-            {'C', 'amelCaseTest', n = 2}
-        }
-
-    for k, v in pairs(tests) do
-        assert_items_equals(pack(M.tabulate(M.split(unpack(k)))), v)
-    end
-end
 
 function test_vars_sub ()
     lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
