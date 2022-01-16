@@ -658,60 +658,76 @@ local json = require 'lunajson'
 --
 -- @section
 
---- Get a copy of the variables of a function and of `_ENV`.
---
--- @caveats
---
--- If a global variable is shadowed by a variable that is neither one of the
--- function's local variables nor one of its upvalues, then the value
--- from `_ENV` is returned, *not* the shadowed one.
---
--- @int[opt=2] level A stack level, where
---
---  * 1 = `vars_get`,
---  * 2 = the function calling `vars_get`,
---  * ⋮
---  * *n* = the function calling the function at level *n* – 1.
---
--- @treturn[1] table A mapping of variable names to values.
--- @treturn[2] nil `nil` if there is no function at that level of the stack.
--- @treturn[2] string An error message.
---
--- @usage
--- > function bar ()
--- >     print(vars_get(3).foo)
--- > end
--- > function foo ()
--- >     foo = 'foo'
--- >     bar()
--- > end
--- > foo()
--- foo
---
--- @function vars_get
-vars_get = typed_args('?number')(
-    function (level)
-        if not level then level = 2 end
-        assert(level > 0, 'level is not a positive number.')
-        local info = debug.getinfo(level, 'f')
-        if not info then return nil, tostring(level) .. ': no such level.' end
-        local vars = copy(_ENV)
-        for i = 1, 2 do
-            local iter, arg
-            if     i == 1 then iter, arg = debug.getupvalue, info.func
-            elseif i == 2 then iter, arg = debug.getlocal, level
-            end
-            local j = 1
-            while true do
-                local k, v = iter(arg, j)
-                if not k then break end
-                vars[k] = copy(v)
-                j = j + 1
+do
+    -- Turn @{debug.getlocal} and @{debug.getupvalue} into iterators.
+    --
+    -- @func func @{debug.getlocal} or @{debug.getupvalue}.
+    -- @treturn func A function that returns an iterator.
+    local function to_iterator (func)
+        return function (arg)
+            local i = 0
+            return function ()
+                i = i + 1
+                return func(arg, i)
             end
         end
-        return vars
     end
-)
+
+    -- Iterate over the upvalues of a function.
+    --
+    -- @userdata func A @{debug} function value.
+    -- @treturn func An iterator.
+    local upvalues = to_iterator(debug.getupvalue)
+
+    -- Iterate over the local variables of a function.
+    --
+    -- @number level A stack level.
+    -- @treturn func An iterator.
+    local locals = to_iterator(debug.getlocal)
+
+    --- Get a copy of the variables of a function and of `_ENV`.
+    --
+    -- @caveats
+    --
+    -- If a global variable is shadowed by a variable that is neither one of
+    -- the function's local variables nor one of its upvalues, then the value
+    -- from `_ENV` is returned, *not* the shadowed one.
+    --
+    -- @int[opt=2] level A stack level, where
+    --
+    --  * 1 = `vars_get`,
+    --  * 2 = the function calling `vars_get`,
+    --  * ⋮
+    --  * *n* = the function calling the function at level *n* – 1.
+    --
+    -- @treturn table A mapping of variable names to values.
+    --
+    -- @usage
+    -- > function bar ()
+    -- >     print(vars_get(3).foo)
+    -- > end
+    -- > function foo ()
+    -- >     foo = 'foo'
+    -- >     bar()
+    -- > end
+    -- > foo()
+    -- foo
+    --
+    -- @function vars_get
+    vars_get = typed_args('?number')(
+        function (level)
+            if not level then level = 2 end
+            assert(level > 0, 'level is not a positive number.')
+            local info = debug.getinfo(level, 'f')
+            assert(info, 'stack is not that high.')
+            local vars = copy(_ENV)
+            for _, iter in pairs{upvalues(info.func), locals(level + 1)} do
+                for k, v in iter do vars[k] = copy(v) end
+            end
+            return vars
+        end
+    )
+end
 
 
 ---------

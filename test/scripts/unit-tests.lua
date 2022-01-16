@@ -525,6 +525,13 @@ end
 -- @section
 
 function test_vars_get ()
+    for level, message in pairs{
+        [-1] = '.-%f[%a]level is not a positive number%.',
+        [1048576] = '.-%f[%a]stack is not that high%.$',
+    } do
+        assert_error_msg_matches(message, M.vars_get, level)
+    end
+
     local function bar ()
         assert_equals(M.vars_get(3).foo, 'foo')
     end
