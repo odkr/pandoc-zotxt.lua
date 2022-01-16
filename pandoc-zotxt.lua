@@ -7,19 +7,17 @@
 -- DESCRIPTION
 -- ===========
 --
--- **pandoc-zotxt.lua** is a Lua filter for Pandoc that looks up citations
--- in Zotero and adds their bibliographic data to the "references" metadata
--- field or a bibliography file, where Pandoc can pick it up.
+-- **pandoc-zotxt.lua** is a Lua filter for Pandoc that looks up citations in
+-- Zotero and adds their bibliographic data to the "references" metadata field
+-- or a bibliography file, where Pandoc can pick it up.
 --
 -- You cite your sources using so-called "Better BibTeX citation keys"
--- (provided by Better BibTeX for Zotero) or "Easy Citekeys" (provided
--- by zotxt) and then tell **pandoc** to filter your document through
--- **pandoc-zotxt.lua** before processing citations. That's all there
--- is to it.
+-- (provided by Better BibTeX for Zotero) or "Easy Citekeys" (provided by
+-- zotxt) and then tell **pandoc** to filter your document through
+-- **pandoc-zotxt.lua** before processing citations. That's all there is to it.
 --
--- If the "references" metadata field or a bibliography file already
--- contains bibliographic data for a citation, that citation will be
--- ignored.
+-- If the "references" metadata field or a bibliography file already contains
+-- bibliographic data for a citation, that citation will be ignored.
 --
 -- CONNECTING TO ZOTERO
 -- ====================
@@ -29,9 +27,9 @@
 --
 -- By default, bibliographic data is fetched from the Zotero desktop client,
 -- which must be running when you invoke **pandoc**. This is the faster,
--- easier, and less error-prone method to lookup citations in Zotero.
--- However, you need to install the zotxt add-on for the Zotero desktop
--- client to use it.
+-- easier, and less error-prone method to lookup citations in Zotero. However,
+-- you need to install the zotxt add-on for the Zotero desktop client to use
+-- it.
 --
 -- Web API
 -- -------
@@ -50,8 +48,8 @@
 -- Zotero item IDs. Therefore, BetterBibTeX citation keys and Easy Citekeys
 -- have to be translated into search terms: Better BibTeX citation keys are
 -- split up at the first of each series of digits and at uppercase letters
--- ("DoeTitle2020" becomes "Doe", "Title", "2020"). Easy Citekeys are split
--- up at the first colon and at the last digit ("doe:2020title" becomes "doe",
+-- ("DoeTitle2020" becomes "Doe", "Title", "2020"). Easy Citekeys are split up
+-- at the first colon and at the last digit ("doe:2020title" becomes "doe",
 -- "2020", "title").
 --
 -- If a search yields more than one item, you need to add its citation key to
@@ -124,11 +122,11 @@
 --
 -- * `zotero-api-key`: A Zotero API key. Only applies to the Zotero Web API.
 --
--- * `zotero-bibliography`: A bibliography filename.
---   Fetched data is added to this file.
+-- * `zotero-bibliography`: A bibliography filename. Fetched data is added to
+-- this file.
 --
--- * `zotero-citekey-types`: A list of citation key types.
---   Citation keys are treated as being of any of the listed types only.
+-- * `zotero-citekey-types`: A list of citation key types. Citation keys are
+-- treated as being of any of the listed types only.
 --
 -- * `zotero-connectors`: One or more Zotero connectors:
 --
@@ -144,15 +142,15 @@
 --   could not be found, the Zotero Web API is searched next.
 --
 -- * `zotero-groups`: A list of Zotero group IDs. Only the given groups are
---   searched. By default, all groups you are a member of are searched. Only
---   applies to the Zotero Web API.
+-- searched. By default, all groups you are a member of are searched. Only
+-- applies to the Zotero Web API.
 --
 -- * `zotero-public-groups`: A list of Zotero group IDs. The given groups are
---   searched in addition to non-public groups. Groups must be public. Only
---   applies to the Zotero Web API.
+-- searched in addition to non-public groups. Groups must be public. Only
+-- applies to the Zotero Web API.
 --
 -- * `zotero-user-id`: A Zotero user ID. Looked up automatically if not given.
---   Only applies to the Zotero Web API.
+-- Only applies to the Zotero Web API.
 --
 -- If a metadata field takes a list of values, but you only want to give one,
 -- you can enter that value as a scalar.
@@ -208,8 +206,8 @@
 --
 -- A citation key may pick out the wrong item if it picks out a different
 -- items depending on whether it is interpreted as a Better BibTeX citation
--- key or as an Easy Citekey. Set the 'zotero-citekey-types' metadata field
--- to fix this.
+-- key or as an Easy Citekey. Set the 'zotero-citekey-types' metadata field to
+-- fix this.
 --
 -- **pandoc-zotxt.lua** creates a temporary file when it adds bibliographic
 -- data to a bibliography file. If Pandoc exits because it catches a signal
@@ -250,7 +248,7 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.1.0b9
+-- @release 1.1.0
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021, 2022 Odin Kroeger
 -- @license MIT
@@ -631,7 +629,7 @@ end
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '1.1.0b9'
+VERSION = '1.1.0'
 
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
