@@ -58,6 +58,7 @@ PANDOC=pandoc
 # =========
 
 OPTIND=1 OPTARG='' opt=''
+unset CONNECTORS FILTER PANDOC_ARGS PANDOC PANDOC_VERS
 while getopts a:c:f:hA:P:V: opt
 do
 	case $opt in
@@ -127,6 +128,7 @@ cd -P "$REPO" || exit 69
 # ====
 
 failures=0
+
 for conn in $CONNECTORS
 do
 	for test
