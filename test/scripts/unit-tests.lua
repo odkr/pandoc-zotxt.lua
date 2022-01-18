@@ -838,7 +838,6 @@ function test_trim ()
     end
 end
 
-
 function test_vars_sub ()
     lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
                                 M.vars_sub, '${a}', {a = '${b}', b = '${a}'})
@@ -894,10 +893,29 @@ function test_vars_sub ()
 end
 
 
+--- Prototypes
+-- @section
+
+function test_object_mt_call ()
+    local obj_mt = {foo = true, bar = {baz = true}}
+    local test = M.Object(obj_mt)
+    local mt = getmetatable(test)
+    assert_equals(mt.__index, M.Object)
+    assert_equals(mt.foo, true)
+    assert_equals(mt.bar.baz, true)
+    obj_mt.baz = true
+    assert_nil(mt.baz)
+    obj_mt.bar.baz = false
+    assert_equals(mt.bar.baz, false)
+
+    -- @fixme test if shallow copy
+    -- test whether __index is overriden.
+    -- test whether __index can be overriden.
+end
 
 
 
-
+----------------------------------------------------------------
 
 
 -- File I/O
