@@ -478,8 +478,11 @@ end
 -- @tip If you get obscure Lua errors after you have added type checks to
 --  a function, you may have forgotten the quotes around '`...`'.
 --
--- @caveats Non-referring type names (e.g., 'int') do *not* raise an error
---  at compile-time, they just fail at run-time.
+-- @caveats
+--
+-- * Non-referring type names (e.g., 'int') do *not* raise an error
+--   at compile-time, they just fail at run-time.
+-- * Sometimes the strack trace is incorrect.
 --
 -- @tparam string|table ... Type declarations. See @{type_match}.
 -- @treturn func A function that adds type checks to a function.
