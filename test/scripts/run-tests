@@ -179,8 +179,8 @@ do
 		fi
 		if [ -e "$norm" ]
 		then
-			cmp "$output" "$norm" || {
-				warn -e "$RED" failed.
+			diff "$output" "$norm" || {
+				warn -e "$RED" 'failed.'
 				failures=$((failures + 1))
 			}
 		else
