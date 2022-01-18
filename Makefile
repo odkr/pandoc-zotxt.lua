@@ -74,7 +74,7 @@ doc-tests: tempdir $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
 .SECONDEXPANSION:
 
 $(COMMON_DOCS): tempdir
-	$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
+	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                                -f $(FILTER) -c "$(CONNECTORS)" $@
 
 $(ZOTXT_DOCS): tempdir
