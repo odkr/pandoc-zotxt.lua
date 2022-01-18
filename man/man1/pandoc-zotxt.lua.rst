@@ -92,10 +92,10 @@ Bibliographic data can be added to a special bibliography file, rather than to
 the "references" metadata field. This speeds up subsequent processing, because
 data that has already been fetched from Zotero need not be fetched again.
 
-To use such a special bibliography file, set the "zotero-bibliography"
-metadata field to a filename. If the filename is relative, it is interpreted
-as relative to the directory of the first input file passed to **pandoc** or,
-if no input file was given, as relative to the current working directory.
+To use such a bibliography file, set the "zotero-bibliography" metadata field
+to a filename. If the filename is relative, it is interpreted as relative to
+the directory of the first input file passed to **pandoc** or, if no input
+files were given, as relative to the current working directory.
 
 The bibliography file is added to the "bibliography" metadata field
 automatically. You can safely set "zotero-bibliography" and "bibliography"
@@ -110,9 +110,10 @@ The format of the file is determined by its filename ending.
 ``.yaml``  CSL YAML
 ========== ==========
 
-Items are only added to the bibliography file, *not* updated or deleted. If
-you need to update the data in the file, delete the file, so that it will be
-regenerated from scratch. You can also edit it manually.
+The items in the bibliography file are *not* updated or deleted automatically.
+If you need to update the data in the file, delete it, so that it will be
+regenerated from scratch. You can also edit it manually; items are sorted
+by their ID.
 
 For example:
 

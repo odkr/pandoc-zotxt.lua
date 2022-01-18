@@ -520,7 +520,6 @@ function typed_args (...)
                 end
                 if args[i] == nil and prev and i == n then break end
                 local ok, err = type_match(args[i], td)
-                -- @fixme Sometimes the stack if wrong, document that.
                 if not ok then error(format('argument %d: %s', i, err), 2) end
             end
             return func(...)
@@ -781,6 +780,42 @@ function ignore_case.__newindex (tab, key, val)
     end
 end
 
+--- Metatable to sort key-value pairs automatically.
+--
+-- @usage
+-- > tab = setmetatable({c = 3, b = 2, a = 1}, sort_pairs)
+-- > for k, v in pairs(tab) do
+-- >     print(k, v)
+-- > end
+-- a    1
+-- b    2
+-- c    3
+sort_pairs = {}
+
+--- Iterate over the key-value pairs of a table in a given order.
+--
+-- What order key-value pairs are iterated over is defined by the `sort`
+-- metamethod. See @{sorted} for details. If `sort` is unset, key-value
+-- pairs are iterated over in lexical order
+--
+-- @tab tab A table.
+-- @treturn func A *stateful* iterator.
+--
+-- @usage
+-- > sort = order{'c', 'b', 'a'}
+-- > mt = update({sort = sort}, sort_pairs)
+-- > tab = setmetatable({a = 1, b = 2, c = 3}, mt)
+-- > for k, v in pairs(tab) do
+-- >     print(k, v)
+-- > end
+-- c    3
+-- b    2
+-- a    1
+function sort_pairs.__pairs (tab)
+    local mt = getmetatable(tab)
+    return sorted(tab, mt.sort, true)
+end
+
 do
     -- Make a deep copy of a value.
     --
@@ -916,6 +951,7 @@ order = typed_args('table')(
 -- @tab tab A table.
 -- @func[opt] func A sorting function.
 --  If no function is given, sorts lexically.
+-- @bool[opt=false] raw By-pass `__pairs` metamethod?
 -- @treturn func A *stateful* iterator.
 --
 -- @usage
@@ -927,9 +963,13 @@ order = typed_args('table')(
 -- c    3
 --
 -- @function sorted
-sorted = typed_args('table', '?function')(
-    function (tab, func)
-        local ks = keys(tab)
+-- @fixme `raw` is not unit-tested.
+sorted = typed_args('table', '?function', '?boolean')(
+    function (tab, func, raw)
+        local ks
+        if raw then ks = pack(tabulate(next, tab))
+               else ks = keys(tab)
+        end
         sort(ks, func)
         local n = 0
         local function iter ()
@@ -1010,7 +1050,10 @@ walk = typed_args('*', 'function', '?table')(
         local ret = {}
         _seen[val] = ret
         for k, v in pairs(val) do
-            if type(v) == 'table' then v = walk(v, func, _seen) end
+            if type(v) == 'table' then
+                local mt = getmetatable(v)
+                v = setmetatable(walk(v, func, _seen), mt)
+            end
             local new = func(v)
             if new == nil then ret[k] = v
                           else ret[k] = new
@@ -2337,10 +2380,9 @@ do
     -- @treturn[2] string An error message.
     --
     -- @function yamlify
-    -- @fixme Indentation and sorting are not unit-tested.
-    yamlify = typed_args('*', '?number', '?function', '?number', '?table')(
-        -- luacheck: ignore sort
-        function (val, ind, sort, _col, _seen)
+    -- @fixme Indentation is not unit-tested.
+    yamlify = typed_args('*', '?number', '?number', '?table')(
+        function (val, ind, _col, _seen)
             if not _seen then _seen = {} end
             assert(not _seen[val], 'cycle in data tree.')
             if not ind then ind = 4 end
@@ -2359,12 +2401,12 @@ do
                 for i = 1, n do
                     local v = val[i]
                     if i > 1 then strs:add(sp) end
-                    strs:add('- ', yamlify(v, ind, sort, col, _seen))
+                    strs:add('- ', yamlify(v, ind, col, _seen))
                     if i ~= n then strs:add(EOL) end
                 end
             else
                 local i = 0
-                for k, v in sorted(val, sort) do
+                for k, v in pairs(val) do
                     i = i + 1
                     if type(k) == 'number' then k = tostring(k)
                                            else k = scalarify(k, true)
@@ -2375,7 +2417,7 @@ do
                     if type(v) == 'table' then strs:add(EOL, spaces(col))
                                           else strs:add ' '
                     end
-                    strs:add(yamlify(v, ind, sort, col, _seen))
+                    strs:add(yamlify(v, ind, col, _seen))
                     if i ~= nkeys then strs:add(EOL) end
                 end
             end
@@ -2463,11 +2505,11 @@ CSL_VARS_ORDER = {
     'original-title',           -- Original title.
     'original-publisher',       -- Original publisher.
     'original-publisher-place', -- Place the item was originally published in.
+    'url',                      -- The URL.
+    'accessed',                 -- When the URL was last accessed.
     'doi',                      -- The DOI.
     'pmcid',                    -- PubMed Central reference number.
     'pmid',                     -- PubMed reference number.
-    'url',                      -- The URL.
-    'accessed',                 -- When the URL was last accessed.
     'isbn',                     -- The ISBN of the item.
     'issn',                     -- The ISSN of the container.
     'call-number',              -- Call number (of a library).
@@ -3212,8 +3254,7 @@ do
     biblio.types.yaml.encode = typed_args('table')(
         function (items)
             items = walk(items, to_markdown)
-            sort(items, csl_items_sort)
-            return yamlify({references=items}, nil, csl_vars_sort)
+            return yamlify({references=items})
         end
     )
 end
@@ -3287,61 +3328,67 @@ biblio.write = typed_args('table', 'string', '?table')(
     end
 )
 
---- Add new items from Zotero to a bibliography file.
---
--- @caveats See @{file_write}.
--- @side May print error messages to STDERR.
---
--- @tparam connectors.Zotxt|connectors.ZoteroWeb handle A Zotero handle.
--- @string fname The name of the bibliography file.
--- @tparam {string,...} ckeys The citation keys of the items to add
---  (e.g., `{'doe:2020word'}`).
--- @treturn[1] bool `true` if the file was updated or no update was required.
--- @treturn[2] nil `nil` if an error occurrs.
--- @treturn[2] string An error message.
--- @treturn[2] ?int An error number if the error is a file I/O error.
--- @raise See @{http_get}.
---
--- @function biblio:update
-biblio.update = typed_args('table', 'table', 'string', 'table')(
-    function (self, handle, fname, ckeys)
-        -- luacheck: ignore fmt err errno
-        assert(fname ~= '', 'filename is the empty string')
-        if #ckeys == 0 then return true end
-        local fmt, err = self:write(fname)
-        if not fmt then return nil, err end
-        local items, err, errno = biblio:read(fname)
-        if not items then
-            if errno ~= 2 then return nil, err, errno end
-            items = {}
-        end
-        local ids = csl_items_ids(items)
-        local nitems = #items
-        local n = nitems
-        for i = 1, #ckeys do
-            local ckey = ckeys[i]
-            if not ids[ckey] then
-                local vs = pack(pcall(handle.fetch, handle, ckey))
-                local ok, err = unpack(vs, 1, 2)
-                if not ok then
-                    if type(err) ~= 'table' then error(err) end
-                    return nil, tostring(err)
-                end
-                local item, err = unpack(vs, 2)
-                if item then
-                    n = n + 1
-                    items[n] = item
-                else
-                    xwarn('@error', '@plain', err)
+do
+    local sort_csl_vars = update({sort = csl_vars_sort}, sort_pairs)
+
+    --- Add new items from Zotero to a bibliography file.
+    --
+    -- @caveats See @{file_write}.
+    -- @side May print error messages to STDERR.
+    --
+    -- @tparam connectors.Zotxt|connectors.ZoteroWeb handle A Zotero handle.
+    -- @string fname The name of the bibliography file.
+    -- @tparam {string,...} ckeys The citation keys of the items to add
+    --  (e.g., `{'doe:2020word'}`).
+    -- @treturn[1] bool `true` if the file was updated or no update was required.
+    -- @treturn[2] nil `nil` if an error occurrs.
+    -- @treturn[2] string An error message.
+    -- @treturn[2] ?int An error number if the error is a file I/O error.
+    -- @raise See @{http_get}.
+    --
+    -- @function biblio:update
+    biblio.update = typed_args('table', 'table', 'string', 'table')(
+        function (self, handle, fname, ckeys)
+            -- luacheck: ignore fmt err errno
+            assert(fname ~= '', 'filename is the empty string')
+            if #ckeys == 0 then return true end
+            local fmt, err = self:write(fname)
+            if not fmt then return nil, err end
+            local items, err, errno = biblio:read(fname)
+            if not items then
+                if errno ~= 2 then return nil, err, errno end
+                items = {}
+            end
+            local ids = csl_items_ids(items)
+            local nitems = #items
+            local n = nitems
+            for i = 1, #ckeys do
+                local ckey = ckeys[i]
+                if not ids[ckey] then
+                    local vs = pack(pcall(handle.fetch, handle, ckey))
+                    local ok, err = unpack(vs, 1, 2)
+                    if not ok then
+                        if type(err) ~= 'table' then error(err) end
+                        return nil, tostring(err)
+                    end
+                    local item, err = unpack(vs, 2)
+                    if item then
+                        n = n + 1
+                        items[n] = item
+                    else
+                        xwarn('@error', '@plain', err)
+                    end
                 end
             end
+            if n == nitems then return true end
+            sort(items, csl_items_sort)
+            for i = 1, #items do setmetatable(items[i], sort_csl_vars) end
+            local fmt, err, errno = self:write(fname, items)
+            if not fmt then return nil, err, errno end
+            return true
         end
-        if n == nitems then return true end
-        local fmt, err, errno = self:write(fname, items)
-        if not fmt then return nil, err, errno end
-        return true
-    end
-)
+    )
+end
 
 
 -------------------
@@ -4606,7 +4653,6 @@ do
     -- @raise See @{connectors.Zotxt} and @{connectors.ZoteroWeb}.
     function main (doc)
         local opts = parser:parse(doc.meta)
-
         local handles = Values()
 
         if not opts.connectors or #opts.connectors == 0 then
