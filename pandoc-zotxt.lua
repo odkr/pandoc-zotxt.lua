@@ -3211,8 +3211,8 @@ do
     -- @function biblio.types.yaml.encode
     biblio.types.yaml.encode = typed_args('table')(
         function (items)
-            sort(items, csl_items_sort)
             items = walk(items, to_markdown)
+            sort(items, csl_items_sort)
             return yamlify({references=items}, nil, csl_vars_sort)
         end
     )
@@ -3303,7 +3303,6 @@ biblio.write = typed_args('table', 'string', '?table')(
 -- @raise See @{http_get}.
 --
 -- @function biblio:update
--- @todo Use sets so that the loop gets simpler.
 biblio.update = typed_args('table', 'table', 'string', 'table')(
     function (self, handle, fname, ckeys)
         -- luacheck: ignore fmt err errno
