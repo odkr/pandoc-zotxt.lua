@@ -898,8 +898,8 @@ end
 
 function test_object_mt_call ()
     local obj_mt = {foo = true, bar = {baz = true}}
-    local test = M.Object(obj_mt)
-    local mt = getmetatable(test)
+    local Foo = M.Object(obj_mt)
+    local mt = getmetatable(Foo)
     assert_equals(mt.__index, M.Object)
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, true)
@@ -908,9 +908,25 @@ function test_object_mt_call ()
     obj_mt.bar.baz = false
     assert_equals(mt.bar.baz, false)
 
-    -- @fixme test if shallow copy
-    -- test whether __index is overriden.
-    -- test whether __index can be overriden.
+    local Bar = Foo()
+    mt = getmetatable(Bar)
+    assert_equals(mt.__index, Foo)
+    assert_equals(mt.foo, true)
+    assert_equals(mt.bar.baz, false)
+
+    local baz = Bar{__index = M.Object}
+    mt = getmetatable(baz)
+    assert_equals(mt.__index, M.Object)
+    assert_equals(mt.foo, true)
+    assert_equals(mt.bar.baz, false)
+
+    Foo = M.Object{__tostring = function (t) return t.bar end}
+    Foo.bar = 'bar'
+    assert_equals(tostring(Foo), 'bar')
+    bar = Foo()
+    assert_equals(tostring(bar), 'bar')
+    bar.bar = 'baz'
+    assert_equals(tostring(bar), 'baz')
 end
 
 
