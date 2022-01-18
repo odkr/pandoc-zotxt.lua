@@ -1258,7 +1258,8 @@ setmetatable(Object, Object.mt)
 -- @usage
 -- > Foo = Object{__tostring = function (t) return t.bar end}
 -- > Foo.bar = 'bar'
--- > tostring(foo)
+-- > tostring(Foo)
+-- bar
 -- > bar = Foo()
 -- > tostring(bar)
 -- bar
