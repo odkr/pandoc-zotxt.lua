@@ -113,7 +113,7 @@ The format of the file is determined by its filename ending.
 The items in the bibliography file are *not* updated or deleted automatically.
 If you need to update the data in the file, delete it, so that it will be
 regenerated from scratch. You can also edit it manually; items are sorted
-by their ID.
+by their IDs, fieldnames are sorted in a, hopefully, meaningful order.
 
 For example:
 
