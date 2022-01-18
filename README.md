@@ -10,16 +10,16 @@ See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 
 **pandoc-zotxt.lua** requires
 
-* [Pandoc](https://www.pandoc.org/) ≥ v2.0.3,
-* [Zotero](https://www.zotero.org/) ≥ v4,
-* [zotxt](https://github.com/egh/zotxt/) ≥ v4, and
-* [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/) ≥ v4.
+* [Pandoc](https://www.pandoc.org/) ≥ v2.0,
+* [Zotero](https://www.zotero.org/) ≥ v4.0,
+* [zotxt](https://github.com/egh/zotxt/) ≥ v4.0, and
+* [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/) ≥ v4.0.
 
 It should work under every operating system supported by Pandoc;
-it has *not* been tested under Windows, however.
+but it has *not* been tested under Windows.
 
 Your version of Pandoc must also support [Lua](https://www.lua.org/) ≥ v5.3.
-Pandoc ≥ v2.0.3 does so *by default*. However, the Pandoc package provided by
+Pandoc ≥ v2.0 does so by default. However, the Pandoc package provided by
 your operating system vendor may use an older version. Notably, the version of
 Pandoc available in the package repository of Debian v10 ("Buster") only
 supports Lua v5.1.
@@ -82,10 +82,10 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [Pandoc](https://www.pandoc.org/) v2.0.2 to v2.16.2.
+2. [Pandoc](https://www.pandoc.org/) v2.0 to v2.17.0.1.
 3. [GNU Make](https://www.gnu.org/software/make/).
 
-The test suite has been tested with Pandoc ≥ v2.9.
+The test suite has been tested with Pandoc v2.9 to v2.17.0.1.
 
 ### Running the tests
 
