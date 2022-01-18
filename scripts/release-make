@@ -140,11 +140,6 @@ warn -e "$SMSO" 'testing release ...'
 
 test/scripts/test-pandoc-vers
 
-warn -e "$SMSO" 'testing under real-world conditions ...'
-
-make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
-	panic 'at least one test failed.'
-
 warn -e "$SMSO" 'pushing changes in %s ...' "$BOLD$release_branch$SGR0$SMSO"
 
 git push origin "$release_branch"

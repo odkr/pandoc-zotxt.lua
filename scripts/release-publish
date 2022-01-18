@@ -131,15 +131,6 @@ do
 	esac
 done <"$manifest"
 
-warn 'testing release ...'
-
-test/scripts/test-pandoc-vers
-
-warn 'testing under real-world conditions ...'
-
-make test -e SCRIPT="$filter" >/dev/null 2>&1 ||
-	panic 'at least one test failed.'
-
 name="$(basename "$REPO")" && [ "$name" ] ||
 	panic '%s: failed to determine basename.' "$REPO"
 
