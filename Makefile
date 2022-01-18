@@ -53,11 +53,7 @@ ZOTERO_API_KEY ?= MO2GHxbkLnWgCqPtpoewgwIl
 # TESTS
 # =====
 
-test: linter unit-tests $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
-
-linter:
-	@printf 'Linting ...\n' >&2
-	@luacheck pandoc-zotxt.lua || [ $$? -eq 127 ]
+test: lint unit-tests doc-tests
 
 tempdir:
 	@$(RM) -rf $(TEMP_DIR)
@@ -69,17 +65,23 @@ unit-tests: tempdir
 	@"$(PANDOC)" $(PANDOC_ARGS) --from markdown --to html \
 	             --lua-filter="$(SCPT_DIR)/unit-tests.lua" /dev/null
 
+lint:
+	@printf 'Linting ...\n' >&2
+	@luacheck pandoc-zotxt.lua || [ $$? -eq 127 ]
+
+doc-tests: tempdir $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
+
 .SECONDEXPANSION:
 
-$(COMMON_DOCS):
+$(COMMON_DOCS): tempdir
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                                -f $(FILTER) $@
 
-$(ZOTXT_DOCS):
+$(ZOTXT_DOCS): tempdir
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                                -f $(FILTER) -c zotxt $@
 
-$(ZOTWEB_DOCS):
+$(ZOTWEB_DOCS): tempdir
 	@$(SHELL) $(SCPT_DIR)/run-tests -P "$(PANDOC)" -A $(PANDOC_ARGS) \
 	                                -f $(FILTER) -c zoteroweb $@
 
@@ -115,7 +117,7 @@ docs: pandoc-zotxt.lua docs/index.html man/man1/pandoc-zotxt.lua.1.gz
 
 all: test docs
 
-.PHONY: all man ldoc docs linter unit-tests test \
+.PHONY: all man ldoc docs lint test doc-tests unit-tests \
         $(COMMON_DOCS) $(COMMON_ABBR) \
 	$(ZOTXT_DOCS) zotxt/% \
 	$(ZOTWEB_DOCS) zoteroweb/%
