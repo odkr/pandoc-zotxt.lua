@@ -74,7 +74,7 @@ local SCRIPT_DIR = path_split(PANDOC_SCRIPT_FILE)
 local TEST_DIR = table.concat({SCRIPT_DIR, '..'}, PATH_SEP)
 
 --- The location of canned resposes.
-local CAN_DIR = table.concat({TEST_DIR, 'can'}, PATH_SEP)
+local CAN_DIR = table.concat({TEST_DIR, 'cans'}, PATH_SEP)
 
 --- The repository directory.
 local REPO_DIR = table.concat({TEST_DIR, '..'}, PATH_SEP)
@@ -112,15 +112,20 @@ function M.http_get (url)
     -- luacheck: ignore pandoc
     local hash = pandoc.utils.sha1(url):sub(1, 8)
     local path = M.path_join(CAN_DIR, hash)
-    M.xwarn('@info', 'redirecting ${url} to ${path}')
-    local mt = 'text/plain; charset=UTF-8'
-    local data, err = M.file_read(path)
-    if not data then return mt, err end
+    M.xwarn('@info', 'redirecting <${url}> to ${path}')
+    local mt = 'text/plain; charset=utf-8'
+    local data, err, errno = M.file_read(path)
+    if not data then
+        if errno == 2 then
+            err = string.format('<%s> has not been canned.', url)
+        end
+        return mt, err
+    end
     local hdr, con = M.tabulate(M.split(data, '\r?\n\r?\n', 2))
     if not hdr or not con then return mt, path .. ': not a can.' end
     for line in M.split(hdr, '\n') do
         local k, v = M.tabulate(M.split(line, '%s*:%s*', 2))
-        if k and k:lower() == 'content-type' and v then mt = v end
+        if k and k:lower() == 'content-type' and v then mt = v:lower() end
     end
     return mt, con
 end

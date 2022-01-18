@@ -1371,11 +1371,11 @@ function test_options_add ()
     local add = options.add
 
     local errors = {
-        {'argument 2: expected table or userdata, got nil%.', add, options},
-        {'argument 2: expected table or userdata, got nil%.', add, options, nil},
-        {'argument 2: expected table or userdata, got boolean%.', add, options, true},
-        {'argument 2: index name: expected string, got nil%.', add, options, {}},
-        {'argument 2: index parse: expected function or nil, got boolean%.', add, options, {name = 'n', parse = true}}
+        {'.-%f[%a]argument 2: expected table or userdata, got nil%.', add, options},
+        {'.-%f[%a]argument 2: expected table or userdata, got nil%.', add, options, nil},
+        {'.-%f[%a]argument 2: expected table or userdata, got boolean%.', add, options, true},
+        {'.-%f[%a]argument 2: index name: expected string, got nil%.', add, options, {}},
+        {'.-%f[%a]argument 2: index parse: expected function or nil, got boolean%.', add, options, {name = 'n', parse = true}}
     }
 
     for _, v in ipairs(errors) do
@@ -1766,12 +1766,12 @@ function test_csl_json_parse ()
     end
 end
 
-function test_citekey_to_terms ()
+function test_citekey_terms ()
     local citekey_types = M.connectors.ZoteroWeb.citekey_types
 
     local tests = {
         [''] = nil,
-        ['doe'] = {'doe'},
+        ['doe'] = nil,
         ['doeWord'] = {'doe', 'Word'},
         ['doe:'] = nil,
         ['doe2020'] = {'doe', '2020'},
@@ -2045,6 +2045,14 @@ function test_doc_ckeys ()
         {'crenshaw1989DemarginalizingIntersectionRace'})
     assert_items_equals(M.doc_ckeys(test_file, true),
     {'crenshaw1989DemarginalizingIntersectionRace'})
+end
+
+-- New stuff
+
+function test_citekey_matches_type ()
+    assert_equals(M.citekey:matches_type('betterbibtexkey:DoeTitle2020',
+        'betterbibtexkey'), 'DoeTitle2020')
+    
 end
 
 

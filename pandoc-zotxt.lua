@@ -517,6 +517,7 @@ function typed_args (...)
                 end
                 if args[i] == nil and prev and i == n then break end
                 local ok, err = type_match(args[i], td)
+                -- @fixme Sometimes the stack if wrong, document that.
                 if not ok then error(format('argument %d: %s', i, err), 2) end
             end
             return func(...)
@@ -651,6 +652,7 @@ do
 end
 
 local json = require 'lunajson'
+local text = require 'text'
 
 
 ------------
@@ -2033,7 +2035,7 @@ with_tmp_file = typed_args('function', '?string', '?string')(
 --- Retrieve data from a URL via an HTTP GET request.
 --
 -- @string url The URL.
--- @treturn string The MIME type of the HTTP content.
+-- @treturn string The MIME type of the HTTP content, in lower case.
 -- @treturn string The HTTP content itself.
 -- @raise An error if the host cannot be reached.
 --  This error can be caught starting with Pandoc v2.11.
@@ -2042,7 +2044,8 @@ with_tmp_file = typed_args('function', '?string', '?string')(
 http_get = typed_args('string')(
     function (url)
         assert(url ~= '', 'URL is the empty string.')
-        return pandoc.mediabag.fetch(url, '.')
+        local mt, con = pandoc.mediabag.fetch(url, '.')
+        return mt:lower(), con
     end
 )
 
@@ -2072,31 +2075,6 @@ do
         end
     )
 end
-
---- Query a URL via an HTTP GET request.
---
--- @string url The URL.
--- @tparam[opt] {string=string,...} params Request parameters.
--- @treturn string The MIME type of the HTTP content.
--- @treturn string The HTTP content itself.
--- @raise See @{http_get}.
---
--- @usage
--- -- Query <https://site.example?foo=1&bar=2>.
--- mt, con = url_query('https://site.example', {foo = 1, bar = 2})
---
--- @function url_query
-url_query = typed_args('string', '?table')(
-    function (url, params)
-        assert(url ~= '', 'URL is the empty string.')
-        if params then
-            local query = Values()
-            for k, v in sorted(params) do query:add(k .. '=' ..v) end
-            url = url .. '?' .. concat(query, '&')
-        end
-        return http_get(url)
-    end
-)
 
 
 --------------------
@@ -2802,7 +2780,10 @@ csl_items_filter_by_ckey = typed_args('table', 'string')(
         for i = 1, #items do
             local item = items[i]
             for k, v in csl_item_extras(item) do
-                if (k == 'citation-key' or k == 'citekey') and v == ckey then
+                if
+                    (k == 'citation-key' or k == 'citekey') and
+                    v:lower() == ckey:lower()
+                then
                     filtered:add(item)
                     break
                 end
@@ -2940,20 +2921,21 @@ citekey = Object()
 -- an error message if no search terms can be derived from the citation key.
 citekey.parsers = {}
 
+
 do
-    local len = utf8.len
+    local codes = utf8.codes
+    local char = utf8.char
+    local lower = text.lower
 
     --- Guess search terms from a BetterBibTeX citation key.
     --
     -- Splits up a BetterBibTeX citation key at each uppercase letter
     -- and at each start of a string of digits.
     --
-    -- @caveats BetterBibTeX citation keys must be encoded in ASCII.
+    -- @caveats Non-letter characters must be encoded in ASCII.
     --
     -- @string ckey A BetterBibTeX citation key (e.g., `'DoeWord2020'`).
-    -- @treturn[1] {string,...} Search terms.
-    -- @treturn[2] nil `nil` if no search terms could be derived.
-    -- @treturn[2] string An error message.
+    -- @treturn {string,...} Search terms.
     --
     -- @function citekey.parsers.betterbibtexkey
     -- @fixme Not unit-tested.
@@ -2961,22 +2943,36 @@ do
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
             local terms = Values()
-            for str, num in ckey:gmatch '([%a%p]*)(%d*)' do
-                if str and str ~= '' then
-                    for term in split(str, '%u', nil, 'l') do
-                        local l = len(term)
-                        if l and l >= 3 then terms:add(term) end
+            local sep = 1
+            local prev
+            for pos, code in codes(ckey) do
+                local add = false
+                if pos > 1 then
+                    -- Digits start at 48 and end at 57.
+                    if
+                            (47 < code and code < 58) and
+                        not (47 < prev and prev < 58)
+                    then
+                        add = true
+                    -- `chr ~= lower(chr)` is `false` for non-letters,
+                    -- `chr == upper(chr)` is *not*.
+                    else
+                        local chr = char(code)
+                        if chr ~= lower(chr) then
+                            add = true
+                        end
                     end
                 end
-                if num and num ~= '' then
-                    local l = len(num)
-                    if l and l > 1 then terms:add(num) end
+                if add then
+                    terms:add(ckey:sub(sep, pos - 1))
+                    sep = pos
                 end
+                prev = code
             end
-            if terms.n < 1 then
-                return nil, 'not a BetterBibTex citation key.' end
-            return terms
-        end
+            terms:add(ckey:sub(sep))
+            if terms.n > 1 then return terms end
+            return nil, 'not a Better BibTeX citation key.'
+         end
     )
 end
 
@@ -2994,73 +2990,112 @@ do
     -- @treturn[2] nil `nil` if no search terms could be derived.
     -- @treturn[2] string An error message.
     --
-    -- @function citekey.parsers.easykey
+    -- @function Citekey.parsers.easykey
     -- @fixme Not unit-tested.
     citekey.parsers.easykey = typed_args('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
             local terms = Values()
             local colon = false
-            for p, c in codes(ckey) do
+            for pos, code in codes(ckey) do
                 if not colon then
                     -- 58 is the colon (:).
-                    if c == 58 then
-                        local s = ckey:sub(1, p - 1)
-                        if s and s ~= '' then terms:add(s) end
+                    if code == 58 then
+                        local str = ckey:sub(1, pos - 1)
+                        if str and str ~= '' then terms:add(str) end
                         colon = true
                     end
                 else
                     -- Digits start at 48 and end at 57.
-                    if c >= 48 and c <= 57 then
+                    if 47 < code and code < 58 then
                         if terms.n < 2 then terms:add '' end
-                        terms[2] = terms[2] .. tostring(c - 48)
+                        terms[2] = terms[2] .. tostring(code - 48)
                     else
-                        local s = ckey:sub(p)
-                        if s and s ~= '' then terms:add(s) end
+                        local str = ckey:sub(pos)
+                        if str and str ~= '' then terms:add(str) end
                         break
                     end
                 end
             end
-            if terms.n < 2 then
-                return nil, 'not an Easy Citekey.'
-            end
-            return terms
+            if terms.n > 1 then return terms end
+            return nil, 'not an Easy Citekey.'
         end
     )
 end
 
---- Guess search terms from a citation key.
+--- A mapping of citation key type names to typifiers.
 --
--- @caveats
+-- A typifier is a function that takes a citation key and returns `true` if
+-- the citation key *could be* (not "is") of that type and `false` otherwise.
 --
--- The citation key types 'key' and 'easykey' go before 'betterbibtexkey'.
--- It is unlikely that the Zotero item ID parser or the Easy Citekey would
--- parse a Better BibTeX citation key. But the BetterBibTeX citation parser
--- does 'parse' Zotero item IDs as well as Easy Citekey, wrongly.
+-- Typifiers should not expect citation key type prefixes.
+citekey.typifiers = {}
+
+--- Check if a citation key is a Zotero ID.
 --
--- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
--- @tparam {string,...} types Types to try to parse the citation key as.
---  If @{citekey.parsers} contains no parser for a type, it is ignored.
---  Order is significant.
--- @treturn[1] {string,...} Search terms.
--- @treturn[2] nil `nil` if no search terms could be derived.
--- @treturn[2] string An error message.
---
--- @function citekey:guess_terms
-citekey.guess_terms = typed_args('table', 'string', 'table')(
-    function (self, ckey, types)
-        assert(ckey ~= '', 'citation key is the empty string.')
-        assert(#types > 0, 'list of citation key types is empty.')
-        for i = 1, #types do
-            local parse = self.parsers[types[i]]
-            if parse then
-                local terms = parse(ckey)
-                if terms then return terms end
-            end
-        end
-        return nil, format('cannot guess search terms for %s.', ckey)
+-- @string ckey A citation key.
+citekey.typifiers.key = typed_args('string')(
+    function (ckey)
+        return ckey:len() == 8 and ckey:match '^[%u%d]+$'
     end
 )
+
+--- Check wether a citation key could be of a type.
+--
+-- Citation keys can be prefixed with a citation key type and a colon (':'),
+-- for example, 'betterbibtexkey:DoeTitle2020'. If a citation key is prefixed
+-- thusly, it is only checked wether the prefix matches the given citation key
+-- type. The prefix is stripped from the citation key before it is returned.
+--
+-- @string ckey A citation key.
+-- @string type A citation key type.
+-- @treturn[1] string The citation key.
+-- @treturn[2] nil `nil` if the given citation key is not of that type.
+-- @treturn[2] string An error message.
+citekey.matches_type = typed_args({
+    typifiers = 'table'
+}, 'string', 'string')(
+    -- luacheck: ignore type
+    function (self, ckey, type)
+        local col = type:len() + 1
+        if ckey:sub(1, col) == type .. ':' then return ckey:sub(col + 1) end
+        local typify = self.typifiers[type]
+        if not typify or typify(ckey) then return ckey end
+        return nil, ckey .. ': not a ' .. type
+    end
+)
+
+do
+    local type_order = order{'easykey'}
+
+    --- Guess search terms from a citation key.
+    --
+    -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
+    -- @tparam {string,...} types Types to try to parse the citation key as.
+    -- @treturn[1] {string,...} Search terms.
+    -- @treturn[2] nil `nil` if no search terms could be derived.
+    -- @treturn[2] string An error message.
+    --
+    -- @function citekey:terms
+    citekey.guess_terms = typed_args({
+        matches_type = 'function',
+        parsers = 'table'
+    }, 'string', 'table')(
+        function (self, ckey, types)
+            for _, t in sorted(types, type_order) do
+                local parse = self.parsers[t]
+                if parse then
+                    ckey = self:matches_type(ckey, t)
+                    if ckey then
+                        local terms = parse(ckey)
+                        if terms then return terms end
+                    end
+                end
+            end
+            return nil, format('cannot guess search terms for %s.', ckey)
+        end
+    )
+end
 
 
 ---------------------
@@ -4025,7 +4060,7 @@ connectors.Zotxt.citekey_types = List{
 
 do
     -- URL of the endpoint to look up items at.
-    local items_url = 'http://localhost:23119/zotxt/items'
+    local base_url = 'http://localhost:23119/zotxt/items?%s=%s'
 
     --- Fetch a CSL item via zotxt.
     --
@@ -4041,37 +4076,44 @@ do
     connectors.Zotxt.fetch = typed_args({citekey_types = 'table'}, 'string')(
         function (self, ckey)
             local ckey_types = self.citekey_types
-            local err = nil
+            local err = ckey .. ': unrecognised type of citation key.'
             for i = 1, #ckey_types do
-                -- zotxt supports searching for multiple citation keys at once,
-                -- but if a single one cannot be found, it replies with a
-                -- cryptic error message (for Easy Citekeys) or an empty
-                -- response (for Better BibTeX citation keys).
-                local ok, mt, str = pcall(url_query, items_url,
-                                          {[ckey_types[i]] = ckey})
-                xassert(ok, 'failed to connect to Zotero desktop client.')
-                if not mt or mt == '' or not str or str == '' then
-                    err = ckey .. ': zotxt response is empty.'
-                elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
-                    err = ckey .. ': zotxt response is not encoded in UTF-8.'
-                else
-                    local data = csl_json_parse(str)
-                    if data then
-                        local n = #data
-                        if n == 1 then
-                            if i ~= 1 then
-                                ckey_types[1], ckey_types[i] =
-                                ckey_types[i], ckey_types[1]
-                            end
-                            local item = data[1]
-                            item.id = ckey
-                            return item
+                local ckey_type = ckey_types[i]
+                ckey = citekey:matches_type(ckey, ckey_type)
+                if ckey then
+                    -- zotxt supports searching for multiple citation keys at
+                    -- once, but if a single one cannot be found, it replies
+                    -- with a cryptic error message (for Easy Citekeys) or an
+                    -- empty response (for Better BibTeX citation keys).
+                    local query_url = base_url:format(ckey_type, ckey)
+                    local ok, mt, str = pcall(http_get, query_url)
+                    xassert(ok, 'failed to connect to Zotero desktop client.')
+                    if not mt or mt == '' or not str or str == '' then
+                        if ckey_type == 'betterbibtexkey'
+                            then err = ckey .. ': no matches.'
+                            else err = ckey .. ': zotxt response is empty.'
                         end
-                        if n == 0 then err = ckey .. ': no matches.'
-                                  else err = ckey .. ': too many matches.'
-                        end
+                    elseif not mt:match ';%s*charset="?utf%-?8"?%s*$' then
+                        err = ckey .. ': zotxt response not encoded in UTF-8.'
                     else
-                        err = ckey .. ': cannot parse Zotero response: ' .. str
+                        local data = csl_json_parse(str)
+                        if data then
+                            local n = #data
+                            if n == 1 then
+                                if i ~= 1 then
+                                    ckey_types[1], ckey_types[i] =
+                                    ckey_types[i], ckey_types[1]
+                                end
+                                local item = data[1]
+                                item.id = ckey
+                                return item
+                            end
+                            if n == 0 then err = ckey .. ': no matches.'
+                                      else err = ckey .. ': too many matches.'
+                            end
+                        else
+                            err = 'zotxt responded: ' .. str
+                        end
                     end
                 end
             end
@@ -4098,7 +4140,7 @@ connectors.ZoteroWeb = connectors.Zotxt()
 --- Types of citation keys to expect.
 --
 -- See @{connectors.Zotxt.citekey_types} for details
--- and @{citekey:guess_terms} for caveats.
+-- and @{citekey:terms} for caveats.
 connectors.ZoteroWeb.citekey_types = List {
     'key',              -- Zotero item IDs
     'easykey',          -- zotxt Easy Citekey
@@ -4127,7 +4169,6 @@ connectors.ZoteroWeb.options = connectors.Zotxt.options:new(
 
 do
     -- Shorthands.
-    local len = utf8.len
     local decode = json.decode
 
     -- Zotero Web API base URL.
@@ -4249,7 +4290,13 @@ do
     -- @fixme Not unit-tested.
     connectors.ZoteroWeb.query = typed_args('string', '?table')(
         function (ep, params)
-            local ok, mt, str = pcall(url_query, ep, params)
+            local query_url = ep
+            if params then
+                local query = Values()
+                for k, v in sorted(params) do query:add(k .. '=' ..v) end
+                query_url = query_url .. '?' .. concat(query, '&')
+            end
+            local ok, mt, str = pcall(http_get, query_url)
             xassert(ok, 'failed to connect to Zotero Web API.')
             if not mt or mt == '' then
                 return nil, 'Zotero response declares no MIME type.'
@@ -4260,10 +4307,10 @@ do
             elseif not mt:match '^text/' then
                 local err = 'Zotero response is of unexpected MIME type %s.'
                 return nil, err:format(mt)
-            elseif not mt:match ';%s*charset="?[Uu][Tt][Ff]%-?8"?%s*$' then
-                return nil, 'Zotero response is not encoded in UTF-8.'
+            elseif not mt:match ';%s*charset="?utf%-?8"?%s*$' then
+                return nil, 'Zotero response not encoded in UTF-8.'
             end
-            return nil, 'Zotero fetch error: ' .. str
+            return nil, 'Zotero responded: ' .. str
         end
     )
 
@@ -4412,11 +4459,10 @@ do
         function (self, ckey)
             -- luacheck: ignore err
             assert(ckey ~= '', 'citation key is the empty string.')
-            if
-                self.citekey_types:includes 'key' and
-                len(ckey) == 8                    and
-                ckey:match '^[%u%d]+$'
-            then return self:lookup(ckey) end
+            if self.citekey_types:includes 'key' then
+                local id = citekey:matches_type(ckey, 'key')
+                if id then return self:lookup(id) end
+            end
             local terms, err = citekey:guess_terms(ckey, self.citekey_types)
             if not terms then return nil, err end
             xwarn('@info', '${ckey}: searching for: ',

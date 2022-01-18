@@ -715,23 +715,31 @@ EOF
 <h2><a href="#Citation_keys">Citation keys </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#citekey">citekey</a></td>
+	<td class="name" nowrap><a href="#CitekeyDesc">CitekeyDesc</a></td>
+	<td class="summary">A citation key description.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Citekey">Citekey</a></td>
 	<td class="summary">An interface for parsing citation keys.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey.parsers">citekey.parsers</a></td>
+	<td class="name" nowrap><a href="#Citekey.parsers">Citekey.parsers</a></td>
 	<td class="summary">A mapping of citation key types to parsers.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey.parsers.betterbibtexkey">citekey.parsers.betterbibtexkey (ckey)</a></td>
+	<td class="name" nowrap><a href="#Citekey.parsers.betterbibtexkey">Citekey.parsers.betterbibtexkey (ckey)</a></td>
 	<td class="summary">Guess search terms from a BetterBibTeX citation key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey.parsers.easykey">citekey.parsers.easykey (ckey)</a></td>
+	<td class="name" nowrap><a href="#Citekey.parsers.easykey">Citekey.parsers.easykey (ckey)</a></td>
 	<td class="summary">Guess search terms from an Easy Citekey.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey:guess_terms">citekey:guess_terms (ckey, types)</a></td>
+	<td class="name" nowrap><a href="#Citekey:new">Citekey:new (props)</a></td>
+	<td class="summary">Create a new citation key handle.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Citekey:terms">Citekey:terms ()</a></td>
 	<td class="summary">Guess search terms from a citation key.</td>
 	</tr>
 </table>
@@ -817,7 +825,7 @@ EOF
 	<td class="summary">Walk an AST and apply a filter to matching elements.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#meta_sources">meta_sources (meta)</a></td>
+	<td class="name" nowrap><a href="#doc_sources">doc_sources (meta)</a></td>
 	<td class="summary">Collect bibliographic data.</td>
 	</tr>
 	<tr>
@@ -1246,8 +1254,8 @@ nil    expected table or userdata, got string.
 
     <h3>Caveats:</h3>
     <ul>
-          If a global variable is shadowed by a variable that is neither one of the
- function&rsquo;s local variables nor one of its upvalues, then the value
+          If a global variable is shadowed by a variable that is neither one of
+ the function&rsquo;s local variables nor one of its upvalues, then the value
  from <code>_ENV</code> is returned, <em>not</em> the shadowed one.
     </ul>
     </ul>
@@ -1277,15 +1285,6 @@ nil    expected table or userdata, got string.
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
         A mapping of variable names to values.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if there is no function at that level of the stack.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
     </ol>
 
 
@@ -4049,8 +4048,41 @@ original-date</pre>
 
     <dl class="function">
     <dt>
-    <a name = "citekey"></a>
-    <strong>citekey</strong>
+    <a name = "CitekeyDesc"></a>
+    <strong>CitekeyDesc</strong>
+    </dt>
+    <dd>
+    A citation key description.
+
+    <h3>Caveats:</h3>
+    <ul>
+         This table exists in documentation only.
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
+        </li>
+        <li><span class="parameter">types</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         Types to try to parse the citation key as.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Citekey"></a>
+    <strong>Citekey</strong>
     </dt>
     <dd>
     An interface for parsing citation keys.
@@ -4071,8 +4103,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "citekey.parsers"></a>
-    <strong>citekey.parsers</strong>
+    <a name = "Citekey.parsers"></a>
+    <strong>Citekey.parsers</strong>
     </dt>
     <dd>
     A mapping of citation key types to parsers.</p>
@@ -4093,8 +4125,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "citekey.parsers.betterbibtexkey"></a>
-    <strong>citekey.parsers.betterbibtexkey (ckey)</strong>
+    <a name = "Citekey.parsers.betterbibtexkey"></a>
+    <strong>Citekey.parsers.betterbibtexkey (ckey)</strong>
     </dt>
     <dd>
     Guess search terms from a BetterBibTeX citation key.</p>
@@ -4140,8 +4172,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "citekey.parsers.easykey"></a>
-    <strong>citekey.parsers.easykey (ckey)</strong>
+    <a name = "Citekey.parsers.easykey"></a>
+    <strong>Citekey.parsers.easykey (ckey)</strong>
     </dt>
     <dd>
     Guess search terms from an Easy Citekey.</p>
@@ -4186,18 +4218,12 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "citekey:guess_terms"></a>
-    <strong>citekey:guess_terms (ckey, types)</strong>
+    <a name = "Citekey:new"></a>
+    <strong>Citekey:new (props)</strong>
     </dt>
     <dd>
-    Guess search terms from a citation key.
+    Create a new citation key handle.
 
-    <h3>Caveats:</h3>
-    <ul>
-          The citation key types &lsquo;key&rsquo; and &lsquo;easykey&rsquo; go before &lsquo;betterbibtexkey&rsquo;.
- It is unlikely that the Zotero item ID parser or the Easy Citekey would
- parse a Better BibTeX citation key. But the BetterBibTeX citation parser
- does &lsquo;parse&rsquo; Zotero item IDs as well as Easy Citekey, wrongly.
     </ul>
     </ul>
     </ul>
@@ -4206,17 +4232,36 @@ original-date</pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
-        </li>
-        <li><span class="parameter">types</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         Types to try to parse the citation key as.
-  If <a href="../index.html#citekey.parsers">citekey.parsers</a> contains no parser for a type, it is ignored.
-  Order is significant.
+        <li><span class="parameter">props</span>
+            <span class="types"><a class="type" href="../index.html#CitekeyDesc">CitekeyDesc</a></span>
+         A citation key description.
         </li>
     </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../index.html#Citekey">Citekey</a></span>
+        A citation key handle.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Citekey:terms"></a>
+    <strong>Citekey:terms ()</strong>
+    </dt>
+    <dd>
+    Guess search terms from a citation key.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
 
     <h3>Returns:</h3>
     <ol>
@@ -4873,8 +4918,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "meta_sources"></a>
-    <strong>meta_sources (meta)</strong>
+    <a name = "doc_sources"></a>
+    <strong>doc_sources (meta)</strong>
     </dt>
     <dd>
     Collect bibliographic data.</p>
@@ -5501,7 +5546,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     Types of citation keys to expect.</p>
 
 <p> See <a href="../index.html#connectors.Zotxt.citekey_types">connectors.Zotxt.citekey_types</a> for details
- and <a href="../index.html#citekey:guess_terms">citekey:guess_terms</a> for caveats.
+ and <a href="../index.html#Citekey:terms">Citekey:terms</a> for caveats.
 
     </ul>
     </ul>
@@ -6089,7 +6134,7 @@ cannot be parsed.</li>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-01-16 13:42:26 </i>
+<i style="float:right;">Last updated 2022-01-17 11:40:22 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

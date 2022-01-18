@@ -32,7 +32,7 @@ LIBRARY="$REPO/scripts/library.sh"
 # =========
 
 # Where to put cans.
-readonly CAN_DIR="$REPO/test/can"
+readonly CAN_DIR="$REPO/test/cans"
 
 
 # FUNCTIONS

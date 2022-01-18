@@ -1,0 +1,6 @@
+HTTP/1.0 400 Bad Request
+X-Zotero-Version: 5.0.97-beta.63+035aac30f
+X-Zotero-Connector-API-Version: 2
+Content-Type: text/plain; charset=UTF-8
+
+nobody:0000nothing had no results
