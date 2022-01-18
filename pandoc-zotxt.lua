@@ -488,18 +488,10 @@ end
 -- @treturn func A function that adds type checks to a function.
 --
 -- @usage
--- copy = typed_args('?*', '?table')(
---     function (val, _seen)
---         if type(val) ~= 'table' then return val end
---         if     not _seen  then _seen = {}
---         elseif _seen[val] then return _seen[val]
---         end
---         local ret = setmetatable({}, getmetatable(val))
---         _seen[val] = ret
---         for k, v in next, val do
---             rawset(ret, copy(k, _seen), copy(v, _seen))
---         end
---         return ret
+-- store = typed_args('?*', 'table', '?number', '...')(
+--     function (val, tab, ...)
+--          local indices = table.pack(...)
+--          for i = 1, n do tab[indices[i]] = val end
 --     end
 -- )
 --
@@ -841,7 +833,9 @@ do
         if     not _seen  then _seen = {}
         elseif _seen[val] then return _seen[val]
         end
-        local ret = setmetatable({}, getmetatable(val))
+        local ret = {}
+        local mt = getmetatable(val)
+        if type(mt) == 'table' then setmetatable(ret, mt) end
         _seen[val] = ret
         for k, v in next, val do
             rawset(ret, copy_deep(k, _seen), copy_deep(v, _seen))
@@ -867,7 +861,9 @@ do
     -- @function copy_shallow
     local function copy_shallow (val)
         if type(val) ~= 'table' then return val end
-        local ret = setmetatable({}, getmetatable(val))
+        local ret = {}
+        local mt = getmetatable(val)
+        if type(mt) == 'table' then setmetatable(ret, mt) end
         for k, v in next, val do rawset(ret, k, v) end
         return ret
     end
@@ -1039,7 +1035,7 @@ update = typed_args('table', '?table', '...')(
 -- @function walk
 walk = typed_args('*', 'function', '?table')(
     function (val, func, _seen)
-        if type(val) ~= 'table' and type(val) ~= 'userdata' then
+        if type(val) ~= 'table' then
             local ret = func(val)
             if ret == nil then return val end
             return ret
@@ -1048,12 +1044,11 @@ walk = typed_args('*', 'function', '?table')(
         elseif _seen[val] then return _seen[val]
         end
         local ret = {}
+        local mt = getmetatable(val)
+        if type(mt) == 'table' then setmetatable(ret, mt) end
         _seen[val] = ret
         for k, v in pairs(val) do
-            if type(v) == 'table' then
-                local mt = getmetatable(v)
-                v = setmetatable(walk(v, func, _seen), mt)
-            end
+            if type(v) == 'table' then v = walk(v, func, _seen) end
             local new = func(v)
             if new == nil then ret[k] = v
                           else ret[k] = new
