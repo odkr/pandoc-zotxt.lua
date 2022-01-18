@@ -637,10 +637,6 @@ EOF
 	<td class="name" nowrap><a href="#uri_escape">uri_escape (str)</a></td>
 	<td class="summary">Percent-encode a string for use in an URI.</td>
 	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#url_query">url_query (url[, params])</a></td>
-	<td class="summary">Query a URL via an HTTP GET request.</td>
-	</tr>
 </table>
 <h2><a href="#Markup_converters">Markup converters </a></h2>
 <table class="function_list">
@@ -715,19 +711,15 @@ EOF
 <h2><a href="#Citation_keys">Citation keys </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#CitekeyDesc">CitekeyDesc</a></td>
-	<td class="summary">A citation key description.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#Citekey">Citekey</a></td>
+	<td class="name" nowrap><a href="#citekey">citekey</a></td>
 	<td class="summary">An interface for parsing citation keys.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Citekey.parsers">Citekey.parsers</a></td>
+	<td class="name" nowrap><a href="#citekey.parsers">citekey.parsers</a></td>
 	<td class="summary">A mapping of citation key types to parsers.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Citekey.parsers.betterbibtexkey">Citekey.parsers.betterbibtexkey (ckey)</a></td>
+	<td class="name" nowrap><a href="#citekey.parsers.betterbibtexkey">citekey.parsers.betterbibtexkey (ckey)</a></td>
 	<td class="summary">Guess search terms from a BetterBibTeX citation key.</td>
 	</tr>
 	<tr>
@@ -735,11 +727,19 @@ EOF
 	<td class="summary">Guess search terms from an Easy Citekey.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Citekey:new">Citekey:new (props)</a></td>
-	<td class="summary">Create a new citation key handle.</td>
+	<td class="name" nowrap><a href="#citekey.typifiers">citekey.typifiers</a></td>
+	<td class="summary">A mapping of citation key type names to typifiers.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Citekey:terms">Citekey:terms ()</a></td>
+	<td class="name" nowrap><a href="#citekey.typifiers.key">citekey.typifiers.key</a></td>
+	<td class="summary">Check if a citation key is a Zotero ID.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#citekey.matches_type">citekey.matches_type</a></td>
+	<td class="summary">Check wether a citation key could be of a type.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#citekey:terms">citekey:terms (ckey, types)</a></td>
 	<td class="summary">Guess search terms from a citation key.</td>
 	</tr>
 </table>
@@ -1193,8 +1193,12 @@ nil    expected table or userdata, got string.
 
     <h3>Caveats:</h3>
     <ul>
-          Non-referring type names (e.g., &lsquo;int&rsquo;) do <em>not</em> raise an error
-  at compile-time, they just fail at run-time.
+         <ul>
+<li>Non-referring type names (e.g., &lsquo;int&rsquo;) do <em>not</em> raise an error
+at compile-time, they just fail at run-time.</li>
+<li>Sometimes the strack trace is incorrect.</li>
+</ul>
+
     </ul>
     </ul>
     </ul>
@@ -1893,7 +1897,7 @@ bar is bar.
     <ul>
          <ul>
 <li><p>If there is no variable of a given name,
-the expression is quietly replaced with <code>nil</code>.</p>
+the expression is quietly replaced with &lsquo;nil&rsquo;.</p>
 
 <pre><code>&gt; vars_sub('foo is ${bar}.', {})
 foo is nil.
@@ -1993,12 +1997,11 @@ foo is bar.
 <pre><code>obj = Object(mt)
 </code></pre>
 
-<p> is short for</p>
+<p> is equivalent to</p>
 
-<pre><code>do
-    local mt = update({}, getmetatable(Object), {__index = Object}, mt)
-    obj = setmetatable({}, mt)
-end
+<pre><code>new_mt = {}
+update(new_mt, getmetatable(Object), {__index = Object}, mt)
+obj = setmetatable({}, new_mt)
 </code></pre>
 
     </ul>
@@ -3209,7 +3212,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     <ol>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The MIME type of the HTTP content.</li>
+        The MIME type of the HTTP content, in lower case.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         The HTTP content itself.</li>
@@ -3254,53 +3257,6 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
 
 
 
-
-</dd>
-    <dt>
-    <a name = "url_query"></a>
-    <strong>url_query (url[, params])</strong>
-    </dt>
-    <dd>
-    Query a URL via an HTTP GET request.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">url</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         The URL.
-        </li>
-        <li><span class="parameter">params</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string=string,...}</a></span>
-         Request parameters.
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The MIME type of the HTTP content.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        The HTTP content itself.</li>
-    </ol>
-
-    <h3>Raises:</h3>
-    See <a href="index.html#http_get">http_get</a>.
-
-
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example"><span class="comment">-- Query &lt;https://site.example?foo=1&amp;bar=2&gt;.
-</span>mt, con = url_query(<span class="string">'https://site.example'</span>, {foo = <span class="number">1</span>, bar = <span class="number">2</span>})</pre>
-    </ul>
 
 </dd>
 </dl>
@@ -4048,41 +4004,8 @@ original-date</pre>
 
     <dl class="function">
     <dt>
-    <a name = "CitekeyDesc"></a>
-    <strong>CitekeyDesc</strong>
-    </dt>
-    <dd>
-    A citation key description.
-
-    <h3>Caveats:</h3>
-    <ul>
-         This table exists in documentation only.
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
-        </li>
-        <li><span class="parameter">types</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         Types to try to parse the citation key as.
-        </li>
-    </ul>
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "Citekey"></a>
-    <strong>Citekey</strong>
+    <a name = "citekey"></a>
+    <strong>citekey</strong>
     </dt>
     <dd>
     An interface for parsing citation keys.
@@ -4103,8 +4026,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "Citekey.parsers"></a>
-    <strong>Citekey.parsers</strong>
+    <a name = "citekey.parsers"></a>
+    <strong>citekey.parsers</strong>
     </dt>
     <dd>
     A mapping of citation key types to parsers.</p>
@@ -4125,8 +4048,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "Citekey.parsers.betterbibtexkey"></a>
-    <strong>Citekey.parsers.betterbibtexkey (ckey)</strong>
+    <a name = "citekey.parsers.betterbibtexkey"></a>
+    <strong>citekey.parsers.betterbibtexkey (ckey)</strong>
     </dt>
     <dd>
     Guess search terms from a BetterBibTeX citation key.</p>
@@ -4136,7 +4059,7 @@ original-date</pre>
 
     <h3>Caveats:</h3>
     <ul>
-         BetterBibTeX citation keys must be encoded in ASCII.
+         Non-letter characters must be encoded in ASCII.
     </ul>
     </ul>
     </ul>
@@ -4156,15 +4079,6 @@ original-date</pre>
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
         Search terms.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if no search terms could be derived.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
     </ol>
 
 
@@ -4218,11 +4132,16 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "Citekey:new"></a>
-    <strong>Citekey:new (props)</strong>
+    <a name = "citekey.typifiers"></a>
+    <strong>citekey.typifiers</strong>
     </dt>
     <dd>
-    Create a new citation key handle.
+    A mapping of citation key type names to typifiers.</p>
+
+<p> A typifier is a function that takes a citation key and returns <code>true</code> if
+ the citation key <em>could be</em> (not &ldquo;is&rdquo;) of that type and <code>false</code> otherwise.</p>
+
+<p> Typifiers should not expect citation key type prefixes.
 
     </ul>
     </ul>
@@ -4230,28 +4149,74 @@ original-date</pre>
     </ul>
     </ul>
 
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">props</span>
-            <span class="types"><a class="type" href="index.html#CitekeyDesc">CitekeyDesc</a></span>
-         A citation key description.
-        </li>
-    </ul>
 
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="index.html#Citekey">Citekey</a></span>
-        A citation key handle.
-    </ol>
 
 
 
 
 </dd>
     <dt>
-    <a name = "Citekey:terms"></a>
-    <strong>Citekey:terms ()</strong>
+    <a name = "citekey.typifiers.key"></a>
+    <strong>citekey.typifiers.key</strong>
+    </dt>
+    <dd>
+    Check if a citation key is a Zotero ID.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "citekey.matches_type"></a>
+    <strong>citekey.matches_type</strong>
+    </dt>
+    <dd>
+    Check wether a citation key could be of a type.</p>
+
+<p> Citation keys can be prefixed with a citation key type and a colon (&lsquo;:&rsquo;),
+ for example, &lsquo;betterbibtexkey:DoeTitle2020&rsquo;. If a citation key is prefixed
+ thusly, it is only checked wether the prefix matches the given citation key
+ type. The prefix is stripped from the citation key before it is returned.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key.
+        </li>
+        <li><span class="parameter">type</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key type.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "citekey:terms"></a>
+    <strong>citekey:terms (ckey, types)</strong>
     </dt>
     <dd>
     Guess search terms from a citation key.
@@ -4262,6 +4227,17 @@ original-date</pre>
     </ul>
     </ul>
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
+        </li>
+        <li><span class="parameter">types</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         Types to try to parse the citation key as.
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>
@@ -5546,7 +5522,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     Types of citation keys to expect.</p>
 
 <p> See <a href="index.html#connectors.Zotxt.citekey_types">connectors.Zotxt.citekey_types</a> for details
- and <a href="index.html#Citekey:terms">Citekey:terms</a> for caveats.
+ and <a href="index.html#citekey:terms">citekey:terms</a> for caveats.
 
     </ul>
     </ul>
@@ -5785,7 +5761,7 @@ cannot be parsed.</li>
 
     <h3>See also:</h3>
     <ul>
-         <a href="index.html#url_query">url_query</a>
+         <a href="index.html#http_get">http_get</a>
     </ul>
 
 
@@ -6134,7 +6110,7 @@ cannot be parsed.</li>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-01-17 11:40:22 </i>
+<i style="float:right;">Last updated 2022-01-18 16:36:17 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
