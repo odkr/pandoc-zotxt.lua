@@ -1194,7 +1194,7 @@ do
     -- @caveats
     --
     -- * If there is no variable of a given name,
-    --   the expression is quietly replaced with `nil`.
+    --   the expression is quietly replaced with 'nil'.
     --
     --       > vars_sub('foo is ${bar}.', {})
     --       foo is nil.
@@ -1244,14 +1244,12 @@ setmetatable(Object, Object.mt)
 --
 -- That is,
 --
---    obj = Object(mt)
+--    obj = Object(tab)
 --
--- is short for
+-- is equivalent to
 --
---    do
---        local mt = update({}, getmetatable(Object), {__index = Object}, mt)
---        obj = setmetatable({}, mt)
---    end
+--    mt = update({}, getmetatable(Object), {__index = Object}, tab)
+--    obj = setmetatable({}, mt)
 --
 -- @tab proto A prototype.
 -- @tab[opt] mt A metatable.
@@ -1271,8 +1269,9 @@ setmetatable(Object, Object.mt)
 -- @function Object.mt.__call
 Object.mt.__call = typed_args('table', '?table')(
     function (proto, mt)
-        return setmetatable({}, update(
-            {}, getmetatable(proto), {__index = proto}, mt)
+        return setmetatable(
+            {},
+            update({}, getmetatable(proto), {__index = proto}, mt)
         )
     end
 )
@@ -3043,11 +3042,11 @@ citekey.typifiers.key = typed_args('string')(
     end
 )
 
---- Check wether a citation key could be of a type.
+--- Check whether a citation key could be of a type.
 --
 -- Citation keys can be prefixed with a citation key type and a colon (':'),
 -- for example, 'betterbibtexkey:DoeTitle2020'. If a citation key is prefixed
--- thusly, it is only checked wether the prefix matches the given citation key
+-- thusly, it is only checked whether the prefix matches the given citation key
 -- type. The prefix is stripped from the citation key before it is returned.
 --
 -- @string ckey A citation key.
@@ -4288,7 +4287,7 @@ do
     -- @treturn[2] string An error message.
     -- @raise See @{http_get}.
     --
-    -- @see url_query
+    -- @see http_get
     -- @function connectors.ZoteroWeb.query
     -- @fixme Not unit-tested.
     connectors.ZoteroWeb.query = typed_args('string', '?table')(
