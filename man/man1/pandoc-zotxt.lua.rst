@@ -108,11 +108,10 @@ Bibliographic data can be added to a bibliography file, rather than to the
 "references" metadata field. This speeds up subsequent processing, because
 data that has already been fetched from Zotero need not be fetched again.
 
-To use such a bibliography file, set the "zotero-bibliography" metadata field
-to a filename. If that filename is relative, the file is searched for in the
-resource search path; if no file of the given name can be found there, the
-filename is interpreted as being relative to the directory of the first input
-file or, if no input files were given, the current working directory.
+To use such a bibliography file, set the "zotero-bibliography" metadata
+field to a filename. If that filename is relative, it is interpreted as
+being relative to the directory of the first input file or, if no input
+files were given, the current working directory.
 
 The filename may contain environment variables. Variable names are enclosed
 in ``${...}`` (e.g., ``${HOME}`` will be replaced with your home directory).
@@ -291,6 +290,6 @@ SEE ALSO
 
 - `Zotero <https://www.zotero.org>`_
 - `zotxt <https://github.com/egh/zotxt>`_
-- `Better BibTeX <https://retorque.re/zotero-better-bibtex/>`_
+- `Better BibTeX for Zotero <https://retorque.re/zotero-better-bibtex/>`_
 
 pandoc(1)
