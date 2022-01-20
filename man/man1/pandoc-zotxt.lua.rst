@@ -44,7 +44,7 @@ Desktop client
 By default, bibliographic data is fetched from the Zotero desktop client,
 which must be running when you invoke **pandoc**. This is the faster, easier,
 and less error-prone way to fetch citations from Zotero. It requires the
-Zotero add-ons zotxt and the BetterBibTeX for Zotero to be installed.
+Zotero add-ons zotxt and BetterBibTeX for Zotero to be installed.
 
 
 Web API
@@ -59,8 +59,8 @@ Zotero API key and set the metadata field "zotero-api-key" to that key:
 
    pandoc -L pandoc-zotxt.lua -C <<EOF
    ---
-   zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
    zotero-connectors: zoteroweb
+   zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
    ...
    Look up @DoeTitle2020 via the Zotero Web API.
    EOF
@@ -73,8 +73,8 @@ accessing public groups does not require an API key.
 
    pandoc -L pandoc-zotxt.lua -C <<EOF
    ---
-   zotero-public-groups: 4532986
    zotero-connectors: zoteroweb
+   zotero-public-groups: 4532986
    ...
    Look up @DoeTitle2020 in the given public Zotero group.
    EOF
@@ -111,11 +111,11 @@ data that has already been fetched from Zotero need not be fetched again.
 
 To use such a bibliography file, set the "zotero-bibliography" metadata field
 to a filename. If that filename is relative, the file is searched for in the
-resource search path; if no file of the given name can be found, the filename
-is interpreted as being relative to the directory of the first input file or,
-if no input files were given, the current working directory.
+resource search path; if no file of the given name can be found there, the
+filename is interpreted as being relative to the directory of the first input
+file or, if no input files were given, the current working directory.
 
-The filename may contain environment variables, which have to be enclosed
+The filename may contain environment variables. Variable names are enclosed
 in ``${...}``; for example, ``${HOME}`` will be replaced with your home
 directory. Any series of *n* dollar signs will be replaced with *n* – 1
 dollar signs, so that you can escape them should they occur in a filename.
@@ -129,13 +129,12 @@ The format of the file is determined by its filename ending.
 ``.yaml``  CSL YAML
 ========== ==========
 
-The bibliography file is added to the "bibliography" metadata field
-automatically, giving priority to bibliography files that have been
-already defined.
+The file is added to the "bibliography" metadata field automatically;
+if that field already contains bibliography files, they take priority.
 
-Items in the bibliography file are neither updated nor deleted automatically.
-If you need to update or delete items, delete the file as a whole, so that it
-will be regenerated from scratch. You can also edit it manually, of course.
+Items in the file are neither updated nor deleted automatically. If you need
+to update or delete items, delete the file as a whole, so that it will be
+regenerated from scratch. You can also edit it manually, of course.
 
 For example:
 
@@ -236,7 +235,7 @@ zotero-user-id
    Only applies to the '`Web API`_'.
 
 If a metadata field expects a list of values, giving a single-item list is the
-same as giving a single item; the following two examples are equivalent:
+same as giving a single item:
 
 .. code:: sh
 
