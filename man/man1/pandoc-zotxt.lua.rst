@@ -42,8 +42,8 @@ Desktop client
 
 By default, bibliographic data is fetched from the Zotero desktop client,
 which must be running when you invoke **pandoc**. This is the faster, easier,
-and less error-prone way to fetch citations from Zotero. It requires the
-Zotero add-ons zotxt and BetterBibTeX for Zotero to be installed.
+and less error-prone way to fetch citations from Zotero. It requires zotxt
+and BetterBibTeX for Zotero.
 
 
 Web API
@@ -51,8 +51,8 @@ Web API
 
 Bibliographic data can also be fetched from the Zotero Web API.
 
-If you want to fetch data from your personal library, you need to create a
-Zotero API key and set the metadata field "zotero-api-key" to that key:
+To fetch data from your personal library, create a Zotero API key and
+set the metadata field "zotero-api-key" to that key:
 
 .. code:: sh
 
@@ -64,8 +64,8 @@ Zotero API key and set the metadata field "zotero-api-key" to that key:
    Look up @DoeTitle2020 via the Zotero Web API.
    EOF
 
-You can also fetch bibliographic data from public Zotero groups, namely, by
-listing the IDs of those groups in the metadata field "zotero-public-groups";
+You can also fetch bibliographic data from public Zotero groups. To do,
+list the IDs of those groups in the metadata field "zotero-public-groups";
 accessing public groups does not require an API key.
 
 .. code:: sh
