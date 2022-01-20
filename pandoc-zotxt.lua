@@ -1164,17 +1164,22 @@ do
     --
     -- @tparam Set seen The variables encounterd so far.
     -- @tab vars A mapping of variable names to values.
+    -- @bool run Enable functions?
     -- @string exp A variable expression.
     -- @treturn string The value of the expression.
     -- @raise See @{vars_sub}.
-    local function evaluate (seen, vars, exp)
-        local path, func = tabulate(split(exp:sub(2, -2), '|', 2))
+    local function expand (seen, vars, run, exp)
+        exp = exp:sub(2, -2)
+        local path, func
+        if run then path, func = tabulate(split(exp, '|', 2))
+               else path = exp
+        end
         assert(not seen[path], 'cycle in variable lookup.')
         seen[path] = true
         local v = lookup(vars, path)
-        if type(v) == 'string' then v = vars_sub(v, vars, seen) end
+        if type(v) == 'string' then v = vars_sub(v, vars, run, seen) end
         if func then v = lookup(vars, func)(v) end
-        return vars_sub(tostring(v), vars, seen)
+        return vars_sub(tostring(v), vars, run, seen)
     end
 
     --- Substitute variables in strings.
@@ -1200,13 +1205,6 @@ do
     --    > )
     --    ${var} costs $1.
     --
-    -- If a variable name is followed by a pipe symbol ('|'), then the string
-    -- of characters between the pipe symbol and the closing brace ('}') is
-    -- treated as a function name; the value of the variable is then passed to
-    -- that function, and the whole expression `${<variable>|<function>}` is
-    -- replaced with the first value that this function returns. Variable
-    -- names cannot contain the pipe symbol, but function names may.
-    --
     --    > vars_sub(
     --    >     '${var|barify} is bar!', {
     --    >         var = 'foo',
@@ -1227,6 +1225,15 @@ do
     --    >     }
     --    > )
     --    baz is baz.
+    --
+    -- If a variable name is followed by a pipe symbol ('|'), then the string
+    -- of characters between the pipe symbol and the closing brace ('}') is
+    -- treated as a function name; the value of the variable is then passed to
+    -- that function, and the whole expression `${<variable>|<function>}` is
+    -- replaced with the first value that this function returns. Variable
+    -- names cannot contain the pipe symbol, function names may. That said,
+    -- functions can be disabled; variable names, too, may then contain
+    -- the pipe symbol.
     --
     -- Expressions are evaluated recursively.
     --
@@ -1256,15 +1263,18 @@ do
     --
     -- @string str A string.
     -- @tab vars Variables.
+    -- @bool[opt=true] run Enable functions?
     -- @treturn string A transformed string.
     --
     -- @function vars_sub
+    -- @fixme Disabling functions is not unit-tested.
     -- @todo Improve error messages.
-    vars_sub = typed_args('string', 'table', '?table')(
-        function (str, vars, _seen)
+    vars_sub = typed_args('string', 'table', '?boolean', '?table')(
+        function (str, vars, run, _seen)
+            if run == nil then run = true end
             if not _seen then _seen = {} end
-            local function eval (...) return evaluate(_seen, vars, ...) end
-            return str:gsub('%f[%$]%$(%b{})', eval):gsub('%$(%$*)', '%1'), nil
+            local function repl (...) return expand(_seen, vars, run, ...) end
+            return str:gsub('%f[%$]%$(%b{})', repl):gsub('%$(%$*)', '%1'), nil
         end
     )
 end
@@ -1732,7 +1742,7 @@ environ = {}
 -- @tab _ Ignored.
 -- @string key A variable name.
 -- @treturn string The value of that variable.
--- @raise An error if
+-- @raise An @{Error} if
 --
 -- * the variable name is invalid,
 -- * the variable is undefined, or
@@ -1740,17 +1750,20 @@ environ = {}
 --
 -- @fixme Not unit-tested.
 function environ.__index (_, key)
-    assert(type(key) == 'string', 'variable name is not a string.')
-    assert(key ~= '', 'variable name is the empty string.')
-    assert(key:match '^[%a_][%w_]*', key .. ': not a variable name.')
+    xassert(type(key) == 'string', 'variable name is not a string.')
+    xassert(key ~= '', 'variable name is the empty string.')
+    xassert(key:match '^[%a_][%w_]*$', '${key}: not a variable name.')
     local val = os.getenv(key)
-    assert(val, key .. ': undefined.')
-    assert(val ~= '', key .. ': empty.')
+    xassert(val, '${key}: is undefined.')
+    xassert(val ~= '', '${key}: is empty.')
     return val
 end
 
---- Ignore attempts to change the table.
+--- Prohibit changes to the table.
+--
+-- @raise Always raises an error.
 function environ.__newindex ()
+    error 'this table should not be changed.'
 end
 
 
@@ -4669,9 +4682,9 @@ do
             prefix = 'zotero',
             name = 'bibliography',
             parse = function (fname)
-                local vs = pack(pcall(vars_sub, fname, env))
+                local vs = pack(pcall(vars_sub, fname, env, false))
                 local ok, err = unpack(vs, 1, 2)
-                if not ok then return nil, err end
+                if not ok then return nil, tostring(err) end
                 return unpack(vs, 2)
             end
         },
