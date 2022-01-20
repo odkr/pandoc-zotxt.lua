@@ -64,7 +64,7 @@ set the metadata field "zotero-api-key" to that key:
    Look up @DoeTitle2020 via the Zotero Web API.
    EOF
 
-You can also fetch bibliographic data from public Zotero groups. To do,
+You can also fetch bibliographic data from public Zotero groups. To do so,
 list the IDs of those groups in the metadata field "zotero-public-groups";
 accessing public groups does not require an API key.
 
