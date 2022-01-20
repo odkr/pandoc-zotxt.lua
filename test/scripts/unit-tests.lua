@@ -120,14 +120,15 @@ local SCPT_DIR = path_split(PANDOC_SCRIPT_FILE)
 --- The directory of the test suite.
 local TEST_DIR = path_join(SCPT_DIR, '..')
 
+--- The repository directory.
+local REPO_DIR = path_join(TEST_DIR, '..')
+
 --- The test suite's data directory.
 local DATA_DIR = path_join(TEST_DIR, 'data')
 
 --- The test suite's tempory directory.
-local TMP_DIR = path_join(TEST_DIR, 'tmp')
+local TMP_DIR = os.getenv 'TMPDIR' or path_join(TEST_DIR, 'tmp')
 
---- The repository directory.
-local REPO_DIR = path_join(TEST_DIR, '..')
 
 do
     package.path = concat({package.path,
@@ -920,6 +921,14 @@ function test_object_mt_call ()
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, false)
 
+    local obj_mt2 = {baz = true}
+    local Baz = M.Object(obj_mt, obj_mt2)
+    mt = getmetatable(Baz)
+    assert_equals(mt.__index, M.Object)
+    assert_equals(mt.foo, true)
+    assert_equals(mt.bar.baz, false)
+    assert_equals(mt.baz, true)
+
     Foo = M.Object{__tostring = function (t) return t.bar end}
     Foo.bar = 'bar'
     assert_equals(tostring(Foo), 'bar')
@@ -929,6 +938,13 @@ function test_object_mt_call ()
     assert_equals(tostring(bar), 'baz')
 end
 
+function test_object_new ()
+    local args = {{foo = true}, {bar = false}}
+    local a = M.Object:new(unpack(args))
+    local b = M.update(M.Object(), unpack(args))
+    assert_items_equals(a, b)
+    assert_items_equals(getmetatable(a), getmetatable(b))
+end
 
 
 ----------------------------------------------------------------
@@ -2086,7 +2102,6 @@ end
 function test_citekey_matches_type ()
     assert_equals(M.citekey:matches_type('betterbibtexkey:DoeTitle2020',
         'betterbibtexkey'), 'DoeTitle2020')
-    
 end
 
 
@@ -2100,7 +2115,10 @@ end
 -- and passes it to `lu.LuaUnit.run`, as is. Also configures tests.
 function run (doc)
     local test
-    if doc.meta and doc.meta.test then test = stringify(doc.meta.test) end
+    if doc.meta and doc.meta.test then
+        test = stringify(doc.meta.test)
+        if test == '' then test = nil end
+    end
     os.exit(lu.LuaUnit.run(test), true)
 end
 

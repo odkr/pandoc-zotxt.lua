@@ -1,5 +1,5 @@
 ---
-zotero-bibliography: ../tmp/test-bibliography.json
+zotero-bibliography: ${TMPDIR}/bibliography.json
 ---
 
 # Test

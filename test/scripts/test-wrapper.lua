@@ -84,8 +84,11 @@ do
     local versions = {'5.3', '5.4'}
     for i = 1, #versions do
         local vers = versions[i]
-        package.path = package.path ..
-            ';' .. concat({REPO_DIR, 'share', 'lua', vers, '?.lua'}, PATH_SEP)
+        package.path = concat({
+                package.path,
+                concat({REPO_DIR, '?.lua'}, PATH_SEP),
+                concat({REPO_DIR, 'share', 'lua', vers, '?.lua'}, PATH_SEP),
+            }, ';')
     end
 end
 

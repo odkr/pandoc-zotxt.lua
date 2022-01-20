@@ -28,14 +28,13 @@ FILTER		?= $(SCPT_DIR)/test-wrapper.lua
 PANDOC_ARGS	?= --quiet
 
 
-# TARGETS
-# =======
+# DOCUMENTS
+# =========
 
 COMMON_DOCS	= $(wildcard $(DATA_DIR)/*.md)
 COMMON_ABBR	= $(notdir $(COMMON_DOCS:.md=))
 ZOTXT_DOCS	= $(wildcard $(DATA_DIR)/zotxt/*.md)
 ZOTWEB_DOCS	= $(wildcard $(DATA_DIR)/zoteroweb/*.md)
-
 
 
 # ZOTERO CONNECTORS
@@ -59,17 +58,18 @@ tempdir:
 	@$(RM) -rf $(TEMP_DIR)
 	@$(MKDIR) -p $(TEMP_DIR)
 
-unit-tests: tempdir
-	@[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
-	@printf 'Running unit tests ...\n' >&2
-	@"$(PANDOC)" $(PANDOC_ARGS) --from markdown --to html \
-	             --lua-filter="$(SCPT_DIR)/unit-tests.lua" /dev/null
-
 lint:
 	@printf 'Linting ...\n' >&2
 	@luacheck pandoc-zotxt.lua || [ $$? -eq 127 ]
 
-doc-tests: tempdir $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
+unit-tests: tempdir
+	@[ -e share/lua/*/luaunit.lua ] || luarocks install --tree=. luaunit
+	@printf 'Running unit tests ...\n' >&2
+	@"$(PANDOC)" $(PANDOC_ARGS) --from markdown --to html \
+	             --lua-filter="$(SCPT_DIR)/unit-tests.lua" \
+		     --metadata test="$(TEST)" /dev/null
+
+doc-tests: $(COMMON_DOCS) $(ZOTXT_DOCS) $(ZOTWEB_DOCS)
 
 .SECONDEXPANSION:
 

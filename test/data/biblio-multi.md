@@ -1,5 +1,5 @@
 ---
-zotero-bibliography: ../tmp/test-additional-bibliography.json
+zotero-bibliography: ${TMPDIR}/additional-bibliography.json
 bibliography:
     - test/data/bibliography.json
     - test/data/bibliography.yaml

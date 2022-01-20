@@ -1,5 +1,5 @@
 ---
-zotero-bibliography: ../tmp/test-bibliography.yaml
+zotero-bibliography: ${TMPDIR}/bibliography.yaml
 ---
 
 # Test

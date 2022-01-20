@@ -35,13 +35,13 @@ LIBRARY="$REPO/scripts/library.sh"
 # directory of the repository (`REPO`)!
 
 # Where to look for other test scripts.
-readonly SCPT_DIR="test/scripts"
+readonly SCPT_DIR="$REPO/test/scripts"
 
 # Where to look for test data.
-readonly DATA_DIR="test/data"
+readonly DATA_DIR="$REPO/test/data"
 
 # Where to look for norms.
-readonly NORM_DIR="test/norms"
+readonly NORM_DIR="$REPO/test/norms"
 
 
 # DEFAULTS
@@ -110,7 +110,7 @@ shift $((OPTIND - 1))
 
 [ "${PANDOC_VERS-}" ] || PANDOC_VERS="$(
 	"$PANDOC" --from markdown --to html \
-	          --lua-filter="$REPO/$SCPT_DIR/print-vers.lua" /dev/null
+	          --lua-filter="$SCPT_DIR/print-vers.lua" /dev/null
 )" && [ "$PANDOC_VERS" ] ||
 	panic 'failed to determine Pandoc version, use -V.'
 
@@ -133,9 +133,15 @@ for conn in $CONNECTORS
 do
 	for test
 	do
-		test="${test#"$REPO/$DATA_DIR/"}"
+		case $test in
+			(/*) : ;;
+			(*) test="$REPO/$test"
+		esac
 		test="${test#"$DATA_DIR/"}"
 		test="${test%.md}"
+		TMPDIR="$TEMP_DIR/$test"
+		mkdir -p "$TMPDIR" || exit
+		export TMPDIR
 
 		warn 'running %s test with %s ...' "$BOLD${test}$SGR0" "$conn"
 
