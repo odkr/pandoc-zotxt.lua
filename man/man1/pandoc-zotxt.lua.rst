@@ -115,9 +115,9 @@ filename is interpreted as being relative to the directory of the first input
 file or, if no input files were given, the current working directory.
 
 The filename may contain environment variables. Variable names are enclosed
-in ``${...}``; for example, ``${HOME}`` will be replaced with your home
-directory. Any series of *n* dollar signs will be replaced with *n* – 1
-dollar signs, so that you can escape them should they occur in a filename.
+in ``${...}`` (e.g., ``${HOME}`` will be replaced with your home directory).
+Any series of *n* dollar signs will be replaced with *n* – 1 dollar signs,
+so that you can escape them should they occur in a filename.
 
 The format of the file is determined by its filename ending.
 
@@ -131,7 +131,7 @@ The format of the file is determined by its filename ending.
 The file is added to the "bibliography" metadata field automatically;
 if that field already contains bibliography files, they take priority.
 
-Data is only ever added to the file, never updated or deleted; if you need
+Data is only ever added to the file, never updated or deleted. If you need
 to update the file, delete it, so that it will be regenerated from scratch.
 
 For example:
