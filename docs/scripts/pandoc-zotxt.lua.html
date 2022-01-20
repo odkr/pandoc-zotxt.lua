@@ -30,7 +30,7 @@
 <h2>Contents</h2>
 <ul>
 <li><a href="#Metadata">Metadata </a></li>
-<li><a href="#Operating_system">Operating system </a></li>
+<li><a href="#System">System </a></li>
 <li><a href="#Types">Types </a></li>
 <li><a href="#Variables">Variables </a></li>
 <li><a href="#Tables">Tables </a></li>
@@ -72,14 +72,24 @@
 
 <p> <strong>pandoc-zotxt.lua</strong> is a Lua filter for Pandoc that looks up citations in
  Zotero and adds their bibliographic data to the &ldquo;references&rdquo; metadata field
- or a bibliography file, where Pandoc can pick it up.</p></p>
+ or to a bibliography file, where Pandoc can pick it up.</p></p>
 <p> You cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo;
  (provided by Better BibTeX for Zotero) or &ldquo;Easy Citekeys&rdquo; (provided by
  zotxt) and then tell <strong>pandoc</strong> to filter your document through
  <strong>pandoc-zotxt.lua</strong> before processing citations. That&rsquo;s all there is to it.</p>
 
+<p> For example:</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+See @DoeTitle2020 <span class="keyword">for</span> details.
+EOF
+</pre>
+
+
 <p> If the &ldquo;references&rdquo; metadata field or a bibliography file already contains
- bibliographic data for a citation, that citation will be ignored.</p>
+ bibliographic data for a citation, that citation will <em>not</em> be looked up in
+ Zotero.</p>
 
 <h2> CONNECTING TO ZOTERO</h2>
 
@@ -87,50 +97,84 @@
 
 <p> By default, bibliographic data is fetched from the Zotero desktop client,
  which must be running when you invoke <strong>pandoc</strong>. This is the faster,
- easier, and less error-prone method to lookup citations in Zotero. However,
- you need to install the zotxt add-on for the Zotero desktop client to use
- it.</p>
+ easier, and less error-prone way to fetch citations from Zotero. However,
+ you need to install the zotxt add-on to use it.</p>
 
 <h2> Web API</h2>
 
-<p> Bibliographic data can also be fetched from the Zotero Web API. If you want
- to access your Zotero library via the Web API, you need to create a Zotero
- API key and set the metadata field &ldquo;zotero-api-key&rdquo; to that key.</p>
+<p> Bibliographic data can also be fetched from the Zotero Web API.</p>
 
-<p> If you want to fetch bibliographic data from <em>public</em> Zotero groups, list
- the IDs of those groups in the metadata field &ldquo;zotero-public-groups&rdquo;.
- Non-members must be allowed to access the libraries of these groups (this
- is what makes them public). However, you do not need an API key to access
- them.</p>
+<p> If you want to fetch data from your personal library, you need to create a
+ Zotero API key and set the metadata field &ldquo;zotero-api-key&rdquo; to that key:</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+<span class="comment">---
+</span>zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
+zotero-connectors: zoteroweb
+...
+Look up @DoeTitle2020 via the Zotero Web API.
+EOF
+</pre>
+
+
+<p> You can also fetch bibliographic data from public Zotero groups, namely, by
+ listing the IDs of those groups in the metadata field
+ &ldquo;zotero-public-groups&rdquo;; accessing public groups does not require an API key.</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+<span class="comment">---
+</span>zotero-public-groups: <span class="number">4532986</span>
+zotero-connectors: zoteroweb
+...
+Look up @DoeTitle2020 <span class="keyword">in</span> the given public Zotero group.
+EOF
+</pre>
+
 
 <p> The Zotero Web API does <em>not</em> allow to search for citation keys other than
  Zotero item IDs. Therefore, BetterBibTeX citation keys and Easy Citekeys
- have to be translated into search terms: Better BibTeX citation keys are
- split up at the first of each series of digits and at uppercase letters
- (&ldquo;DoeTitle2020&rdquo; becomes &ldquo;Doe&rdquo;, &ldquo;Title&rdquo;, &ldquo;2020&rdquo;). Easy Citekeys are split up
- at the first colon and at the last digit (&ldquo;doe:2020title&rdquo; becomes &ldquo;doe&rdquo;,
- &ldquo;2020&rdquo;, &ldquo;title&rdquo;).</p>
+ have to be translated into author names, title keywords, and publication
+ years; Better BibTeX citation keys are split up at uppercase letters and
+ the first of each series of digits (&ldquo;DoeTitle2020&rdquo; translates to: &ldquo;Doe&rdquo;,
+ &ldquo;Title&rdquo;, &ldquo;2020&rdquo;). Easy Citekeys are split up at the first colon and the
+ last digit (&ldquo;doe:2020title&rdquo; translates to: &ldquo;doe&rdquo;, &ldquo;2020&rdquo;, &ldquo;title&rdquo;).
+ Citation keys that cannot be translated into at least two search terms are
+ ignored.</p>
 
-<p> If a search yields more than one item, you need to add its citation key to
- the item&rsquo;s &ldquo;extra&rdquo; field in Zotero to disambiguate it from the others.
- Zotero&rsquo;s &ldquo;extra&rdquo; field is a list of CSL key-value pairs; keys and values
- are separated by a colon and key-value pairs by a linefeed. Use the key
- &ldquo;Citation key&rdquo; or the key &ldquo;Citekey&rdquo; to add a citation key (e.g., &ldquo;Citation
- key: DoeTitle2020&rdquo;). Case is insignificant, spaces can be replaced by
- dashes. If you use Better BibTeX for Zotero, you can add the citation key
- it has generated by &lsquo;pinning&rsquo; it. Alternatively, you can cite the source
- using its Zotero item ID.</p>
+<p> If a search yields more than one item, you need to disambiguate those items
+ by adding the citation key to the &ldquo;extra&rdquo; field of the item that the
+ citation key should match. Zotero&rsquo;s &ldquo;extra&rdquo; field is a list of CSL
+ key-value pairs; keys and values are separated by colons (&ldquo;:&rdquo;), key-value
+ pairs by linefeeds. Use the key &ldquo;Citation key&rdquo; or &ldquo;Citekey&rdquo; to add a
+ citation key (e.g., &ldquo;Citation key: DoeTitle2020&rdquo;); case is insignifcant. If
+ you use Better BibTeX for Zotero, you can add the citation key it has
+ generated by &lsquo;pinning&rsquo; it.</p>
+
+<p> Support for accessing group libraries via the Zotero Web API is limited.
+ They are only searched if no item in your personal library matches. Also,
+ the &ldquo;extra&rdquo; field of items in group libraries is ignored.</p>
 
 <h2> CACHING SOURCES WITH A BIBLIOGRAPHY FILE</h2>
 
 <p> Bibliographic data can be added to a special bibliography file, rather than
- to the &ldquo;references&rdquo; metadata field. This speeds up subsequent processing of
- the same document, because that data need not be fetched again from Zotero.</p>
+ to the &ldquo;references&rdquo; metadata field. This speeds up subsequent processing,
+ because data that has already been fetched from Zotero need not be fetched
+ again.</p>
 
 <p> To use such a bibliography file, set the &ldquo;zotero-bibliography&rdquo; metadata
  field to a filename. If the filename is relative, it is interpreted as
  relative to the directory of the first input file passed to <strong>pandoc</strong> or,
- if no input file was given, as relative to the current working directory.</p>
+ if no input files were given, as relative to the current working directory.
+ The filename may contain environment variables, which should be enclosed in
+ <code>${...}</code> (e.g., <code>${HOME}</code> will be replaced with your home directory); any
+ series of <em>n</em> dollar signs will be replaced with <em>n</em> – 1 dollar signs,
+ so that you can escape dollar signs if they occur in filenames.</p>
+
+<p> The bibliography file is added to the &ldquo;bibliography&rdquo; metadata field
+ automatically. You can safely set &ldquo;zotero-bibliography&rdquo; and &ldquo;bibliography&rdquo;
+ at the same time.</p>
 
 <p> The format of the file is determined by its filename ending.</p>
 
@@ -154,13 +198,21 @@
 </table>
 
 
-<p> The bibliography file is added to the &ldquo;bibliography&rdquo; metadata field
- automatically. You can safely set &ldquo;zotero-bibliography&rdquo; and &ldquo;bibliography&rdquo;
- at the same time.</p>
+<p> The items in the bibliography file are <em>not</em> updated or deleted
+ automatically. If you need to update them, delete the file, so that it will
+ be regenerated from scratch. You can also edit the file manually, of course.</p>
 
-<p> Items are only added to the bibliography file, not updated or deleted. If
- you need to update or delete an item, delete the bibliography file, so that
- it will be regenerated from scratch.</p>
+<p> For example:</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+<span class="comment">---
+</span>zotero-bibliography: bibliography.json
+...
+See @DoeTitle2020 <span class="keyword">for</span> details.
+EOF
+</pre>
+
 
 <h2> CITATION KEY TYPES</h2>
 
@@ -194,19 +246,28 @@
 </table>
 
 
-<p> However, Better BibTeX citation keys are sometimes, if rarely,
- misinterpreted as Easy Citekeys, which may cause the wrong item to be
- fetched.</p>
+<p> Better BibTeX citation keys are sometimes, if rarely, misinterpreted as
+ Easy Citekeys, which may cause the wrong item to be fetched.</p>
 
-<p> If this happens, disable Easy Citekeys by only listing BetterBibTeX
- citation keys in the &ldquo;zotero-citekey-types&rdquo; metadata field:</p>
+<p> If this happens, prefix the citation key with its type and a colon (&ldquo;:&rdquo;):</p>
+
+<pre>
+pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
+Force @betterbibtexkey:DoeTitle to be treated as BetterBibTeX citation
+key.
+EOF
+</pre>
+
+
+<p> You can also force <em>all</em> citation keys to be interpreted as BetterBibTeX
+ citation keys by setting the &ldquo;zotero-citekey-types&rdquo; metadata field:</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-citekey-types: betterbibtexkey
 ...
-Forces @DoeTitle to be treated as BetterBibTeX citation key.
+Force @DoeTitle to be treated as BetterBibTeX citation key.
 EOF
 </pre>
 
@@ -217,12 +278,14 @@ EOF
  metadata fields:</p>
 
 <ul>
-<li><p><code>zotero-api-key</code>: A Zotero API key. Only applies to the Zotero Web API.</p></li>
-<li><p><code>zotero-bibliography</code>: A bibliography filename. Fetched data is added to
-this file.</p></li>
+<li><p><code>zotero-api-key</code>: A Zotero API key. Only applies to the &lsquo;<a href="#web-api">Web
+API</a>&rsquo;.</p></li>
+<li><p><code>zotero-bibliography</code>: A bibliography filename. See &lsquo;<a href="#caching-sources-with-a-bibliography-file">Caching sources
+with a bibliography file</a>&rsquo; above.</p></li>
 <li><p><code>zotero-citekey-types</code>: A list of citation key types. Citation keys are
-treated as being of any of the listed types only.</p></li>
-<li><p><code>zotero-connectors</code>: One or more Zotero connectors:</p>
+assumed to be of one of the listed types only. See &lsquo;<a href="#citation-key-types">Citation key
+types</a>&rsquo; above.</p></li>
+<li><p><code>zotero-connectors</code>: One or more Zotero ways to connect to Zotero:</p>
 
 <table>
 <thead>
@@ -248,75 +311,33 @@ treated as being of any of the listed types only.</p></li>
 
 <p>By default, the Zotero desktop client is searched first. If you have set
 a Zotero API key and if the client could not be reached or some citations
-could not be found, the Zotero Web API is searched next.</p></li>
+could not be found, the Web API is searched next.</p></li>
 <li><p><code>zotero-groups</code>: A list of Zotero group IDs. Only the given groups are
 searched. By default, all groups you are a member of are searched. Only
-applies to the Zotero Web API.</p></li>
+applies to the &lsquo;<a href="#web-api">Web API</a>&rsquo;.</p></li>
 <li><p><code>zotero-public-groups</code>: A list of Zotero group IDs. The given groups are
-searched in addition to non-public groups. Groups must be public. Only
-applies to the Zotero Web API.</p></li>
+searched in addition to non-public groups. Groups should be public. Only
+applies to the &lsquo;<a href="#web-api">Web API</a>&rsquo;.</p></li>
 <li><p><code>zotero-user-id</code>: A Zotero user ID. Looked up automatically if not given.
-Only applies to the Zotero Web API.</p></li>
+Only applies to the &lsquo;<a href="#web-api">Web API</a>&rsquo;.</p></li>
 </ul>
 
 
-<p> If a metadata field takes a list of values, but you only want to give one,
- you can enter that value as a scalar.</p>
-
-<h2> EXAMPLES</h2>
-
-<p> Look up &ldquo;DoeTitle2020&rdquo; in Zotero:</p>
-
-<pre>
-pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
-See @doe2020Title <span class="keyword">for</span> details.
-EOF
-</pre>
-
-
-<p> Add bibliographic data to the file &ldquo;bibliography.json&rdquo;:</p>
+<p> If a metadata field expects a list of values, giving a single-item list is
+ the same as giving a single item; the following two examples are equivalent:</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
-</span>zotero-bibliography: bibliography.json
+</span>zotero-citekey-types:
+    - betterbibtexkey
 ...
 See @DoeTitle2020 <span class="keyword">for</span> details.
 EOF
-</pre>
 
-
-<p> Interpret &ldquo;doe:2020title&rdquo; as a Better BibTeX citation key:</p>
-
-<pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-citekey-types: betterbibtexkey
-...
-See @doe:<span class="number">2020</span>title <span class="keyword">for</span> details.
-EOF
-</pre>
-
-
-<p> Fetch data from the Zotero Web API, too:</p>
-
-<pre>
-pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
-<span class="comment">---
-</span>zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
-...
-See @DoeTitle2020 <span class="keyword">for</span> details.
-EOF
-</pre>
-
-
-<p> Fetch data from the Zotero Web API <em>only</em>:</p>
-
-<pre>
-pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
-<span class="comment">---
-</span>zotero-api-key: MO2GHxbkLnWgCqPtpoewgwIl
-zotero-connectors: zoteroweb
 ...
 See @DoeTitle2020 <span class="keyword">for</span> details.
 EOF
@@ -325,27 +346,25 @@ EOF
 
 <h2> KNOWN ISSUES</h2>
 
-<p> A citation key may pick out the wrong item if it picks out a different
- items depending on whether it is interpreted as a Better BibTeX citation
- key or as an Easy Citekey. Set the &lsquo;zotero-citekey-types&rsquo; metadata field to
- fix this.</p>
-
 <p> <strong>pandoc-zotxt.lua</strong> creates a temporary file when it adds bibliographic
  data to a bibliography file. If Pandoc exits because it catches a signal
- (e.g., because you press <code>Ctrl</code>-<code>c</code>), then this file will <em>not</em> be deleted.
- This is a bug in Pandoc (issue #7355) and in the process of being fixed.
+ (e.g., because you press <code>Ctrl</code>-<code>c</code>), this file will <em>not</em> be deleted. This
+ is a bug in Pandoc (issue #7355) and in the process of being fixed.
  Moreover, if you are using Pandoc up to v2.7, another process may,
  mistakenly, use the same temporary file at the same time, though this is
  highly unlikely.</p>
+
+<p> A citation key may pick out the wrong item if it picks out a different
+ items depending on whether it is interpreted as a Better BibTeX citation
+ key or as an Easy Citekey. Set the &lsquo;zotero-citekey-types&rsquo; metadata field or
+ prefix the citation key in question with its type and a colon (&ldquo;:&rdquo;) to
+ avoid this (see &lsquo;<a href="#citation-key-types">Citation key types</a>&rsquo; above for
+ details).</p>
 
 <p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
  that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does not. As a
  consequence, <strong>pandoc-zotxt.lua</strong> cannot retrieve data from these versions
  of Zotero unless you tell <strong>pandoc</strong> to set that header.</p>
-
-<p> Support for accessing group libraries via the Zotero Web API is limited.
- They are only searched if no item in your personal library matches. Also,
- the &ldquo;extra&rdquo; field of items in group libraries is ignored.</p>
 
 <h2> SECURITY</h2>
 
@@ -353,10 +372,6 @@ EOF
  bibliography file in a directory that other users have write access to,
  then they can read and change the content of that file, regardless of
  whether they have permission to read or write the file itself.</p>
-
-<h2> CAVEATS</h2>
-
-<p> <strong>pandoc-zotxt.lua</strong> is Unicode-agnostic.</p>
 
 <h2> SEE ALSO</h2>
 
@@ -395,7 +410,7 @@ EOF
 	<td class="summary">The filename of the script.</td>
 	</tr>
 </table>
-<h2><a href="#Operating_system">Operating system </a></h2>
+<h2><a href="#System">System </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#PATH_SEP">PATH_SEP</a></td>
@@ -408,6 +423,18 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#OS_TYPE">OS_TYPE</a></td>
 	<td class="summary">What type of operating system is the script running under?</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#environ">environ</a></td>
+	<td class="summary">Metatable to access the environment.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#environ.__index">environ.__index (_, key)</a></td>
+	<td class="summary">Return an environment variable.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#environ.__newindex">environ.__newindex ()</a></td>
+	<td class="summary">Ignore attempts to change the table.</td>
 	</tr>
 </table>
 <h2><a href="#Types">Types </a></h2>
@@ -447,6 +474,14 @@ EOF
 	<td class="summary">Store a new item.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#sort_pairs">sort_pairs</a></td>
+	<td class="summary">Metatable to sort key-value pairs automatically.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#sort_pairs.__pairs">sort_pairs.__pairs (tab)</a></td>
+	<td class="summary">Iterate over the key-value pairs of a table in a given order.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#copy">copy (val[, deep=true])</a></td>
 	<td class="summary">Copy a value.</td>
 	</tr>
@@ -459,7 +494,7 @@ EOF
 	<td class="summary">Define a sorting function from a list of values.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#sorted">sorted (tab[, func])</a></td>
+	<td class="name" nowrap><a href="#sorted">sorted (tab[, func[, raw=false]])</a></td>
 	<td class="summary">Iterate over the key-value pairs of a table in a given order.</td>
 	</tr>
 	<tr>
@@ -501,11 +536,11 @@ EOF
 	<td class="summary">Metatable for prototypes.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Object.mt.__call">Object.mt.__call (proto[, mt])</a></td>
+	<td class="name" nowrap><a href="#Object.mt.__call">Object.mt.__call (proto[, ...])</a></td>
 	<td class="summary">Delegate to a prototype.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Object:new">Object:new (proto[, props])</a></td>
+	<td class="name" nowrap><a href="#Object:new">Object:new (...)</a></td>
 	<td class="summary">Initialise a new object.</td>
 	</tr>
 	<tr>
@@ -649,7 +684,7 @@ EOF
 	<td class="summary">Convert a Pandoc element to Markdown text.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#yamlify">yamlify (val[, ind=4[, sort]])</a></td>
+	<td class="name" nowrap><a href="#yamlify">yamlify (val[, ind=4])</a></td>
 	<td class="summary">Generate a YAML representation of a value.</td>
 	</tr>
 	<tr>
@@ -736,7 +771,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#citekey.matches_type">citekey.matches_type</a></td>
-	<td class="summary">Check wether a citation key could be of a type.</td>
+	<td class="summary">Check whether a citation key could be of a type.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#citekey:terms">citekey:terms (ckey, types)</a></td>
@@ -1035,7 +1070,7 @@ EOF
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Operating_system"></a>Operating system </h2>
+    <h2 class="section-header "><a name="System"></a>System </h2>
 
     <dl class="function">
     <dt>
@@ -1082,6 +1117,96 @@ EOF
     </dt>
     <dd>
     What type of operating system is the script running under?
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "environ"></a>
+    <strong>environ</strong>
+    </dt>
+    <dd>
+    Metatable to access the environment.
+
+    <h3>Caveats:</h3>
+    <ul>
+         <ul>
+<li>The environment cannot be iterated over.</li>
+<li>Changes to the table are blocked.</li>
+</ul>
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "environ.__index"></a>
+    <strong>environ.__index (_, key)</strong>
+    </dt>
+    <dd>
+    Return an environment variable.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">_</span>
+            <span class="types"><span class="type">tab</span></span>
+         Ignored.
+        </li>
+        <li><span class="parameter">key</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A variable name.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        The value of that variable.
+    </ol>
+
+    <h3>Raises:</h3>
+    <p> An error if</p>
+
+<ul>
+<li>the variable name is invalid,</li>
+<li>the variable is undefined, or</li>
+<li>the variable is empty.</li>
+</ul>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "environ.__newindex"></a>
+    <strong>environ.__newindex ()</strong>
+    </dt>
+    <dd>
+    Ignore attempts to change the table.
 
     </ul>
     </ul>
@@ -1228,18 +1353,10 @@ at compile-time, they just fail at run-time.</li>
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">copy = typed_args(<span class="string">'?*'</span>, <span class="string">'?table'</span>)(
-    <span class="keyword">function</span> (val, _seen)
-        <span class="keyword">if</span> <span class="global">type</span>(val) ~= <span class="string">'table'</span> <span class="keyword">then</span> <span class="keyword">return</span> val <span class="keyword">end</span>
-        <span class="keyword">if</span>     <span class="keyword">not</span> _seen  <span class="keyword">then</span> _seen = {}
-        <span class="keyword">elseif</span> _seen[val] <span class="keyword">then</span> <span class="keyword">return</span> _seen[val]
-        <span class="keyword">end</span>
-        <span class="keyword">local</span> ret = <span class="global">setmetatable</span>({}, <span class="global">getmetatable</span>(val))
-        _seen[val] = ret
-        <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">next</span>, val <span class="keyword">do</span>
-            <span class="global">rawset</span>(ret, copy(k, _seen), copy(v, _seen))
-        <span class="keyword">end</span>
-        <span class="keyword">return</span> ret
+        <pre class="example">store = typed_args(<span class="string">'?*'</span>, <span class="string">'table'</span>, <span class="string">'?number'</span>, <span class="string">'...'</span>)(
+    <span class="keyword">function</span> (val, tab, ...)
+         <span class="keyword">local</span> indices = <span class="global">table</span>.pack(...)
+         <span class="keyword">for</span> i = <span class="number">1</span>, n <span class="keyword">do</span> tab[indices[i]] = val <span class="keyword">end</span>
     <span class="keyword">end</span>
 )</pre>
     </ul>
@@ -1429,6 +1546,83 @@ bar</pre>
 
 </dd>
     <dt>
+    <a name = "sort_pairs"></a>
+    <strong>sort_pairs</strong>
+    </dt>
+    <dd>
+    Metatable to sort key-value pairs automatically.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; tab = <span class="global">setmetatable</span>({c = <span class="number">3</span>, b = <span class="number">2</span>, a = <span class="number">1</span>}, sort_pairs)
+&gt; <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(tab) <span class="keyword">do</span>
+&gt;     <span class="global">print</span>(k, v)
+&gt; <span class="keyword">end</span>
+a    <span class="number">1</span>
+b    <span class="number">2</span>
+c    <span class="number">3</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "sort_pairs.__pairs"></a>
+    <strong>sort_pairs.__pairs (tab)</strong>
+    </dt>
+    <dd>
+    Iterate over the key-value pairs of a table in a given order.</p>
+
+<p> What order key-value pairs are iterated over is defined by the <code>sort</code>
+ metamethod. See <a href="../index.html#sorted">sorted</a> for details. If <code>sort</code> is unset, key-value
+ pairs are iterated over in lexical order
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">tab</span>
+            <span class="types"><span class="type">tab</span></span>
+         A table.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">func</span></span>
+        A <em>stateful</em> iterator.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">&gt; sort = order{<span class="string">'c'</span>, <span class="string">'b'</span>, <span class="string">'a'</span>}
+&gt; mt = update({sort = sort}, sort_pairs)
+&gt; tab = <span class="global">setmetatable</span>({a = <span class="number">1</span>, b = <span class="number">2</span>, c = <span class="number">3</span>}, mt)
+&gt; <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(tab) <span class="keyword">do</span>
+&gt;     <span class="global">print</span>(k, v)
+&gt; <span class="keyword">end</span>
+c    <span class="number">3</span>
+b    <span class="number">2</span>
+a    <span class="number">1</span></pre>
+    </ul>
+
+</dd>
+    <dt>
     <a name = "copy"></a>
     <strong>copy (val[, deep=true])</strong>
     </dt>
@@ -1555,7 +1749,7 @@ b    <span class="number">4</span></pre>
 </dd>
     <dt>
     <a name = "sorted"></a>
-    <strong>sorted (tab[, func])</strong>
+    <strong>sorted (tab[, func[, raw=false]])</strong>
     </dt>
     <dd>
     Iterate over the key-value pairs of a table in a given order.
@@ -1577,6 +1771,11 @@ b    <span class="number">4</span></pre>
          A sorting function.
   If no function is given, sorts lexically.
          (<em>optional</em>)
+        </li>
+        <li><span class="parameter">raw</span>
+            <span class="types"><span class="type">bool</span></span>
+         By-pass <code>__pairs</code> metamethod?
+         (<em>default</em> false)
         </li>
     </ul>
 
@@ -1983,25 +2182,24 @@ foo is bar.
 </dd>
     <dt>
     <a name = "Object.mt.__call"></a>
-    <strong>Object.mt.__call (proto[, mt])</strong>
+    <strong>Object.mt.__call (proto[, ...])</strong>
     </dt>
     <dd>
     <p>Delegate to a prototype.</p>
 
 <p> Create a new table, set its metatable to a copy of the prototype&rsquo;s
  metatable, set the <code>__index</code> metavalue to the prototype, and merge
- its metatable with the given metatable, in that order.</p>
+ its metatable with the given metatables, in that order.</p>
 
 <p> That is,</p>
 
-<pre><code>obj = Object(mt)
+<pre><code>obj = Object(...)
 </code></pre>
 
 <p> is equivalent to</p>
 
-<pre><code>new_mt = {}
-update(new_mt, getmetatable(Object), {__index = Object}, mt)
-obj = setmetatable({}, new_mt)
+<pre><code>mt = update({}, getmetatable(Object), {__index = Object}, ...)
+obj = setmetatable({}, mt)
 </code></pre>
 
     </ul>
@@ -2016,9 +2214,9 @@ obj = setmetatable({}, new_mt)
             <span class="types"><span class="type">tab</span></span>
          A prototype.
         </li>
-        <li><span class="parameter">mt</span>
+        <li><span class="parameter">...</span>
             <span class="types"><span class="type">tab</span></span>
-         A metatable.
+         Metatables.
          (<em>optional</em>)
         </li>
     </ul>
@@ -2036,7 +2234,8 @@ obj = setmetatable({}, new_mt)
     <ul>
         <pre class="example">&gt; Foo = Object{__tostring = <span class="keyword">function</span> (t) <span class="keyword">return</span> t.bar <span class="keyword">end</span>}
 &gt; Foo.bar = <span class="string">'bar'</span>
-&gt; <span class="global">tostring</span>(foo)
+&gt; <span class="global">tostring</span>(Foo)
+bar
 &gt; bar = Foo()
 &gt; <span class="global">tostring</span>(bar)
 bar
@@ -2048,12 +2247,12 @@ baz</pre>
 </dd>
     <dt>
     <a name = "Object:new"></a>
-    <strong>Object:new (proto[, props])</strong>
+    <strong>Object:new (...)</strong>
     </dt>
     <dd>
     Initialise a new object.</p>
 
-<p> <code>Object:new(props)</code> is short for <code>update(Object(), props)</code>.
+<p> <code>Object:new(...)</code> is short for <code>update(Object(), ...)</code>.
 
     </ul>
     </ul>
@@ -2063,14 +2262,9 @@ baz</pre>
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">proto</span>
-            <span class="types"><span class="type">tab</span></span>
-         A prototype.
-        </li>
-        <li><span class="parameter">props</span>
+        <li><span class="parameter">...</span>
             <span class="types"><span class="type">tab</span></span>
          Properties.
-         (<em>optional</em>)
         </li>
     </ul>
 
@@ -2107,7 +2301,7 @@ foo</pre>
     </ul>
     <h3>Tip:</h3>
     <ul>
-         <p> You can sparse-copy a list by using it as a prototype:</p>
+         <p> You can sparse-copy a <code>Values</code> object by using it as a prototype:</p>
 
 <pre><code>&gt; foo = Values:new 'foo'
 &gt; bar = foo()
@@ -2259,7 +2453,7 @@ list:add(foo, bar)
     </ul>
     <h3>Tip:</h3>
     <ul>
-         <p> You can convert an ordinary table to a <code>Values</code> object by:</p>
+         <p> You can convert an &lsquo;ordinary&rsquo; list to a <code>Values</code> object by:</p>
 
 <pre><code>tab.n = #tab
 setmetatable(tab, getmetatable(Values))
@@ -2824,8 +3018,8 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     </ul>
     <h3>Requires:</h3>
     <ul>
-          The working directory is removed from the
-  beginning of the path starting with Pandoc v2.12.
+          The working directory is <em>not</em> removed from the beginning
+  of a path when run with Pandoc &lt; v2.12.
     </ul>
     </ul>
     </ul>
@@ -3342,7 +3536,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
 </dd>
     <dt>
     <a name = "yamlify"></a>
-    <strong>yamlify (val[, ind=4[, sort]])</strong>
+    <strong>yamlify (val[, ind=4])</strong>
     </dt>
     <dd>
     Generate a YAML representation of a value.</p>
@@ -3372,12 +3566,6 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
          How many spaces to indent blocks.
          (<em>default</em> 4)
         </li>
-        <li><span class="parameter">sort</span>
-            <span class="types"><span class="type">func</span></span>
-         A function to sort keys of mappings.
-  Defaults to lexical sorting.
-         (<em>optional</em>)
-        </li>
     </ul>
 
     <h3>Returns:</h3>
@@ -3386,16 +3574,9 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         A YAML string.
     </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the data cannot be represented in YAML.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
 
+    <h3>Raises:</h3>
+    An error if the data cannot be represented in YAML.
 
 
 
@@ -3429,8 +3610,7 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
     </ol>
 
     <h3>Raises:</h3>
-    An <a href="../index.html#Error">Error</a> if the opening <code>&lt;sc&gt;</code> and the closing <code>&lt;/sc&gt;</code>
-  tags are unbalanced.
+    An <a href="../index.html#Error">Error</a> if the opening and the closing tags are unbalanced.
 
 
 
@@ -3577,6 +3757,12 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
         <li><span class="parameter">original-publisher-place</span>
         Place the item was originally published in.
         </li>
+        <li><span class="parameter">url</span>
+        The URL.
+        </li>
+        <li><span class="parameter">accessed</span>
+        When the URL was last accessed.
+        </li>
         <li><span class="parameter">doi</span>
         The DOI.
         </li>
@@ -3585,12 +3771,6 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
         </li>
         <li><span class="parameter">pmid</span>
         PubMed reference number.
-        </li>
-        <li><span class="parameter">url</span>
-        The URL.
-        </li>
-        <li><span class="parameter">accessed</span>
-        When the URL was last accessed.
         </li>
         <li><span class="parameter">isbn</span>
         The ISBN of the item.
@@ -4185,11 +4365,11 @@ original-date</pre>
     <strong>citekey.matches_type</strong>
     </dt>
     <dd>
-    Check wether a citation key could be of a type.</p>
+    Check whether a citation key could be of a type.</p>
 
 <p> Citation keys can be prefixed with a citation key type and a colon (&lsquo;:&rsquo;),
  for example, &lsquo;betterbibtexkey:DoeTitle2020&rsquo;. If a citation key is prefixed
- thusly, it is only checked wether the prefix matches the given citation key
+ thusly, it is only checked whether the prefix matches the given citation key
  type. The prefix is stripped from the citation key before it is returned.
 
     </ul>
@@ -6110,7 +6290,7 @@ cannot be parsed.</li>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-01-18 16:36:17 </i>
+<i style="float:right;">Last updated 2022-01-20 21:13:42 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
