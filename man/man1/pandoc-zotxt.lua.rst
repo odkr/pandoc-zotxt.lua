@@ -31,8 +31,7 @@ For example:
    EOF
 
 If the "references" metadata field or a bibliography file already contains
-bibliographic data for a citation, that citation will *not* be looked up
-in Zotero.
+bibliographic data for a citation, that citation will *not* be looked up.
 
 
 CONNECTING TO ZOTERO
@@ -93,7 +92,7 @@ by adding the citation key to the "extra" field of the item that the citation
 key should match. Zotero's "extra" field is a list of CSL key-value pairs;
 keys and values are separated by colons (":"), key-value pairs by linefeeds.
 Use either the key "Citation key" or the key "Citekey" to add a citation
-key (e.g., "Citation key: DoeTitle2020"); case is insignifcant. If you use
+key (e.g., "Citation key: DoeTitle2020"); case is insignificant. If you use
 Better BibTeX for Zotero, you can add the citation key it has generated
 by 'pinning' it.
 
@@ -132,9 +131,8 @@ The format of the file is determined by its filename ending.
 The file is added to the "bibliography" metadata field automatically;
 if that field already contains bibliography files, they take priority.
 
-Items in the file are neither updated nor deleted automatically. If you need
-to update or delete items, delete the file as a whole, so that it will be
-regenerated from scratch. You can also edit it manually, of course.
+Data is only ever added to the file, never updated or deleted; if you need
+to update the file, delete it, so that it will be regenerated from scratch.
 
 For example:
 
