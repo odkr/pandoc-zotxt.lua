@@ -102,7 +102,7 @@
 -- filename is interpreted as being relative to the directory of the first
 -- input file or, if no input files were given, the current working directory.
 --
--- The filename may contain environment variables, which have to be enclosed
+-- The filename may contain environment variables. Variable names are enclosed
 -- in `${...}`; for example, `${HOME}` will be replaced with your home
 -- directory. Any series of *n* dollar signs will be replaced with *n* – 1
 -- dollar signs, so that you can escape them should they occur in a filename.
@@ -1895,7 +1895,7 @@ do
     file_locate = typed_args('string')(
         function (fname)
             assert(fname ~= '', 'filename is the empty string.')
-            if not resource_path or file_exists(fname) then return fname end
+            if not resource_path or path_is_abs(fname) then return fname end
             for i = 1, #resource_path do
                 local f = path_join(resource_path[i], fname)
                 if file_exists(f) then return f end
