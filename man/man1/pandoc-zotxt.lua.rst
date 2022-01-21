@@ -166,7 +166,8 @@ If this happens, prefix the citation key with its type and a colon (":"):
 .. code:: sh
 
    pandoc -L pandoc-zotxt.lua -C <<EOF
-   Force @betterbibtexkey:DoeTitle to be treated as BetterBibTeX citation key.
+   Force @betterbibtexkey:DoeTitle to be
+   treated as BetterBibTeX citation key.
    EOF
 
 You can also force *all* citation keys to be interpreted as BetterBibTeX
