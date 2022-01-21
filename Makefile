@@ -95,7 +95,7 @@ zoteroweb/%: test/data/$$@.md
 
 %.1: %.rst
 	$(PANDOC) -f rst -t man -s --output=$@ \
-	    --metadata=name=$(notdir $*) \
+	    --metadata=title=$(notdir $*) \
 	    --metadata=section=1 \
 	    --metadata=date="$$(date '+%B %d, %Y')" \
 	    $*.rst
