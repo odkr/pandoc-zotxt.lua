@@ -1386,23 +1386,41 @@ Values.mt = getmetatable(Values)
 --
 -- @tparam Values obj A list.
 -- @treturn number The size of the list.
-function Values.mt.__len (obj)
-    return obj.n
-end
+Values.mt.__len = typed_args({n = '?number'})(
+    function (obj)
+        return obj.n or 0
+    end
+)
+
+--- Add items to the list.
+--
+-- @tparam Values obj A list.
+-- @param key an index.
+-- @param val A value.
+--
+-- @side Sets @{Values.n} if needed.
+Values.mt.__newindex = typed_args({n = '?number'})(
+    function (obj, key, val)
+        if type(key) == 'number' and key > obj.n then obj.n = key end
+        rawset(obj, key, val)
+    end
+)
 
 --- Iterate over list items.
 --
 -- @tparam Values obj A list.
 -- @treturn function A stateless iterator.
-function Values.mt.__pairs (obj)
-    return function (tab, idx)
-        if not idx then idx = 1
-                   else idx = idx + 1
-        end
-        if idx > tab.n then return end
-        return idx, tab[idx]
-    end, obj
-end
+Values.mt.__pairs = typed_args({n = '?number'})(
+    function (obj)
+        return function (tab, i)
+            if not i then i = 1
+                     else i = i + 1
+            end
+            if not tab.n or i > tab.n then return end
+            return i, tab[i]
+        end, obj
+    end
+)
 
 --- The number of items in the list.
 Values.n = 0
@@ -1445,7 +1463,7 @@ Values.add = typed_args({n = 'number'})(
     function (self, ...)
         local items = pack(...)
         local n = self.n
-        for i = 1, items.n do self[n + i] = items[i] end
+        for i = 1, items.n do rawset(self, n + i, items[i]) end
         self.n = n + items.n
     end
 )

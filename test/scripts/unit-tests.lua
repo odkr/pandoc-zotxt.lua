@@ -946,6 +946,34 @@ function test_object_new ()
     assert_items_equals(getmetatable(a), getmetatable(b))
 end
 
+function test_values_mt_len ()
+    for i = 0, 16 do
+        local v1 = M.Values()
+        for j = 1, i do v1:add(j) end
+        assert_equals(rawlen(v1), i)
+        assert_equals(getmetatable(v1).__len(v1), i)
+        assert_equals(#v1, i)
+
+        local v2 = M.Values()
+        v2:add(unpack(v1))
+        assert_equals(rawlen(v2), i)
+        assert_equals(getmetatable(v2).__len(v1), i)
+        assert_equals(#v2, i)
+    end
+end
+
+function test_values_mt_newindex ()
+    for i = 1, 16 do
+        local vals = M.Values()
+        vals[i] = i
+        assert_equals(vals[i], i)
+        assert_equals(getmetatable(vals).__len(vals), i)
+        assert_equals(#vals, i)
+        assert_equals(vals.n, i)
+    end
+end
+
+
 
 ----------------------------------------------------------------
 
