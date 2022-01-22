@@ -139,7 +139,7 @@ do
 		esac
 		test="${test#"$DATA_DIR/"}"
 		test="${test%.md}"
-		TMPDIR="$TEMP_DIR/$test"
+		TMPDIR="$TEMP_DIR/$test/$conn"
 		mkdir -p "$TMPDIR" || exit
 		export TMPDIR
 
