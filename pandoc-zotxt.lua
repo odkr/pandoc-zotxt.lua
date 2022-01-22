@@ -108,8 +108,12 @@
 --
 -- | **Ending** | **Format** |
 -- | ---------- | ---------- |
+-- | `.bib`     | BibLaTeX   |
+-- | `.bibtex`  | BibTeX     |
 -- | `.json`    | CSL JSON   |
 -- | `.yaml`    | CSL YAML   |
+--
+-- CSL formats are preferable to TeX formats.
 --
 -- The file is added to the "bibliography" metadata field automatically; if
 -- that field already contains bibliography files, they take priority.
@@ -389,9 +393,11 @@ local unpack = table.unpack
 local sort = table.sort
 
 local read = pandoc.read
+local write = pandoc.write
 local stringify = pandoc.utils.stringify
 
 local List = pandoc.List
+local Meta = pandoc.Meta
 local MetaInlines = pandoc.MetaInlines
 local MetaList = pandoc.MetaList
 local MetaMap = pandoc.MetaMap
@@ -1162,22 +1168,20 @@ do
     --
     -- @tparam Set seen The variables encounterd so far.
     -- @tab vars A mapping of variable names to values.
-    -- @bool run Enable functions?
     -- @string exp A variable expression.
     -- @treturn string The value of the expression.
     -- @raise See @{vars_sub}.
-    local function expand (seen, vars, run, exp)
+    local function expand (seen, vars, exp)
         exp = exp:sub(2, -2)
-        local path, func
-        if run then path, func = tabulate(split(exp, '|', 2))
-               else path = exp
-        end
+        local path, func = tabulate(split(exp, '|', 2))
+        assert(path ~= '', 'variable name is the empty string.')
+        assert(not func or func ~= '', 'function name is the empty string.')
         assert(not seen[path], 'cycle in variable lookup.')
         seen[path] = true
         local v = lookup(vars, path)
-        if type(v) == 'string' then v = vars_sub(v, vars, run, seen) end
+        if type(v) == 'string' then v = vars_sub(v, vars, seen) end
         if func then v = lookup(vars, func)(v) end
-        return vars_sub(tostring(v), vars, run, seen)
+        return vars_sub(tostring(v), vars, seen)
     end
 
     --- Substitute variables in strings.
@@ -1229,9 +1233,7 @@ do
     -- treated as a function name; the value of the variable is then passed to
     -- that function, and the whole expression `${<variable>|<function>}` is
     -- replaced with the first value that this function returns. Variable
-    -- names cannot contain the pipe symbol, function names may. That said,
-    -- functions can be disabled; variable names, too, may then contain
-    -- the pipe symbol.
+    -- names cannot contain the pipe symbol, function names may.
     --
     -- Expressions are evaluated recursively.
     --
@@ -1252,11 +1254,6 @@ do
     --       > vars_sub('foo is ${bar}.', {})
     --       foo is nil.
     --
-    -- * The empty string is a valid variable name.
-    --
-    --       > vars_sub('foo is ${}.', {[''] = bar})
-    --       foo is bar.
-    --
     -- * Error messages are cryptic.
     --
     -- @string str A string.
@@ -1265,13 +1262,11 @@ do
     -- @treturn string A transformed string.
     --
     -- @function vars_sub
-    -- @fixme Disabling functions is not unit-tested.
     -- @todo Improve error messages.
-    vars_sub = typed_args('string', 'table', '?boolean', '?table')(
-        function (str, vars, run, _seen)
-            if run == nil then run = true end
+    vars_sub = typed_args('string', 'table', '?table')(
+        function (str, vars, _seen)
             if not _seen then _seen = {} end
-            local function repl (...) return expand(_seen, vars, run, ...) end
+            local function repl (...) return expand(_seen, vars, ...) end
             return str:gsub('%f[%$]%$(%b{})', repl):gsub('%$(%$*)', '%1'), nil
         end
     )
@@ -1596,6 +1591,8 @@ end
 Error.mt.template = 'something went wrong.'
 
 do
+    -- luacheck: ignore write
+
     -- Priority levels for messages.
     local levels = List{'error', 'warning', 'info'}
 
@@ -1758,7 +1755,7 @@ environ = {}
 -- @tab _ Ignored.
 -- @string key A variable name.
 -- @treturn string The value of that variable.
--- @raise An @{Error} if
+-- @raise An error if
 --
 -- * the variable name is invalid,
 -- * the variable is undefined, or
@@ -1766,12 +1763,12 @@ environ = {}
 --
 -- @fixme Not unit-tested.
 function environ.__index (_, key)
-    xassert(type(key) == 'string', 'variable name is not a string.')
-    xassert(key ~= '', 'variable name is the empty string.')
-    xassert(key:match '^[%a_][%w_]*$', '${key}: not a variable name.')
+    assert(type(key) == 'string', 'variable name is not a string.')
+    assert(key ~= '', 'variable name is the empty string.')
+    assert(key:match '^[%a_][%w_]*$', '${key}: not a variable name.')
     local val = os.getenv(key)
-    xassert(val, '${key}: is undefined.')
-    xassert(val ~= '', '${key}: is empty.')
+    assert(val, '${key}: is undefined.')
+    assert(val ~= '', '${key}: is empty.')
     return val
 end
 
@@ -1941,6 +1938,8 @@ file_read = typed_args('string')(
 )
 
 do
+    -- luacheck: ignore write
+
     -- Write data to a file (worker).
     --
     -- @param file The name or handle of a file to write data to.
@@ -2550,6 +2549,7 @@ zotero_to_markdown = typed_args('string')(
 -- @see csl_vars_sort
 CSL_VARS_ORDER = {
     'id',                       -- Item ID.
+    'citekey',                  -- Citation key (CSL v1.2).
     'type',                     -- For example, 'paper', 'book'.
     'author',                   -- Author(s).
     'original-author',          -- Original author(s).
@@ -3226,33 +3226,99 @@ biblio = Object()
 --- A case-insensitive mapping of filename suffices to codecs.
 biblio.types = setmetatable({}, ignore_case)
 
---- Decode BibLaTeX.
+--- De-/Encode BibLaTeX files.
 biblio.types.bib = {}
 
---- Read the IDs from the contents of a BibLaTeX file.
+--- Parse the contents of a BibLaTeX file.
 --
 -- @string str The contents of a BibLaTeX file.
--- @treturn {{['id']=string},...} Key-value pairs.
+-- @treturn {tab,...} CSL items.
+--
+-- @require Only returns a list of mappings of the literal
+--  'id' to CSL item IDs when run with Pandoc < v2.17.
 --
 -- @function biblio.types.bib.decode
-biblio.types.bib.decode = typed_args('string')(
-    function (str)
-        local ids = Values()
-        for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do ids:add{id = id} end
-        return ids
-    end
-)
+-- @fixme Not unit-tested.
+if not pandoc.types or PANDOC_VERSION < {2, 17} then
+    biblio.types.bib.decode = typed_args('string')(
+        function (str)
+            local ids = Values()
+            for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
+                ids:add{id = id}
+            end
+            return ids
+        end
+    )
+else
+    biblio.types.bib.decode = typed_args('string')(
+        function (str)
+            local doc = read(str, 'biblatex')
+            if not doc.meta or not doc.meta.references then return {} end
+            return doc.meta.references
+        end
+    )
+end
 
---- Decode BibTeX.
+--- Serialise a list of CSL items to a BibLaTeX string.
+--
+-- @tparam {tab,...} items CSL items.
+-- @treturn string A BibTeX string.
+--
+-- @require Pandoc ≥ 2.17.
+--
+-- @function biblio.types.bibtex.encode
+-- @fixme Not unit-tested.
+if pandoc.types and PANDOC_VERSION >= {2, 17} then
+    biblio.types.bib.encode = typed_args('table')(
+        function (items)
+            for i = 1, #items do items[i] = csl_item_to_meta(items[i]) end
+            return write(Pandoc({}, Meta{references = items}), 'biblatex')
+        end
+    )
+end
+
+--- De-/Encode BibTeX files.
 biblio.types.bibtex = {}
 
---- Read the IDs from the contents of a BibTeX file.
+--- Parse the contents of a BibTeX file.
 --
 -- @string str The contents of a BibTeX file.
--- @treturn {{['id']=string},...} Key-value pairs.
+-- @treturn {tab,...} CSL items.
+--
+-- @require Only returns a list of mappings of the literal
+--  'id' to CSL item IDs when run with Pandoc < v2.17.
 --
 -- @function biblio.types.bibtex.decode
-biblio.types.bibtex.decode = biblio.types.bib.decode
+-- @fixme Not unit-tested.
+if not pandoc.types or PANDOC_VERSION < {2, 17} then
+    biblio.types.bibtex.decode = biblio.types.bib.decode
+else
+    biblio.types.bibtex.decode = typed_args('string')(
+        function (str)
+            local doc = read(str, 'bibtex')
+            if not doc.meta or not doc.meta.references then return {} end
+            return doc.meta.references
+        end
+    )
+end
+
+--- Serialise a list of CSL items to a BibTeX string.
+--
+-- @tparam {tab,...} items CSL items.
+-- @treturn string A BibTeX string.
+--
+-- @require Pandoc ≥ 2.17.
+--
+-- @function biblio.types.bibtex.encode
+-- @fixme Not unit-tested.
+if pandoc.types and PANDOC_VERSION >= {2, 17} then
+    biblio.types.bibtex.encode = typed_args('table')(
+        function (items)
+            for i = 1, #items do items[i] = csl_item_to_meta(items[i]) end
+            return write(Pandoc({}, Meta{references = items}), 'bibtex')
+        end
+    )
+end
 
 --- De-/Encode CSL items in JSON.
 biblio.types.json = {}
@@ -3268,10 +3334,10 @@ biblio.types.json.decode = csl_json_parse
 --- Serialise a list of CSL items to a JSON string.
 --
 -- @tparam {tab,...} items CSL items.
--- @treturn string A CSL YAML string.
+-- @treturn string A CSL JSON string.
 --
 -- @function biblio.types.json.encode
-biblio.types.json.encode = json.encode
+biblio.types.json.encode = typed_args('table')(json.encode)
 
 --- De-/Encode CSL items in YAML.
 biblio.types.yaml = {}
@@ -3323,8 +3389,10 @@ do
     -- @function biblio.types.yaml.encode
     biblio.types.yaml.encode = typed_args('table')(
         function (items)
+            -- There is no writer for CSL YAML.
+            -- And the Markdown writer appears to ignore metadata.
             items = walk(items, to_markdown)
-            return yamlify({references=items})
+            return yamlify({references = items})
         end
     )
 end
@@ -3759,46 +3827,49 @@ end
 -- @treturn pandoc.List CSL items.
 --
 -- @function doc_sources
-if not pandoc.types or PANDOC_VERSION < {2, 17} then
-    doc_sources = typed_args('table|userdata')(
-        function (doc)
-            local data = List()
-            if not doc or not doc.meta then return data end
-            local meta = doc.meta
-            if meta.references then data:extend(meta.references) end
-            if meta.bibliography then
-                local fnames = opts_parse(meta, {
-                    name = 'bibliography',
-                    type = 'list'
-                }).bibliography
-                for i = 1, #fnames do
-                    -- luacheck: ignore err
-                    local fname, err = file_locate(fnames[i])
-                    if fname then
-                        local items, err = biblio:read(fname)
-                        if items then data:extend(items)
-                                 else xwarn('@error', '@plain', err)
-                        end
-                    else
-                        xwarn('@error', '@plain', err)
+doc_sources_legacy = typed_args('table|userdata')(
+    function (doc)
+        local data = List()
+        if not doc or not doc.meta then return data end
+        local meta = doc.meta
+        if meta.references then data:extend(meta.references) end
+        if meta.bibliography then
+            local fnames = opts_parse(meta, {
+                name = 'bibliography',
+                type = 'list'
+            }).bibliography
+            for i = 1, #fnames do
+                -- luacheck: ignore err
+                local fname, err = file_locate(fnames[i])
+                if fname then
+                    local items, err = biblio:read(fname)
+                    if items then data:extend(items)
+                             else xwarn('@error', '@plain', err)
                     end
+                else
+                    xwarn('@error', '@plain', err)
                 end
             end
-            return data
         end
-    )
-else
-    doc_sources = typed_args('table|userdata')(
-        function (doc)
-            local vs = pack(pcall(pandoc.utils.references, doc))
-            local ok, err = unpack(vs, 1, 2)
-            if not ok then
-                xwarn('@error', '@plain', err)
-                return List()
-            end
-            return unpack(vs, 2)
+        return data
+    end
+)
+
+doc_sources_modern = typed_args('table|userdata')(
+    function (doc)
+        local vs = pack(pcall(pandoc.utils.references, doc))
+        local ok, err = unpack(vs, 1, 2)
+        if not ok then
+            xwarn('@error', '@plain', err)
+            return List()
         end
-    )
+        return unpack(vs, 2)
+    end
+)
+
+if not pandoc.types or PANDOC_VERSION < {2, 17}
+    then doc_sources = doc_sources_legacy
+    else doc_sources = doc_sources_modern
 end
 
 --- Collect the citation keys used in a document.
@@ -4698,9 +4769,9 @@ do
             prefix = 'zotero',
             name = 'bibliography',
             parse = function (fname)
-                local vs = pack(pcall(vars_sub, fname, env, false))
+                local vs = pack(pcall(vars_sub, fname, env))
                 local ok, err = unpack(vs, 1, 2)
-                if not ok then return nil, tostring(err) end
+                if not ok then return nil, err:match ': (.*)' end
                 return unpack(vs, 2)
             end
         },

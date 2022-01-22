@@ -182,6 +182,14 @@ EOF
 </thead>
 <tbody>
 <tr>
+<td> <code>.bib</code>     </td>
+<td> BibLaTeX   </td>
+</tr>
+<tr>
+<td> <code>.bibtex</code>  </td>
+<td> BibTeX     </td>
+</tr>
+<tr>
 <td> <code>.json</code>    </td>
 <td> CSL JSON   </td>
 </tr>
@@ -192,6 +200,8 @@ EOF
 </tbody>
 </table>
 
+
+<p> CSL formats are preferable to TeX formats.</p>
 
 <p> The file is added to the &ldquo;bibliography&rdquo; metadata field automatically; if
  that field already contains bibliography files, they take priority.</p>
@@ -550,11 +560,15 @@ EOF
 	<td class="summary">Metatable for values.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Values.mt.__len">Values.mt.__len (obj)</a></td>
+	<td class="name" nowrap><a href="#Values.mt.__len">Values.mt.__len</a></td>
 	<td class="summary">Get the size of the list.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#Values.mt.__pairs">Values.mt.__pairs (obj)</a></td>
+	<td class="name" nowrap><a href="#Values.mt.__newindex">Values.mt.__newindex</a></td>
+	<td class="summary">Add items to the list.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Values.mt.__pairs">Values.mt.__pairs</a></td>
 	<td class="summary">Iterate over list items.</td>
 	</tr>
 	<tr>
@@ -788,19 +802,27 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio.types.bib">biblio.types.bib</a></td>
-	<td class="summary">Decode BibLaTeX.</td>
+	<td class="summary">De-/Encode BibLaTeX files.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio.types.bib.decode">biblio.types.bib.decode (str)</a></td>
-	<td class="summary">Read the IDs from the contents of a BibLaTeX file.</td>
+	<td class="summary">Parse the contents of a BibLaTeX file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#biblio.types.bibtex.encode">biblio.types.bibtex.encode (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a BibLaTeX string.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio.types.bibtex">biblio.types.bibtex</a></td>
-	<td class="summary">Decode BibTeX.</td>
+	<td class="summary">De-/Encode BibTeX files.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio.types.bibtex.decode">biblio.types.bibtex.decode (str)</a></td>
-	<td class="summary">Read the IDs from the contents of a BibTeX file.</td>
+	<td class="summary">Parse the contents of a BibTeX file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#biblio.types.bibtex.encode">biblio.types.bibtex.encode (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a BibTeX string.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#biblio.types.json">biblio.types.json</a></td>
@@ -1187,7 +1209,7 @@ EOF
     </ol>
 
     <h3>Raises:</h3>
-    <p> An <a href="index.html#Error">Error</a> if</p>
+    <p> An error if</p>
 
 <ul>
 <li>the variable name is invalid,</li>
@@ -2077,9 +2099,7 @@ baz is baz.
  treated as a function name; the value of the variable is then passed to
  that function, and the whole expression <code>${&lt;variable&gt;|&lt;function&gt;}</code> is
  replaced with the first value that this function returns. Variable
- names cannot contain the pipe symbol, function names may. That said,
- functions can be disabled; variable names, too, may then contain
- the pipe symbol.</p>
+ names cannot contain the pipe symbol, function names may.</p>
 
 <p> Expressions are evaluated recursively.</p>
 
@@ -2101,11 +2121,6 @@ the expression is quietly replaced with &lsquo;nil&rsquo;.</p>
 
 <pre><code>&gt; vars_sub('foo is ${bar}.', {})
 foo is nil.
-</code></pre></li>
-<li><p>The empty string is a valid variable name.</p>
-
-<pre><code>&gt; vars_sub('foo is ${}.', {[''] = bar})
-foo is bar.
 </code></pre></li>
 <li><p>Error messages are cryptic.</p></li>
 </ul>
@@ -2356,7 +2371,7 @@ foo</pre>
 </dd>
     <dt>
     <a name = "Values.mt.__len"></a>
-    <strong>Values.mt.__len (obj)</strong>
+    <strong>Values.mt.__len</strong>
     </dt>
     <dd>
     Get the size of the list.
@@ -2367,7 +2382,6 @@ foo</pre>
     </ul>
     </ul>
 
-    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">obj</span>
             <span class="types"><a class="type" href="index.html#Values">Values</a></span>
@@ -2375,12 +2389,40 @@ foo</pre>
         </li>
     </ul>
 
-    <h3>Returns:</h3>
-    <ol>
 
-           <span class="types"><span class="type">number</span></span>
-        The size of the list.
-    </ol>
+
+
+
+</dd>
+    <dt>
+    <a name = "Values.mt.__newindex"></a>
+    <strong>Values.mt.__newindex</strong>
+    </dt>
+    <dd>
+    Add items to the list.
+
+    </ul>
+    </ul>
+    </ul>
+    <h3>Side-effects:</h3>
+    <ul>
+         Sets <a href="index.html#Values.n">Values.n</a> if needed.
+    </ul>
+    </ul>
+
+    <ul>
+        <li><span class="parameter">obj</span>
+            <span class="types"><a class="type" href="index.html#Values">Values</a></span>
+         A list.
+        </li>
+        <li><span class="parameter">key</span>
+         an index.
+        </li>
+        <li><span class="parameter">val</span>
+         A value.
+        </li>
+    </ul>
+
 
 
 
@@ -2388,7 +2430,7 @@ foo</pre>
 </dd>
     <dt>
     <a name = "Values.mt.__pairs"></a>
-    <strong>Values.mt.__pairs (obj)</strong>
+    <strong>Values.mt.__pairs</strong>
     </dt>
     <dd>
     Iterate over list items.
@@ -2399,7 +2441,6 @@ foo</pre>
     </ul>
     </ul>
 
-    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">obj</span>
             <span class="types"><a class="type" href="index.html#Values">Values</a></span>
@@ -2407,12 +2448,6 @@ foo</pre>
         </li>
     </ul>
 
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">function</span></span>
-        A stateless iterator.
-    </ol>
 
 
 
@@ -3685,6 +3720,9 @@ priority. (<em>default</em> &lsquo;warning&rsquo;)</li>
         <li><span class="parameter">id</span>
         Item ID.
         </li>
+        <li><span class="parameter">citekey</span>
+        Citation key (CSL v1.2).
+        </li>
         <li><span class="parameter">type</span>
         For example, &lsquo;paper&rsquo;, &lsquo;book&rsquo;.
         </li>
@@ -4495,7 +4533,7 @@ original-date</pre>
     <strong>biblio.types.bib</strong>
     </dt>
     <dd>
-    Decode BibLaTeX.
+    De-/Encode BibLaTeX files.
 
     </ul>
     </ul>
@@ -4514,10 +4552,14 @@ original-date</pre>
     <strong>biblio.types.bib.decode (str)</strong>
     </dt>
     <dd>
-    Read the IDs from the contents of a BibLaTeX file.
+    Parse the contents of a BibLaTeX file.
 
     </ul>
     </ul>
+    <h3>Requires:</h3>
+    <ul>
+          Only returns a list of mappings of the literal
+  &lsquo;id&rsquo; to CSL item IDs when run with Pandoc &lt; v2.17.
     </ul>
     </ul>
     </ul>
@@ -4533,8 +4575,43 @@ original-date</pre>
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{{['id']=string},...}</span></span>
-        Key-value pairs.
+           <span class="types"><span class="type">{tab,...}</span></span>
+        CSL items.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "biblio.types.bibtex.encode"></a>
+    <strong>biblio.types.bibtex.encode (items)</strong>
+    </dt>
+    <dd>
+    Serialise a list of CSL items to a BibLaTeX string.
+
+    </ul>
+    </ul>
+    <h3>Requires:</h3>
+    <ul>
+         Pandoc ≥ 2.17.
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+            <span class="types"><span class="type">{tab,...}</span></span>
+         CSL items.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A BibTeX string.
     </ol>
 
 
@@ -4546,7 +4623,7 @@ original-date</pre>
     <strong>biblio.types.bibtex</strong>
     </dt>
     <dd>
-    Decode BibTeX.
+    De-/Encode BibTeX files.
 
     </ul>
     </ul>
@@ -4565,10 +4642,14 @@ original-date</pre>
     <strong>biblio.types.bibtex.decode (str)</strong>
     </dt>
     <dd>
-    Read the IDs from the contents of a BibTeX file.
+    Parse the contents of a BibTeX file.
 
     </ul>
     </ul>
+    <h3>Requires:</h3>
+    <ul>
+          Only returns a list of mappings of the literal
+  &lsquo;id&rsquo; to CSL item IDs when run with Pandoc &lt; v2.17.
     </ul>
     </ul>
     </ul>
@@ -4584,8 +4665,43 @@ original-date</pre>
     <h3>Returns:</h3>
     <ol>
 
-           <span class="types"><span class="type">{{['id']=string},...}</span></span>
-        Key-value pairs.
+           <span class="types"><span class="type">{tab,...}</span></span>
+        CSL items.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "biblio.types.bibtex.encode"></a>
+    <strong>biblio.types.bibtex.encode (items)</strong>
+    </dt>
+    <dd>
+    Serialise a list of CSL items to a BibTeX string.
+
+    </ul>
+    </ul>
+    <h3>Requires:</h3>
+    <ul>
+         Pandoc ≥ 2.17.
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+            <span class="types"><span class="type">{tab,...}</span></span>
+         CSL items.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A BibTeX string.
     </ol>
 
 
@@ -4668,7 +4784,7 @@ original-date</pre>
     <ol>
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A CSL YAML string.
+        A CSL JSON string.
     </ol>
 
 
@@ -6296,7 +6412,7 @@ cannot be parsed.</li>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-01-21 14:55:35 </i>
+<i style="float:right;">Last updated 2022-01-22 23:52:00 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

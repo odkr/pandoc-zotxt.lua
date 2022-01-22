@@ -120,12 +120,16 @@ so that you can escape them should they occur in a filename.
 
 The format of the file is determined by its filename ending.
 
-========== ==========
-**Ending** **Format**
-========== ==========
-``.json``  CSL JSON
-``.yaml``  CSL YAML
-========== ==========
+=========== ==========
+**Ending**  **Format**
+=========== ==========
+``.bib``    BibLaTeX
+``.bibtex`` BibTeX
+``.json``   CSL JSON
+``.yaml``   CSL YAML
+=========== ==========
+
+CSL formats are preferable to TeX formats.
 
 The file is added to the "bibliography" metadata field automatically;
 if that field already contains bibliography files, they take priority.

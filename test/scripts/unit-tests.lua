@@ -162,16 +162,21 @@ ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
 
 --- Bibliographic data in CSL to compare data retrieved via zotxt to.
 -- luacheck: globals ZOTXT_CSL
+-- @fixme
+-- if not pandoc.types and PANDOC_VERSION < {2, 17}
+--     then ZOTXT_CSL = M.csl_json_parse(ZOTXT_JSON)
+--     else ZOTXT_CSL = pandoc.read(ZOTXT_JSON, 'csljson').meta.references
+-- end
 ZOTXT_CSL = M.csl_json_parse(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
     {
-        author={{family="Crenshaw", given="Kimberlé"}},
-        id="crenshaw1989DemarginalizingIntersectionRace",
-        issued={["date-parts"]={{'1989'}}},
-        title="Demarginalizing the intersection of race and sex",
-        type="article-journal"
+        author = {{family = "Crenshaw", given = "Kimberlé"}},
+        id = "crenshaw1989DemarginalizingIntersectionRace",
+        issued = {["date-parts"] = {{'1989'}}},
+        title = "Demarginalizing the intersection of race and sex",
+        type = "article-journal"
     }
 }
 
@@ -179,40 +184,40 @@ ZOTXT_YAML = {
 if not pandoc.types or PANDOC_VERSION < {2, 15} then
     ZOTXT_META = {
         {
-            author={{text="Kimberlé"}, {}, {text="Crenshaw"}},
-            id={{text="crenshaw1989DemarginalizingIntersectionRace"}},
-            issued={["date-parts"]={{{{text="1989"}}}}},
-            title={{text="Demarginalizing"}, {}, {text="the"}, {},
-                {text="intersection"}, {}, {text="of"}, {}, {text="race"},
-                {}, {text="and"}, {}, {text="sex"}
+            author = {{text = "Kimberlé"}, {}, {text = "Crenshaw"}},
+            id = {{text = "crenshaw1989DemarginalizingIntersectionRace"}},
+            issued = {["date-parts"] = {{{{text = "1989"}}}}},
+            title = {{text = "Demarginalizing"}, {}, {text = "the"}, {},
+                {text = "intersection"}, {}, {text = "of"}, {},
+                {text = "race"}, {}, {text = "and"}, {}, {text = "sex"}
             },
-            type={{text="article-journal"}}
+            type = {{text = "article-journal"}}
         }
     }
 elseif PANDOC_VERSION < {2, 17} then
     ZOTXT_META = {
         {
-            author={Str "Kimberlé", Space(), Str "Crenshaw"},
-            id={Str "crenshaw1989DemarginalizingIntersectionRace"},
-            issued={["date-parts"]={{{Str "1989"}}}},
-            title={Str "Demarginalizing", Space(), Str "the", Space(),
+            author = {Str "Kimberlé", Space(), Str "Crenshaw"},
+            id = {Str "crenshaw1989DemarginalizingIntersectionRace"},
+            issued = {["date-parts"] = {{{Str "1989"}}}},
+            title = {Str "Demarginalizing", Space(), Str "the", Space(),
                 Str "intersection", Space(), Str "of", Space(), Str "race",
                 Space(), Str "and", Space(), Str "sex"
             },
-            type={Str "article-journal"}
+            type = {Str "article-journal"}
         }
     }
 else
     ZOTXT_META = {
         {
-            author={{literal="Kimberlé Crenshaw"}},
-            id="crenshaw1989DemarginalizingIntersectionRace",
-            issued={["date-parts"]={{1989}}},
-            title={Str "Demarginalizing", Space(), Str "the", Space(),
+            author = {{literal = "Kimberlé Crenshaw"}},
+            id = "crenshaw1989DemarginalizingIntersectionRace",
+            issued = {["date-parts"] = {{1989}}},
+            title = {Str "Demarginalizing", Space(), Str "the", Space(),
                 Str "intersection", Space(), Str "of", Space(), Str "race",
                 Space(), Str "and", Space(), Str "sex"
             },
-            type="article-journal"
+            type = "article-journal"
         }
     }
 end
@@ -840,8 +845,14 @@ function test_trim ()
 end
 
 function test_vars_sub ()
-    lu.assert_error_msg_matches('.+: cycle in variable lookup%.',
-                                M.vars_sub, '${a}', {a = '${b}', b = '${a}'})
+    for input, message in pairs{
+        [{'${a}', {a = '${b}', b = '${a}'}}] =
+            '.+: cycle in variable lookup%.',
+        [{'${}', {}}] = '.+: variable name is the empty string%.',
+        [{'${x|}', {}}] = '.+: function name is the empty string%.',
+    } do
+        assert_error_msg_matches(message, M.vars_sub, unpack(input))
+    end
 
     for input, output in pairs{
         [{'${test}', {}}] = 'nil',
@@ -1871,8 +1882,8 @@ function test_biblio_write ()
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio:write(fname, {ZOTXT_CSL})
-    assert_equals(fmt, 'json')
     lu.assert_nil(err)
+    assert_equals(fmt, 'json')
     data, err = M.biblio:read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
