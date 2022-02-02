@@ -91,7 +91,6 @@ unset TEMP_DIR
 #	-e ESC  Prefix the message with an escape code.
 warn() (
 	: "${1:?}"
-
 	linefeed=x escape=
 	OPTIND=1 OPTARG='' opt=''
 	while getopts e:n opt
@@ -105,12 +104,10 @@ warn() (
 	shift $((OPTIND - 1))
 
 	exec >&2
-
 	printf '%s: %b' "$SCPT_NAME" "$escape"
 	printf -- "$@"
 	printf '%b' "$SGR0"
 	[ "$linefeed" ] && echo
-
 	return 0
 )
 
@@ -129,21 +126,18 @@ warn() (
 #	-s STATUS  Exit the script with STATUS. Defaults to 69.
 panic() {
 	set +e
-	(
-		status=69
-		OPTIND=1 OPTARG='' opt=''
-		while getopts s: opt
-		do
-			case $opt in
-				(s) status="$OPTARG" ;;
-				(*) return 70
-			esac
-		done
-		shift $((OPTIND - 1))
-		[ "$#" -gt 0 ] && warn -e "$RED" "$@"
-		exit "$status"
-	)
-	exit
+	STATUS=69
+	OPTIND=1 OPTARG='' OPT=''
+	while getopts s: OPT
+	do
+		case $OPT in
+			(s) STATUS="$OPTARG" ;;
+			(*) return 70
+		esac
+	done
+	shift $((OPTIND - 1))
+	[ "$#" -gt 0 ] && warn -e "$RED" "$@"
+	exit "$STATUS"
 }
 
 # Catch a signal.
