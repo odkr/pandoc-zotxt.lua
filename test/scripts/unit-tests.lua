@@ -146,13 +146,16 @@ local M = require 'test-wrapper'
 
 -- Shorthands.
 local assert_equals = lu.assert_equals
+local assert_not_equals = lu.assert_not_equals
 local assert_error_msg_matches = lu.assert_error_msg_matches
 local assert_false = lu.assert_false
 local assert_items_equals = lu.assert_items_equals
 local assert_nil = lu.assert_nil
+local assert_not_nil = lu.assert_not_nil
 local assert_str_matches = lu.assert_str_matches
 local assert_true = lu.assert_true
 
+local map = pandoc.List.map
 
 --- Constants
 -- @section
@@ -356,10 +359,6 @@ do
             for args, pattern in pairs{
                 [{true, true}] =
                     '.-%f[%a]expected string or table, got boolean.',
-                [{true, ''}] =
-                    '.-%f[%a]malformed type declaration%.$',
-                [{true, '-nil'}] =
-                    '.-%f[%a]malformed type declaration%.$',
                 [{cycle, cycle}] =
                     '.-%f[%a]cycle in data tree.',
             } do
@@ -476,21 +475,22 @@ do
         return M.type_match(val, td)
     end)
 
-    function test_typed_args ()
-        local typed_args = M.typed_args
+    function test_type_check ()
+        local type_check = M.type_check
 
         make_type_match_test(function (val, td, unprotected)
-            local func = typed_args(td)(nilify)
+            local func = type_check(td)(nilify)
             if unprotected then return func(val) end
             return pcall(func, val)
         end)()
 
         for t, vs in pairs(values) do
-            local func = M.typed_args(t, '...')(nilify)
+            local func = M.type_check(t, '...')(nilify)
             local ok, err
             for i = 1, #vs do
                 local v = vs[i]
                 for _, args in ipairs{
+                    {v, nil, v},
                     {v, v},
                     {v, v, nil},
                     {v, v, v}
@@ -505,7 +505,6 @@ do
                             local av = avs[j]
                             if av ~= nil then
                                 for _, args in ipairs{
-                                    {v, nil, v},
                                     {v, av},
                                     {v, av, v},
                                     {v, v, av},
@@ -597,17 +596,6 @@ function test_ignore_case ()
 end
 
 function test_copy ()
-    -- Test a shallow copy.
-    local mt = {}
-    local tab = setmetatable({foo = 'bar', bar = {baz = true}}, mt)
-    local cp = M.copy(tab, false)
-    assert_items_equals(tab, cp)
-    assert_equals(getmetatable(cp), getmetatable(tab))
-
-    cp.bar.baz = false
-    assert_items_equals(tab, cp)
-    assert_false(tab.bar.baz)
-
     -- Test simple copies.
     for _, val in ipairs{
         nil, false, true, 0, 1, '', 'test', {},
@@ -847,16 +835,30 @@ end
 function test_vars_sub ()
     for input, message in pairs{
         [{'${a}', {a = '${b}', b = '${a}'}}] =
-            '.+: cycle in variable lookup%.',
-        [{'${}', {}}] = '.+: variable name is the empty string%.',
-        [{'${x|}', {}}] = '.+: function name is the empty string%.',
+            '.-%f[%$]${a}: ${b}: ${a}: cycle in lookup%.',
+        [{'${}', {}}] =
+            '.-%f[%$]${}: name is the empty string%.',
+        [{'${x|}', {x = 'yo'}}] =
+            '.-%f[%$]${x|}: name is the empty string%.',
+        [{'${test}', {}}] =
+            '.-%f[%$]${test}: test is undefined%.',
+        [{'${foo|bar}', {foo = ''}}] =
+            '.-%f[%$]${foo|bar}: bar is undefined%.',
+        [{'${foo.bar}', {}}] =
+            '.-%f[%$]${foo.bar}: index foo: expected table, got nil%.',
+        [{'${foo.bar}', {foo = 'string'}}] =
+            '.-%f[%$]${foo.bar}: index foo: expected table, got string%.',
+        [{'${foo|bar}', {foo = 'bar', bar = 'bar'}}] =
+            '${foo|bar}: bar: not a function.',
+        [{'${foo|bar.baz}', {foo = 'bar'}}] =
+            '${foo|bar.baz}: index bar: expected table, got nil%.'
     } do
-        assert_error_msg_matches(message, M.vars_sub, unpack(input))
+        local ok, err = M.vars_sub(unpack(input))
+        assert_nil(ok)
+        assert_str_matches(err, message)
     end
 
     for input, output in pairs{
-        [{'${test}', {}}] = 'nil',
-        [{'${test}', {}}] = 'nil',
         [{'$${test}$', {test = 'nok'}}] = '${test}',
         [{'${test}$', {test = 'ok'}}] = 'ok',
         [{'$${test|func}', {
@@ -884,7 +886,7 @@ function test_vars_sub ()
             f2 = function (s)
                 return s:gsub('nok2', 'ok')
             end
-        }}] = 'ok',
+        }}] = '{v2|f2}',
         [{'${2}', {['2'] = 'ok'}}] = 'ok',
         [{'${test.test.test|test.func}', {
             test = {
@@ -897,7 +899,7 @@ function test_vars_sub ()
             f2 = function (s)
                 return s:gsub('nok2', 'ok')
             end
-        }}] = 'ok',
+        }}] = '{v2|f2}',
         [{'${2}', {['2'] = 'ok'}}] = 'ok'
     } do
         assert_equals(M.vars_sub(unpack(input)), output)
@@ -908,10 +910,11 @@ end
 --- Prototypes
 -- @section
 
-function test_object_mt_call ()
+function test_object_clone ()
+    local tab = {foo = 'yo'}
     local obj_mt = {foo = true, bar = {baz = true}}
-    local Foo = M.Object(obj_mt)
-    local mt = getmetatable(Foo)
+    local Foo = M.Object:clone(tab, obj_mt)
+    mt = getmetatable(Foo)
     assert_equals(mt.__index, M.Object)
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, true)
@@ -919,31 +922,33 @@ function test_object_mt_call ()
     assert_nil(mt.baz)
     obj_mt.bar.baz = false
     assert_equals(mt.bar.baz, false)
+    assert_equals(tab.foo, 'yo')
+    assert_equals(Foo, tab)
 
-    local Bar = Foo()
+    local Bar = Foo:clone()
     mt = getmetatable(Bar)
     assert_equals(mt.__index, Foo)
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, false)
 
-    local baz = Bar{__index = M.Object}
+    local baz = Bar:clone({}, {__index = M.Object})
     mt = getmetatable(baz)
     assert_equals(mt.__index, M.Object)
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, false)
 
     local obj_mt2 = {baz = true}
-    local Baz = M.Object(obj_mt, obj_mt2)
+    local Baz = M.Object:clone({}, obj_mt, obj_mt2)
     mt = getmetatable(Baz)
     assert_equals(mt.__index, M.Object)
     assert_equals(mt.foo, true)
     assert_equals(mt.bar.baz, false)
     assert_equals(mt.baz, true)
 
-    Foo = M.Object{__tostring = function (t) return t.bar end}
+    Foo = M.Object:clone({}, {__tostring = function (t) return t.bar end})
     Foo.bar = 'bar'
     assert_equals(tostring(Foo), 'bar')
-    bar = Foo()
+    bar = Foo:clone()
     assert_equals(tostring(bar), 'bar')
     bar.bar = 'baz'
     assert_equals(tostring(bar), 'baz')
@@ -952,7 +957,7 @@ end
 function test_object_new ()
     local args = {{foo = true}, {bar = false}}
     local a = M.Object:new(unpack(args))
-    local b = M.update(M.Object(), unpack(args))
+    local b = M.update(M.Object:clone(), unpack(args))
     assert_items_equals(a, b)
     assert_items_equals(getmetatable(a), getmetatable(b))
 end
@@ -984,17 +989,104 @@ function test_values_mt_newindex ()
     end
 end
 
+function test_values_mt_pairs ()
+    local tab = {}
+    for i = 1, 32 do tab[i] = i end
+    tab.n = 32
+    M.Values:clone(tab)
+    local norm = pack(M.tabulate(ipairs(tab)))
+    for _, output in pairs{
+        pack(M.tabulate(M.Values.mt.__pairs(tab))),
+        pack(M.tabulate(pairs(tab))),
+    } do
+        assert_items_equals(output, norm)
+    end
+    j = 0
+    for i, v in pairs(tab) do
+        j = j + 1
+        assert_equals(i, j)
+        assert_equals(i, v)
+    end
+end
+
+function test_values_clone ()
+    local tab = {}
+    for i = 1, 32 do tab[i] = i end
+    tab.n = 32
+    M.Values:clone(tab)
+    tab:add(33)
+    assert_equals(tab.n, 33)
+    assert_equals(#tab, 33)
+    assert_equals(tab[33], 33)
+end
+
+function test_values_new ()
+    local a = M.Values:new()
+    assert_equals(getmetatable(a).__index, M.Values)
+    assert_items_equals(a, {})
+    assert_equals(a.n, 0)
+    assert_equals(#a, 0)
+    local args = {true, false, 1, 2, 3, 'string'}
+    local b = M.Values:new(unpack(args))
+    assert_items_equals(b, args)
+    local n = #args
+    assert_equals(b.n, n)
+    assert_equals(#b, n)
+    for i = 1, #b do assert_equals(b[i], args[i]) end
+    for i, v in ipairs(b) do assert_equals(v, args[i]) end
+    for i, v in pairs(b) do assert_equals(v, args[i]) end
+end
+
+function test_values_add ()
+    local vals = M.Values:new()
+    local args = {true, false, 1, 2, 3, 'string'}
+    vals:add(unpack(args))
+    assert_items_equals(vals, args)
+    local n = #args
+    assert_equals(vals.n, n)
+    assert_equals(#vals, n)
+    for i = 1, #vals do assert_equals(vals[i], args[i]) end
+    for i, v in ipairs(vals) do assert_equals(v, args[i]) end
+    for i, v in pairs(vals) do assert_equals(v, args[i]) end
+end
+
+function test_getterify ()
+    local tab = {}
+    local mt = {getters = {bar = function () return true end}}
+    setmetatable(tab, mt)
+    assert_nil(tab.bar)
+    local tab2 = M.getterify(tab)
+    assert_equals(tab, tab2)
+    assert_true(tab.bar)
+    assert_true(tab2.bar)
+    tab.bar = false
+    assert_false(tab.bar)
+    assert_false(tab2.bar)
+
+    local Foo = M.getterify(M.Object:clone())
+    Foo.foo = 'bar'
+    mt = getmetatable(Foo)
+    mt.getters = {}
+    function mt.getters.bar (obj) return obj.foo end
+    assert_equals(Foo.bar, 'bar')
+    local baz = Foo()
+    baz.foo = 'bam!'
+    assert_equals(baz.bar, 'bar')
+    Foo.clone = function (...) return M.getterify(M.Object.clone(...)) end
+    baz = Foo()
+    baz.foo = 'bam!'
+    assert_equals(baz.bar, 'bam!')
+end
 
 
-----------------------------------------------------------------
-
-
--- File I/O
--- --------
-
+--- File I/O
+-- @section
 
 function test_path_normalise ()
-    local tests = {
+    assert_error_msg_matches('.-%f[%a]path is the empty string.',
+        M.path_normalise, '')
+
+    for input, output in pairs{
         ['.']                   = '.',
         ['..']                  = '..',
         ['/']                   = '/',
@@ -1027,15 +1119,16 @@ function test_path_normalise ()
         ['/a/b/c/d']            = '/a/b/c/d',
         ['a/b/c/d']             = 'a/b/c/d',
         ['a/../.././c/d']       = 'a/../../c/d'
-    }
-
-    for k, v in pairs(tests) do
-        assert_equals(M.path_prettify(k), v)
+    } do
+        assert_equals(M.path_prettify(input), output)
     end
 end
 
 function test_path_split ()
-    local tests = {
+    assert_error_msg_matches('.-%f[%a]path is the empty string.',
+        M.path_split, '')
+
+    for input, output in pairs{
         ['.']                   = {'.',         '.' },
         ['..']                  = {'.',         '..'},
         ['/']                   = {'/',         '.' },
@@ -1068,172 +1161,256 @@ function test_path_split ()
         ['/a/b/c/d']            = {'/a/b/c',    'd' },
         ['a/b/c/d']             = {'a/b/c',     'd' },
         ['a/../.././c/d']       = {'a/../../c', 'd' }
-}
-
-    for k, v in pairs(tests) do
-        local dir, fname = M.path_split(k)
-        assert_equals(dir, v[1])
-        assert_equals(fname, v[2])
+    } do
+        local dir, fname = M.path_split(input)
+        assert_equals(dir, output[1])
+        assert_equals(fname, output[2])
     end
 end
 
-
 function test_path_join ()
-    assert_equals(M.path_join('a', 'b'), 'a' .. M.PATH_SEP .. 'b')
-    assert_equals(M.path_join('a', M.PATH_SEP .. 'b'),
-                     'a' .. M.PATH_SEP .. 'b')
-    assert_equals(M.path_join('a' .. M.PATH_SEP, 'b'),
-                     'a' .. M.PATH_SEP .. 'b')
+    for input, output in pairs{
+        [{'a', 'b'}] = 'a' .. M.PATH_SEP .. 'b',
+        [{'a', 'b', 'c'}] = 'a' .. M.PATH_SEP .. 'b' .. M.PATH_SEP .. 'c',
+        [{'a', M.PATH_SEP .. 'b'}]  = 'a' .. M.PATH_SEP .. 'b',
+        [{'a' .. M.PATH_SEP, 'b'}]  = 'a' .. M.PATH_SEP .. 'b'
+    } do
+        assert_equals(M.path_join(unpack(input)), output)
+    end
 end
 
 function test_path_is_abs ()
-    local tests = {
+    for input, output in pairs{
         [M.PATH_SEP]                  = true,
         [M.PATH_SEP .. 'test']        = true,
         ['test']                      = false,
         [M.path_join('test', 'test')] = false,
-    }
+    } do
+        assert_equals(M.path_is_abs(input), output)
+    end
 
-    for k, v in pairs(tests) do
-        assert_equals(M.path_is_abs(k), v)
+    if pandoc.types and PANDOC_VERSION >= {2, 12} then
+        assert_equals(M.path_is_abs(M.path_make_abs('foo')), true)
+    end
+end
+
+if pandoc.types and PANDOC_VERSION >= {2, 12} then
+    function test_path_make_abs ()
+        assert_error_msg_matches('.-%f[%a]path is the empty string.',
+            M.path_make_abs, '')
+
+        for input, output in ipairs{
+            foo = M.PATH_SEP .. 'foo',
+            [M.PATH_SEP .. 'foo'] = M.PATH_SEP .. 'foo',
+            [M.PATH_SEP .. M.PATH_SEP .. 'foo'] = M.PATH_SEP .. 'foo',
+            [M.PATH_SEP .. 'foo' .. M.PATH_SEP] = M.PATH_SEP .. 'foo',
+        } do
+            assert_equals(M.path_make_abs(input), output)
+        end
     end
 end
 
 function test_path_prettify ()
-    if M.PATH_SEP ~= '/' then return end
+    assert_error_msg_matches('.-%f[%a]path is the empty string.',
+        M.path_prettify, '')
+
+    local tests = {}
     local home = os.getenv('HOME')
 
-    local tests = {
-        [home .. 'x'] = home .. 'x',
-        [M.path_join(home, 'test')] = '~/test'
-    }
-
-    if pandoc.types and PANDOC_VERSION >= {2, 8} then
-        local wd = pandoc.system.get_working_directory()
-        local home_wd = M.path_prettify(wd)
-        lu.assert_not_nil(home_wd)
-        lu.assert_not_equals(home_wd, '')
-        tests[M.path_join(wd, 'test')] = 'test'
+    if M.PATH_SEP == '/' then
+        tests[home] = home
+        tests[home .. 'foo'] = home .. 'foo'
+        tests[M.path_join(home, 'foo')] = '~/foo'
     end
 
-    for k, v in pairs(tests) do
-        assert_equals(M.path_prettify(k), v)
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        local cwd = pandoc.system.get_working_directory()
+        local rwd
+        if M.PATH_SEP == '/'
+            then rwd = cwd:gsub('^' .. home .. M.PATH_SEP, '~' .. M.PATH_SEP)
+            else rwd = cwd
+        end
+        tests[cwd] = rwd
+        tests[cwd .. 'foo'] = rwd .. 'foo'
+        tests[M.path_join(cwd, 'foo')] = 'foo'
+    end
+
+    for input, output in pairs(tests) do
+        assert_equals(M.path_prettify(input), output)
     end
 end
 
-function test_wd ()
-    assert_equals(M.wd(), '/dev')
+function test_project_dir ()
+    assert_equals(M.project_dir(), '/dev')
 end
 
 function test_file_exists ()
+    assert_error_msg_matches('.-%f[%a]filename is the empty string.',
+        M.file_exists, '')
     lu.assert_true(M.file_exists(PANDOC_SCRIPT_FILE))
-    local ok, _, errno = M.file_exists('<does not exist>')
-    lu.assert_nil(ok)
+    local ok, _, errno = M.file_exists('<no such file>')
     assert_equals(errno, 2)
+    lu.assert_nil(ok)
+end
+
+function test_file_locate ()
+    assert_error_msg_matches('.-%f[%a]filename is the empty string.',
+        M.file_locate, '')
+
+    local ok, err = M.file_locate('<no such file>')
+    assert_nil(ok)
+    assert_equals(err, '<no such file>: not found in resource path.')
+
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        -- luacheck: ignore err
+        local cwd = pandoc.system.get_working_directory()
+        local path = PANDOC_SCRIPT_FILE:gsub('^' .. cwd .. M.PATH_SEP, '')
+        local fname, err = M.file_locate(path)
+        assert_nil(err)
+        assert_equals(fname, PANDOC_SCRIPT_FILE)
+    end
 end
 
 function test_file_read ()
-    local ok, err, errno = M.file_read('<does not exist>')
-    lu.assert_nil(ok)
-    lu.assert_not_equals(err, '')
-    assert_equals(errno, 2)
+    assert_error_msg_matches('.-%f[%a]filename is the empty string.',
+        M.file_read, '')
+
+    local str, err, errno = M.file_read('<no such file>')
+    assert_nil(str)
+    assert_equals(err, '<no such file>: No such file or directory')
+    assert_equals(errno,  2)
 
     local fname = M.path_join(DATA_DIR, 'bibliography.json')
-    local str, err, errno = M.file_read(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(str)
-    lu.assert_nil(errno)
+    str, err, errno = M.file_read(fname)
+    assert_nil(err)
+    assert_nil(errno)
+    assert_not_nil(str)
     assert_equals(str, ZOTXT_JSON)
 end
 
 function test_file_write ()
+    local funcs = {[M.file_write_legacy] = true, [M.file_write] = true}
+    if pandoc.types and PANDOC_VERSION >= {2, 8} then
+        funcs[M.file_write_modern] = true
+    end
 
-    local ok, err, errno = M.file_read('<does not exist>')
-    lu.assert_nil(ok)
-    lu.assert_not_equals(err, '')
-    assert_equals(errno, 2)
+    math.randomseed(os.time())
+    local max = 2 ^ 32
 
-    local fname = M.path_join(TMP_DIR, 'file')
-    ok, err, errno = os.remove(fname)
-    if not ok and errno ~= 2 then error(err) end
-    ok, err, errno = M.file_write(fname, ZOTXT_JSON)
-    lu.assert_nil(err)
-    lu.assert_true(ok)
-    lu.assert_nil(errno)
+    for func in pairs(funcs) do
+        assert_error_msg_matches('.-%f[%a]filename is the empty string.',
+            M.file_write, '')
 
-    data, err, errno = M.file_read(fname)
-    lu.assert_nil(err)
-    lu.assert_not_nil(data)
-    lu.assert_nil(errno)
+        -- pandoc.system.with_temporary_directory raises an uncatchable
+        -- error if it cannot create the temporary directory.
+        if func == M.file_write_legacy then
+            local ok, err, errno = func('<no such directory>/file', 'foo')
+            assert_nil(ok)
+            assert_str_matches(err, '.-No such file or directory.-')
+            if errno ~= nil then assert_equals(errno, 2) end
+        end
 
-    assert_equals(data, ZOTXT_JSON)
+        local remove = os.remove
+        local tmp_fname
+        local _ = setmetatable({}, {__gc = function () remove(tmp_fname) end})
 
-    ok, err = M.file_write(fname, 'a', 'b', 'c')
-    if not ok then error(err) end
-    data, err = M.file_read(fname)
-    if not data then error(err) end
-    assert_equals(data, 'abc')
+        tmp_fname = M.tmp_fname(TMP_DIR)
+        local ok, err, errno = remove(tmp_fname)
+        assert(ok or errno == 2, err)
+
+        local wdata = string.pack('d', math.random(1, max))
+        ok, err, errno = func(tmp_fname, wdata)
+        assert_nil(err)
+        assert_nil(errno)
+        assert_true(ok)
+
+        local rdata
+        rdata, err, errno = M.file_read(tmp_fname)
+        assert_nil(err)
+        assert_nil(errno)
+        assert_equals(rdata, wdata)
+    end
 end
 
 function test_tmp_fname ()
+    for input, msg in pairs {
+        [{'', nil}] =
+            '.-%f[%a]directory is the empty string.',
+        [{'', 'tmp'}] =
+            '.-%f[%a]directory is the empty string.',
+    } do
+        assert_error_msg_matches(msg, M.tmp_fname, unpack(input))
+    end
 
-    local tests = {
+    for input, output in pairs{
         [{nil, nil}] = '^pdz%-%w%w%w%w%w%w$',
         [{nil, 'test_XXXXXXXXX'}] = '^test_%w%w%w%w%w%w%w%w%w$',
         [{'/tmp', nil}] = '^/tmp' .. M.PATH_SEP .. 'pdz%-%w%w%w%w%w%w$',
         [{'/tmp', 'XXXXXXX'}] = '^/tmp' .. M.PATH_SEP .. '%w%w%w%w%w%w%w$'
-    }
-
-    for k, v in pairs(tests) do
-        local fname, err = M.tmp_fname(unpack(k))
-        if not fname then error(err) end
-        lu.assert_str_matches(fname, v)
+    } do
+        local fname = assert(M.tmp_fname(unpack(input)))
+        assert_str_matches(fname, output)
     end
 
-    local f1 = M.tmp_fname()
-    local f2 = M.tmp_fname()
-    lu.assert_not_equals(f1, f2)
+    local fnames = {}
+    for i = 1, 4 do
+        fnames[i] = assert(M.tmp_fname())
+        for j = 2, i do
+            if i ~= j then assert_not_equals(fnames[i], fnames[j]) end
+        end
+    end
 end
 
 function test_with_tmp_file ()
+    local remove = os.remove
+    local tmp_fname
+    local _ = setmetatable({}, {__gc = function () remove(tmp_fname) end})
 
-    local tmp_file_copy
-    M.with_tmp_file(function (tmp_file)
-        tmp_file_copy = tmp_file
-        return true
-    end)
+    for input, msg in pairs {
+        [{'', nil}] =
+            '.-%f[%a]directory is the empty string.',
+        [{'', 'tmp'}] =
+            '.-%f[%a]directory is the empty string.',
+    } do
+        assert_error_msg_matches(msg, M.with_tmp_file, nilify, unpack(input))
+    end
 
-    lu.assert_not_nil(tmp_file_copy)
-    lu.assert_nil(M.file_exists(tmp_file_copy))
-
-    tmp_file_copy = nil
-    pcall(M.with_tmp_file, function (tmp_file)
-        tmp_file_copy = tmp_file
-        error 'test'
-    end)
-
-    lu.assert_not_nil(tmp_file_copy)
-    lu.assert_nil(M.file_exists(tmp_file_copy))
-end
-
-
--- Values prototype
--- ------------------
-
-function test_values_add ()
-    local t = M.Values()
-    for i = 1, 4 do
-        for j = 1, 4 do
-            t:add(i, j)
+    local function wrap (func)
+        return function (fname)
+            tmp_fname = fname
+            local file, ok, err, errno
+            ok, err, errno = remove(tmp_fname)
+            assert(ok or errno == 2, err)
+            file = assert(io.open(fname, 'w'))
+            assert(file:write('foo'))
+            assert(file:flush())
+            assert(file:close())
+            assert(M.file_exists(fname))
+            return func()
         end
     end
-    assert_equals(t.n, 32)
-    assert_equals(t.n, #t)
+
+    for i, func in ipairs(map({
+        function () return true end,
+        function () return end,
+        function () error() end
+    }, wrap)) do
+        tmp_fname = nil
+        local res = M.with_tmp_file(func)
+        assert_not_nil(tmp_fname)
+        assert_not_equals(tmp_fname, '')
+        if i == 1 then
+            assert_equals(res, true)
+            assert_true(remove(tmp_fname))
+        else
+            assert_nil(res)
+            assert_nil(M.file_exists(tmp_fname))
+        end
+    end
 end
 
 
-
-
+----------------------------------------------------------------
 
 
 -- Converters
@@ -1408,7 +1585,9 @@ function test_zotero_to_markdown ()
     }
 
     for i, o in pairs(tests) do
-        assert_equals(M.zotero_to_markdown(i), o)
+        local md, err = M.zotero_to_markdown(i)
+        assert_nil(err)
+        assert_equals(md, o)
     end
 end
 
@@ -1456,7 +1635,7 @@ function test_yamlify ()
 end
 
 function test_options_add ()
-    local options = M.Options()
+    local options = M.Options:clone()
     local add = options.add
 
     local errors = {
@@ -1485,18 +1664,16 @@ function test_options_parse ()
     }
 
     local erroneous = {
-        [{prefix = 'zotero', name = 'unstr'}] = 'zotero-unstr: not a string or empty.',
+        [{prefix = 'zotero', name = 'unstr'}] =
+            '.-%f[%a]zotero%-unstr: not a string or empty%.',
     }
 
     for k, v in pairs(erroneous) do
-        local parser = M.Options()
+        local parser = M.Options:clone()
         parser:add(k)
-        lu.assert_error_msg_equals(
-            v,
-            parser.parse,
-            parser,
-            meta
-        )
+        local ok, err = parser:parse(meta)
+        lu.assert_nil(ok)
+        lu.assert_str_matches(err, v)
     end
 
     local missing = {
@@ -1510,7 +1687,7 @@ function test_options_parse ()
         assert_equals(msg, v)
     end
 
-    local conf_parser = M.Options()
+    local conf_parser = M.Options:clone()
     conf_parser:add({prefix = 'zotero', name = 'test'})
     conf_parser:add({prefix = 'zotero', name = 'list', type = 'list'})
     conf_parser:add({prefix = 'zotero', name = 'num_list', type = 'list', parse = id})
@@ -1621,7 +1798,7 @@ function test_csl_varname_normalise ()
 
     local nok, err = M.csl_varname_normalise '!'
     lu.assert_nil(nok)
-    lu.assert_str_matches(err, '.+: not a variable name%.')
+    lu.assert_str_matches(err, '.+: not a CSL variable%.')
 end
 
 function test_csl_item_normalise_vars ()
@@ -1883,7 +2060,7 @@ function test_biblio_write ()
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio:write(fname, {ZOTXT_CSL})
     lu.assert_nil(err)
-    assert_equals(fmt, 'json')
+    assert_equals(fmt, true)
     data, err = M.biblio:read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
@@ -1893,7 +2070,7 @@ function test_biblio_write ()
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
     fmt, err = M.biblio:write(fname, ZOTXT_YAML)
-    assert_equals(fmt, 'yaml')
+    assert_equals(fmt, true)
     lu.assert_nil(err)
     data, err = M.biblio:read(fname)
     lu.assert_not_nil(data)
@@ -2067,29 +2244,29 @@ function test_elem_walk ()
     lu.assert_false(pandoc.utils.equals(elem, walked))
 end
 
-function test_doc_sources ()
+function test_doc_srcs ()
     -- luacheck: ignore err
 
     local empty_fname = M.path_join(DATA_DIR, 'empty.md')
     local empty, err = read_md_file(empty_fname)
     assert(empty, err)
-    assert_equals(M.doc_sources(empty), {})
+    assert_equals(M.doc_srcs(empty), {})
 
     local test_fname = M.path_join(DATA_DIR, 'dup.md')
     local test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    assert_items_equals(M.doc_sources(test_file), ZOTXT_META)
+    assert_items_equals(M.doc_srcs(test_file), ZOTXT_META)
 
     -- @fixme Needs a separate test for Pandoc >= v2.17.
     -- test_fname = M.path_join(DATA_DIR, 'dup-biblio-yaml.md')
     -- test_file, err = read_md_file(test_fname)
     -- assert(test_file, err)
-    -- assert_items_equals(M.doc_sources(test_file), ZOTXT_YAML)
+    -- assert_items_equals(M.doc_srcs(test_file), ZOTXT_YAML)
 
     test_fname = M.path_join(DATA_DIR, 'dup-biblio-bib.md')
     test_file, err = read_md_file(test_fname)
     assert(test_file, err)
-    local ids = M.csl_items_ids(M.doc_sources(test_file))
+    local ids = M.csl_items_ids(M.doc_srcs(test_file))
     assert_items_equals(ids, {
         ["crenshaw1989DemarginalizingIntersectionRace"] = true,
         ["díaz-león2015WhatSocialConstruction"] = true
