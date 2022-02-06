@@ -113,10 +113,12 @@ field to a filename. If that filename is relative, it is interpreted as
 being relative to the directory of the first input file or, if no input
 files were given, the current working directory.
 
-The filename may contain environment variables. Variable names are enclosed
-in ``${...}`` (e.g., ``${HOME}`` will be replaced with your home directory).
-Any series of *n* dollar signs will be replaced with *n* – 1 dollar signs,
-so that you can escape them should they occur in a filename.
+The "zotero-bibliography" metadata field may contain environment variables.
+Variable names must be enclosed in ``${...}`` and are replaced with the
+value of the environment variable of that name (e.g., ``${HOME}`` will be
+replaced with your home directory). Moreover, any series of *n* dollar signs
+is replaced with *n* – 1 dollar signs, so that you can escape them should
+they occur in a filename.
 
 The format of the file is determined by its filename ending.
 
@@ -129,13 +131,15 @@ The format of the file is determined by its filename ending.
 ``.yaml``   CSL YAML
 =========== ==========
 
-CSL formats are preferable to TeX formats.
+BibLaTeX and BibTeX support requires Pandoc v2.17 or later.
+CSL is preferable to BibLaTeX and BibTeX.
 
-The file is added to the "bibliography" metadata field automatically;
-if that field already contains bibliography files, they take priority.
+The bibliography file is added to the "bibliography" metadata field
+automatically; if that field already contains bibliography files,
+they take priority.
 
-Data is only ever added to the file, never updated or deleted. If you need
-to update the file, delete it, so that it will be regenerated from scratch.
+Data is only ever added to the bibliography file, never updated or deleted.
+However, if you delete the file, it will be regenerated from scratch.
 
 For example:
 
@@ -216,11 +220,10 @@ zotero-connectors
    zoteroweb  Zotero Web API
    =========  =====================
 
-   Data is fetched via the listed connectors only.
-
-   By default, the Zotero desktop client is searched first. If you have
-   set a Zotero API key and if the client could not be reached or some
-   citations could not be found, the Web API is searched next.
+   Data is fetched via the given connectors in the order in wnich they are
+   given. If bibliographic data for a source can be fetched via an earlier
+   connector, it is *not* searched for via later ones. By default, data is
+   first searched for using zotxt and then using the Web API.
 
 zotero-groups
    A list of Zotero group IDs. Only the given groups are searched.
