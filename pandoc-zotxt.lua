@@ -397,6 +397,7 @@ local _ENV = M
 -- Shorthands.
 local format = string.format
 local concat = table.concat
+local insert = table.insert
 local pack = table.pack
 local unpack = table.unpack
 local sort = table.sort
@@ -404,13 +405,15 @@ local sort = table.sort
 local stringify = pandoc.utils.stringify
 
 local List = pandoc.List
+
 local Meta = pandoc.Meta
 local MetaInlines = pandoc.MetaInlines
 local MetaList = pandoc.MetaList
 local MetaMap = pandoc.MetaMap
+local Pandoc = pandoc.Pandoc
+local Plain = pandoc.Plain
 local Str = pandoc.Str
 local Span = pandoc.Span
-local Pandoc = pandoc.Pandoc
 
 local extend = List.extend
 local includes = List.includes
@@ -1193,19 +1196,22 @@ do
     -- @string exp A variable expression.
     -- @treturn string The value of the expression.
     -- @raise See @{vars_sub}.
+    --
+    -- @todo Allow pipes of arbitrary lengths.
     local function expand (seen, vars, exp)
         -- luacheck: ignore assert
         local function msgh (err) return format('$%s: %s', exp, err) end
         local assert = asserter(nil, msgh)
-        local path, func = tabulate(split(exp:sub(2, -2), '|', 2))
+        local pipe = pack(tabulate(split(exp:sub(2, -2), '|')))
+        local path = pipe[1]
         assert(not seen[path], 'cycle in lookup.')
         seen[path] = true
         local v = assert(lookup(vars, path))
-        local t = type(v)
-        if t == 'string' then v = assert(vars_sub(v, vars, seen)) end
-        if func then
-            local f = assert(lookup(vars, func))
-            assert(type(f) == 'function', func .. ': not a function.')
+        if type(v) == 'string' then v = assert(vars_sub(v, vars, seen)) end
+        for i = 2, #pipe do
+            local fn = pipe[i]
+            local f = assert(lookup(vars, fn))
+            assert(type(f) == 'function', fn .. ': not a function.')
             v = f(v)
         end
         assert(type_match(v, 'string|number'))
@@ -1246,12 +1252,11 @@ do
     --    > )
     --    baz is baz.
     --
-    -- If a variable name is followed by a pipe ('|'), then the string between
-    -- the pipe and the closing brace ('}') names a function; the variable is
-    -- then passed to that function, and the whole expression is replaced with
-    -- the first value the function returns. Variable names cannot contain
-    -- pipes, but function names may; that is to say, the output of one
-    -- function cannot be piped to another.
+    -- If a name is followed by a pipe symbol ('|'), then the string between
+    -- that pipe symbol and the next pipe symbol/the closing brace ('}') names
+    -- a function; the value is then passed to that function, and the whole
+    -- expression replaced with the first value that the function returns.
+    -- Neither variable nor function names may contain pipe symbols.
     --
     --    > vars_sub(
     --    >     '${var|barify} is bar!', {
@@ -1275,16 +1280,26 @@ do
     --    bar is bar.
     --
     -- @string str A string.
-    -- @tab vars Variables.
+    -- @tparam func|tab vars A mapping of names to values.
     -- @treturn[1] string A transformed string.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     --
     -- @function vars_sub
-    vars_sub = type_check('string', 'table', '?table')(protect(
+    -- @fixme Functions are not unit-tested.
+    -- @fixme Chained function calls in pipes are not unit-tested.
+    vars_sub = type_check('string', 'function|table', '?table')(protect(
         function (str, vars, _seen)
             if not _seen then _seen = {} end
-            local function repl (...) return expand(_seen, vars, ...) end
+            local repl
+            local t = type(vars)
+            if t == 'function' then
+                repl = vars
+            elseif t == 'table' then
+                repl = function (...) return expand(_seen, vars, ...) end
+            else
+                error 'FIXME'
+            end
             return str:gsub('%f[%$]%$(%b{})', repl):gsub('%$(%$*)', '%1'), nil
         end
     ))
@@ -2101,10 +2116,10 @@ do
 
     -- Escape links and spans.
     --
-    -- @string brack The leading brackets.
+    -- @string brack The bracketed expression.
     -- @string tail '(' or '{'.
     -- @treturn string The escaped expression.
-    local function escape_link_spans (brack, tail)
+    local function escape_link_span (brack, tail)
         return '\\[' .. brack:sub(2, -2) .. '\\]' .. tail
     end
 
@@ -2113,15 +2128,14 @@ do
         -- Backslashes.
         {'(\\+)', '\\%1'},
         -- Bold and italics.
-        -- This escapes liberally,
-        -- but that's the easiest way to cover edge cases.
+        -- Escapes liberally, but that's the easiest way to cover edge cases.
         {'(%*+)([^%s%*])', escape_bold_italics},
         {'(_+)([^%s_])', escape_bold_italics},
         -- Superscript and subscript.
         {'(%^+)([^%^%s]*)(%^+)', escape_sup_sub},
         {'(~+)([^~%s]+)(~+)', escape_sup_sub},
         -- Brackets (spans and links).
-        {'(%b[])([%({])', escape_link_spans}
+        {'(%b[])([%({])', escape_link_span}
     }
 
     local npatterns = #patterns
@@ -2150,6 +2164,12 @@ do
 end
 
 do
+    -- Shorthands
+    -- luacheck: ignore type
+    local type = pandoc.utils.type
+    local walk_inline = pandoc.walk_inline
+    local write = pandoc.write
+
     -- luacheck: ignore assert
     -- Don't add a stack trace.
     local assert = asserter()
@@ -2164,8 +2184,7 @@ do
     -- @tparam pandoc.Str str A Pandoc string element.
     -- @treturn pandoc.Str A string with all Markdown syntax escaped.
     function escape_str.Str (str)
-        str.text = escape_markdown(str.text)
-        return str
+        return Str(escape_markdown(str.text))
     end
 
     -- Filter to convert to Markdown.
@@ -2177,7 +2196,7 @@ do
     -- @treturn func A conversion function.
     local function converter (char)
         return function (elem)
-            local str = stringify(pandoc.walk_inline(elem, to_markdown))
+            local str = stringify(walk_inline(elem, to_markdown))
             return Str(char .. str .. char)
         end
     end
@@ -2239,16 +2258,17 @@ do
     -- @treturn pandoc.Str A Markdown representation.
     function to_markdown.SmallCaps (sc)
         local span = Span(sc.content)
-        span.attributes.style = 'font-variant: small-caps'
+        insert(span.classes, 'smallcaps')
         return to_markdown.Span(span)
     end
 
     --- Convert a Pandoc element to Markdown text.
     --
-    -- @caveats
+    -- @require
     --
     -- Only recognises [elements Pandoc permits in bibliographic
-    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
+    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data)
+    -- if run with Pandoc < v2.17.
     --
     -- @tparam pandoc.AstElement elem A Pandoc AST element.
     -- @treturn string Markdown text.
@@ -2256,12 +2276,24 @@ do
     --
     -- @function markdownify
     -- @todo Unit-test parse errors?
-    markdownify = type_check('table|userdata')(
+    markdownify_legacy = type_check('table|userdata')(
         function (elem)
             local escaped = elem_walk(elem, escape_str)
             return stringify(elem_walk(escaped, to_markdown))
         end
     )
+
+    markdownify_modern = type_check('table|userdata')(
+        function (elem)
+            if type(elem) ~= 'Pandoc' then elem = Pandoc{Plain(elem)} end
+            return write(elem, 'markdown'):gsub('\r?\n$', ''), nil
+        end
+    )
+
+    if not pandoc.types or PANDOC_VERSION < {2, 17}
+        then markdownify = markdownify_legacy
+        else markdownify = markdownify_modern
+    end
 end
 
 do
@@ -2298,35 +2330,30 @@ do
         -- Replace line breaks with the OS' EOL sequence.
         str = str:gsub('\r?\n', EOL)
 
-        -- Escape special and forbidden characters.
+        -- Escape special and control characters.
         local chars = Values()
         for _, c in codes(str, true) do
             if
                 c == 0x22 or -- '"'
                 c == 0x5c    -- '\'
-            then
-                chars:add('\\' .. char(c))
+            then chars:add('\\' .. char(c))
             elseif
                 c == 0x09 or -- TAB
                 c == 0x0a or -- LF
                 c == 0x0d or -- CR
                 c == 0x85    -- NEL
-            then
-                chars:add(char(c))
+            then chars:add(char(c))
             elseif
                 c <= 0x001f or -- C0 control block
                 c == 0x007f    -- DEL
-            then
-                chars:add(format('\\x%02x', c))
+            then chars:add(format('\\x%02x', c))
             elseif
                 (0x0080 <= c and c <= 0x009f) or -- C1 control block
                 (0xd800 <= c and c <= 0xdfff) or -- Surrogate block
                 c == 0xfffe or
                 c == 0xffff
-            then
-                chars:add(format('\\u%04x', c))
-            else
-                chars:add(char(c))
+            then chars:add(format('\\u%04x', c))
+            else chars:add(char(c))
             end
         end
         str = concat(chars)
@@ -2356,12 +2383,12 @@ do
     -- @raise An error if the value cannot be represented in YAML.
     --
     -- @function yamlify
-    -- @fixme Indentation is not unit-tested.
-    yamlify = type_check('*', '?number', '?number', '?table')(
+    yamlify = type_check('?*', '?number', '?number', '?table')(
         function (val, ind, _col, _seen)
             if not _seen then _seen = {} end
             assert(not _seen[val], 'cycle in data tree.')
             if not ind then ind = 4 end
+            assert(ind > 0, 'number of spaces must be greater than 0.')
             local t = type(val)
             local conv = converters[t]
             if conv then return conv(val) end
@@ -2404,17 +2431,16 @@ end
 
 --- Convert Zotero pseudo-HTML to proper HTML.
 --
--- @string zot Zotero pseudo-HTML code.
+-- @string pseudo Zotero pseudo-HTML code.
 -- @treturn[1] string HTML code.
 -- @treturn[2] nil `nil` if opening and closing ´<sc>´ tags are unbalanced.
 -- @treturn[2] string An error message.
 --
 -- @function zotero_to_html
 zotero_to_html = type_check('string')(
-    function (zot)
+    function (pseudo)
         local opened, closed, n, m
-        opened, n = zot:gsub('<sc>', '<span style="font-variant: small-caps">')
-        if n == 0 then return zot end
+        opened, n = pseudo:gsub('<sc>', '<span class="smallcaps">')
         closed, m = opened:gsub('</sc>', '</span>')
         if n == m then return closed end
         return nil, format('encountered %d <sc> but %d </sc> tags.', n, m)
@@ -2422,25 +2448,30 @@ zotero_to_html = type_check('string')(
 )
 
 do
+    -- Shorthand.
+    local read = pandoc.read
+
     --- Convert Zotero pseudo-HTML to Markdown.
     --
-    -- @caveats
+    -- @require
     --
     -- Only supports [pseudo-HTML that Pandoc recognises in bibliographic
-    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data).
+    -- data](https://pandoc.org/MANUAL.html#specifying-bibliographic-data)
+    -- if run with Pandoc < v2.17.
     --
-    -- @string zot Zotero pseudo-HTML code.
+    -- @string pseudo Zotero pseudo-HTML code.
     -- @treturn[1] string Markdown text.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
     --
     -- @function zotero_to_markdown
     zotero_to_markdown = type_check('string')(protect(
-        function (zot)
-            local html, err = zotero_to_html(zot)
+        function (pseudo)
+            local html, err = zotero_to_html(pseudo)
             if not html then return nil, err end
-            local doc = pandoc.read(html, 'html')
-            return markdownify(doc)
+            local ok, result = pcall(read, html, 'html')
+            if not ok then return nil, result end
+            return markdownify(result)
         end
     ))
 end
@@ -2507,9 +2538,7 @@ do
         if not key or not val then return end
         key = csl_varname_normalise(key)
         if not key then return end
-        val = trim(val)
-        if val == '' then return end
-        return key, val
+        return key, trim(val)
     end
 
     -- Iterate over "extra" field entries.
@@ -2584,10 +2613,8 @@ do
 end
 
 do
-    local insert = table.insert
-
-    local part_names = {'year', 'month', 'day'}
     local date_names = {'from', 'to'}
+    local part_names = {'year', 'month', 'day'}
 
     -- Parse a date in Zotero's extra field.
     --
@@ -2599,25 +2626,31 @@ do
     -- @raise An error if the date cannot be parsed.
     local function parse_date (item, key, val)
         -- luacheck: ignore assert
-        local function msgh (err) return key .. ': ' .. err end
+        local i, j
+        local function msgh (err)
+            return item.id or 'unknown item'
+                   .. ': ' .. key
+                   .. ': ' .. err:format(date_names[i], part_names[j])
+        end
         local assert = asserter(nil, msgh)
         local date = {}
-        local i = 0
-        for iso in split(val, '/', 2) do
+        i = 0
+        for iso in split(val, '/') do
             i = i + 1
+            assert(i < 3, 'too many dates.')
             local parts = {}
-            local j = 0
-            for part in split(iso, '-', 3) do
+            j = 0
+            for part in split(iso, '-') do
                 if not part or part == '' then break end
-                assert(part:match '^%d+$',
-                       format('%s is not a number.', part_names[j]))
                 j = j + 1
+                assert(j < 4, '%s date: too many date parts.')
+                assert(part:match '^%d+$', '%s date: %s is not a number.')
                 parts[j] = part
             end
-            assert(j > 0, format('missing %s date', date_names[i]))
+            assert(j > 0, 'missing %s date.')
             date[i] = parts
         end
-        assert(i > 0, 'not in YYYY-MM-DD[/YYYY-MM-DD] format.')
+        assert(i > 0, 'is empty.')
         item[key] = {['date-parts'] = date}
     end
 
@@ -2631,10 +2664,9 @@ do
     local function parse_name (item, key, val)
         local family, given = tabulate(split(val, '%s*%|%|%s*', 2))
         if not item[key] then item[key] = {} end
-        if family and family ~= '' and given and given ~= '' then
-            insert(item[key], {family = family, given = given})
-        else
-            insert(item[key], val)
+        if family and family ~= '' and given and given ~= ''
+            then insert(item[key], {family = family, given = given})
+            else insert(item[key], val)
         end
     end
 
@@ -2665,6 +2697,8 @@ do
 
     --- Add CSL variables from the "note" field to the item proper.
     --
+    -- @side May print error messages to STDERR.
+    --
     -- @tab item A CSL item.
     -- @treturn[1] table The item with variables from "extra" copied over.
     -- @treturn[2] nil `nil` if an "extra" field cannot be parsed.
@@ -2675,14 +2709,19 @@ do
         function (item)
             local ret = copy(item)
             for k, v in csl_item_extras(item) do
-                local f = parsers[k]
-                if not ret[k] or f == parse_date or k == 'type' then
-                    if f then
-                        f(ret, k, v)
-                    -- At least until CSL v1.2 is out and
-                    -- 'citekey' becomes official.
-                    elseif k ~= 'citation-key' and k ~= 'citekey' then
-                        ret[k] = v
+                if v == '' then
+                    return nil, format('%s: %s: is empty.',
+                                       item.id or 'unknown item', k)
+                else
+                    local f = parsers[k]
+                    if not ret[k] or f == parse_date or k == 'type' then
+                        if f then
+                            f(ret, k, v)
+                        -- At least until CSL v1.2 is out and
+                        -- 'citekey' becomes official.
+                        elseif k ~= 'citation-key' and k ~= 'citekey' then
+                            ret[k] = v
+                        end
                     end
                 end
             end
@@ -2734,7 +2773,7 @@ do
         local t = type(item)
         local f = converters[t]
         if f then return f(item, ...) end
-        error(t .. ': cannot be converted to Pandoc metadata.', 0)
+        error(t .. ': cannot be converted to a Pandoc metadata value.', 0)
     end
 
     -- Convert a Lua boolean to a pandoc.MetaBool
@@ -2792,6 +2831,8 @@ do
 
     --- Convert a CSL item to a Pandoc metadata value.
     --
+    -- This allows to use CSL items in the `references` metadata field.
+    --
     -- @tab item A CSL item.
     -- @treturn[1] pandoc.MetaValue A Pandoc metadata value.
     -- @treturn[2] nil `nil` if a value cannot be converted.
@@ -2799,8 +2840,6 @@ do
     --
     -- @function csl_item_to_meta
     -- @fixme Not unit-tested.
-    -- @fixme Document that it may raise an errur in Pandoc < whatever.
-    --  like http_get
     csl_item_to_meta = type_check('table')(
         function (item)
             local ok, result = pcall(convert, item)
@@ -2812,24 +2851,26 @@ end
 
 --- Filter CSL items by their citation key.
 --
+-- @side May print error messages to STDERR.
+--
 -- @tparam {tab,...} items CSL items.
 -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
 -- @treturn {tab,...} Items with that citation key.
 --
 -- @function csl_items_filter_by_ckey
--- @fixme Not unit-tested.
 csl_items_filter_by_ckey = type_check('table', 'string')(
     function (items, ckey)
         local filtered = Values()
         for i = 1, #items do
             local item = items[i]
             for k, v in csl_item_extras(item) do
-                if
-                    (k == 'citation-key' or k == 'citekey') and
-                    v:lower() == ckey:lower()
-                then
-                    filtered:add(item)
-                    break
+                if k == 'citation-key' or k == 'citekey' then
+                    if v == '' then
+                        xwarn(item.id or 'unknown item', ': ${k}: is empty.')
+                    elseif v:lower() == ckey:lower() then
+                        filtered:add(item)
+                        break
+                    end
                 end
             end
         end
@@ -2851,14 +2892,14 @@ csl_items_ids = type_check('table')(
         for i = 1, #items do
             local id = items[i].id
             local t = type(id)
-            if     t == 'number'   then id = tostring(id)
-            elseif t == 'userdata' then id = stringify(id)
-            elseif t == 'table'    then id = stringify(id)
+            if t == 'number'   then
+                id = tostring(id)
+            elseif t == 'userdata' or t == 'table' then
+                id = stringify(id)
             end
-            -- @todo Maybe name the author, year, and title?
             if type(id) == 'string' and id ~= ''
                 then ids[id] = true
-                else xwarn('@error', 'ignoring CSL item witout parsable ID.')
+                else xwarn('@error', 'ignoring CSL item without parsable ID.')
             end
         end
         return ids
@@ -2926,13 +2967,12 @@ do
     -- Convert numbers to strings.
     --
     -- Floating point numbers are converted to integers.
-    -- Data of other types is returned as is.
     --
-    -- @tab data The data.
-    -- @return The converted data.
-    local function num_to_str (data)
-        if type(data) ~= 'number' then return data end
-        return tostring(floor(data))
+    -- @param num A number.
+    -- @treturn[1] string A string.
+    -- @treturn[2] nil `nil` if the given value is not a number.
+    local function num_to_str (num)
+        if type(num) == 'number' then return tostring(floor(num)) end
     end
 
     --- Parse a CSL JSON string.
@@ -3170,7 +3210,7 @@ biblio.types.bib = {}
 -- @treturn[2] string An error message.
 --
 -- @require Only returns a list of mappings of the literal
---  'id' to CSL item IDs under Pandoc < v2.17.
+--  'id' to CSL item IDs if run with Pandoc < v2.17.
 --
 -- @function biblio.types.bib.decode
 -- @fixme Not unit-tested.
@@ -3227,7 +3267,7 @@ biblio.types.bibtex = {}
 -- @treturn[2] string An error message.
 --
 -- @require Only returns a list of mappings of the literal
---  'id' to CSL item IDs under Pandoc < v2.17.
+--  'id' to CSL item IDs if run with Pandoc < v2.17.
 --
 -- @function biblio.types.bibtex.decode
 -- @fixme Not unit-tested.

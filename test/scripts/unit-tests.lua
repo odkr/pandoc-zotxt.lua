@@ -147,6 +147,7 @@ local M = require 'test-wrapper'
 -- Shorthands.
 local assert_equals = lu.assert_equals
 local assert_not_equals = lu.assert_not_equals
+local assert_error = lu.assert_error
 local assert_error_msg_matches = lu.assert_error_msg_matches
 local assert_false = lu.assert_false
 local assert_items_equals = lu.assert_items_equals
@@ -1247,10 +1248,10 @@ end
 function test_file_exists ()
     assert_error_msg_matches('.-%f[%a]filename is the empty string.',
         M.file_exists, '')
-    lu.assert_true(M.file_exists(PANDOC_SCRIPT_FILE))
+    assert_true(M.file_exists(PANDOC_SCRIPT_FILE))
     local ok, _, errno = M.file_exists('<no such file>')
     assert_equals(errno, 2)
-    lu.assert_nil(ok)
+    assert_nil(ok)
 end
 
 function test_file_locate ()
@@ -1410,15 +1411,11 @@ function test_with_tmp_file ()
 end
 
 
-----------------------------------------------------------------
-
-
--- Converters
--- ----------
+--- Markup converters
+-- @section
 
 function test_escape_markdown ()
-
-    local tests = {
+    for input, output in pairs{
         [''] = '',
         ['\\'] = '\\\\',
         ['\\\\'] = '\\\\\\',
@@ -1525,114 +1522,482 @@ function test_escape_markdown ()
         ['[***My*Name**]{style="small-caps"}'] = '\\[\\*\\*\\*My\\*Name\\*\\*\\]{style="small-caps"}',
         ['*my*~i~ is [more]{.complex}^'] = '\\*my\\*\\~i\\~ is \\[more\\]{.complex}^',
         ['yet **another**~*test*~^a^ [b]{.c}'] = 'yet \\*\\*another\\*\\*\\~\\*test\\*\\~\\^a\\^ \\[b\\]{.c}'
-    }
-
-    for i, o in pairs(tests) do
-        local ret = M.escape_markdown(i)
-        assert_equals(ret, o)
-        -- luacheck: ignore ret
-        local doc = pandoc.read(ret, 'markdown-smart')
-        lu.assert_not_nil(doc)
-        if  doc.blocks[1]        and
-            not i:match '^%s'    and
-            not i:match '%s$'    and
-            not i:match '^%s*%*' and
-            not i:match '\\'
-        then
-            assert_equals(i, stringify(doc.blocks[1].content))
-        end
-    end
-end
-
-function test_zotero_to_markdown ()
-    local pt = {nil, 0, false, {}, function () end}
-    for _, v in ipairs(pt) do
-        assert_equals(M.zotero_to_markdown(v), v)
-    end
-
-    local tests = {
-        [''] = '',
-        ['test'] = 'test',
-        ['<i>test</i>'] = '*test*',
-        ['<b>test</b>'] = '**test**',
-        ['<b><i>test</i></b>'] = '***test***',
-        ['<i><b>test</b></i>'] = '***test***',
-        ['<sc>test</sc>'] = '[test]{style="font-variant: small-caps"}',
-        ['<span style="font-variant: small-caps">test</span>'] =
-            '[test]{style="font-variant: small-caps"}',
-        ['<sub>x</sub>'] = '~x~',
-        ['<sup>x</sup>'] = '^x^',
-        ['<span>test</span>'] = 'test',
-        ['<span id="test">test</span>'] = '[test]{#test}',
-        ['<span class="nocase">test</span>'] = '[test]{.nocase}',
-        ['<span class="test">test</span>'] = '[test]{.test}',
-        ['<span class="a b c">test</span>'] = '[test]{.a .b .c}',
-        ['<span style="test">test</span>'] = '[test]{style="test"}',
-        ['<span style="test" data-test="test">test</span>'] =
-            '[test]{style="test" test="test"}',
-        ['<i><sc>test</sc></i>'] = '*[test]{style="font-variant: small-caps"}*',
-        ['<b><sc>test</sc><sub>2</sub></b>'] =
-            '**[test]{style="font-variant: small-caps"}~2~**',
-        ['<sc><b>[**E**[*x*~*i*~]]{.class}</b><sup>x</sup></sc>'] =
-            '[**\\[\\*\\*E\\*\\*[\\*x\\*\\~\\*i\\*\\~]\\]{.class}**^x^]{style="font-variant: small-caps"}',
-        ['<i>**test**</i>'] = '*\\*\\*test***',
-        ['<b>**test**</b>'] = '**\\*\\*test****',
-        ['<span class="test">*test*~2~</span>'] = '[\\*test\\*\\~2\\~]{.test}',
-        ['<span style="font-variant: small-caps">test~x~*!*</span>'] =
-            '[test\\~x\\~\\*!*]{style="font-variant: small-caps"}',
-        ['<span class="nocase"><i>*test*</i><sc>**X**</sc></span>'] =
-            '[*\\*test**[\\*\\*X**]{style="font-variant: small-caps"}]{.nocase}',
-    }
-
-    for i, o in pairs(tests) do
-        local md, err = M.zotero_to_markdown(i)
-        assert_nil(err)
-        assert_equals(md, o)
+    } do
+        local str = M.escape_markdown(input)
+        assert_equals(str, output)
+        local doc = pandoc.read(str, 'markdown-smart')
+        assert_not_nil(doc)
+        if  doc.blocks and #doc.blocks > 0 and
+            not input:match '^%s'          and
+            not input:match '%s$'          and
+            not input:match '^%s*%*'       and
+            not input:match '\\'
+        then assert_equals(input, stringify(doc.blocks[1].content)) end
     end
 end
 
 function test_markdownify ()
-    local tests = {
-        '' ,'test',
-        '*test*', '**test**', '***test***',
-        '^test^', '~test~',
-        '[test]{.test}',
-        '[*test*^2^]{.nocase}',
-        '***test***^[ABC]{.class}^'
-    }
+    local funcs = {[M.markdownify_legacy] = true, [M.markdownify] = true}
+    if pandoc.types and PANDOC_VERSION >= {2, 17} then
+        funcs[M.markdownify_modern] = true
+    end
 
-    for i = 1, #tests do
-        local md = tests[i]
-        local conv = M.markdownify(pandoc.read(md))
-        lu.assert_true(conv == md or conv == '\\' .. md)
+    for func in pairs(funcs) do
+        assert_error(func, {function () end})
+        for _, md in ipairs{
+            '' ,
+            'test',
+            '*test*',
+            '**test**',
+            '***test***',
+            '^test^',
+            '~test~',
+            '[test]{.test}',
+            '[*test*^2^]{.nocase}',
+            '***test***^[ABC]{.class}^'
+        } do
+            local conv = func(pandoc.read(md))
+            assert_equals(conv, md)
+        end
     end
 end
 
 function test_yamlify ()
     local cycle = {}
     cycle.cycle = cycle
-    lu.assert_error_msg_matches('.+: cycle in data tree%.', M.yamlify, cycle)
+    local thread = coroutine.create(nilify)
+
+    for input, pattern in pairs{
+        [{cycle}] = '.+%f[%a]cycle in data tree%.',
+        [{nilify}] = '.+%f[%a]function: cannot be expressed in YAML%.',
+        [{thread}] = '.+%f[%a]thread: cannot be expressed in YAML%.',
+        [{'foo', 0}] = '.+%f[%a]number of spaces must be greater than 0.'
+    } do
+        assert_error_msg_matches(pattern, M.yamlify, unpack(input))
+    end
+
+    local tab = setmetatable({
+        foo = 'foo',
+        bar = 'bar'
+    }, M.sort_pairs)
+
+    local list = setmetatable({1, 2}, M.sort_pairs)
+    table.insert(list, M.copy(list))
+
+    local dict = setmetatable({foo = 1, bar = 2}, M.sort_pairs)
+    dict.baz = M.copy(dict)
 
     local tests = {
-        [3] = "3",
-        ['3'] = '"3"',
-        ['test'] = '"test"',
-        [{'test'}] = '- "test"',
-        ['test test'] = '"test test"',
-        [{['test test'] = 0}] = 'test test: 0',
-        ['test\ntest'] = '"test' .. M.EOL .. 'test"',
-        ['test\r\ntest'] = '"test' .. M.EOL .. 'test"',
-        ['test' .. utf8.char(0x7f) .. 'test'] = '"test\\x7ftest"',
-        ['test' .. utf8.char(0xda99) .. 'test'] = '"test\\uda99test"'
-    }
-    for k, v in pairs(tests) do
-        assert_equals(M.yamlify(k) ,v)
+        [{true}] = 'true',
+        [{false}] = 'false',
+        [{0}] = '0',
+        [{1}] = '1',
+        [{'1'}] = '"1"',
+        [{''}] = '""',
+        [{'foo'}] = '"foo"',
+        [{'foo bar'}] = '"foo bar"',
+        [{'foo\nbar'}] = '"foo' .. M.EOL .. 'bar"',
+        [{'foo\r\nbar'}] = '"foo' .. M.EOL .. 'bar"',
+        [{{}}] = '',
+        [{{'foo'}}] = '- "foo"',
+        [{{'foo', 'bar'}}] = '- "foo"' .. M.EOL .. '- "bar"',
+        [{{['foo'] = 'foo'}}] = 'foo: "foo"',
+        [{tab}] = 'bar: "bar"' .. M.EOL .. 'foo: "foo"',
+        [{true, 1}] = 'true',
+        [{false, 1}] = 'false',
+        [{0, 1}] = '0',
+        [{1, 1}] = '1',
+        [{'1', 1}] = '"1"',
+        [{'', 1}] = '""',
+        [{'foo', 1}] = '"foo"',
+        [{'foo bar', 1}] = '"foo bar"',
+        [{'foo\nbar', 1}] = '"foo' .. M.EOL .. 'bar"',
+        [{'foo\r\nbar', 1}] = '"foo' .. M.EOL .. 'bar"',
+        [{{}, 1}] = '',
+        [{{'foo'}, 1}] = '- "foo"',
+        [{{'foo', 'bar'}, 1}] = '- "foo"' .. M.EOL .. '- "bar"',
+        [{{['foo'] = 'foo'}, 1}] = 'foo: "foo"',
+        [{tab, 1}] = 'bar: "bar"' .. M.EOL .. 'foo: "foo"',
+        [{list, 1}] =
+[[- 1
+- 2
+- - 1
+  - 2]],
+        [{dict}] =
+[[bar: 2
+baz:
+    bar: 2
+    foo: 1
+foo: 1]],
+        [{dict, 1}] =
+[[bar: 2
+baz:
+ bar: 2
+ foo: 1
+foo: 1]],
+        [{dict, 2}] =
+[[bar: 2
+baz:
+  bar: 2
+  foo: 1
+foo: 1]],
+        [{dict, 3}] =
+[[bar: 2
+baz:
+   bar: 2
+   foo: 1
+foo: 1]],
+        [{dict, 4}] =
+[[bar: 2
+baz:
+    bar: 2
+    foo: 1
+foo: 1]]
+}
+
+    for _, code in ipairs{0x22, 0x5c} do
+        local char = utf8.char(code)
+        local esc = '\\' .. char
+        tests[{char}] = '"' .. esc .. '"'
+        tests[{'foo' .. char}] = '"foo' .. esc .. '"'
+        tests[{char .. 'bar'}] = '"' .. esc .. 'bar"'
+        tests[{'foo' .. char .. 'bar'}] = '"foo' .. esc .. 'bar"'
+    end
+
+    for _, range in ipairs{
+        {0x0000, 0x001f}, -- C0 control block
+        {0x007f, 0x007f}, -- DEL
+        {0x0080, 0x009f}, -- C1 control block
+        {0xd800, 0xdfff}, -- Surrogate block
+        {0xfffe, 0xffff},
+    } do
+        local start, stop = unpack(range)
+        local format
+        if stop <= 0x7f then format = '\\x%02x'
+                        else format = '\\u%04x'
+        end
+        for code = start, stop do
+            if not pandoc.List.includes({0x09, 0x0a, 0x0d, 0x85}, code) then
+                local char = utf8.char(code)
+                local esc = string.format(format, code)
+                tests[{char}] = '"' .. esc .. '"'
+                tests[{'foo' .. char}] = '"foo' .. esc .. '"'
+                tests[{char .. 'bar'}] = '"' .. esc .. 'bar"'
+                tests[{'foo' .. char .. 'bar'}] = '"foo' .. esc .. 'bar"'
+            end
+        end
+    end
+
+    for input, output in pairs(tests) do
+        assert_equals(M.yamlify(unpack(input)), output)
     end
 
     local str = M.yamlify(ZOTXT_CSL)
     local csl = rconv_nums_to_strs(yaml.parse(str))
     assert_equals(csl, ZOTXT_CSL)
 end
+
+function test_zotero_to_html ()
+    for input, pattern in pairs{
+        ['<sc>'] = 'encountered 1 <sc> but 0 </sc> tags.',
+        ['<sc>foo'] = 'encountered 1 <sc> but 0 </sc> tags.',
+        ['<sc>foo</sc><sc>'] = 'encountered 2 <sc> but 1 </sc> tags.',
+        ['<sc>foo</sc>bar<sc>'] = 'encountered 2 <sc> but 1 </sc> tags.',
+        ['</sc>'] = 'encountered 0 <sc> but 1 </sc> tags.',
+        ['foo</sc>'] = 'encountered 0 <sc> but 1 </sc> tags.',
+        ['<sc>foo</sc></sc>'] = 'encountered 1 <sc> but 2 </sc> tags.',
+        ['<sc>foo</sc>bar</sc>'] = 'encountered 1 <sc> but 2 </sc> tags.',
+    } do
+        local ok, err = M.zotero_to_html(input)
+        assert_nil(ok)
+        assert_equals(err, pattern)
+    end
+
+    for input, output in pairs{
+        [''] = '',
+        ['foo'] = 'foo',
+        ['<sc>foo</sc>'] = '<span class="smallcaps">foo</span>',
+        ['<sc><b>foo</b></sc>'] = '<span class="smallcaps"><b>foo</b></span>',
+    } do
+        assert_equals(M.zotero_to_html(input), output)
+    end
+end
+
+function test_zotero_to_markdown ()
+    for input, pattern in pairs{
+        ['<sc>'] = 'encountered 1 <sc> but 0 </sc> tags.',
+        ['<sc>foo'] = 'encountered 1 <sc> but 0 </sc> tags.',
+        ['<sc>foo</sc><sc>'] = 'encountered 2 <sc> but 1 </sc> tags.',
+        ['<sc>foo</sc>bar<sc>'] = 'encountered 2 <sc> but 1 </sc> tags.',
+        ['</sc>'] = 'encountered 0 <sc> but 1 </sc> tags.',
+        ['foo</sc>'] = 'encountered 0 <sc> but 1 </sc> tags.',
+        ['<sc>foo</sc></sc>'] = 'encountered 1 <sc> but 2 </sc> tags.',
+        ['<sc>foo</sc>bar</sc>'] = 'encountered 1 <sc> but 2 </sc> tags.'
+    } do
+        local ok, err = M.zotero_to_markdown(input)
+        assert_nil(ok)
+        assert_equals(err, pattern)
+    end
+
+    for input, output in pairs{
+        [''] = '',
+        ['foo'] = 'foo',
+        ['<i>foo</i>'] = '*foo*',
+        ['<b>foo</b>'] = '**foo**',
+        ['<b><i>foo</i></b>'] = '***foo***',
+        ['<i><b>foo</b></i>'] = '***foo***',
+        ['<em>foo</em>'] = '*foo*',
+        ['<strong>foo</strong>'] = '**foo**',
+        ['<strong><em>foo</em></strong>'] = '***foo***',
+        ['<em><strong>foo</strong></em>'] = '***foo***',
+        ['<sc>foo</sc>'] = '[foo]{.smallcaps}',
+        ['<span style="font-variant:small-caps;">foo</span>'] = '[foo]{.smallcaps}',
+        ['<i><sc>foo</sc></i>'] = '*[foo]{.smallcaps}*',
+        ['<b><sc>foo</sc><sub>bar</sub></b>'] = '**[foo]{.smallcaps}~bar~**',
+        ['<sub>foo</sub>'] = '~foo~',
+        ['<sup>foo</sup>'] = '^foo^',
+        ['<span class="nocase">foo</span>'] = '[foo]{.nocase}'
+    } do
+        assert_equals(M.zotero_to_markdown(input), output)
+    end
+end
+
+
+--- CSL items
+-- @section
+
+function test_csl_item_extras ()
+    for _, input in ipairs{
+        {
+            author = {{family = 'Doe', given = 'John'}},
+            issued = {['date-parts'] = {{'2021'}}},
+            note = [[
+                Original date: 1970
+                Original author: Doe || Jane
+            ]],
+            publisher = 'Unit test press',
+            ['publisher-place'] = 'Vienna',
+            title = 'Unit testing',
+            type = 'book'
+        },
+        {
+            author = {{family = 'Doe', given = 'John'}},
+            issued = {['date-parts'] = {{'2021'}}},
+            note = [[
+                {:original-date: 1970}
+                {:original-author: Doe || Jane}
+            ]],
+            publisher = 'Unit test press',
+            ['publisher-place'] = 'Vienna',
+            title = 'Unit testing',
+            type = 'book'
+        }
+    } do
+        local res = {}
+        for k, v in M.csl_item_extras(input) do
+            res[k] = v
+        end
+
+        assert_items_equals(res, {
+            ['original-date'] = '1970',
+            ['original-author'] = 'Doe || Jane'
+        })
+    end
+end
+
+function test_csl_item_add_extras ()
+    for date, msg in pairs{
+        [''] =
+            'unknown item: original-date: is empty.',
+        ['/'] =
+            'unknown item: original-date: missing from date.',
+        ['foo'] =
+            'unknown item: original-date: from date: year is not a number.',
+        ['1970-foo'] =
+            'unknown item: original-date: from date: month is not a number.',
+        ['1970-01-foo'] =
+            'unknown item: original-date: from date: day is not a number.',
+        ['1970-01-01-01'] =
+            'unknown item: original-date: from date: too many date parts.',
+        ['1970-01-01/'] =
+            'unknown item: original-date: missing to date.',
+        ['1970-01-01/foo'] =
+            'unknown item: original-date: to date: year is not a number.',
+        ['1970-01-01/1970-foo'] =
+            'unknown item: original-date: to date: month is not a number.',
+        ['1970-01-01/1970-01-foo'] =
+            'unknown item: original-date: to date: day is not a number.',
+        ['1970-01-01/1970-01-01-01'] =
+            'unknown item: original-date: to date: too many date parts.',
+        ['1970-01-01/1970-01-01/'] =
+            'unknown item: original-date: too many dates.',
+    } do
+        local ok, err = M.csl_item_add_extras{note = 'original-date: ' .. date}
+        assert_nil(ok)
+        assert_equals(err, msg)
+    end
+
+    local input = {
+        author = {{family = 'Doe', given = 'John'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        note = [[
+            Original date: 1970
+            Original author: Doe || Jane
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    local output = {
+        author = {{family = 'Doe', given = 'John'}},
+        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        ['original-data'] = {['date-parts'] = {{'1970'}}},
+        note = [[
+            Original date: 1970
+            Original author: Doe || Jane
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
+
+    input = {
+        author = {{family = 'Doe', given = 'John'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        note = [[
+            {:original-date: 1970}
+            {:original-author: Doe || Jane}
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    output = {
+        author = {{family = 'Doe', given = 'John'}},
+        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
+        issued = {['date-parts'] = {{'2021'}}},
+        ['original-data'] = {['date-parts'] = {{'1970'}}},
+        note = [[
+            {:original-date: 1970}
+            {:original-author: Doe || Jane}
+        ]],
+        publisher = 'Unit test press',
+        ['publisher-place'] = 'Vienna',
+        title = 'Unit testing',
+        type = 'book'
+    }
+    assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
+end
+
+function test_csl_item_normalise_vars ()
+    local cycle = {}
+    cycle.cycle = cycle
+    assert_items_equals(M.csl_item_normalise_vars(cycle), cycle)
+
+    local test = {
+        ISBN = '978-0-19-989262-4',
+        Author = {{Family = 'Haslanger', Given = 'Sally'}},
+        ['Event place'] = 'Oxford',
+        ID = 'haslanger2012ResistingRealitySocial',
+        Issued = {['Date parts'] = {{'2012'}}},
+        Note = 'citation key: haslanger2012ResistingRealitySocial',
+        Publisher = 'Oxford University Press',
+        ['Publisher place'] = 'Oxford',
+        ShortTitle = 'Resisting Reality',
+        Title = 'Resisting Reality: Social Construction and Social Critique',
+        Type = 'book'
+    }
+    assert_equals(M.csl_item_normalise_vars(test), ZOTWEB_CSL)
+end
+
+----------------
+-- test_csl_item_to_meta @fixme
+----------------
+
+function test_csl_items_filter_by_ckey ()
+    local foo = {note = 'citekey: foo'}
+    local bar = {note = 'citation-key: bar'}
+    local baz = {note = 'Citation key: baz'}
+    local items = {foo, bar, baz}
+
+    assert_items_equals(M.csl_items_filter_by_ckey({}, 'foo'), {})
+    assert_items_equals(M.csl_items_filter_by_ckey(items, 'foo'), {foo})
+    assert_items_equals(M.csl_items_filter_by_ckey(items, 'bar'), {bar})
+    assert_items_equals(M.csl_items_filter_by_ckey(items, 'baz'), {baz})
+
+end
+
+function test_csl_items_ids ()
+    for input, output in pairs{
+        [{}] = {},
+        [ZOTXT_CSL] = {haslanger2012ResistingRealitySocial = true},
+        [ZOTXT_YAML] = {crenshaw1989DemarginalizingIntersectionRace = true}
+    } do
+        assert_equals(M.csl_items_ids(input), output)
+    end
+end
+
+function test_csl_items_sort ()
+    for input, output in pairs{
+        [{{id = 1}, {id = 2}}] = true,
+        [{{id = 1}, {id = 1}}] = false,
+        [{{id = 2}, {id = 1}}] = false,
+        [{{id = 'a'}, {id = 'b'}}] = true,
+        [{{id = 'a'}, {id = 'a'}}] = false,
+        [{{id = 'b'}, {id = 'a'}}] = false,
+        [{{id = 'Z'}, {id = 'a'}}] = true,
+        [{{id = 'Z'}, {id = 'Z'}}] = false,
+        [{{id = 'a'}, {id = 'Z'}}] = false
+    } do
+        assert_equals(M.csl_items_sort(unpack(input)), output)
+    end
+end
+
+function test_csl_varname_normalise ()
+    for input, pattern in pairs{
+        [''] = '^variable name is the empty string%.',
+        ['!'] = '.+: not a CSL variable%.',
+        ['foo.bar'] = '.+: not a CSL variable%.'
+    } do
+        local ok, err = M.csl_varname_normalise(input)
+        lu.assert_nil(ok)
+        lu.assert_str_matches(err, pattern)
+    end
+
+    for input, output in pairs{
+        ['Citation Key'] = 'citation-key',
+        ['ORIGINAL DATE'] = 'original-date',
+        ['Author'] = 'author',
+        ['BLA-bla bLa'] = 'bla-bla-bla'
+    } do
+        assert_equals(M.csl_varname_normalise(input), output)
+    end
+end
+
+function test_csl_vars_sort ()
+    for input, output in pairs{
+        [{'a', 'b'}] = true,
+        [{'b', 'a'}] = false,
+        [{'id', 'a'}] = true,
+        [{'a', 'id'}] = false,
+        [{'id', 'type'}] = true,
+        [{'type', 'id'}] = false
+    } do
+        assert_equals(M.csl_vars_sort(unpack(input)), output)
+    end
+end
+
+
+
+----------------------------------------------------------------
+
+
+
 
 function test_options_add ()
     local options = M.Options:clone()
@@ -1785,180 +2150,15 @@ end
 -- Bibliography files
 -- ------------------
 
-function test_csl_varname_normalise ()
-    local tests = {
-        ['Citation Key'] = 'citation-key',
-        ['ORIGINAL DATE'] = 'original-date',
-        ['Author'] = 'author',
-        ['BLA-bla bLa'] = 'bla-bla-bla'
-    }
-    for k, v in pairs(tests) do
-        assert_equals(M.csl_varname_normalise(k), v)
-    end
 
-    local nok, err = M.csl_varname_normalise '!'
-    lu.assert_nil(nok)
-    lu.assert_str_matches(err, '.+: not a CSL variable%.')
-end
 
-function test_csl_item_normalise_vars ()
-    local cycle = {}
-    cycle.cycle = cycle
-    assert_items_equals(M.csl_item_normalise_vars(cycle), cycle)
 
-    local test = {
-        ISBN = '978-0-19-989262-4',
-        Author = {{Family = 'Haslanger', Given = 'Sally'}},
-        ['Event place'] = 'Oxford',
-        ID = 'haslanger2012ResistingRealitySocial',
-        Issued = {['date-parts'] = {{'2012'}}},
-        Note = 'citation key: haslanger2012ResistingRealitySocial',
-        Publisher = 'Oxford University Press',
-        ['Publisher place'] = 'Oxford',
-        ShortTitle = 'Resisting Reality',
-        Title = 'Resisting Reality: Social Construction and Social Critique',
-        Type = 'book'
-    }
 
-    assert_equals(M.csl_item_normalise_vars(test), ZOTWEB_CSL)
-end
 
-function test_csl_item_extras ()
 
-    local inputs = {
-        {
-            author = {{family = 'Doe', given = 'John'}},
-            issued = {['date-parts'] = {{'2021'}}},
-            note = [[
-                Original date: 1970
-                Original author: Doe || Jane
-            ]],
-            publisher = 'Unit test press',
-            ['publisher-place'] = 'Vienna',
-            title = 'Unit testing',
-            type = 'book'
-        },
-        {
-            author = {{family = 'Doe', given = 'John'}},
-            issued = {['date-parts'] = {{'2021'}}},
-            note = [[
-                {:original-date: 1970}
-                {:original-author: Doe || Jane}
-            ]],
-            publisher = 'Unit test press',
-            ['publisher-place'] = 'Vienna',
-            title = 'Unit testing',
-            type = 'book'
-        }
-    }
 
-    for _, i in ipairs(inputs) do
-        local res = {}
-        for k, v in M.csl_item_extras(i) do
-            res[k] = v
-        end
 
-        assert_items_equals(res, {
-            ['original-date'] = '1970',
-            ['original-author'] = 'Doe || Jane'
-        })
-    end
-end
 
-function test_csl_item_add_extras ()
-
-    local input = {
-        author = {{family = 'Doe', given = 'John'}},
-        issued = {['date-parts'] = {{'2021'}}},
-        note = [[
-            Original date: 1970
-            Original author: Doe || Jane
-        ]],
-        publisher = 'Unit test press',
-        ['publisher-place'] = 'Vienna',
-        title = 'Unit testing',
-        type = 'book'
-    }
-    local output = {
-        author = {{family = 'Doe', given = 'John'}},
-        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
-        issued = {['date-parts'] = {{'2021'}}},
-        ['original-data'] = {['date-parts'] = {{'1970'}}},
-        note = [[
-            Original date: 1970
-            Original author: Doe || Jane
-        ]],
-        publisher = 'Unit test press',
-        ['publisher-place'] = 'Vienna',
-        title = 'Unit testing',
-        type = 'book'
-    }
-    assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
-
-    input = {
-        author = {{family = 'Doe', given = 'John'}},
-        issued = {['date-parts'] = {{'2021'}}},
-        note = [[
-            {:original-date: 1970}
-            {:original-author: Doe || Jane}
-        ]],
-        publisher = 'Unit test press',
-        ['publisher-place'] = 'Vienna',
-        title = 'Unit testing',
-        type = 'book'
-    }
-    output = {
-        author = {{family = 'Doe', given = 'John'}},
-        ['original-author'] = {{family = 'Doe', given = 'Jane'}},
-        issued = {['date-parts'] = {{'2021'}}},
-        ['original-data'] = {['date-parts'] = {{'1970'}}},
-        note = [[
-            {:original-date: 1970}
-            {:original-author: Doe || Jane}
-        ]],
-        publisher = 'Unit test press',
-        ['publisher-place'] = 'Vienna',
-        title = 'Unit testing',
-        type = 'book'
-    }
-
-    assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
-end
-
-function test_csl_vars_sort ()
-    lu.assert_true(M.csl_vars_sort('a', 'b'))
-    lu.assert_false(M.csl_vars_sort('b', 'a'))
-    lu.assert_true(M.csl_vars_sort('id', 'a'))
-    lu.assert_false(M.csl_vars_sort('a', 'id'))
-    lu.assert_true(M.csl_vars_sort('id', 'type'))
-    lu.assert_false(M.csl_vars_sort('type', 'id'))
-end
-
-function test_csl_items_sort ()
-    local tests = {
-        [{{id = 1}, {id = 2}}] = true,
-        [{{id = 1}, {id = 1}}] = false,
-        [{{id = 2}, {id = 1}}] = false,
-        [{{id = 'a'}, {id = 'b'}}] = true,
-        [{{id = 'a'}, {id = 'a'}}] = false,
-        [{{id = 'b'}, {id = 'a'}}] = false,
-        [{{id = 'Z'}, {id = 'a'}}] = true,
-        [{{id = 'Z'}, {id = 'Z'}}] = false,
-        [{{id = 'a'}, {id = 'Z'}}] = false
-    }
-
-    for k, v in pairs(tests) do
-        assert_equals(M.csl_items_sort(unpack(k)), v)
-    end
-end
-
-function test_csl_items_ids ()
-    assert_equals(M.csl_items_ids({}), {})
-    assert_equals(M.csl_items_ids(ZOTXT_CSL),
-        {haslanger2012ResistingRealitySocial=true})
-    assert_equals(M.csl_items_ids(ZOTXT_YAML),
-        {crenshaw1989DemarginalizingIntersectionRace=true})
-end
 
 function test_biblio_read ()
     local fname, data, err
