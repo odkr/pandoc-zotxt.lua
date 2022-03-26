@@ -1994,6 +1994,23 @@ function test_csl_vars_sort ()
     end
 end
 
+function test_citekey_terms ()
+    local citekey_types = M.connectors.Zotxt.citekey_types
+
+    for input, output in pairs {
+        [''] = nil,
+        ['doe'] = nil,
+        ['doeWord'] = {'doe', 'Word'},
+        ['doe:'] = nil,
+        ['doe2020'] = {'doe', '2020'},
+        ['doe:2020'] = {'doe', '2020'},
+        ['doeWord2020'] = {'doe', 'Word', '2020'},
+        ['doe:2020easy'] = {'doe', '2020', 'easy'},
+        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
+    } do
+        assert_items_equals(M.citekey_terms(input, citekey_types), output)
+    end
+end
 
 
 ----------------------------------------------------------------
@@ -2234,25 +2251,6 @@ function test_csl_json_parse ()
     end
 end
 
--- function test_citekey_terms ()
---     local citekey_types = M.connectors.ZoteroWeb.citekey_types
-
---     local tests = {
---         [''] = nil,
---         ['doe'] = nil,
---         ['doeWord'] = {'doe', 'Word'},
---         ['doe:'] = nil,
---         ['doe2020'] = {'doe', '2020'},
---         ['doe:2020'] = {'doe', '2020'},
---         ['doeWord2020'] = {'doe', 'Word', '2020'},
---         ['doe:2020easy'] = {'doe', '2020', 'easy'},
---         ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
---     }
-
---     for k, v in pairs(tests) do
---         assert_items_equals(M.citekey:guess_terms(k, citekey_types), v)
---     end
--- end
 
 function test_biblio_write ()
     local fname, ok, fmt, data, err, errno
