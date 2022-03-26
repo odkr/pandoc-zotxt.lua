@@ -73,9 +73,11 @@
 -- ("doe:2020title" becomes "doe", "2020", "title"). Citation keys that cannot
 -- be translated into at least two search terms are ignored.
 --
--- If a search yields two or more items, you need to disambiguate them by
--- adding the citation key to the "extra" field of the item that the citation
--- key should match. Zotero's "extra" field is a list of CSL key-value pairs;
+-- If a search yields two or more items, you need to disambiguate them. If you
+-- use BetterBibTeX, you may want to set its citation key format to something
+-- along the lines of "[auth][year][shorttitle3_3]" to make collisions less
+-- likely. Alternatively, you can add an item's citation key to its "extra"
+-- field in Zotero. Zotero's "extra" field is a list of CSL key-value pairs;
 -- keys and values are separated by colons (":"), key-value pairs by
 -- linefeeds. Use either the key "Citation key" or the key "Citekey" to add a
 -- citation key (e.g., "Citation key: DoeTitle2020"); case is insignificant.
@@ -382,6 +384,7 @@ local format = string.format
 local concat = table.concat
 local insert = table.insert
 local pack = table.pack
+local remove = table.remove
 local unpack = table.unpack
 local sort = table.sort
 local char = utf8.char
@@ -1266,7 +1269,7 @@ do
     --    bar is bar.
     --
     -- @string str A string.
-    -- @tparam func|tab vars A mapping of names to values.
+    -- @tparam func|tab mapping A mapping of variable names to values.
     -- @treturn[1] string A transformed string.
     -- @treturn[2] nil `nil` if an error occurred.
     -- @treturn[2] string An error message.
@@ -1275,20 +1278,45 @@ do
     -- @fixme Functions are not unit-tested.
     -- @fixme Chained function calls in pipes are not unit-tested.
     vars_sub = type_check('string', 'function|table', '?table')(protect(
-        function (str, vars, _seen)
+        function (str, mapping, _seen)
             if not _seen then _seen = {} end
             local repl
-            local t = type(vars)
+            local t = type(mapping)
             if t == 'function' then
-                repl = vars
+                repl = mapping
             elseif t == 'table' then
-                repl = function (...) return expand(_seen, vars, ...) end
+                repl = function (...) return expand(_seen, mapping, ...) end
             else
                 error 'FIXME'
             end
             return str:gsub('%f[%$]%$(%b{})', repl):gsub('%$(%$*)', '%1'), nil
         end
     ))
+end
+
+do
+    -- luacheck: ignore assert
+
+    -- Enable variable substitution in error messages.
+    local function msgh (msg) return assert(vars_sub(msg, vars_get(4))) end
+
+    -- Make assertions without stack traces.
+    local assert = asserter(nil, msgh)
+
+    -- @fixme
+    local function get_env (key)
+        local var = key:sub(2, -2)
+        assert(var ~= '', '$${}: variable name is the empty string.')
+        assert(var:match '^[%a_][%w_]+$', '$${${var}}: invalid variable name.')
+        local val = assert(os.getenv(var), '$${${var}}: is undefined.')
+        if val == '' then xwarn('$${${var}}: is empty.') end
+        return val
+    end
+
+    -- @fixme
+    function env_sub (str)
+        return vars_sub(str, get_env)
+    end
 end
 
 
@@ -2959,19 +2987,30 @@ do
         if type(num) == 'number' then return tostring(floor(num)) end
     end
 
-    --- Parse a CSL JSON string.
+    --- Parse a CSL JSON string that describes one or more CSL items.
     --
     -- @string str A CSL JSON string.
     -- @treturn[1] tab A single CSL item or a list of CSL items.
-    -- @treturn[2] nil `nil` if the string cannot be parsed.
+    -- @treturn[2] nil `nil` if the string does not describe a CSL item.
     -- @treturn[2] string An error message.
     --
     -- @function csl_json_parse
     csl_json_parse = type_check('string')(
         function (str)
             local data, err = decode(str)
-            if not data then return nil, err end
-            return csl_item_normalise_vars(walk(data, num_to_str))
+            local t = type(data)
+            -- All seems well.
+            if t == 'table' then
+                return csl_item_normalise_vars(walk(data, num_to_str))
+            -- Recent versions of zotxt report errors in JSON.
+            elseif t == 'string' then
+                return nil, data
+            -- Old versions of zotxt report errors in non-JSON text.
+            elseif t == 'nil' then
+                return nil, err
+            end
+            -- This point should never be reached.
+            return nil, str .. ': not a CSL item.'
         end
     )
 end
@@ -3161,8 +3200,8 @@ CITEKEY_TYPIFIERS.key = type_check('string')(
 citekey_types = type_check('string', 'table')(
     function (ckey, types)
         local n = #types
-        if n == 1 then return {types[1]} end
-        local result = Values:clone()
+        if n == 1 then return types end
+        local result = Values()
         for i = 1, n do
             local t = types[i]
             local typify = CITEKEY_TYPIFIERS[t]
@@ -4288,11 +4327,11 @@ do
                     if items then
                         local n = #items
                         if n == 1 then
-                            -- luacheck: ignore ts
-                            local ts = self.citekey_types
-                            if ts[1] ~= t then
-                                local j = find(ts, t)
-                                ts[1], ts[j] = ts[j], ts[1]
+                            local citekey_types = self.citekey_types
+                            if citekey_types[1] ~= t then
+                                local j = select(2, find(citekey_types, t))
+                                remove(citekey_types, j)
+                                insert(citekey_types, 1, t)
                             end
                             local item = items[1]
                             item.id = ckey
@@ -4796,47 +4835,13 @@ add_refs = type_check('table', 'table|userdata')(protect(
 ))
 
 do
-    -- Enable variable substitution in error messages.
-    local function msgh (msg) return assert(vars_sub(msg, vars_get(4))) end
-
-    -- Make assertions without stack traces.
-    local assert = asserter(nil, msgh)
-
-    -- Metatable to access the environment.
-    --
-    -- @caveats
-    --
-    -- * The environment cannot be iterated over.
-    -- * Changes to the table are meaningless.
-    --
-    -- @table environ
-    local environ = {}
-
-    -- Get the value of an environment variable.
-    --
-    -- @tab _ Ignored.
-    -- @string key A variable name.
-    -- @treturn string The value of that variable.
-    -- @raise An error if the variable name is invalid
-    --  or the variable is undefined.
-    environ.__index = type_check('table', 'string')(
-        function (_, key)
-            assert(key ~= '', '$${}: name is the empty string.')
-            assert(key:match '^[%a_][%w_]+$', '$${${key}}: invalid name.')
-            local val = assert(os.getenv(key), '$${${key}} is undefined.')
-            return val
-        end
-    )
-
-    -- @fixme
-    local env = setmetatable({}, environ)
-
     local parser = Options(
         {
             prefix = 'zotero',
             name = 'bibliography',
             parse = function (fname)
-                return vars_sub(fname, env)
+                return env_sub(fname)
+                --return vars_sub(fname, env)
             end
         },
         {
