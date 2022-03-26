@@ -1982,11 +1982,13 @@ end
 function test_csl_vars_sort ()
     for input, output in pairs{
         [{'a', 'b'}] = true,
+        [{'a', 'a'}] = false,
         [{'b', 'a'}] = false,
         [{'id', 'a'}] = true,
         [{'a', 'id'}] = false,
         [{'id', 'type'}] = true,
-        [{'type', 'id'}] = false
+        [{'type', 'id'}] = false,
+        [{'id', 'id'}] = false,
     } do
         assert_equals(M.csl_vars_sort(unpack(input)), output)
     end
@@ -2232,25 +2234,25 @@ function test_csl_json_parse ()
     end
 end
 
-function test_citekey_terms ()
-    local citekey_types = M.connectors.ZoteroWeb.citekey_types
+-- function test_citekey_terms ()
+--     local citekey_types = M.connectors.ZoteroWeb.citekey_types
 
-    local tests = {
-        [''] = nil,
-        ['doe'] = nil,
-        ['doeWord'] = {'doe', 'Word'},
-        ['doe:'] = nil,
-        ['doe2020'] = {'doe', '2020'},
-        ['doe:2020'] = {'doe', '2020'},
-        ['doeWord2020'] = {'doe', 'Word', '2020'},
-        ['doe:2020easy'] = {'doe', '2020', 'easy'},
-        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
-    }
+--     local tests = {
+--         [''] = nil,
+--         ['doe'] = nil,
+--         ['doeWord'] = {'doe', 'Word'},
+--         ['doe:'] = nil,
+--         ['doe2020'] = {'doe', '2020'},
+--         ['doe:2020'] = {'doe', '2020'},
+--         ['doeWord2020'] = {'doe', 'Word', '2020'},
+--         ['doe:2020easy'] = {'doe', '2020', 'easy'},
+--         ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
+--     }
 
-    for k, v in pairs(tests) do
-        assert_items_equals(M.citekey:guess_terms(k, citekey_types), v)
-    end
-end
+--     for k, v in pairs(tests) do
+--         assert_items_equals(M.citekey:guess_terms(k, citekey_types), v)
+--     end
+-- end
 
 function test_biblio_write ()
     local fname, ok, fmt, data, err, errno
@@ -2515,10 +2517,10 @@ end
 
 -- New stuff
 
-function test_citekey_matches_type ()
-    assert_equals(M.citekey:matches_type('betterbibtexkey:DoeTitle2020',
-        'betterbibtexkey'), 'DoeTitle2020')
-end
+-- function test_citekey_matches_type ()
+--     assert_equals(M.citekey:matches_type('betterbibtexkey:DoeTitle2020',
+--         'betterbibtexkey'), 'DoeTitle2020')
+-- end
 
 
 -- BOILERPLATE
