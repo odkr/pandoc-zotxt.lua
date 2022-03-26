@@ -142,9 +142,11 @@ EOF
  (&ldquo;doe:2020title&rdquo; becomes &ldquo;doe&rdquo;, &ldquo;2020&rdquo;, &ldquo;title&rdquo;). Citation keys that cannot
  be translated into at least two search terms are ignored.</p>
 
-<p> If a search yields two or more items, you need to disambiguate them by
- adding the citation key to the &ldquo;extra&rdquo; field of the item that the citation
- key should match. Zotero&rsquo;s &ldquo;extra&rdquo; field is a list of CSL key-value pairs;
+<p> If a search yields two or more items, you need to disambiguate them. If you
+ use BetterBibTeX, you may want to set its citation key format to something
+ along the lines of &ldquo;[auth][year][shorttitle3_3]&rdquo; to make collisions less
+ likely. Alternatively, you can add an item&rsquo;s citation key to its &ldquo;extra&rdquo;
+ field in Zotero. Zotero&rsquo;s &ldquo;extra&rdquo; field is a list of CSL key-value pairs;
  keys and values are separated by colons (&ldquo;:&rdquo;), key-value pairs by
  linefeeds. Use either the key &ldquo;Citation key&rdquo; or the key &ldquo;Citekey&rdquo; to add a
  citation key (e.g., &ldquo;Citation key: DoeTitle2020&rdquo;); case is insignificant.
@@ -695,7 +697,7 @@ EOF
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#csl_json_parse">csl_json_parse (str)</a></td>
-	<td class="summary">Parse a CSL JSON string.</td>
+	<td class="summary">Parse a CSL JSON string that describes one or more CSL items.</td>
 	</tr>
 </table>
 <h2><a href="#Citation_keys">Citation keys </a></h2>
@@ -705,31 +707,31 @@ EOF
 	<td class="summary">A mapping of citation key types to parsers.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey.parsers.betterbibtexkey">citekey.parsers.betterbibtexkey (ckey)</a></td>
+	<td class="name" nowrap><a href="#CITEKEY_PARSERS.betterbibtexkey">CITEKEY_PARSERS.betterbibtexkey (ckey)</a></td>
 	<td class="summary">Guess search terms from a BetterBibTeX citation key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey.parsers.easykey">citekey.parsers.easykey (ckey)</a></td>
+	<td class="name" nowrap><a href="#CITEKEY_PARSERS.easykey">CITEKEY_PARSERS.easykey (ckey)</a></td>
 	<td class="summary">Guess search terms from an Easy Citekey.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey:terms">citekey:terms (ckey, types)</a></td>
+	<td class="name" nowrap><a href="#citekey_terms">citekey_terms (ckey, types)</a></td>
 	<td class="summary">Guess search terms from a citation key.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS">CITEKEY_TYPIFIERS</a></td>
-	<td class="summary">A mapping of citation key type names to typifiers.</td>
+	<td class="summary">A mapping of citation key type names to type guessing functions.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS.betterbibtexkey">CITEKEY_TYPIFIERS.betterbibtexkey</a></td>
+	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS.betterbibtexkey">CITEKEY_TYPIFIERS.betterbibtexkey (ckey)</a></td>
 	<td class="summary">Check if a citation key could be a Better BibTeX citation key.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS.key">CITEKEY_TYPIFIERS.key</a></td>
+	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS.key">CITEKEY_TYPIFIERS.key (ckey)</a></td>
 	<td class="summary">Check if a citation key is a Zotero item ID.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey_types">citekey_types</a></td>
+	<td class="name" nowrap><a href="#citekey_types">citekey_types (ckey, string)</a></td>
 	<td class="summary">Check whether a citation key could be of a type.</td>
 	</tr>
 </table>
@@ -3894,7 +3896,7 @@ original-date</pre>
     <strong>csl_json_parse (str)</strong>
     </dt>
     <dd>
-    Parse a CSL JSON string.
+    Parse a CSL JSON string that describes one or more CSL items.
 
     </ul>
     </ul>
@@ -3920,7 +3922,7 @@ original-date</pre>
     <ol>
         <li>
            <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the string cannot be parsed.</li>
+        <code>nil</code> if the string does not describe a CSL item.</li>
         <li>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
         An error message.</li>
@@ -3941,8 +3943,8 @@ original-date</pre>
     <dd>
     A mapping of citation key types to parsers.</p>
 
-<p> A parser must take a citation key and return search terms or <code>nil</code> and
- an error message if no search terms can be derived from the citation key.
+<p> A parser must take a citation key and return search terms or
+ <code>nil</code> if no search terms can be derived from the citation key.
 
     </ul>
     </ul>
@@ -3957,8 +3959,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "citekey.parsers.betterbibtexkey"></a>
-    <strong>citekey.parsers.betterbibtexkey (ckey)</strong>
+    <a name = "CITEKEY_PARSERS.betterbibtexkey"></a>
+    <strong>CITEKEY_PARSERS.betterbibtexkey (ckey)</strong>
     </dt>
     <dd>
     Guess search terms from a BetterBibTeX citation key.</p>
@@ -3989,29 +3991,20 @@ original-date</pre>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
         Search terms.
     </ol>
-     <h3>Or</h3>
-    <ol>
-
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if not enough search terms could be derrived.
-    </ol>
 
 
 
 
 </dd>
     <dt>
-    <a name = "citekey.parsers.easykey"></a>
-    <strong>citekey.parsers.easykey (ckey)</strong>
+    <a name = "CITEKEY_PARSERS.easykey"></a>
+    <strong>CITEKEY_PARSERS.easykey (ckey)</strong>
     </dt>
     <dd>
     Guess search terms from an Easy Citekey.</p>
 
 <p> Splits up an Easy Citekey into an author, a year, and a word.
 
-    <h3>Caveats:</h3>
-    <ul>
-         Easy Citekeys must be encoded in UTF-8.
     </ul>
     </ul>
     </ul>
@@ -4032,24 +4025,21 @@ original-date</pre>
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
         Search terms.
     </ol>
-     <h3>Or</h3>
-    <ol>
-
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if not enough search terms could be derived.
-    </ol>
 
 
 
 
 </dd>
     <dt>
-    <a name = "citekey:terms"></a>
-    <strong>citekey:terms (ckey, types)</strong>
+    <a name = "citekey_terms"></a>
+    <strong>citekey_terms (ckey, types)</strong>
     </dt>
     <dd>
     Guess search terms from a citation key.
 
+    <h3>Caveats:</h3>
+    <ul>
+         The key must be supported by a parser in <a href="../index.html#CITEKEY_PARSERS">CITEKEY_PARSERS</a>.
     </ul>
     </ul>
     </ul>
@@ -4093,10 +4083,10 @@ original-date</pre>
     <strong>CITEKEY_TYPIFIERS</strong>
     </dt>
     <dd>
-    A mapping of citation key type names to typifiers.</p>
+    A mapping of citation key type names to type guessing functions.</p>
 
-<p> A typifier is a function that takes a citation key and returns <code>true</code> if
- the citation key <em>could be</em> (not &ldquo;is&rdquo;) of that type and <code>false</code> otherwise.
+<p> A type guessing function should take a citation key and return <code>true</code> if
+ that key <em>could be</em> (not &ldquo;is&rdquo;) of that type and <code>false</code> otherwise.
 
     </ul>
     </ul>
@@ -4112,7 +4102,7 @@ original-date</pre>
 </dd>
     <dt>
     <a name = "CITEKEY_TYPIFIERS.betterbibtexkey"></a>
-    <strong>CITEKEY_TYPIFIERS.betterbibtexkey</strong>
+    <strong>CITEKEY_TYPIFIERS.betterbibtexkey (ckey)</strong>
     </dt>
     <dd>
     Check if a citation key could be a Better BibTeX citation key.
@@ -4123,6 +4113,7 @@ original-date</pre>
     </ul>
     </ul>
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">ckey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -4130,6 +4121,12 @@ original-date</pre>
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">bool</span></span>
+        Whether the key could be a Better BibTeX key.
+    </ol>
 
 
 
@@ -4137,7 +4134,7 @@ original-date</pre>
 </dd>
     <dt>
     <a name = "CITEKEY_TYPIFIERS.key"></a>
-    <strong>CITEKEY_TYPIFIERS.key</strong>
+    <strong>CITEKEY_TYPIFIERS.key (ckey)</strong>
     </dt>
     <dd>
     Check if a citation key is a Zotero item ID.
@@ -4148,6 +4145,7 @@ original-date</pre>
     </ul>
     </ul>
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">ckey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -4155,6 +4153,12 @@ original-date</pre>
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">bool</span></span>
+        Whether the citation key is a Zotero item ID.
+    </ol>
 
 
 
@@ -4162,7 +4166,7 @@ original-date</pre>
 </dd>
     <dt>
     <a name = "citekey_types"></a>
-    <strong>citekey_types</strong>
+    <strong>citekey_types (ckey, string)</strong>
     </dt>
     <dd>
     Check whether a citation key could be of a type.
@@ -4173,6 +4177,7 @@ original-date</pre>
     </ul>
     </ul>
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">ckey</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -4184,6 +4189,12 @@ original-date</pre>
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+        Citation key types that would fit the key.
+    </ol>
 
 
 
@@ -5632,7 +5643,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
     Types of citation keys to expect.</p>
 
 <p> See <a href="../index.html#connectors.Zotxt.citekey_types">connectors.Zotxt.citekey_types</a> for details
- and <a href="../index.html#citekey:terms">citekey:terms</a> for caveats.
+ and ??? for caveats.
 
     </ul>
     </ul>
@@ -6229,7 +6240,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-03-26 11:22:49 </i>
+<i style="float:right;">Last updated 2022-03-26 16:27:24 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
