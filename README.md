@@ -10,18 +10,18 @@ See the [manual](man/man1/pandoc-zotxt.lua.rst) for details.
 
 **pandoc-zotxt.lua** requires
 
-* [Pandoc](https://www.pandoc.org/) ≥ v2.0,
-* [Zotero](https://www.zotero.org/) ≥ v4.0,
-* [zotxt](https://github.com/egh/zotxt/) ≥ v4.0, and
-* [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/) ≥ v4.0.
+* [Pandoc](https://www.pandoc.org/) ≥ v2.0.4,
+* [Zotero](https://www.zotero.org/) ≥ v4,
+* [zotxt](https://github.com/egh/zotxt/) ≥ v4, and
+* [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/) ≥ v4.
 
 It should work under every operating system supported by Pandoc;
 but it has *not* been tested under Windows.
 
 Your version of Pandoc must also support [Lua](https://www.lua.org/) ≥ v5.3.
-Pandoc ≥ v2.0 does so by default. However, the Pandoc package provided by
-your operating system vendor may use an older version. Notably, the version of
-Pandoc available in the package repository of Debian v10 ("Buster") only
+Pandoc ≥ v2 does so by default. However, the Pandoc package provided by
+your operating system vendor may use an older version. Notably, the version
+of Pandoc available in the package repository of Debian v10 ("Buster") only
 supports Lua v5.1.
 
 
@@ -59,8 +59,8 @@ into a Bourne-compatible shell:
   } | tar -xz && ln -fs "$name" "$name-$vers/$name" .; )
 ```
 
-If you want to use the manual page that ships with this release, you
-can add `<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0/man`
+If you want to use the manual page that ships with this release, add
+`<Pandoc data directory>/filters/pandoc-zotxt.lua-1.1.0/man`
 to your `MANPATH`.
 
 
@@ -82,10 +82,10 @@ If there's something wrong with **pandoc-zotxt.lua**, please
 ### Requirements
 
 1. A POSIX-compliant operating system.
-2. [Pandoc](https://www.pandoc.org/) v2.0 to v2.17.0.1.
+2. [Pandoc](https://www.pandoc.org/) ≥ v2.
 3. [GNU Make](https://www.gnu.org/software/make/).
 
-The test suite has been tested with Pandoc v2.9 to v2.17.0.1.
+The test suite has been tested with Pandoc v2.9 to v2.17.1.1.
 
 ### Running the tests
 
@@ -101,9 +101,9 @@ indicates that **pandoc-zotxt.lua** failed a test. If it does fail a test,
 
 ### The real-world test suite
 
-By default, the test suite neither connects to a Zotero desktop client
-instance nor to the Zotero Web API, but but uses canned responses.
-You can force the test suite to connect to a local Zotero database by:
+By default, the test suite neither connects to the Zotero desktop client nor
+to the Zotero Web API, but but uses canned responses. You can force the test
+suite to connect to the Zotero desktop client and the Web API respectively by:
 
 ```sh
     make test -e FILTER=./pandoc-zotxt.lua
