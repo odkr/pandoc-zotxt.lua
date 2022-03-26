@@ -139,8 +139,6 @@ git commit --quiet --message='docs: updated.' || :
 
 warn -e "$SMSO" 'testing release ...'
 
-warn -e "$SMSO" "$TMPDIR"
-
 test/scripts/test-pandoc-vers
 
 warn -e "$SMSO" 'pushing changes in %s ...' "$BOLD$release_branch$SGR0$SMSO"
