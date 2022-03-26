@@ -3504,7 +3504,7 @@ biblio.write = type_check('table', 'string', '?table')(protect(
         local codec = self.types[suffix]
         local encode
         if codec then encode = codec.encode end
-        assert(encode, 'unwritable file type')
+        assert(encode, 'unwritable file type.')
         if not items or #items == 0 then return suffix end
         local str = assert(encode(items))
         return file_write(fname, str, EOL)
@@ -4368,7 +4368,7 @@ connectors.ZoteroWeb = connectors.Zotxt:clone()
 --- Types of citation keys to expect.
 --
 -- See @{connectors.Zotxt.citekey_types} for details
--- and @{citekey:terms} for caveats.
+-- and @{citekey_terms} for caveats.
 connectors.ZoteroWeb.citekey_types = List {
     'key',              -- Zotero item IDs
     'easykey',          -- zotxt Easy Citekey
