@@ -358,6 +358,7 @@ local utf8 = utf8
 -- luacheck: push ignore
 local pandoc = pandoc
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
+if not pandoc.List then pandoc.List = require 'List' end
 
 if pandoc.types then
     if PANDOC_VERSION >= {2, 8} and not pandoc.system then
@@ -383,6 +384,8 @@ local insert = table.insert
 local pack = table.pack
 local unpack = table.unpack
 local sort = table.sort
+local char = utf8.char
+local codes = utf8.codes
 
 local stringify = pandoc.utils.stringify
 
@@ -2080,11 +2083,11 @@ http_get = type_check('string')(
 do
     -- Escape bold and italics meta characters.
     --
-    -- @string char The first character of a bold or italics expression.
+    -- @string chr The first character of a bold or italics expression.
     -- @string tail The rest of the expression.
     -- @treturn string The escaped expression.
-    local function escape_bold_italics (char, tail)
-        return char:gsub('(.)', '\\%1') .. tail
+    local function escape_bold_italics (chr, tail)
+        return chr:gsub('(.)', '\\%1') .. tail
     end
 
     -- Escape superscript and subscript meta characters.
@@ -2177,10 +2180,10 @@ do
     --
     -- @string char A Markdown markup character.
     -- @treturn func A conversion function.
-    local function converter (char)
+    local function converter (chr)
         return function (elem)
             local str = stringify(walk_inline(elem, to_markdown))
-            return Str(char .. str .. char)
+            return Str(chr .. str .. chr)
         end
     end
 
@@ -2281,8 +2284,6 @@ end
 
 do
     local rep = string.rep
-    local char = utf8.char
-    local codes = utf8.codes
 
     --- Create a number of spaces.
     --
@@ -2987,8 +2988,6 @@ end
 CITEKEY_PARSERS = {}
 
 do
-    local codes = utf8.codes
-    local char = utf8.char
     local lower = text.lower
 
     --- Guess search terms from a BetterBibTeX citation key.
@@ -3002,8 +3001,7 @@ do
     -- @treturn[1] {string,...} Search terms.
     -- @treturn[2] nil `nil` if not enough search terms could be derrived.
     --
-    -- @function citekey.parsers.betterbibtexkey
-    -- @fixme Not unit-tested.
+    -- @function CITEKEY_PARSERS.betterbibtexkey
     CITEKEY_PARSERS.betterbibtexkey = type_check('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
@@ -3015,14 +3013,13 @@ do
                 if pos > 1 then
                     if
                         -- Digits start at 48 and end at 57.
-                            (47 < code and code < 58) and
-                        not (47 < prev and prev < 58)
+                            (48 <= code and code <= 57) and
+                        not (48 <= prev and prev <= 57)
                     then
                         add = true
                     else
                         local chr = char(code)
                         -- `chr ~= lower(chr)` is `false` for non-letters,
-                        -- `chr == upper(chr)` is *not*.
                         if chr ~= lower(chr) then
                             add = true
                         end
@@ -3040,56 +3037,52 @@ do
     )
 end
 
-do
-    local codes = utf8.codes
-
-    --- Guess search terms from an Easy Citekey.
-    --
-    -- Splits up an Easy Citekey into an author, a year, and a word.
-    --
-    -- @caveats Easy Citekeys must be encoded in UTF-8.
-    --
-    -- @string ckey A zotxt Easy Citekey (e.g., `'doe:2020word'`).
-    -- @treturn[1] {string,...} Search terms.
-    -- @treturn[2] nil `nil` if not enough search terms could be derived.
-    --
-    -- @function citekey.parsers.easykey
-    -- @fixme Not unit-tested.
-    CITEKEY_PARSERS.easykey = type_check('string')(
-        function (ckey)
-            assert(ckey ~= '', 'citation key is the empty string.')
-            local terms = Values()
-            local colon = false
-            for pos, code in codes(ckey) do
-                if not colon then
-                    -- 58 is the colon (:).
-                    if code == 58 then
-                        local str = ckey:sub(1, pos - 1)
-                        if str and str ~= '' then terms:add(str) end
-                        colon = true
-                    end
+--- Guess search terms from an Easy Citekey.
+--
+-- Splits up an Easy Citekey into an author, a year, and a word.
+--
+-- @string ckey A zotxt Easy Citekey (e.g., `'doe:2020word'`).
+-- @treturn[1] {string,...} Search terms.
+-- @treturn[2] nil `nil` if not enough search terms could be derived.
+--
+-- @function CITEKEY_PARSERS.easykey
+CITEKEY_PARSERS.easykey = type_check('string')(
+    function (ckey)
+        assert(ckey ~= '', 'citation key is the empty string.')
+        local terms = Values()
+        local colon = false
+        for pos, code in codes(ckey) do
+            if not colon then
+                -- 58 is the colon (:).
+                if code == 58 then
+                    local str = ckey:sub(1, pos - 1)
+                    if str and str ~= '' then terms:add(str) end
+                    colon = true
+                end
+            else
+                -- Digits start at 48 and end at 57.
+                if 48 <= code and code <= 57 then
+                    if terms.n < 2 then terms:add '' end
+                    terms[2] = terms[2] .. tostring(code - 48)
                 else
-                    -- Digits start at 48 and end at 57.
-                    if 47 < code and code < 58 then
-                        if terms.n < 2 then terms:add '' end
-                        terms[2] = terms[2] .. tostring(code - 48)
-                    else
-                        local str = ckey:sub(pos)
-                        if str and str ~= '' then terms:add(str) end
-                        break
-                    end
+                    local str = ckey:sub(pos)
+                    if str and str ~= '' then terms:add(str) end
+                    break
                 end
             end
-            if terms.n > 1 then return terms end
         end
-    )
-end
-
+        if terms.n > 1 then return terms end
+    end
+)
 
 do
-    local type_order = order{'easykey'}
+    -- This makes sure that whether a key is an Easy Citekey is checked before
+    -- it is checked whether it is a Better BibTeX key.
+    local order = order{'easykey'}
 
     --- Guess search terms from a citation key.
+    --
+    -- @caveats The key must be supported by a parser in @{CITEKEY_PARSERS}.
     --
     -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
     -- @tparam {string,...} types Types to try to parse the citation key as.
@@ -3097,10 +3090,12 @@ do
     -- @treturn[2] nil `nil` if no search terms could be derived.
     -- @treturn[2] string An error message.
     --
-    -- @function citekey:terms
+    -- @function citekey_terms
     citekey_terms = type_check('string', 'table')(
         function (ckey, types)
-            for _, t in sorted(types, type_order) do
+            types = update({}, types)
+            sort(types, order)
+            for _, t in pairs(types) do
                 local parse = CITEKEY_PARSERS[t]
                 if parse then
                     local terms = parse(ckey)
@@ -3112,29 +3107,41 @@ do
     )
 end
 
---- A mapping of citation key type names to typifiers.
+--- A mapping of citation key type names to type guessing functions.
 --
--- A typifier is a function that takes a citation key and returns `true` if
--- the citation key *could be* (not "is") of that type and `false` otherwise.
+-- A type guessing function should take a citation key and return `true` if
+-- that key *could be* (not "is") of that type and `false` otherwise.
 CITEKEY_TYPIFIERS = {}
 
---- Check if a citation key could be a Better BibTeX citation key.
---
--- @string ckey A citation key.
--- @treturn bool Whether the key could be a Better BibTeX key.
-CITEKEY_TYPIFIERS.betterbibtexkey = type_check('string')(
-    function (ckey)
-        for _, c in utf8.codes(ckey) do
-            if c > 127 then return false end
-        end
-        return true
+do
+    -- Raise error if string contains non-printable or non-ASCII characters.
+    --
+    -- @string str The string.
+    local function assert_printable_ascii (str)
+        for _, c in codes(str) do assert(33 <= c and c <= 126) end
     end
-)
+
+    --- Check if a citation key could be a Better BibTeX citation key.
+    --
+    -- @string ckey A citation key.
+    -- @treturn bool Whether the key could be a Better BibTeX key.
+    --
+    -- @function CITEKEY_TYPIFIERS.betterbibtexkey
+    -- @fixme Not unit-tested.
+    CITEKEY_TYPIFIERS.betterbibtexkey = type_check('string')(
+        function (ckey)
+            return pcall(assert_printable_ascii, ckey)
+        end
+    )
+end
 
 --- Check if a citation key is a Zotero item ID.
 --
 -- @string ckey A citation key.
 -- @treturn bool Whether the citation key is a Zotero item ID.
+--
+-- @function CITEKEY_TYPIFIERS.key
+-- @fixme Not unit-tested.
 CITEKEY_TYPIFIERS.key = type_check('string')(
     function (ckey)
         return ckey:len() == 8 and ckey:match '^[%u%d]+$'
@@ -3146,6 +3153,9 @@ CITEKEY_TYPIFIERS.key = type_check('string')(
 -- @string ckey A citation key.
 -- @tab {string,...} Citation key types.
 -- @treturn {string,...} Citation key types that would fit the key.
+--
+-- @function citekey_types
+-- @fixme Not unit-tested.
 citekey_types = type_check('string', 'table')(
     function (ckey, types)
         local n = #types
@@ -3154,11 +3164,7 @@ citekey_types = type_check('string', 'table')(
         for i = 1, n do
             local t = types[i]
             local typify = CITEKEY_TYPIFIERS[t]
-            if typify then
-                if typify(ckey) then result:add(t) end
-            else
-                result:add(t)
-            end
+            if not typify or typify(ckey) then result:add(t) end
         end
         return result
     end
