@@ -85,7 +85,8 @@ unset file
 # PRELUDE
 # =======
 
-temp_dir_make -d . -p rm
+#temp_dir_make -d . -p rm
+temp_dir_make -p rm
 CLEANUP="git checkout develop; ${CLEANUP-}"
 
 
@@ -137,6 +138,8 @@ git add "$filter" man docs
 git commit --quiet --message='docs: updated.' || :
 
 warn -e "$SMSO" 'testing release ...'
+
+warn -e "$SMSO" "$TMPDIR"
 
 test/scripts/test-pandoc-vers
 
