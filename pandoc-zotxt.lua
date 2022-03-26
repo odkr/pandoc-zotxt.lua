@@ -2983,12 +2983,21 @@ end
 
 --- A mapping of citation key types to parsers.
 --
--- A parser must take a citation key and return search terms or `nil` and
--- an error message if no search terms can be derived from the citation key.
+-- A parser must take a citation key and return search terms or
+-- `nil` if no search terms can be derived from the citation key.
 CITEKEY_PARSERS = {}
 
 do
     local lower = text.lower
+
+    -- Check whether a number represents a digit in ASCII.
+    --
+    -- @number n A number.
+    -- @treturn bool Whether the number encodes a digit.
+    local function is_digit (n)
+        -- Digits start at 48 and end at 57 in ASCII.
+        return 48 <= n and n <= 57
+    end
 
     --- Guess search terms from a BetterBibTeX citation key.
     --
@@ -2998,8 +3007,7 @@ do
     -- @caveats Non-letter characters must be encoded in ASCII.
     --
     -- @string ckey A BetterBibTeX citation key (e.g., `'DoeWord2020'`).
-    -- @treturn[1] {string,...} Search terms.
-    -- @treturn[2] nil `nil` if not enough search terms could be derrived.
+    -- @treturn {string,...} Search terms.
     --
     -- @function CITEKEY_PARSERS.betterbibtexkey
     CITEKEY_PARSERS.betterbibtexkey = type_check('string')(
@@ -3011,15 +3019,11 @@ do
             for pos, code in codes(ckey) do
                 local add = false
                 if pos > 1 then
-                    if
-                        -- Digits start at 48 and end at 57.
-                            (48 <= code and code <= 57) and
-                        not (48 <= prev and prev <= 57)
-                    then
+                    if is_digit(code) ~= is_digit(prev) then
                         add = true
                     else
                         local chr = char(code)
-                        -- `chr ~= lower(chr)` is `false` for non-letters,
+                        -- `chr ~= lower(chr)` is `false` for non-letters.
                         if chr ~= lower(chr) then
                             add = true
                         end
@@ -3032,7 +3036,7 @@ do
                 prev = code
             end
             terms:add(ckey:sub(sep))
-            if terms.n > 1 then return terms end
+            return terms
          end
     )
 end
@@ -3042,36 +3046,34 @@ end
 -- Splits up an Easy Citekey into an author, a year, and a word.
 --
 -- @string ckey A zotxt Easy Citekey (e.g., `'doe:2020word'`).
--- @treturn[1] {string,...} Search terms.
--- @treturn[2] nil `nil` if not enough search terms could be derived.
+-- @treturn {string,...} Search terms.
 --
 -- @function CITEKEY_PARSERS.easykey
 CITEKEY_PARSERS.easykey = type_check('string')(
     function (ckey)
         assert(ckey ~= '', 'citation key is the empty string.')
         local terms = Values()
-        local colon = false
+        local pivot = 1
         for pos, code in codes(ckey) do
-            if not colon then
-                -- 58 is the colon (:).
-                if code == 58 then
-                    local str = ckey:sub(1, pos - 1)
-                    if str and str ~= '' then terms:add(str) end
-                    colon = true
+            if pivot > 1 then
+                -- Numbers range from 48 to 57 in ASCII/UTF-8.
+                if 48 > code or code > 57 then
+                    local year = ckey:sub(pivot, pos - 1)
+                    if year and year ~= '' then terms:add(year) end
+                    local title = ckey:sub(pos)
+                    if title and title ~= '' then terms:add(title) end
+                    return terms
                 end
-            else
-                -- Digits start at 48 and end at 57.
-                if 48 <= code and code <= 57 then
-                    if terms.n < 2 then terms:add '' end
-                    terms[2] = terms[2] .. tostring(code - 48)
-                else
-                    local str = ckey:sub(pos)
-                    if str and str ~= '' then terms:add(str) end
-                    break
-                end
+            -- The colon is encoded as 58 in ASCII/UTF-8.
+            elseif code == 58 then
+                local pre = ckey:sub(pivot, pos - 1)
+                if pre and pre ~= '' then terms:add(pre) end
+                pivot = pos + 1
             end
         end
-        if terms.n > 1 then return terms end
+        local year = ckey:sub(pivot)
+        if year and year ~= '' then terms:add(year) end
+        return terms
     end
 )
 
@@ -3099,7 +3101,7 @@ do
                 local parse = CITEKEY_PARSERS[t]
                 if parse then
                     local terms = parse(ckey)
-                    if terms then return terms end
+                    if terms and terms.n > 1 then return terms end
                 end
             end
             return nil, format('cannot guess search terms for %s.', ckey)

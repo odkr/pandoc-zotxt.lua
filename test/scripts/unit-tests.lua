@@ -1995,20 +1995,22 @@ function test_csl_vars_sort ()
 end
 
 function test_citekey_terms ()
-    local citekey_types = M.connectors.Zotxt.citekey_types
+    local ts = {'betterbibtexkey', 'easykey'}
+    -- local bbt = {'betterbibtexkey'}
+    -- local ek = {'easykey'}
 
     for input, output in pairs {
-        [''] = nil,
-        ['doe'] = nil,
-        ['doeWord'] = {'doe', 'Word'},
-        ['doe:'] = nil,
-        ['doe2020'] = {'doe', '2020'},
-        ['doe:2020'] = {'doe', '2020'},
-        ['doeWord2020'] = {'doe', 'Word', '2020'},
-        ['doe:2020easy'] = {'doe', '2020', 'easy'},
-        ['doe2020TwoWords'] = {'doe', '2020', 'Two', 'Words'}
+        [{'', ts}] = nil,
+        [{'doe', ts}] = nil,
+        [{'doe:', ts}] = nil,
+        [{'doe2020', ts}] = {'doe', '2020'},
+        [{'doe:2020easy', ts}] = {'doe', '2020', 'easy'},
+        [{'doeWord', ts}] = {'doe', 'Word'},
+        [{'doeWord2020', ts}] = {'doe', 'Word', '2020'},
+        [{'doe2020TwoWords', ts}] = {'doe', '2020', 'Two', 'Words'},
+        [{'doe2020lowercaseWord', ts}] = {'doe', '2020', 'lowercase', 'Word'}
     } do
-        assert_items_equals(M.citekey_terms(input, citekey_types), output)
+        assert_items_equals(M.citekey_terms(unpack(input)), output)
     end
 end
 
