@@ -2742,15 +2742,32 @@ do
     ))
 end
 
---- Normalise variable names of a CSL item.
---
--- @tab item A CSL item.
--- @treturn tab A normalised item.
--- @see csl_varname_normalise
---
--- @function csl_item_normalise_vars
-csl_item_normalise_vars = type_check('table', '?table')(
-    function (item, _seen)
+
+
+-- @fixme
+do
+    -- Shorthands
+    local floor = math.floor
+
+    -- Convert numbers to strings.
+    --
+    -- Floating point numbers are converted to integers.
+    --
+    -- @param num A number.
+    -- @treturn[1] string A string.
+    -- @treturn[2] nil `nil` if the given value is not a number.
+    local function num_to_str (num)
+        if type(num) == 'number' then return tostring(floor(num)) end
+    end
+
+    -- Normalise variable names of a CSL item.
+    --
+    -- @tab item A CSL item.
+    -- @treturn tab A normalised item.
+    -- @see csl_varname_normalise
+    --
+    -- @function csl_item_normalise_vars
+    local function csl_item_normalise_vars (item, _seen)
         if     not _seen   then _seen = {}
         elseif _seen[item] then return _seen[item]
         end
@@ -2769,7 +2786,15 @@ csl_item_normalise_vars = type_check('table', '?table')(
         end
         return ret
     end
-)
+
+    -- @fixme
+    -- @fixme Conversion of numbers is not unit-tested.
+    csl_item_normalise = type_check('table')(
+        function (item)
+            return csl_item_normalise_vars(walk(item, num_to_str))
+        end
+    )
+end
 
 do
     -- A mapping of Lua type names to functions that construct Pandoc types.
@@ -2974,18 +2999,6 @@ csl_vars_sort = type_check('string', 'string')(order(CSL_VARS_ORDER))
 do
     -- Run the decoder in protected mode.
     local decode = protect(json.decode)
-    local floor = math.floor
-
-    -- Convert numbers to strings.
-    --
-    -- Floating point numbers are converted to integers.
-    --
-    -- @param num A number.
-    -- @treturn[1] string A string.
-    -- @treturn[2] nil `nil` if the given value is not a number.
-    local function num_to_str (num)
-        if type(num) == 'number' then return tostring(floor(num)) end
-    end
 
     --- Parse a CSL JSON string that describes one or more CSL items.
     --
@@ -3001,7 +3014,7 @@ do
             local t = type(data)
             -- All seems well.
             if t == 'table' then
-                return csl_item_normalise_vars(walk(data, num_to_str))
+                return csl_item_normalise(data)
             -- Recent versions of zotxt report errors in JSON.
             elseif t == 'string' then
                 return nil, data
@@ -3388,7 +3401,7 @@ do
                 MetaBlocks = markdownify,
                 MetaInlines = markdownify
             })
-            for i = 1, #refs do refs[i] = csl_item_normalise_vars(refs[i]) end
+            for i = 1, #refs do refs[i] = csl_item_normalise(refs[i]) end
             return refs
         end
     ))
@@ -4323,9 +4336,12 @@ do
                 elseif not mt:match ';%s*charset="?utf%-?8"?%s*$' then
                     err = ckey .. ': zotxt response not encoded in UTF-8.'
                 else
-                    local items = csl_json_parse(str)
-                    if items then
-                        local n = #items
+                    -- luacheck: ignore ok
+                    local ok, data = pcall(json.decode, str)
+                    if not ok then
+                        err = 'zotxt responded: ' .. str
+                    elseif type(data) == 'table' then
+                        local n = #data
                         if n == 1 then
                             local citekey_types = self.citekey_types
                             if citekey_types[1] ~= t then
@@ -4333,15 +4349,17 @@ do
                                 remove(citekey_types, j)
                                 insert(citekey_types, 1, t)
                             end
-                            local item = items[1]
+                            local item = csl_item_normalise(data[1])
                             item.id = ckey
                             return item
                         end
                         if n == 0 then err = ckey .. ': no matches.'
                                   else err = ckey .. ': too many matches.'
                         end
-                    else
+                    elseif type(data) == 'string' then
                         err = 'zotxt responded: ' .. str
+                    else
+                        err = ckey .. ': cannot parse zotxt response: ' .. str
                     end
                 end
             end
@@ -4396,9 +4414,6 @@ connectors.ZoteroWeb.options = connectors.Zotxt.options(
 )
 
 do
-    -- Shorthands.
-    local decode = protect(json.decode)
-
     -- Zotero Web API base URL.
     local base_url = 'https://api.zotero.org'
 
@@ -4443,19 +4458,14 @@ do
             -- @fixme Test if this is ever raised!
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = assert(vars_sub(user_id_url, obj))
-            local str, err = obj.query(ep, {v = 3})
-            if str then
-                local data = decode(str)
-                if not data then
-                    err = 'cannot parse response: ' .. str
+            local data, err = obj.query(ep, {v = 3})
+            if data then
+                local user_id = data.userID
+                if not user_id then
+                    err = format('no user for API key %s.', obj.api_key)
                 else
-                    local user_id = data.userID
-                    if not user_id then
-                        err = format('no user for API key %s.', obj.api_key)
-                    else
-                        obj.user_id = user_id
-                        return user_id
-                    end
+                    obj.user_id = user_id
+                    return user_id
                 end
             end
             error('Zotero user ID lookup: ' .. err, 0)
@@ -4480,21 +4490,16 @@ do
             -- @fixme Is this ever raised?
             assert(obj.api_key, 'no Zotero API key given.')
             local ep = assert(vars_sub(groups_url, obj))
-            local str, err = obj.query(ep, {v = 3, key = obj.api_key})
-            if str then
-                local data = decode(str)
-                if not data then
-                    err = 'cannot parse response: ' .. str
-                else
-                    local groups = Values()
-                    for i = 1, #data do
-                        if data[i] and data[i].data and data[i].data.id then
-                            groups:add(data[i].data.id)
-                        end
+            local data, err = obj.query(ep, {v = 3, key = obj.api_key})
+            if data then
+                local groups = Values()
+                for i = 1, #data do
+                    if data[i] and data[i].data and data[i].data.id then
+                        groups:add(data[i].data.id)
                     end
-                    obj.groups = groups
-                    return groups
                 end
+                obj.groups = groups
+                return groups
             end
             error('Zotero group membership lookup: ' .. err, 0)
         end
@@ -4549,20 +4554,27 @@ do
                 query_url = query_url .. '?' .. concat(query, '&')
             end
             local ok, mt, str = pcall(http_get, query_url)
+
             if not ok then error('failed to connect to Zotero Web API.', 0) end
             if not mt or mt == '' then
                 return nil, 'Zotero response declares no MIME type.'
             elseif not str or str == '' then
                 return nil, 'Zotero response is empty.'
-            elseif mt:match '%f[%a]json%f[%A]' then
-                return str
-            elseif not mt:match '^text/' then
+            -- @todo Check encoding of response.
+            elseif mt:match '^text/plain' then
+                return nil, 'Zotero responded: ' .. str
+            elseif not mt:match '%f[%a]json%f[%A]' then
                 local err = 'Zotero response is of unexpected MIME type %s.'
                 return nil, err:format(mt)
-            elseif not mt:match ';%s*charset="?utf%-?8"?%s*$' then
-                return nil, 'Zotero response is not encoded in UTF-8.'
             end
-            return nil, 'Zotero responded: ' .. str
+            local data
+            ok, data = pcall(json.decode, str)
+            if not ok then
+                return nil, 'cannot parse Zotero response: ' .. str
+            end
+            return data
+            -- end
+            -- return nil, 'Zotero responded: ' .. str
         end
     )
 
@@ -4638,12 +4650,12 @@ do
                             format ='csljson', itemType='-attachment'}
             for ep in self:endpoints() do
                 -- luacheck: ignore err
-                local str, err = self.query(ep, params)
-                if not str then return nil, err end
-                local data, err = csl_json_parse(str)
+                local data, err = self.query(ep, params)
                 if not data then return nil, err end
                 local items = data.items
-                if items and #items > 0 then return items end
+                if items and #items > 0 then
+                    return map(items, csl_item_normalise)
+                end
             end
             return nil, 'no matches.'
         end
@@ -4667,20 +4679,18 @@ do
             local params = {v = 3, key = self.api_key,
                             format ='csljson', itemType='-attachment'}
             for ep in self:endpoints(id) do
-                local str = self.query(ep, params)
-                if str then
-                    local data, err = csl_json_parse(str)
-                    if not data then return nil, err end
+                local data = self.query(ep, params)
+                if data then
                     local items = data.items
                     if items then
                         local n = #items
                         if n == 1 then
                             -- luacheck: ignore err
-                            local item = items[1]
-                            item.id = id
                             local err
+                            local item = csl_item_normalise(items[1])
                             item, err = csl_item_add_extras(item)
                             if not item then return id .. ': ' .. err end
+                            item.id = id
                             return item
                         elseif n > 1 then
                             return nil, format('item ID %s: not unique.', id)
