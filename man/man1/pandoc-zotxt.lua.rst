@@ -77,7 +77,7 @@ fetching data from public groups does not require an API key.
        - 199
        - 4532986
    ...
-   Look up @DoeTitle2020 in the Zotero groups 199 and 4532986.
+   Look up @DoeTitle2020 in the Zotero groupsma 199 and 4532986.
    EOF
 
 The Zotero Web API does *not* allow to search for citation keys other than

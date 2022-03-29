@@ -63,7 +63,7 @@
 --         - 199
 --         - 4532986
 --     ...
---     Look up @DoeTitle2020 in the Zotero groups 199 and 4532986.
+--     Look up @DoeTitle2020 in the Zotero groupsma 199 and 4532986.
 --     EOF
 --
 -- The Zotero Web API does *not* allow to search for citation keys other than
@@ -250,7 +250,7 @@
 -- pandoc(1)
 --
 -- @script pandoc-zotxt.lua
--- @release 1.2.0b
+-- @release 1.2.0
 -- @author Odin Kroeger
 -- @copyright 2018, 2019, 2020, 2021, 2022 Odin Kroeger
 -- @license MIT
@@ -639,7 +639,7 @@ path_join = type_check('string', '...')(
 NAME = 'pandoc-zotxt.lua'
 
 --- The version of this script.
-VERSION = '1.2.0b'
+VERSION = '1.2.0'
 
 do
     local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
