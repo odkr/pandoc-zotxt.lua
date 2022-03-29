@@ -171,7 +171,7 @@ ZOTXT_JSON = M.file_read(M.path_join(DATA_DIR, 'bibliography.json'))
 --     then ZOTXT_CSL = M.csl_json_parse(ZOTXT_JSON)
 --     else ZOTXT_CSL = pandoc.read(ZOTXT_JSON, 'csljson').meta.references
 -- end
-ZOTXT_CSL = M.csl_json_parse(ZOTXT_JSON)
+ZOTXT_CSL = M.BIBLIO_DECODERS.json(ZOTXT_JSON)
 
 --- Bibliographic data as returned from a CSL YAML bibliography file.
 ZOTXT_YAML = {
@@ -1894,10 +1894,10 @@ function test_csl_item_add_extras ()
     assert_items_equals(M.csl_item_add_extras(M.copy(input)), output)
 end
 
-function test_csl_item_normalise_vars ()
+function test_csl_item_normalise ()
     local cycle = {}
     cycle.cycle = cycle
-    assert_items_equals(M.csl_item_normalise_vars(cycle), cycle)
+    assert_items_equals(M.csl_item_normalise(cycle), cycle)
 
     local test = {
         ISBN = '978-0-19-989262-4',
@@ -1912,7 +1912,7 @@ function test_csl_item_normalise_vars ()
         Title = 'Resisting Reality: Social Construction and Social Critique',
         Type = 'book'
     }
-    assert_equals(M.csl_item_normalise_vars(test), ZOTWEB_CSL)
+    assert_equals(M.csl_item_normalise(test), ZOTWEB_CSL)
 end
 
 ----------------
@@ -1993,6 +1993,9 @@ function test_csl_vars_sort ()
         assert_equals(M.csl_vars_sort(unpack(input)), output)
     end
 end
+
+--- Citation keys
+-- @section
 
 function test_citekey_terms ()
     local ts = {'betterbibtexkey', 'easykey'}
@@ -2166,8 +2169,8 @@ function test_zoteroweb_lookup ()
     local zoteroweb = M.connectors.ZoteroWeb:new{api_key = ZOTWEB_API_KEY}
 
     local item, err = zoteroweb:lookup 'D9HEKNWD'
-    lu.assert_not_nil(item)
     lu.assert_nil(err)
+    lu.assert_not_nil(item)
     item.id = 'haslanger2012ResistingRealitySocial'
     assert_items_equals(item, ZOTWEB_CSL)
 end
@@ -2199,73 +2202,73 @@ function test_biblio_read ()
     local fname, data, err
 
     fname = M.path_join(DATA_DIR, 'bibliography.json')
-    data, err = M.biblio:read(fname)
+    data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
     assert_items_equals(data, ZOTXT_CSL)
 
     fname = M.path_join(DATA_DIR, 'bibliography.yaml')
-    data, err = M.biblio:read(fname)
+    data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
     assert_items_equals(data, ZOTXT_YAML)
 end
 
-function test_csl_json_parse ()
-    local output = {
-        author = {{family = 'Doe', given = 'John'}},
-        issued = {['date-parts'] = {{'2021'}}},
-        publisher = 'Unit test press',
-        ['publisher-place'] = 'Vienna',
-        title = 'Unit testing',
-        type = 'book'
-    }
+-- function test_csl_json_parse ()
+--     local output = {
+--         author = {{family = 'Doe', given = 'John'}},
+--         issued = {['date-parts'] = {{'2021'}}},
+--         publisher = 'Unit test press',
+--         ['publisher-place'] = 'Vienna',
+--         title = 'Unit testing',
+--         type = 'book'
+--     }
 
-    local tests = {
-        [[
-            {
-                "author": [
-                    {
-                        "family": "Doe",
-                        "given": "John"
-                    }
-                ],
-                "issued": {
-                    "date-parts": [
-                        ["2021"]
-                    ]
-                },
-                "publisher": "Unit test press",
-                "publisher-place": "Vienna",
-                "title": "Unit testing",
-                "type": "book"
-            }
-        ]],
-        [[
-            {
-                "Author": [
-                    {
-                        "family": "Doe",
-                        "given": "John"
-                    }
-                ],
-                "Issued": {
-                    "Date parts": [
-                        [2021]
-                    ]
-                },
-                "Publisher": "Unit test press",
-                "Publisher place": "Vienna",
-                "Title": "Unit testing",
-                "Type": "book"
-            }
-        ]]
-    }
+--     local tests = {
+--         [[
+--             {
+--                 "author": [
+--                     {
+--                         "family": "Doe",
+--                         "given": "John"
+--                     }
+--                 ],
+--                 "issued": {
+--                     "date-parts": [
+--                         ["2021"]
+--                     ]
+--                 },
+--                 "publisher": "Unit test press",
+--                 "publisher-place": "Vienna",
+--                 "title": "Unit testing",
+--                 "type": "book"
+--             }
+--         ]],
+--         [[
+--             {
+--                 "Author": [
+--                     {
+--                         "family": "Doe",
+--                         "given": "John"
+--                     }
+--                 ],
+--                 "Issued": {
+--                     "Date parts": [
+--                         [2021]
+--                     ]
+--                 },
+--                 "Publisher": "Unit test press",
+--                 "Publisher place": "Vienna",
+--                 "Title": "Unit testing",
+--                 "Type": "book"
+--             }
+--         ]]
+--     }
 
-    for _, v in ipairs(tests) do
-        assert_items_equals(M.csl_json_parse(v), output)
-    end
-end
+--     for _, v in ipairs(tests) do
+--         assert_items_equals(M.csl_json_parse(v), output)
+--     end
+-- end
 
 
 function test_biblio_write ()
@@ -2274,10 +2277,10 @@ function test_biblio_write ()
     fname = M.path_join(TMP_DIR, 'bibliography.json')
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
-    fmt, err = M.biblio:write(fname, {ZOTXT_CSL})
+    fmt, err = M.biblio_write(fname, {ZOTXT_CSL})
     lu.assert_nil(err)
     assert_equals(fmt, true)
-    data, err = M.biblio:read(fname)
+    data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
     assert_items_equals(data, {ZOTXT_CSL})
@@ -2285,10 +2288,10 @@ function test_biblio_write ()
     fname = M.path_join(TMP_DIR, 'bibliography.yaml')
     ok, err, errno = os.remove(fname)
     if not ok and errno ~= 2 then error(err) end
-    fmt, err = M.biblio:write(fname, ZOTXT_YAML)
+    fmt, err = M.biblio_write(fname, ZOTXT_YAML)
     assert_equals(fmt, true)
     lu.assert_nil(err)
-    data, err = M.biblio:read(fname)
+    data, err = M.biblio_read(fname)
     lu.assert_not_nil(data)
     lu.assert_nil(err)
     assert_items_equals(data, ZOTXT_YAML)
@@ -2301,11 +2304,11 @@ end
 -- end
 
 function test_biblio_codecs_bib_decode ()
-    local bib = M.biblio.types.bib
+    local decode = M.BIBLIO_DECODERS.bib
     local fname = M.path_join(DATA_DIR, 'bibliography.bib')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    local ids = M.csl_items_ids(bib.decode(str))
+    local ids = M.csl_items_ids(decode(str))
     assert_items_equals(ids, {
         ['crenshaw1989DemarginalizingIntersectionRace'] = true,
         ['díaz-león2015WhatSocialConstruction'] = true
@@ -2315,26 +2318,26 @@ end
 
 function test_biblio_codecs_yaml_decode ()
     -- luacheck: ignore yaml
-    local yaml = M.biblio.types.yaml
+    local decode = M.BIBLIO_DECODERS.yaml
     local fname = M.path_join(DATA_DIR, 'bibliography.yaml')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    assert_items_equals(yaml.decode(str), ZOTXT_YAML)
+    assert_items_equals(decode(str), ZOTXT_YAML)
 end
 
 function test_biblio_types_yaml_encode ()
     -- luacheck: ignore yaml
-    local yaml = M.biblio.types.yaml
+    local encode = M.BIBLIO_ENCODERS.yaml
     local fname = M.path_join(DATA_DIR, 'bibliography.yaml')
     local str, err = M.file_read(fname)
     if not str then error(err) end
-    assert_items_equals(yaml.decode(yaml.encode(ZOTXT_YAML)), ZOTXT_YAML)
+    assert_items_equals(M.BIBLIO_DECODERS.yaml(encode(ZOTXT_YAML)), ZOTXT_YAML)
 end
 
 function test_biblio_update ()
     local wrong = {'nosuffix', 'n.', 'n.wrongformat'}
     for _, v in ipairs(wrong) do
-        local ok, err =  M.biblio:update(M.connectors.Zotxt, v, {'<n/a>'})
+        local ok, err =  M.biblio_update(M.connectors.Zotxt, v, {'<n/a>'})
         lu.assert_nil(ok)
         lu.assert_not_nil(err)
     end
@@ -2347,13 +2350,13 @@ function test_biblio_update ()
     if not ok and errno ~= 2 then error(err) end
 
     -- Checks whether we do nothing if there's nothing to be done.
-    ok, err = M.biblio:update(M.connectors.Zotxt, fname, {})
+    ok, err = M.biblio_update(M.connectors.Zotxt, fname, {})
     if not ok then error(err) end
     ok, err, errno = os.remove(fname)
     if ok or errno ~= 2 then error(err) end
 
     -- Checks adding citations from zero.
-    ok, err = M.biblio:update(M.connectors.Zotxt, fname, {'haslanger:2012resisting'})
+    ok, err = M.biblio_update(M.connectors.Zotxt, fname, {'haslanger:2012resisting'})
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -2366,7 +2369,7 @@ function test_biblio_update ()
     -- Checks adding a new citation.
     local new
     ckeys = {'haslanger:2012resisting', 'dotson:2016word'}
-    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
+    ok, err = M.biblio_update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     data, err = read_json_file(fname)
@@ -2374,7 +2377,7 @@ function test_biblio_update ()
     lu.assert_not_nil(data)
     assert_equals(#data, 2)
 
-    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
+    ok, err = M.biblio_update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     new, err = read_json_file(fname)
@@ -2384,7 +2387,7 @@ function test_biblio_update ()
 
     -- This should not change the file.
     local post
-    ok, err = M.biblio:update(M.connectors.Zotxt, fname, ckeys)
+    ok, err = M.biblio_update(M.connectors.Zotxt, fname, ckeys)
     lu.assert_nil(err)
     lu.assert_true(ok)
     post, err = read_json_file(fname)

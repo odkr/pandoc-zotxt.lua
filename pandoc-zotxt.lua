@@ -11,10 +11,10 @@
 -- data for citations in Zotero and adds that data to the "references"
 -- metadata field or to a bibliography file, where Pandoc can pick it up.
 --
--- Cite your sources using so-called "Better BibTeX citation keys" (provided
--- by Better BibTeX for Zotero) or "Easy Citekeys" (provided by zotxt) and
--- then tell **pandoc** to filter your document through **pandoc-zotxt.lua**
--- before processing citations. That's all there is to it.
+-- You cite your sources using so-called "Better BibTeX citation keys"
+-- (provided by Better BibTeX for Zotero) or "Easy Citekeys" (provided by
+-- zotxt) and then tell **pandoc** to filter your document through
+-- **pandoc-zotxt.lua** before processing citations. That's all there is to it.
 --
 -- For example:
 --
@@ -32,9 +32,9 @@
 -- --------------
 --
 -- By default, bibliographic data is fetched from the Zotero desktop client,
--- which must be running when you invoke **pandoc**. This is the faster,
--- easier, and less error-prone way to fetch citations from Zotero. It
--- requires zotxt and BetterBibTeX for Zotero.
+-- which must be running when you invoke **pandoc**. This is faster, easier,
+-- and less error-prone than using Zotero's Web API. But it requires the zotxt
+-- and BetterBibTeX for Zotero add-ons.
 --
 -- Web API
 -- -------
@@ -59,19 +59,22 @@
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
 --     zotero-connectors: zoteroweb
---     zotero-public-groups: 4532986
+--     zotero-public-groups:
+--         - 199
+--         - 4532986
 --     ...
---     Look up @DoeTitle2020 in the Zotero group with the ID 4532986.
+--     Look up @DoeTitle2020 in the Zotero groups 199 and 4532986.
 --     EOF
 --
 -- The Zotero Web API does *not* allow to search for citation keys other than
 -- Zotero item IDs. Therefore, BetterBibTeX citation keys and Easy Citekeys
 -- have to be translated into author names, title keywords, and publication
--- years; Better BibTeX citation keys are split up at uppercase letters and
--- the first of each series of digits ("DoeTitle2020" becomes "Doe", "Title",
--- "2020"). Easy Citekeys are split up at the first colon and the last digit
--- ("doe:2020title" becomes "doe", "2020", "title"). Citation keys that cannot
--- be translated into at least two search terms are ignored.
+-- years. Better BibTeX citation keys are split up at uppercase letters and
+-- the first as well as the last of each series of digits ("DoeTitle2020"
+-- becomes "Doe", "Title", "2020"). Easy Citekeys are split up at the first
+-- colon and the last digit ("doe:2020title" becomes "doe", "2020", "title").
+-- Citation keys that cannot be translated into at least two search terms are
+-- ignored.
 --
 -- If a search yields two or more items, you need to disambiguate them. If you
 -- use BetterBibTeX, you may want to set its citation key format to something
@@ -97,15 +100,14 @@
 --
 -- To use such a bibliography file, set the "zotero-bibliography" metadata
 -- field to a filename. If that filename is relative, it is interpreted as
--- being relative to the directory of the first input file or, if no input
--- files were given, the current working directory.
+-- relative to the directory of the first input file or, if no input files
+-- were given, the current working directory.
 --
--- The "zotero-bibliography" metadata field may contain environment variables.
--- Variable names must be enclosed in `${...}`. They are replaced with the
--- value of that variable (e.g., `${HOME}` will be replaced with your home
--- directory). Moreover, any series of *n* dollar signs is replaced with *n*�
--- – 1 dollar signs, so that you can escape them should they occur in a
--- filename.
+-- The filename may contain environment variables. Variable names must be
+-- enclosed in `${...}`. They are replaced with the value of that variable
+-- (e.g., `${HOME}` will be replaced with your home directory). Moreover, any
+-- series of *n* dollar signs is replaced with *n* – 1 dollar signs, so
+-- that you can escape them if they occur in the filename.
 --
 -- The format of the file is determined by its filename ending.
 --
@@ -140,29 +142,30 @@
 --
 -- You can use citation keys of multitple types:
 --
--- | **Name**          | **Type**                   | **Example**   |
--- | ----------------- | -------------------------- | ------------- |
--- | `betterbibtexkey` | Better BibTeX citation key | DoeTitle2020  |
--- | `easykey`         | Easy Citekey               | doe:2020title |
--- | `key`             | Zotero item ID             | A1BC23D4      |
+-- | **Name**          | **Type**          | **Example**   |
+-- | ----------------- | ----------------- | ------------- |
+-- | `betterbibtexkey` | Better BibTeX key | DoeTitle2020  |
+-- | `easykey`         | Easy Citekey      | doe:2020title |
+-- | `key`             | Zotero item ID    | A1BC23D4      |
 --
--- You can force citation keys to be interpreted as being of a particular type
--- by setting the "zotero-citekey-types" metadata field:
+-- You can force citation keys to only be interpreted as being of one of a
+-- list of particular types by setting the "zotero-citekey-types" metadata
+-- field:
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
 --     zotero-citekey-types: betterbibtexkey
 --     ...
---     Force @DoeTitle to be treated as BetterBibTeX citation key.
+--     Force @DoeTitle to be treated as BetterBibTeX key.
 --     EOF
 --
--- This is useful if a Better BibTeX citation key is misinterpreted as being
--- an Easy Citekey, or vica vera.
+-- This is useful if a Better BibTeX key is misinterpreted as Easy Citekey, or
+-- vica vera.
 --
 -- CONFIGURATION
 -- =============
 --
--- You can control how bibligraphic data is fetched by setting the following
+-- You can configure how bibligraphic data is fetched by setting the following
 -- metadata fields:
 --
 -- * `zotero-api-key`: A Zotero API key. Only applies to the '[Web
@@ -203,7 +206,7 @@
 --
 --     pandoc -L pandoc-zotxt.lua -C <<EOF
 --     ---
---     zotero-citekey-types: betterbibtexkey
+--     zotero-public-groups: 4532986
 --     ...
 --     See @DoeTitle2020 for details.
 --     EOF
@@ -220,10 +223,9 @@
 -- highly unlikely.
 --
 -- A citation key may pick out the wrong item if it picks out a different
--- items depending on whether it is interpreted as a Better BibTeX citation
--- key or as an Easy Citekey. Set the 'zotero-citekey-types' metadata field to
--- avoid this (see '[Citation key types](#citation-key-types)' above for
--- details).
+-- items depending on whether it is interpreted as a Better BibTeX key or as
+-- an Easy Citekey. Set the 'zotero-citekey-types' metadata field to fix this
+-- (see '[Citation key types](#citation-key-types)' above for details).
 --
 -- Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
 -- that do not set the "User Agent" HTTP header. And **pandoc** does not. As a
@@ -708,7 +710,7 @@ protect = type_check('function')(
 )
 
 -- @fixme
-fatalise = type_check('function')(
+fatal = type_check('function')(
     function (func)
         return function (...)
             local results = pack(func(...))
@@ -2742,9 +2744,6 @@ do
     ))
 end
 
-
-
--- @fixme
 do
     -- Shorthands
     local floor = math.floor
@@ -2787,8 +2786,12 @@ do
         return ret
     end
 
-    -- @fixme
-    -- @fixme Conversion of numbers is not unit-tested.
+    -- Normalise CSL items.
+    --
+    -- Normalises CSL variable names and numeric data.
+    --
+    -- @tparam tab item A CSL item.
+    -- @treturn tab A normalised CSL item.
     csl_item_normalise = type_check('table')(
         function (item)
             return csl_item_normalise_vars(walk(item, num_to_str))
@@ -2996,47 +2999,15 @@ csl_varname_normalise = type_check('string')(
 -- @function csl_vars_sort
 csl_vars_sort = type_check('string', 'string')(order(CSL_VARS_ORDER))
 
-do
-    -- Run the decoder in protected mode.
-    local decode = protect(json.decode)
-
-    --- Parse a CSL JSON string that describes one or more CSL items.
-    --
-    -- @string str A CSL JSON string.
-    -- @treturn[1] tab A single CSL item or a list of CSL items.
-    -- @treturn[2] nil `nil` if the string does not describe a CSL item.
-    -- @treturn[2] string An error message.
-    --
-    -- @function csl_json_parse
-    csl_json_parse = type_check('string')(
-        function (str)
-            local data, err = decode(str)
-            local t = type(data)
-            -- All seems well.
-            if t == 'table' then
-                return csl_item_normalise(data)
-            -- Recent versions of zotxt report errors in JSON.
-            elseif t == 'string' then
-                return nil, data
-            -- Old versions of zotxt report errors in non-JSON text.
-            elseif t == 'nil' then
-                return nil, err
-            end
-            -- This point should never be reached.
-            return nil, str .. ': not a CSL item.'
-        end
-    )
-end
-
 
 ----------------
 -- Citation keys
 -- @section
 
---- A mapping of citation key types to parsers.
+--- A mapping of citation key types to citation key parsers.
 --
--- A parser must take a citation key and return search terms or
--- `nil` if no search terms can be derived from the citation key.
+-- A citation key parser is a function that takes a citation key and returns
+-- search terms or `nil` if no search terms can be derived from the key.
 CITEKEY_PARSERS = {}
 
 do
@@ -3075,7 +3046,9 @@ do
                         add = true
                     else
                         local chr = char(code)
-                        -- `chr ~= lower(chr)` is `false` for non-letters.
+                        -- `chr ~= lower(chr)` is `false` for non-letters,
+                        -- so the string is only broken up at uppercase
+                        -- letters, not at non-letters.
                         if chr ~= lower(chr) then
                             add = true
                         end
@@ -3129,38 +3102,6 @@ CITEKEY_PARSERS.easykey = type_check('string')(
     end
 )
 
-do
-    -- This makes sure that whether a key is an Easy Citekey is checked before
-    -- it is checked whether it is a Better BibTeX key.
-    local order = order{'easykey'}
-
-    --- Guess search terms from a citation key.
-    --
-    -- @caveats The key must be supported by a parser in @{CITEKEY_PARSERS}.
-    --
-    -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
-    -- @tparam {string,...} types Types to try to parse the citation key as.
-    -- @treturn[1] {string,...} Search terms.
-    -- @treturn[2] nil `nil` if no search terms could be derived.
-    -- @treturn[2] string An error message.
-    --
-    -- @function citekey_terms
-    citekey_terms = type_check('string', 'table')(
-        function (ckey, types)
-            types = update({}, types)
-            sort(types, order)
-            for _, t in pairs(types) do
-                local parse = CITEKEY_PARSERS[t]
-                if parse then
-                    local terms = parse(ckey)
-                    if terms and terms.n > 1 then return terms end
-                end
-            end
-            return nil, format('cannot guess search terms for %s.', ckey)
-        end
-    )
-end
-
 --- A mapping of citation key type names to type guessing functions.
 --
 -- A type guessing function should take a citation key and return `true` if
@@ -3202,10 +3143,42 @@ CITEKEY_TYPIFIERS.key = type_check('string')(
     end
 )
 
+do
+    -- This makes sure that whether a key is an Easy Citekey is checked before
+    -- it is checked whether it is a Better BibTeX key.
+    local order = order{'easykey'}
+
+    --- Guess search terms from a citation key.
+    --
+    -- @caveats The key must be supported by a parser in @{CITEKEY_PARSERS}.
+    --
+    -- @string ckey A citation key (e.g., `'doe:2020word'`, `'DoeWord2020'`).
+    -- @tparam {string,...} types Types to try to parse the citation key as.
+    -- @treturn[1] {string,...} Search terms.
+    -- @treturn[2] nil `nil` if no search terms could be derived.
+    -- @treturn[2] string An error message.
+    --
+    -- @function citekey_terms
+    citekey_terms = type_check('string', 'table')(
+        function (ckey, types)
+            types = update({}, types)
+            sort(types, order)
+            for _, t in pairs(types) do
+                local parse = CITEKEY_PARSERS[t]
+                if parse then
+                    local terms = parse(ckey)
+                    if terms and terms.n > 1 then return terms end
+                end
+            end
+            return nil, format('cannot guess search terms for %s.', ckey)
+        end
+    )
+end
+
 --- Check whether a citation key could be of a type.
 --
 -- @string ckey A citation key.
--- @tab {string,...} Citation key types.
+-- @tparam {string,...} types Citation key types.
 -- @treturn {string,...} Citation key types that would fit the key.
 --
 -- @function citekey_types
@@ -3229,19 +3202,10 @@ citekey_types = type_check('string', 'table')(
 -- Bibliography files
 -- @section
 
---- An interface for reading, writing, and updating bibliography files.
+--- A case-insensitive mapping of filename suffices to decoders.
 --
--- @object biblio
--- @proto @{Object}
-biblio = Object:clone()
-
---- A case-insensitive mapping of filename suffices to codecs.
---
--- @fixme Discuss codec protocol.
-biblio.types = setmetatable({}, ignore_case)
-
---- De-/Encode BibLaTeX files.
-biblio.types.bib = {}
+-- A decoder is a function that takes a string and returns a list of CSL items.
+BIBLIO_DECODERS = setmetatable({}, ignore_case)
 
 --- Parse the contents of a BibLaTeX file.
 --
@@ -3253,10 +3217,10 @@ biblio.types.bib = {}
 -- @require Only returns a list of mappings of the literal
 --  'id' to CSL item IDs if run with Pandoc < v2.17.
 --
--- @function biblio.types.bib.decode
+-- @function BIBLIO_DECODERS.bib
 -- @fixme Not unit-tested.
 if not pandoc.types or PANDOC_VERSION < {2, 17} then
-    biblio.types.bib.decode = type_check('string')(
+    BIBLIO_DECODERS.bib = type_check('string')(
         function (str)
             local ids = Values()
             for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
@@ -3266,7 +3230,7 @@ if not pandoc.types or PANDOC_VERSION < {2, 17} then
         end
     )
 else
-    biblio.types.bib.decode = type_check('string')(protect(
+    BIBLIO_DECODERS.bib = type_check('string')(protect(
         function (str)
             local doc = pandoc.read(str, 'biblatex')
             local refs
@@ -3275,30 +3239,6 @@ else
         end
     ))
 end
-
---- Serialise a list of CSL items to a BibLaTeX string.
---
--- @tparam {tab,...} items CSL items.
--- @treturn[1] string A BibLaTeX string.
--- @treturn[2] nil `nil` if the items could not be serialised.
--- @treturn[2] string An error message.
---
--- @require Pandoc ≥ 2.17.
---
--- @function biblio.types.bibtex.encode
--- @fixme Not unit-tested.
-if pandoc.types and PANDOC_VERSION >= {2, 17} then
-    biblio.types.bib.encode = type_check('table')(protect(
-        function (items)
-            items = map(items, fatalise(csl_item_to_meta))
-            local doc = Pandoc({}, Meta{references = items})
-            return pandoc.write(doc, 'biblatex')
-        end
-    ))
-end
-
---- De-/Encode BibTeX files.
-biblio.types.bibtex = {}
 
 --- Parse the contents of a BibTeX file.
 --
@@ -3310,17 +3250,94 @@ biblio.types.bibtex = {}
 -- @require Only returns a list of mappings of the literal
 --  'id' to CSL item IDs if run with Pandoc < v2.17.
 --
--- @function biblio.types.bibtex.decode
+-- @function BIBLIO_DECODERS.bibtex
 -- @fixme Not unit-tested.
 if not pandoc.types or PANDOC_VERSION < {2, 17} then
-    biblio.types.bibtex.decode = biblio.types.bib.decode
+    BIBLIO_DECODERS.bibtex = BIBLIO_DECODERS.bib
 else
-    biblio.types.bibtex.decode = type_check('string')(protect(
+    BIBLIO_DECODERS.bibtex = type_check('string')(protect(
         function (str)
             local doc = pandoc.read(str, 'bibtex')
             local refs
             pcall(function () refs = doc.meta.references end)
             return refs or {}
+        end
+    ))
+end
+
+--- Parse a CSL JSON string.
+--
+-- @string str A CSL JSON string.
+-- @treturn {tab,...} CSL items.
+-- @treturn[2] nil `nil` if the string could not be parsed.
+-- @treturn[2] string An error message.
+--
+-- @function BIBLIO_DECODERS.json
+BIBLIO_DECODERS.json = type_check('string')(protect(
+    function (str)
+        local data = json.decode(str)
+        assert(type(data) == 'table' and select(2, keys(data)) == #data,
+               'not a list of CSL items.')
+        return map(data, csl_item_normalise)
+    end
+))
+
+--- Parse a CSL YAML string.
+--
+-- @caveats Converts formatting to Markdown, not Zotero pseudo-HTML.
+--
+-- @string str A CSL YAML string.
+-- @treturn[1] {tab,...} CSL items.
+-- @treturn[2] nil `nil` if the string could not be parsed.
+-- @treturn[2] string An error message.
+--
+-- @function BIBLIO_DECODERS.yaml
+BIBLIO_DECODERS.yaml = type_check('string')(protect(
+    function (str)
+        local next_line = str:gmatch '(.-)\r?\n'
+        local ln = next_line(str, nil)
+        while ln and ln ~= '---' do ln = next_line(str, ln) end
+        if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
+        local doc = pandoc.read(str, 'markdown')
+        local refs
+        pcall(function () refs = doc.meta.references end)
+        if not refs then return {} end
+        return map(elem_walk(refs, {
+            -- Pandoc ≥ v2.17.
+            Blocks = markdownify,
+            Inlines = markdownify,
+            -- Pandoc < v2.17.
+            MetaBlocks = markdownify,
+            MetaInlines = markdownify
+        }), csl_item_normalise)
+    end
+))
+
+--- Alternative suffix for YAML files.
+BIBLIO_DECODERS.yml = BIBLIO_DECODERS.yaml
+
+--- A case-insensitive mapping of filename suffices to encoders.
+--
+-- @fixme Discuss codec protocol.
+BIBLIO_ENCODERS = setmetatable({}, ignore_case)
+
+--- Serialise a list of CSL items to a BibLaTeX string.
+--
+-- @tparam {tab,...} items CSL items.
+-- @treturn[1] string A BibLaTeX string.
+-- @treturn[2] nil `nil` if the items could not be serialised.
+-- @treturn[2] string An error message.
+--
+-- @require Pandoc ≥ 2.17.
+--
+-- @function BIBLIO_ENCODERS.bib
+-- @fixme Not unit-tested.
+if pandoc.types and PANDOC_VERSION >= {2, 17} then
+    BIBLIO_ENCODERS.bib = type_check('table')(protect(
+        function (items)
+            items = map(items, fatal(csl_item_to_meta))
+            local doc = Pandoc({}, Meta{references = items})
+            return pandoc.write(doc, 'biblatex')
         end
     ))
 end
@@ -3334,30 +3351,17 @@ end
 --
 -- @require Pandoc ≥ 2.17.
 --
--- @function biblio.types.bibtex.encode
+-- @function BIBLIO_ENCODERS.bibtex
 -- @fixme Not unit-tested.
 if pandoc.types and PANDOC_VERSION >= {2, 17} then
-    biblio.types.bibtex.encode = type_check('table')(protect(
+    BIBLIO_ENCODERS.bibtex = type_check('table')(protect(
         function (items)
-            items = map(items, fatalise(csl_item_to_meta))
+            items = map(items, fatal(csl_item_to_meta))
             local doc = Pandoc({}, Meta{references = items})
             return pandoc.write(doc, 'bibtex')
         end
     ))
 end
-
---- De-/Encode CSL items in JSON.
-biblio.types.json = {}
-
---- Parse a CSL JSON string.
---
--- @string str A CSL JSON string.
--- @treturn {tab,...} CSL items.
--- @treturn[2] nil `nil` if the string could not be parsed.
--- @treturn[2] string An error message.
---
--- @function biblio.types.json.decode
-biblio.types.json.decode = csl_json_parse
 
 --- Serialise a list of CSL items to a JSON string.
 --
@@ -3366,46 +3370,8 @@ biblio.types.json.decode = csl_json_parse
 -- @treturn[2] nil `nil` if the items could not be serialised.
 -- @treturn[2] string An error message.
 --
--- @function biblio.types.json.encode
-biblio.types.json.encode = type_check('table')(protect(json.encode))
-
---- De-/Encode CSL items in YAML.
-biblio.types.yaml = {}
-
-do
-    --- Parse a CSL YAML string.
-    --
-    -- @caveats Converts formatting to Markdown, not Zotero pseudo-HTML.
-    --
-    -- @string str A CSL YAML string.
-    -- @treturn[1] {tab,...} CSL items.
-    -- @treturn[2] nil `nil` if the string could not be parsed.
-    -- @treturn[2] string An error message.
-    --
-    -- @function biblio.types.yaml.decode
-    biblio.types.yaml.decode = type_check('string')(protect(
-        function (str)
-            local next_line = str:gmatch '(.-)\r?\n'
-            local ln = next_line(str, nil)
-            while ln and ln ~= '---' do ln = next_line(str, ln) end
-            if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
-            local doc = pandoc.read(str, 'markdown')
-            local refs
-            pcall(function () refs = doc.meta.references end)
-            if not refs then return {} end
-            refs = elem_walk(refs, {
-                -- Pandoc ≥ v2.17.
-                Blocks = markdownify,
-                Inlines = markdownify,
-                -- Pandoc < v2.17.
-                MetaBlocks = markdownify,
-                MetaInlines = markdownify
-            })
-            for i = 1, #refs do refs[i] = csl_item_normalise(refs[i]) end
-            return refs
-        end
-    ))
-end
+-- @function BIBLIO_ENCODERS.json
+BIBLIO_ENCODERS.json = type_check('table')(protect(json.encode))
 
 do
     -- Run walkers in protected mode.
@@ -3435,8 +3401,8 @@ do
     -- @treturn[2] nil `nil` if the items could not be serialised.
     -- @treturn[2] string An error message.
     --
-    -- @function biblio.types.yaml.encode
-    biblio.types.yaml.encode = type_check('table')(
+    -- @function BIBLIO_ENCODERS.yaml
+    BIBLIO_ENCODERS.yaml = type_check('table')(
         function (items)
             -- The Markdown writer appears to ignore metadata.
             for i = 1, #items do
@@ -3454,12 +3420,12 @@ do
 end
 
 --- Alternative suffix for YAML files.
-biblio.types.yml = biblio.types.yaml
+BIBLIO_ENCODERS.yml = BIBLIO_ENCODERS.yaml
 
 --- Read a bibliography file.
 --
 -- The filename suffix determines the file's format.
--- @{biblio.types} must contain a matching decoder.
+-- @{BIBLIO_DECODERS} must contain a matching decoder.
 --
 -- @string fname A filename.
 -- @treturn[1] Values CSL items.
@@ -3467,18 +3433,16 @@ biblio.types.yml = biblio.types.yaml
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number.
 --
--- @function biblio:read
-biblio.read = type_check('table', 'string')(protect(
-    function (self, fname)
+-- @function biblio_read
+biblio_read = type_check('string')(protect(
+    function (fname)
         -- luacheck: ignore assert
         assert(fname ~= '', 'filename is the empty string')
         local assert = asserter(nil, function (err)
             return path_prettify(fname) .. ': ' .. err
         end)
         local suffix = assert(fname:match '%.(%w+)$', 'no filename suffix')
-        local codec = self.types[suffix]
-        local decode
-        if codec then decode = codec.decode end
+        local decode = BIBLIO_DECODERS[suffix]
         assert(decode, 'unparsable file type.')
         local str, err, errno = file_read(fname)
         if not str then return nil, err, errno end
@@ -3491,7 +3455,7 @@ biblio.read = type_check('table', 'string')(protect(
 --- Write bibliographic data to a bibliography file.
 --
 -- The filename suffix determines the file's format.
--- @{biblio.types} must contain a matching encoder.
+-- @{BIBLIO_ENCODERS} must contain a matching encoder.
 --
 -- If no CSL items are given, tests whether data can be serialised
 -- in the given format *without* chaging the file.
@@ -3505,18 +3469,16 @@ biblio.read = type_check('table', 'string')(protect(
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number.
 --
--- @function biblio:write
-biblio.write = type_check('table', 'string', '?table')(protect(
-    function (self, fname, items)
+-- @function biblio_write
+biblio_write = type_check('string', '?table')(protect(
+    function (fname, items)
         assert(fname ~= '', 'filename is the empty string')
         -- luacheck: ignore assert
         local assert = asserter(nil, function (err)
             return path_prettify(fname) .. ': ' .. err
         end)
         local suffix = assert(fname:match '%.(%w+)$', 'no filename suffix')
-        local codec = self.types[suffix]
-        local encode
-        if codec then encode = codec.encode end
+        local encode = BIBLIO_ENCODERS[suffix]
         assert(encode, 'unwritable file type.')
         if not items or #items == 0 then return suffix end
         local str = assert(encode(items))
@@ -3542,15 +3504,15 @@ do
     -- @treturn[2] ?int An error number if the error is a file I/O error.
     -- @raise See @{connectors.Zotxt} and @{connectors.ZoteroWeb}.
     --
-    -- @function biblio:update
-    biblio.update = type_check('table', 'table', 'string', 'table')(protect(
-        function (self, handle, fname, ckeys)
+    -- @function biblio_update
+    biblio_update = type_check('table', 'string', 'table')(protect(
+        function (handle, fname, ckeys)
             -- luacheck: ignore fmt err errno
             assert(fname ~= '', 'filename is the empty string')
             if #ckeys == 0 then return true end
-            local ok, err = self:write(fname)
+            local ok, err = biblio_write(fname)
             if not ok then return nil, err end
-            local items, err, errno = biblio:read(fname)
+            local items, err, errno = biblio_read(fname)
             if not items then
                 if errno ~= 2 then return nil, err, errno end
                 items = Values()
@@ -3569,7 +3531,7 @@ do
             if n == items.n then return true end
             sort(items, csl_items_sort)
             for i = 1, #items do setmetatable(items[i], sort_csl_vars) end
-            return self:write(fname, items)
+            return biblio_write(fname, items)
         end
     ))
 end
@@ -3890,7 +3852,7 @@ doc_srcs_legacy = type_check('table|userdata')(protect(
             for i = 1, #fnames do
                 -- luacheck: ignore err
                 local fname = assert(file_locate(fnames[i]))
-                local items = assert(biblio:read(fname))
+                local items = assert(biblio_read(fname))
                 extend(data, items)
             end
         end
@@ -4299,6 +4261,9 @@ connectors.Zotxt.citekey_types = {
 }
 
 do
+    -- Shorthand.
+    local decode = json.decode
+
     -- URL of the endpoint to look up items at.
     local base_url = 'http://localhost:23119/zotxt/items?%s=%s'
 
@@ -4337,7 +4302,7 @@ do
                     err = ckey .. ': zotxt response not encoded in UTF-8.'
                 else
                     -- luacheck: ignore ok
-                    local ok, data = pcall(json.decode, str)
+                    local ok, data = pcall(decode, str)
                     if not ok then
                         err = 'zotxt responded: ' .. str
                     elseif type(data) == 'table' then
@@ -4414,6 +4379,9 @@ connectors.ZoteroWeb.options = connectors.Zotxt.options(
 )
 
 do
+    -- Shorthand.
+    local decode = json.decode
+
     -- Zotero Web API base URL.
     local base_url = 'https://api.zotero.org'
 
@@ -4568,7 +4536,7 @@ do
                 return nil, err:format(mt)
             end
             local data
-            ok, data = pcall(json.decode, str)
+            ok, data = pcall(decode, str)
             if not ok then
                 return nil, 'cannot parse Zotero response: ' .. str
             end
@@ -4792,7 +4760,7 @@ add_biblio = type_check('string', 'table', 'table|userdata')(
         local dir = project_dir()
         assert(dir ~= '', 'directory of first input file is the empty string.')
         if not path_is_abs(fname) then fname = path_join(dir, fname) end
-        local ok, err = biblio:update(handle, fname, ckeys)
+        local ok, err = biblio_update(handle, fname, ckeys)
         if not ok then return nil, err end
         local opts, err = opts_parse(meta, {
             name = 'bibliography',
