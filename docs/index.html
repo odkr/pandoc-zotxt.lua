@@ -74,10 +74,10 @@
 <p> <strong>pandoc-zotxt.lua</strong> is a Lua filter for Pandoc that looks up bibliographic
  data for citations in Zotero and adds that data to the &ldquo;references&rdquo;
  metadata field or to a bibliography file, where Pandoc can pick it up.</p></p>
-<p> Cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo; (provided
- by Better BibTeX for Zotero) or &ldquo;Easy Citekeys&rdquo; (provided by zotxt) and
- then tell <strong>pandoc</strong> to filter your document through <strong>pandoc-zotxt.lua</strong>
- before processing citations. That&rsquo;s all there is to it.</p>
+<p> You cite your sources using so-called &ldquo;Better BibTeX citation keys&rdquo;
+ (provided by Better BibTeX for Zotero) or &ldquo;Easy Citekeys&rdquo; (provided by
+ zotxt) and then tell <strong>pandoc</strong> to filter your document through
+ <strong>pandoc-zotxt.lua</strong> before processing citations. That&rsquo;s all there is to it.</p>
 
 <p> For example:</p>
 
@@ -96,9 +96,9 @@ EOF
 <h2> Desktop client</h2>
 
 <p> By default, bibliographic data is fetched from the Zotero desktop client,
- which must be running when you invoke <strong>pandoc</strong>. This is the faster,
- easier, and less error-prone way to fetch citations from Zotero. It
- requires zotxt and BetterBibTeX for Zotero.</p>
+ which must be running when you invoke <strong>pandoc</strong>. This is faster, easier,
+ and less error-prone than using Zotero&rsquo;s Web API. But it requires the zotxt
+ and BetterBibTeX for Zotero add-ons.</p>
 
 <h2> Web API</h2>
 
@@ -126,9 +126,11 @@ EOF
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-connectors: zoteroweb
-zotero-public-groups: <span class="number">4532986</span>
+zotero-public-groups:
+    - <span class="number">199</span>
+    - <span class="number">4532986</span>
 ...
-Look up @DoeTitle2020 <span class="keyword">in</span> the Zotero group with the ID <span class="number">4532986.</span>
+Look up @DoeTitle2020 <span class="keyword">in</span> the Zotero groups <span class="number">199</span> <span class="keyword">and</span> <span class="number">4532986.</span>
 EOF
 </pre>
 
@@ -136,11 +138,12 @@ EOF
 <p> The Zotero Web API does <em>not</em> allow to search for citation keys other than
  Zotero item IDs. Therefore, BetterBibTeX citation keys and Easy Citekeys
  have to be translated into author names, title keywords, and publication
- years; Better BibTeX citation keys are split up at uppercase letters and
- the first of each series of digits (&ldquo;DoeTitle2020&rdquo; becomes &ldquo;Doe&rdquo;, &ldquo;Title&rdquo;,
- &ldquo;2020&rdquo;). Easy Citekeys are split up at the first colon and the last digit
- (&ldquo;doe:2020title&rdquo; becomes &ldquo;doe&rdquo;, &ldquo;2020&rdquo;, &ldquo;title&rdquo;). Citation keys that cannot
- be translated into at least two search terms are ignored.</p>
+ years. Better BibTeX citation keys are split up at uppercase letters and
+ the first as well as the last of each series of digits (&ldquo;DoeTitle2020&rdquo;
+ becomes &ldquo;Doe&rdquo;, &ldquo;Title&rdquo;, &ldquo;2020&rdquo;). Easy Citekeys are split up at the first
+ colon and the last digit (&ldquo;doe:2020title&rdquo; becomes &ldquo;doe&rdquo;, &ldquo;2020&rdquo;, &ldquo;title&rdquo;).
+ Citation keys that cannot be translated into at least two search terms are
+ ignored.</p>
 
 <p> If a search yields two or more items, you need to disambiguate them. If you
  use BetterBibTeX, you may want to set its citation key format to something
@@ -165,15 +168,14 @@ EOF
 
 <p> To use such a bibliography file, set the &ldquo;zotero-bibliography&rdquo; metadata
  field to a filename. If that filename is relative, it is interpreted as
- being relative to the directory of the first input file or, if no input
- files were given, the current working directory.</p>
+ relative to the directory of the first input file or, if no input files
+ were given, the current working directory.</p>
 
-<p> The &ldquo;zotero-bibliography&rdquo; metadata field may contain environment variables.
- Variable names must be enclosed in <code>${...}</code>. They are replaced with the
- value of that variable (e.g., <code>${HOME}</code> will be replaced with your home
- directory). Moreover, any series of <em>n</em> dollar signs is replaced with <em>n</em>�
- – 1 dollar signs, so that you can escape them should they occur in a
- filename.</p>
+<p> The filename may contain environment variables. Variable names must be
+ enclosed in <code>${...}</code>. They are replaced with the value of that variable
+ (e.g., <code>${HOME}</code> will be replaced with your home directory). Moreover, any
+ series of <em>n</em> dollar signs is replaced with <em>n</em> – 1 dollar signs, so
+ that you can escape them if they occur in the filename.</p>
 
 <p> The format of the file is determined by its filename ending.</p>
 
@@ -235,49 +237,50 @@ EOF
 <thead>
 <tr>
 <th> <strong>Name</strong>          </th>
-<th> <strong>Type</strong>                   </th>
+<th> <strong>Type</strong>          </th>
 <th> <strong>Example</strong>   </th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td> <code>betterbibtexkey</code> </td>
-<td> Better BibTeX citation key </td>
+<td> Better BibTeX key </td>
 <td> DoeTitle2020  </td>
 </tr>
 <tr>
 <td> <code>easykey</code>         </td>
-<td> Easy Citekey               </td>
+<td> Easy Citekey      </td>
 <td> doe:2020title </td>
 </tr>
 <tr>
 <td> <code>key</code>             </td>
-<td> Zotero item ID             </td>
+<td> Zotero item ID    </td>
 <td> A1BC23D4      </td>
 </tr>
 </tbody>
 </table>
 
 
-<p> You can force citation keys to be interpreted as being of a particular type
- by setting the &ldquo;zotero-citekey-types&rdquo; metadata field:</p>
+<p> You can force citation keys to only be interpreted as being of one of a
+ list of particular types by setting the &ldquo;zotero-citekey-types&rdquo; metadata
+ field:</p>
 
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
 </span>zotero-citekey-types: betterbibtexkey
 ...
-Force @DoeTitle to be treated as BetterBibTeX citation key.
+Force @DoeTitle to be treated as BetterBibTeX key.
 EOF
 </pre>
 
 
-<p> This is useful if a Better BibTeX citation key is misinterpreted as being
- an Easy Citekey, or vica vera.</p>
+<p> This is useful if a Better BibTeX key is misinterpreted as Easy Citekey, or
+ vica vera.</p>
 
 <h2> CONFIGURATION</h2>
 
-<p> You can control how bibligraphic data is fetched by setting the following
+<p> You can configure how bibligraphic data is fetched by setting the following
  metadata fields:</p>
 
 <ul>
@@ -331,7 +334,7 @@ Only applies to the &lsquo;<a href="#web-api">Web API</a>&rsquo;.</p></li>
 <pre>
 pandoc -L pandoc-zotxt.lua -C &lt;&lt;EOF
 <span class="comment">---
-</span>zotero-citekey-types: betterbibtexkey
+</span>zotero-public-groups: <span class="number">4532986</span>
 ...
 See @DoeTitle2020 <span class="keyword">for</span> details.
 EOF
@@ -349,10 +352,9 @@ EOF
  highly unlikely.</p>
 
 <p> A citation key may pick out the wrong item if it picks out a different
- items depending on whether it is interpreted as a Better BibTeX citation
- key or as an Easy Citekey. Set the &lsquo;zotero-citekey-types&rsquo; metadata field to
- avoid this (see &lsquo;<a href="#citation-key-types">Citation key types</a>&rsquo; above for
- details).</p>
+ items depending on whether it is interpreted as a Better BibTeX key or as
+ an Easy Citekey. Set the &lsquo;zotero-citekey-types&rsquo; metadata field to fix this
+ (see &lsquo;<a href="#citation-key-types">Citation key types</a>&rsquo; above for details).</p>
 
 <p> Zotero v5.0.71 and v5.0.72 fail to handle HTTP requests from user agents
  that do not set the &ldquo;User Agent&rdquo; HTTP header. And <strong>pandoc</strong> does not. As a
@@ -668,10 +670,6 @@ EOF
 	<td class="summary">Add CSL variables from the &ldquo;note&rdquo; field to the item proper.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#csl_item_normalise_vars">csl_item_normalise_vars (item)</a></td>
-	<td class="summary">Normalise variable names of a CSL item.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#csl_item_to_meta">csl_item_to_meta (item)</a></td>
 	<td class="summary">Convert a CSL item to a Pandoc metadata value.</td>
 	</tr>
@@ -695,16 +693,12 @@ EOF
 	<td class="name" nowrap><a href="#csl_vars_sort">csl_vars_sort (a, b)</a></td>
 	<td class="summary">Sort CSL variables.</td>
 	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#csl_json_parse">csl_json_parse (str)</a></td>
-	<td class="summary">Parse a CSL JSON string that describes one or more CSL items.</td>
-	</tr>
 </table>
 <h2><a href="#Citation_keys">Citation keys </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_PARSERS">CITEKEY_PARSERS</a></td>
-	<td class="summary">A mapping of citation key types to parsers.</td>
+	<td class="summary">A mapping of citation key types to citation key parsers.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_PARSERS.betterbibtexkey">CITEKEY_PARSERS.betterbibtexkey (ckey)</a></td>
@@ -713,10 +707,6 @@ EOF
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_PARSERS.easykey">CITEKEY_PARSERS.easykey (ckey)</a></td>
 	<td class="summary">Guess search terms from an Easy Citekey.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#citekey_terms">citekey_terms (ckey, types)</a></td>
-	<td class="summary">Guess search terms from a citation key.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#CITEKEY_TYPIFIERS">CITEKEY_TYPIFIERS</a></td>
@@ -731,82 +721,74 @@ EOF
 	<td class="summary">Check if a citation key is a Zotero item ID.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#citekey_types">citekey_types (ckey, string)</a></td>
+	<td class="name" nowrap><a href="#citekey_terms">citekey_terms (ckey, types)</a></td>
+	<td class="summary">Guess search terms from a citation key.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#citekey_types">citekey_types (ckey, types)</a></td>
 	<td class="summary">Check whether a citation key could be of a type.</td>
 	</tr>
 </table>
 <h2><a href="#Bibliography_files">Bibliography files </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#biblio">biblio</a></td>
-	<td class="summary">An interface for reading, writing, and updating bibliography files.</td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS">BIBLIO_DECODERS</a></td>
+	<td class="summary">A case-insensitive mapping of filename suffices to decoders.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio.types">biblio.types</a></td>
-	<td class="summary">A case-insensitive mapping of filename suffices to codecs.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bib">biblio.types.bib</a></td>
-	<td class="summary">De-/Encode BibLaTeX files.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bib.decode">biblio.types.bib.decode (str)</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS.bib">BIBLIO_DECODERS.bib (str)</a></td>
 	<td class="summary">Parse the contents of a BibLaTeX file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bibtex.encode">biblio.types.bibtex.encode (items)</a></td>
-	<td class="summary">Serialise a list of CSL items to a BibLaTeX string.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bibtex">biblio.types.bibtex</a></td>
-	<td class="summary">De-/Encode BibTeX files.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bibtex.decode">biblio.types.bibtex.decode (str)</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS.bibtex">BIBLIO_DECODERS.bibtex (str)</a></td>
 	<td class="summary">Parse the contents of a BibTeX file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio.types.bibtex.encode">biblio.types.bibtex.encode (items)</a></td>
-	<td class="summary">Serialise a list of CSL items to a BibTeX string.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.json">biblio.types.json</a></td>
-	<td class="summary">De-/Encode CSL items in JSON.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.json.decode">biblio.types.json.decode (str)</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS.json">BIBLIO_DECODERS.json (str)</a></td>
 	<td class="summary">Parse a CSL JSON string.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio.types.json.encode">biblio.types.json.encode (items)</a></td>
-	<td class="summary">Serialise a list of CSL items to a JSON string.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.yaml">biblio.types.yaml</a></td>
-	<td class="summary">De-/Encode CSL items in YAML.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.yaml.decode">biblio.types.yaml.decode (str)</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS.yaml">BIBLIO_DECODERS.yaml (str)</a></td>
 	<td class="summary">Parse a CSL YAML string.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio.types.yaml.encode">biblio.types.yaml.encode (items)</a></td>
-	<td class="summary">Serialise a list of CSL items to a YAML string.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#biblio.types.yml">biblio.types.yml</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_DECODERS.yml">BIBLIO_DECODERS.yml</a></td>
 	<td class="summary">Alternative suffix for YAML files.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio:read">biblio:read (fname)</a></td>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS">BIBLIO_ENCODERS</a></td>
+	<td class="summary">A case-insensitive mapping of filename suffices to encoders.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS.bib">BIBLIO_ENCODERS.bib (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a BibLaTeX string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS.bibtex">BIBLIO_ENCODERS.bibtex (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a BibTeX string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS.json">BIBLIO_ENCODERS.json (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a JSON string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS.yaml">BIBLIO_ENCODERS.yaml (items)</a></td>
+	<td class="summary">Serialise a list of CSL items to a YAML string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BIBLIO_ENCODERS.yml">BIBLIO_ENCODERS.yml</a></td>
+	<td class="summary">Alternative suffix for YAML files.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#biblio_read">biblio_read (fname)</a></td>
 	<td class="summary">Read a bibliography file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio:write">biblio:write (fname[, items])</a></td>
+	<td class="name" nowrap><a href="#biblio_write">biblio_write (fname[, items])</a></td>
 	<td class="summary">Write bibliographic data to a bibliography file.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#biblio:update">biblio:update (handle, fname, ckeys)</a></td>
+	<td class="name" nowrap><a href="#biblio_update">biblio_update (handle, fname, ckeys)</a></td>
 	<td class="summary">Add new items from Zotero to a bibliography file.</td>
 	</tr>
 </table>
@@ -3613,42 +3595,6 @@ bam!</pre>
 
 </dd>
     <dt>
-    <a name = "csl_item_normalise_vars"></a>
-    <strong>csl_item_normalise_vars (item)</strong>
-    </dt>
-    <dd>
-    Normalise variable names of a CSL item.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">item</span>
-            <span class="types"><span class="type">tab</span></span>
-         A CSL item.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">tab</span></span>
-        A normalised item.
-    </ol>
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="index.html#csl_varname_normalise">csl_varname_normalise</a>
-    </ul>
-
-
-</dd>
-    <dt>
     <a name = "csl_item_to_meta"></a>
     <strong>csl_item_to_meta (item)</strong>
     </dt>
@@ -3891,47 +3837,6 @@ original-date</pre>
 
 
 </dd>
-    <dt>
-    <a name = "csl_json_parse"></a>
-    <strong>csl_json_parse (str)</strong>
-    </dt>
-    <dd>
-    Parse a CSL JSON string that describes one or more CSL items.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">str</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A CSL JSON string.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">tab</span></span>
-        A single CSL item or a list of CSL items.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the string does not describe a CSL item.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-
-
-
-</dd>
 </dl>
     <h2 class="section-header "><a name="Citation_keys"></a>Citation keys </h2>
 
@@ -3941,10 +3846,10 @@ original-date</pre>
     <strong>CITEKEY_PARSERS</strong>
     </dt>
     <dd>
-    A mapping of citation key types to parsers.</p>
+    A mapping of citation key types to citation key parsers.</p>
 
-<p> A parser must take a citation key and return search terms or
- <code>nil</code> if no search terms can be derived from the citation key.
+<p> A citation key parser is a function that takes a citation key and returns
+ search terms or <code>nil</code> if no search terms can be derived from the key.
 
     </ul>
     </ul>
@@ -4024,54 +3929,6 @@ original-date</pre>
 
            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
         Search terms.
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "citekey_terms"></a>
-    <strong>citekey_terms (ckey, types)</strong>
-    </dt>
-    <dd>
-    Guess search terms from a citation key.
-
-    <h3>Caveats:</h3>
-    <ul>
-         The key must be supported by a parser in <a href="index.html#CITEKEY_PARSERS">CITEKEY_PARSERS</a>.
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">ckey</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
-        </li>
-        <li><span class="parameter">types</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-         Types to try to parse the citation key as.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
-        Search terms.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if no search terms could be derived.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
     </ol>
 
 
@@ -4165,8 +4022,56 @@ original-date</pre>
 
 </dd>
     <dt>
+    <a name = "citekey_terms"></a>
+    <strong>citekey_terms (ckey, types)</strong>
+    </dt>
+    <dd>
+    Guess search terms from a citation key.
+
+    <h3>Caveats:</h3>
+    <ul>
+         The key must be supported by a parser in <a href="index.html#CITEKEY_PARSERS">CITEKEY_PARSERS</a>.
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ckey</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         A citation key (e.g., <code>'doe:2020word'</code>, <code>'DoeWord2020'</code>).
+        </li>
+        <li><span class="parameter">types</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         Types to try to parse the citation key as.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+        Search terms.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if no search terms could be derived.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "citekey_types"></a>
-    <strong>citekey_types (ckey, string)</strong>
+    <strong>citekey_types (ckey, types)</strong>
     </dt>
     <dd>
     Check whether a citation key could be of a type.
@@ -4183,9 +4088,9 @@ original-date</pre>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          A citation key.
         </li>
-        <li><span class="parameter">string</span>
-            <span class="types"><span class="type">tab</span></span>
-        ,&hellip;} Citation key types.
+        <li><span class="parameter">types</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">{string,...}</a></span>
+         Citation key types.
         </li>
     </ul>
 
@@ -4205,33 +4110,13 @@ original-date</pre>
 
     <dl class="function">
     <dt>
-    <a name = "biblio"></a>
-    <strong>biblio</strong>
+    <a name = "BIBLIO_DECODERS"></a>
+    <strong>BIBLIO_DECODERS</strong>
     </dt>
     <dd>
-    An interface for reading, writing, and updating bibliography files.
+    A case-insensitive mapping of filename suffices to decoders.</p>
 
-    </ul>
-    <h3>Prototype:</h3>
-    <ul>
-         <a href="index.html#Object">Object</a>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types"></a>
-    <strong>biblio.types</strong>
-    </dt>
-    <dd>
-    A case-insensitive mapping of filename suffices to codecs.
+<p> A decoder is a function that takes a string and returns a list of CSL items.
 
     </ul>
     </ul>
@@ -4246,27 +4131,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.bib"></a>
-    <strong>biblio.types.bib</strong>
-    </dt>
-    <dd>
-    De-/Encode BibLaTeX files.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.bib.decode"></a>
-    <strong>biblio.types.bib.decode (str)</strong>
+    <a name = "BIBLIO_DECODERS.bib"></a>
+    <strong>BIBLIO_DECODERS.bib (str)</strong>
     </dt>
     <dd>
     Parse the contents of a BibLaTeX file.
@@ -4310,71 +4176,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.bibtex.encode"></a>
-    <strong>biblio.types.bibtex.encode (items)</strong>
-    </dt>
-    <dd>
-    Serialise a list of CSL items to a BibLaTeX string.
-
-    </ul>
-    </ul>
-    <h3>Requires:</h3>
-    <ul>
-         Pandoc ≥ 2.17.
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">items</span>
-            <span class="types"><span class="type">{tab,...}</span></span>
-         CSL items.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A BibLaTeX string.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the items could not be serialised.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.bibtex"></a>
-    <strong>biblio.types.bibtex</strong>
-    </dt>
-    <dd>
-    De-/Encode BibTeX files.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.bibtex.decode"></a>
-    <strong>biblio.types.bibtex.decode (str)</strong>
+    <a name = "BIBLIO_DECODERS.bibtex"></a>
+    <strong>BIBLIO_DECODERS.bibtex (str)</strong>
     </dt>
     <dd>
     Parse the contents of a BibTeX file.
@@ -4418,71 +4221,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.bibtex.encode"></a>
-    <strong>biblio.types.bibtex.encode (items)</strong>
-    </dt>
-    <dd>
-    Serialise a list of CSL items to a BibTeX string.
-
-    </ul>
-    </ul>
-    <h3>Requires:</h3>
-    <ul>
-         Pandoc ≥ 2.17.
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">items</span>
-            <span class="types"><span class="type">{tab,...}</span></span>
-         CSL items.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A BibTeX string.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the items could not be serialised.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.json"></a>
-    <strong>biblio.types.json</strong>
-    </dt>
-    <dd>
-    De-/Encode CSL items in JSON.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.json.decode"></a>
-    <strong>biblio.types.json.decode (str)</strong>
+    <a name = "BIBLIO_DECODERS.json"></a>
+    <strong>BIBLIO_DECODERS.json (str)</strong>
     </dt>
     <dd>
     Parse a CSL JSON string.
@@ -4522,68 +4262,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.json.encode"></a>
-    <strong>biblio.types.json.encode (items)</strong>
-    </dt>
-    <dd>
-    Serialise a list of CSL items to a JSON string.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">items</span>
-            <span class="types"><span class="type">{tab,...}</span></span>
-         CSL items.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        A CSL JSON string.
-    </ol>
-     <h3>Or</h3>
-    <ol>
-        <li>
-           <span class="types"><span class="type">nil</span></span>
-        <code>nil</code> if the items could not be serialised.</li>
-        <li>
-           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-        An error message.</li>
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.yaml"></a>
-    <strong>biblio.types.yaml</strong>
-    </dt>
-    <dd>
-    De-/Encode CSL items in YAML.
-
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-    </ul>
-
-
-
-
-
-
-</dd>
-    <dt>
-    <a name = "biblio.types.yaml.decode"></a>
-    <strong>biblio.types.yaml.decode (str)</strong>
+    <a name = "BIBLIO_DECODERS.yaml"></a>
+    <strong>BIBLIO_DECODERS.yaml (str)</strong>
     </dt>
     <dd>
     Parse a CSL YAML string.
@@ -4626,8 +4306,175 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.yaml.encode"></a>
-    <strong>biblio.types.yaml.encode (items)</strong>
+    <a name = "BIBLIO_DECODERS.yml"></a>
+    <strong>BIBLIO_DECODERS.yml</strong>
+    </dt>
+    <dd>
+    Alternative suffix for YAML files.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BIBLIO_ENCODERS"></a>
+    <strong>BIBLIO_ENCODERS</strong>
+    </dt>
+    <dd>
+    A case-insensitive mapping of filename suffices to encoders.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BIBLIO_ENCODERS.bib"></a>
+    <strong>BIBLIO_ENCODERS.bib (items)</strong>
+    </dt>
+    <dd>
+    Serialise a list of CSL items to a BibLaTeX string.
+
+    </ul>
+    </ul>
+    <h3>Requires:</h3>
+    <ul>
+         Pandoc ≥ 2.17.
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+            <span class="types"><span class="type">{tab,...}</span></span>
+         CSL items.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A BibLaTeX string.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the items could not be serialised.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BIBLIO_ENCODERS.bibtex"></a>
+    <strong>BIBLIO_ENCODERS.bibtex (items)</strong>
+    </dt>
+    <dd>
+    Serialise a list of CSL items to a BibTeX string.
+
+    </ul>
+    </ul>
+    <h3>Requires:</h3>
+    <ul>
+         Pandoc ≥ 2.17.
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+            <span class="types"><span class="type">{tab,...}</span></span>
+         CSL items.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A BibTeX string.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the items could not be serialised.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BIBLIO_ENCODERS.json"></a>
+    <strong>BIBLIO_ENCODERS.json (items)</strong>
+    </dt>
+    <dd>
+    Serialise a list of CSL items to a JSON string.
+
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+            <span class="types"><span class="type">{tab,...}</span></span>
+         CSL items.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        A CSL JSON string.
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+        <code>nil</code> if the items could not be serialised.</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+        An error message.</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BIBLIO_ENCODERS.yaml"></a>
+    <strong>BIBLIO_ENCODERS.yaml (items)</strong>
     </dt>
     <dd>
     Serialise a list of CSL items to a YAML string.
@@ -4667,8 +4514,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio.types.yml"></a>
-    <strong>biblio.types.yml</strong>
+    <a name = "BIBLIO_ENCODERS.yml"></a>
+    <strong>BIBLIO_ENCODERS.yml</strong>
     </dt>
     <dd>
     Alternative suffix for YAML files.
@@ -4686,14 +4533,14 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio:read"></a>
-    <strong>biblio:read (fname)</strong>
+    <a name = "biblio_read"></a>
+    <strong>biblio_read (fname)</strong>
     </dt>
     <dd>
     Read a bibliography file.</p>
 
 <p> The filename suffix determines the file&rsquo;s format.
- <a href="index.html#biblio.types">biblio.types</a> must contain a matching decoder.
+ <a href="index.html#BIBLIO_DECODERS">BIBLIO_DECODERS</a> must contain a matching decoder.
 
     </ul>
     </ul>
@@ -4733,14 +4580,14 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio:write"></a>
-    <strong>biblio:write (fname[, items])</strong>
+    <a name = "biblio_write"></a>
+    <strong>biblio_write (fname[, items])</strong>
     </dt>
     <dd>
     Write bibliographic data to a bibliography file.</p>
 
 <p> The filename suffix determines the file&rsquo;s format.
- <a href="index.html#biblio.types">biblio.types</a> must contain a matching encoder.</p>
+ <a href="index.html#BIBLIO_ENCODERS">BIBLIO_ENCODERS</a> must contain a matching encoder.</p>
 
 <p> If no CSL items are given, tests whether data can be serialised
  in the given format <em>without</em> chaging the file.
@@ -4791,8 +4638,8 @@ original-date</pre>
 
 </dd>
     <dt>
-    <a name = "biblio:update"></a>
-    <strong>biblio:update (handle, fname, ckeys)</strong>
+    <a name = "biblio_update"></a>
+    <strong>biblio_update (handle, fname, ckeys)</strong>
     </dt>
     <dd>
     Add new items from Zotero to a bibliography file.
@@ -6240,7 +6087,7 @@ item = handle:fetch <span class="string">'DoeWord2020'</span></pre>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-03-26 17:08:45 </i>
+<i style="float:right;">Last updated 2022-03-29 11:51:02 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
