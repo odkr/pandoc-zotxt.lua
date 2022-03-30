@@ -324,12 +324,19 @@ end
 --- Generate the list of all partial lists of a list.
 --
 -- @tab list A list.
--- @treturn M.Value The list of all partial lists of the list.
+-- @treturn tab The list of all partial lists of the list.
 function powerset (list)
-    local power = M.Values:new(M.Values:new())
+    local power = {{}}
     for i = 1, #list do
-        for j = 1, power.n do
-            power:add(power[j]:new(list[i]))
+        local n = #power
+        for j = 1, n do
+            local o = power[j]
+            local c = {}
+            local m = #o
+            for k = 1, m do c[k] = o[k] end
+            c[m + 1] = list[i]
+            n = n + 1
+            power[n] = c
         end
     end
     return power
@@ -368,7 +375,7 @@ do
             end
 
             local ok, err
-            for i = 1, type_lists.n do
+            for i = 1, #type_lists do
                 local type_list = type_lists[i]
                 local type_spec = concat(type_list, '|')
                 for t, vs in pairs(values) do
@@ -961,94 +968,6 @@ function test_object_new ()
     local b = M.update(M.Object:clone(), unpack(args))
     assert_items_equals(a, b)
     assert_items_equals(getmetatable(a), getmetatable(b))
-end
-
-function test_values_mt_len ()
-    for i = 0, 16 do
-        local v1 = M.Values()
-        for j = 1, i do v1:add(j) end
-        assert_equals(rawlen(v1), i)
-        assert_equals(getmetatable(v1).__len(v1), i)
-        assert_equals(#v1, i)
-
-        local v2 = M.Values()
-        v2:add(unpack(v1))
-        assert_equals(rawlen(v2), i)
-        assert_equals(getmetatable(v2).__len(v1), i)
-        assert_equals(#v2, i)
-    end
-end
-
-function test_values_mt_newindex ()
-    for i = 1, 16 do
-        local vals = M.Values()
-        vals[i] = i
-        assert_equals(vals[i], i)
-        assert_equals(getmetatable(vals).__len(vals), i)
-        assert_equals(#vals, i)
-        assert_equals(vals.n, i)
-    end
-end
-
-function test_values_mt_pairs ()
-    local tab = {}
-    for i = 1, 32 do tab[i] = i end
-    tab.n = 32
-    M.Values:clone(tab)
-    local norm = pack(M.tabulate(ipairs(tab)))
-    for _, output in pairs{
-        pack(M.tabulate(M.Values.mt.__pairs(tab))),
-        pack(M.tabulate(pairs(tab))),
-    } do
-        assert_items_equals(output, norm)
-    end
-    j = 0
-    for i, v in pairs(tab) do
-        j = j + 1
-        assert_equals(i, j)
-        assert_equals(i, v)
-    end
-end
-
-function test_values_clone ()
-    local tab = {}
-    for i = 1, 32 do tab[i] = i end
-    tab.n = 32
-    M.Values:clone(tab)
-    tab:add(33)
-    assert_equals(tab.n, 33)
-    assert_equals(#tab, 33)
-    assert_equals(tab[33], 33)
-end
-
-function test_values_new ()
-    local a = M.Values:new()
-    assert_equals(getmetatable(a).__index, M.Values)
-    assert_items_equals(a, {})
-    assert_equals(a.n, 0)
-    assert_equals(#a, 0)
-    local args = {true, false, 1, 2, 3, 'string'}
-    local b = M.Values:new(unpack(args))
-    assert_items_equals(b, args)
-    local n = #args
-    assert_equals(b.n, n)
-    assert_equals(#b, n)
-    for i = 1, #b do assert_equals(b[i], args[i]) end
-    for i, v in ipairs(b) do assert_equals(v, args[i]) end
-    for i, v in pairs(b) do assert_equals(v, args[i]) end
-end
-
-function test_values_add ()
-    local vals = M.Values:new()
-    local args = {true, false, 1, 2, 3, 'string'}
-    vals:add(unpack(args))
-    assert_items_equals(vals, args)
-    local n = #args
-    assert_equals(vals.n, n)
-    assert_equals(#vals, n)
-    for i = 1, #vals do assert_equals(vals[i], args[i]) end
-    for i, v in ipairs(vals) do assert_equals(v, args[i]) end
-    for i, v in pairs(vals) do assert_equals(v, args[i]) end
 end
 
 function test_getterify ()

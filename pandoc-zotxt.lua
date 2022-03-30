@@ -1018,8 +1018,12 @@ sorted = type_check('table', '?function', '?boolean')(
 -- @fixme Stateless iterators are not unit-tested.
 tabulate = type_check('function')(
     function (iter, tab, key)
-        local vals = Values:clone()
-        for v in iter, tab, key do vals:add(v) end
+        local vals = {}
+        local n = 0
+        for v in iter, tab, key do
+            n = n + 1
+            vals[n] = v
+        end
         return unpack(vals)
     end
 )
@@ -1406,129 +1410,6 @@ setmetatable(Object, Object.mt)
 Object.mt.__call = type_check({new = 'function'})(
     function (self, ...)
         return self:new(...)
-    end
-)
-
---- A simple list.
---
--- @tip
---
--- You can sparse-copy a `Values` object by using it as a prototype:
---
---    > foo = Values:new 'foo'
---    > bar = foo()
---    > bar:add 'bar'
---    > #bar
---    2
---    > for i, v in ipairs(bar) do
---    >     print(i, v)
---    > end
---    1    foo
---    2    bar
---
--- @usage
--- > list = Values()
--- > list:add 'a string'
--- > list.n
--- 1
---
--- @object Values
--- @proto @{Object}
-Values = Object:clone()
-
---- Metatable for values.
-Values.mt = getmetatable(Values)
-
---- Get the size of the list.
---
--- @tparam Values obj A list.
--- @treturn number The size of the list.
---
--- @function Values.mt.__len
-Values.mt.__len = type_check({n = '?number'})(
-    function (obj)
-        return obj.n or 0
-    end
-)
-
---- Add items to the list.
---
--- @tparam Values obj A list.
--- @param key An index.
--- @param val A value.
---
--- @side Sets @{Values.n} to the number of items in the list.
---
--- @function Values.mt.__newindex
-Values.mt.__newindex = type_check({n = '?number'})(
-    function (obj, key, val)
-        if type(key) == 'number' and key > obj.n then obj.n = key end
-        rawset(obj, key, val)
-    end
-)
-
---- Iterate over list items.
---
--- @tparam Values obj A list.
--- @treturn function A stateless iterator.
---
--- @function Values.mt.__pairs
-Values.mt.__pairs = type_check({n = '?number'})(
-    function (obj)
-        return function (tab, i)
-            if not i then i = 1
-                     else i = i + 1
-            end
-            if not tab.n or i > tab.n then return end
-            return i, tab[i]
-        end, obj
-    end
-)
-
---- The number of items in the list.
-Values.n = 0
-
---- Create a new list.
---
---    list = Values:new(...)
---
--- is short for:
---
---    list = Values:new()
---    list:add(...)
---
--- @tip
---
--- You can convert an 'ordinary' list to a `Values` object by:
---
---    tab.n = #tab
---    Values:clone(tab)
---
--- @param ... Items.
--- @treturn Values A new list.
---
--- @function Values:new
-Values.new = type_check({add = 'function'})(
-    function (proto, ...)
-        local obj = Object.new(proto)
-        if select('#', ...) > 0 then obj:add(...) end
-        return obj
-    end
-)
-
---- Add items to the list.
---
--- @side Sets @{Values.n} to the number of items in the list.
---
--- @param ... Items.
---
--- @function Values:add
-Values.add = type_check({n = 'number'})(
-    function (self, ...)
-        local items = pack(...)
-        local n = self.n
-        for i = 1, items.n do rawset(self, n + i, items[i]) end
-        self.n = n + items.n
     end
 )
 
@@ -1986,7 +1867,7 @@ end
 
 do
     -- List of all alphanumeric characters.
-    local alnum = Values()
+    local alnum = {}
 
     do
         -- These are the ASCII/UTF-8 ranges for alphanumeric characters.
@@ -1999,7 +1880,7 @@ do
         -- Populate a list of alphanumeric characters.
         for i = 1, #ranges do
             local first, last = unpack(ranges[i])
-            for j = first, last do alnum:add(string.char(j)) end
+            for j = first, last do alnum[#alnum + 1] = string.char(j) end
         end
     end
 
@@ -2030,7 +1911,7 @@ do
                 local fname = ''
                 for i = 1, len do
                     local c = templ:sub(i, i)
-                    if c == 'X' then c = alnum[math.random(1, alnum.n)] end
+                    if c == 'X' then c = alnum[math.random(1, 62)] end
                     fname = fname .. c
                 end
                 if not file_exists(fname) then return fname end
@@ -2231,12 +2112,14 @@ do
     -- @treturn pandoc.Str A Markdown representation.
     function to_markdown.Span (span)
         local str = stringify(pandoc.walk_inline(span, to_markdown))
-        local attrs = Values()
+        local attrs = {}
+        local n = 0
 
         local identifier = span.identifier
         if identifier and identifier ~= '' then
             if identifier:match '%s' then error(msg:format(identifier), 0) end
-            attrs:add('#' .. identifier)
+            n = n + 1
+            attrs[n] = '#' .. identifier
         end
 
         local classes = span.classes
@@ -2245,7 +2128,8 @@ do
                 local class = classes[i]
                 if class ~= '' then
                     if class:match '%s' then error(msg:format(class), 0) end
-                    attrs:add('.' .. class)
+                    n = n + 1
+                    attrs[n] = '.' .. class
                 end
             end
         end
@@ -2256,12 +2140,13 @@ do
                 if v ~= '' then
                     if k:match '[%c%s="\'>/]' then error(msg:format(k), 0) end
                     if v:match '["\'=<>`]' then error(msg:format(v), 0) end
-                    attrs:add(format('%s="%s"', k, v))
+                    n = n + 1
+                    attrs[n] = format('%s="%s"', k, v)
                 end
             end
         end
 
-        if attrs.n > 0 then
+        if n > 0 then
             str = '[' .. str ..                ']' ..
                   '{' .. concat(attrs, ' ') .. '}'
         end
@@ -2345,29 +2230,41 @@ do
         str = str:gsub('\r?\n', EOL)
 
         -- Escape special and control characters.
-        local chars = Values()
+        local chars = {}
+        local n = 0
+
         for _, c in codes(str, true) do
             if
                 c == 0x22 or -- '"'
                 c == 0x5c    -- '\'
-            then chars:add('\\' .. char(c))
+            then
+                n = n + 1
+                chars[n] = '\\' .. char(c)
             elseif
                 c == 0x09 or -- TAB
                 c == 0x0a or -- LF
                 c == 0x0d or -- CR
                 c == 0x85    -- NEL
-            then chars:add(char(c))
+            then
+                n = n + 1
+                chars[n] = char(c)
             elseif
                 c <= 0x001f or -- C0 control block
                 c == 0x007f    -- DEL
-            then chars:add(format('\\x%02x', c))
+            then
+                n = n + 1
+                chars[n] = format('\\x%02x', c)
             elseif
                 (0x0080 <= c and c <= 0x009f) or -- C1 control block
                 (0xd800 <= c and c <= 0xdfff) or -- Surrogate block
                 c == 0xfffe or
                 c == 0xffff
-            then chars:add(format('\\u%04x', c))
-            else chars:add(char(c))
+            then
+                n = n + 1
+                chars[n] = format('\\u%04x', c)
+            else
+                n = n + 1
+                chars[n] = char(c)
             end
         end
         str = concat(chars)
@@ -2409,17 +2306,23 @@ do
             assert(t == 'table', t .. ': cannot be expressed in YAML.')
             _seen[val] = true
             if not _col then _col = 0 end
-            local strs = Values()
-            local n = #val
+            local nvals = #val
             local nkeys = select(2, keys(val))
             local sp = spaces(_col)
-            if n == nkeys then
+            local strs = {}
+            local n = 0
+            local function add (s, ...)
+                n = n + 1
+                strs[n] = s
+                if ... then add(...) end
+            end
+            if nvals == nkeys then
                 local col = _col + 2
-                for i = 1, n do
+                for i = 1, nvals do
                     local v = val[i]
-                    if i > 1 then strs:add(sp) end
-                    strs:add('- ', yamlify(v, ind, col, _seen))
-                    if i ~= n then strs:add(EOL) end
+                    if i > 1 then add(sp) end
+                    add('- ', yamlify(v, ind, col, _seen))
+                    if i ~= nvals then add(EOL) end
                 end
             else
                 local i = 0
@@ -2428,14 +2331,14 @@ do
                     if type(k) == 'number' then k = tostring(k)
                                            else k = scalarify(k, true)
                     end
-                    if i > 1 then strs:add(sp) end
-                    strs:add(k, ':')
+                    if i > 1 then add(sp) end
+                    add(k, ':')
                     local col = _col + ind
-                    if type(v) == 'table' then strs:add(EOL, spaces(col))
-                                          else strs:add ' '
+                    if type(v) == 'table' then add(EOL, spaces(col))
+                                          else add ' '
                     end
-                    strs:add(yamlify(v, ind, col, _seen))
-                    if i ~= nkeys then strs:add(EOL) end
+                    add(yamlify(v, ind, col, _seen))
+                    if i ~= nkeys then add(EOL) end
                 end
             end
             return concat(strs)
@@ -2900,7 +2803,8 @@ end
 -- @function csl_items_filter_by_ckey
 csl_items_filter_by_ckey = type_check('table', 'string')(
     function (items, ckey)
-        local filtered = Values()
+        local filt = {}
+        local n = 0
         for i = 1, #items do
             local item = items[i]
             for k, v in csl_item_extras(item) do
@@ -2908,13 +2812,14 @@ csl_items_filter_by_ckey = type_check('table', 'string')(
                     if v == '' then
                         xwarn(item.id or 'unknown item', ': ${k}: is empty.')
                     elseif v:lower() == ckey:lower() then
-                        filtered:add(item)
+                        n = n + 1
+                        filt[n] = item
                         break
                     end
                 end
             end
         end
-        return filtered
+        return filt
     end
 )
 
@@ -3007,7 +2912,8 @@ csl_vars_sort = type_check('string', 'string')(order(CSL_VARS_ORDER))
 --- A mapping of citation key types to citation key parsers.
 --
 -- A citation key parser is a function that takes a citation key and returns
--- search terms or `nil` if no search terms can be derived from the key.
+-- the search terms and the number of search terms or `nil` if no search
+-- terms can be derived from the key.
 CITEKEY_PARSERS = {}
 
 do
@@ -3031,14 +2937,16 @@ do
     --
     -- @string ckey A BetterBibTeX citation key (e.g., `'DoeWord2020'`).
     -- @treturn {string,...} Search terms.
+    -- @treturn number Number of search terms.
     --
     -- @function CITEKEY_PARSERS.betterbibtexkey
     CITEKEY_PARSERS.betterbibtexkey = type_check('string')(
         function (ckey)
             assert(ckey ~= '', 'citation key is the empty string.')
-            local terms = Values()
             local sep = 1
             local prev
+            local terms = {}
+            local n = 0
             for pos, code in codes(ckey) do
                 local add = false
                 if pos > 1 then
@@ -3055,13 +2963,15 @@ do
                     end
                 end
                 if add then
-                    terms:add(ckey:sub(sep, pos - 1))
+                    n = n + 1
+                    terms[n] = ckey:sub(sep, pos - 1)
                     sep = pos
                 end
                 prev = code
             end
-            terms:add(ckey:sub(sep))
-            return terms
+            n = n + 1
+            terms[n] = ckey:sub(sep)
+            return terms, n
          end
     )
 end
@@ -3072,33 +2982,47 @@ end
 --
 -- @string ckey A zotxt Easy Citekey (e.g., `'doe:2020word'`).
 -- @treturn {string,...} Search terms.
+-- @treturn number Number of search terms.
 --
 -- @function CITEKEY_PARSERS.easykey
 CITEKEY_PARSERS.easykey = type_check('string')(
     function (ckey)
         assert(ckey ~= '', 'citation key is the empty string.')
-        local terms = Values()
         local pivot = 1
+        local terms = {}
+        local n = 0
         for pos, code in codes(ckey) do
             if pivot > 1 then
                 -- Numbers range from 48 to 57 in ASCII/UTF-8.
                 if 48 > code or code > 57 then
                     local year = ckey:sub(pivot, pos - 1)
-                    if year and year ~= '' then terms:add(year) end
+                    if year and year ~= '' then
+                        n = n + 1
+                        terms[n] = year
+                    end
                     local title = ckey:sub(pos)
-                    if title and title ~= '' then terms:add(title) end
-                    return terms
+                    if title and title ~= '' then
+                        n = n + 1
+                        terms[n] = title
+                    end
+                    return terms, n
                 end
             -- The colon is encoded as 58 in ASCII/UTF-8.
             elseif code == 58 then
                 local pre = ckey:sub(pivot, pos - 1)
-                if pre and pre ~= '' then terms:add(pre) end
+                if pre and pre ~= '' then
+                    n = n + 1
+                    terms[n] = pre
+                end
                 pivot = pos + 1
             end
         end
         local year = ckey:sub(pivot)
-        if year and year ~= '' then terms:add(year) end
-        return terms
+        if year and year ~= '' then
+            n = n + 1
+            terms[n] = year
+        end
+        return terms, n
     end
 )
 
@@ -3166,8 +3090,8 @@ do
             for _, t in pairs(types) do
                 local parse = CITEKEY_PARSERS[t]
                 if parse then
-                    local terms = parse(ckey)
-                    if terms and terms.n > 1 then return terms end
+                    local terms, n = parse(ckey)
+                    if terms and n > 1 then return terms end
                 end
             end
             return nil, format('cannot guess search terms for %s.', ckey)
@@ -3185,13 +3109,17 @@ end
 -- @fixme Not unit-tested.
 citekey_types = type_check('string', 'table')(
     function (ckey, types)
-        local n = #types
-        if n == 1 then return types end
-        local result = Values()
-        for i = 1, n do
+        local ntypes = #types
+        if ntypes == 1 then return types end
+        local result = {}
+        local n = 0
+        for i = 1, ntypes do
             local t = types[i]
             local typify = CITEKEY_TYPIFIERS[t]
-            if not typify or typify(ckey) then result:add(t) end
+            if not typify or typify(ckey) then
+                n = n + 1
+                result[n] = t
+            end
         end
         return result
     end
@@ -3222,9 +3150,11 @@ BIBLIO_DECODERS = setmetatable({}, ignore_case)
 if not pandoc.types or PANDOC_VERSION < {2, 17} then
     BIBLIO_DECODERS.bib = type_check('string')(
         function (str)
-            local ids = Values()
+            local ids = {}
+            local n = 0
             for id in str:gmatch '@%w+%s*{%s*([^%s,]+)' do
-                ids:add{id = id}
+                n = n + 1
+                ids[n] = {id = id}
             end
             return ids
         end
@@ -3428,7 +3358,7 @@ BIBLIO_ENCODERS.yml = BIBLIO_ENCODERS.yaml
 -- @{BIBLIO_DECODERS} must contain a matching decoder.
 --
 -- @string fname A filename.
--- @treturn[1] Values CSL items.
+-- @treturn[1] tab CSL items.
 -- @treturn[2] nil `nil` if an error occurred.
 -- @treturn[2] string An error message.
 -- @treturn[2] ?int An error number.
@@ -3447,8 +3377,7 @@ biblio_read = type_check('string')(protect(
         local str, err, errno = file_read(fname)
         if not str then return nil, err, errno end
         local items = assert(decode(str))
-        items.n = #items
-        return Values:clone(items)
+        return items
     end
 ))
 
@@ -3515,20 +3444,20 @@ do
             local items, err, errno = biblio_read(fname)
             if not items then
                 if errno ~= 2 then return nil, err, errno end
-                items = Values()
+                items = {}
             end
             local ids = csl_items_ids(items)
-            local n = items.n
+            local n = #items
             for i = 1, #ckeys do
                 local ckey = ckeys[i]
                 if not ids[ckey] then
                     local item, err = handle:fetch(ckey)
-                    if item then items:add(item)
+                    if item then items[#items + 1] = item
                             else xwarn('@error', '@plain', err)
                     end
                 end
             end
-            if n == items.n then return true end
+            if n == #items then return true end
             sort(items, csl_items_sort)
             for i = 1, #items do setmetatable(items[i], sort_csl_vars) end
             return biblio_write(fname, items)
@@ -3732,9 +3661,11 @@ do
         _seen[elem] = true
         local et, err = el_type(elem, _seen)
         if not et then return nil, err end
-        local ets = Values()
+        local ets = {}
+        local n = 0
         while et do
-            ets:add(et)
+            n = n + 1
+            ets[n] = et
             et = super[et]
         end
         return unpack(ets)
@@ -3928,8 +3859,8 @@ doc_ckeys = type_check('table|userdata', '?boolean')(
 -- @see Options:add
 -- @see Options:parse
 -- @object Options
--- @proto @{Values}
-Options = Values:clone()
+-- @proto @{Object}
+Options = Object:clone()
 
 --- Create a new option parser.
 --
@@ -3949,7 +3880,13 @@ Options.new = type_check('table', {
     type = '?string',
     parse = '?function',
     prefix = '?string'
-})(Values.new)
+})(
+    function (proto, ...)
+        local obj = Object.new(proto)
+        if select('#', ...) > 0 then obj:add(...) end
+        return obj
+    end
+)
 
 --- Add an option to the parser.
 --
@@ -3974,7 +3911,12 @@ Options.add = type_check('table', {
     type = '?string',
     parse = '?function',
     prefix = '?string'},
-'...')(Values.add)
+'...')(
+    function (self, ...)
+        local items = pack(...)
+        for i = 1, items.n do self[#self + 1] = items[i] end
+    end
+)
 
 --- Read configuration options from a metadata block.
 --
@@ -4362,6 +4304,7 @@ connectors.ZoteroWeb.citekey_types = List {
 --
 -- Defines:
 --
+--  * `zotero-citekey-types`
 --  * `zotero-api-key`
 --  * `zotero-user-id`
 --  * `zotero-groups`
@@ -4370,8 +4313,9 @@ connectors.ZoteroWeb.citekey_types = List {
 -- See the [manual](#content) for details.
 --
 -- @object connectors.ZoteroWeb.options
--- @proto @{connectors.Zotxt.options}.
-connectors.ZoteroWeb.options = connectors.Zotxt.options(
+-- @proto @{Options}
+connectors.ZoteroWeb.options = Options(
+    {prefix = 'zotero', name = 'citekey_types', type = 'list'},
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},
     {prefix = 'zotero', name = 'groups', type = 'list<number>'},
@@ -4460,10 +4404,10 @@ do
             local ep = assert(vars_sub(groups_url, obj))
             local data, err = obj.query(ep, {v = 3, key = obj.api_key})
             if data then
-                local groups = Values()
+                local groups = {}
                 for i = 1, #data do
                     if data[i] and data[i].data and data[i].data.id then
-                        groups:add(data[i].data.id)
+                        groups[#groups + 1] = data[i].data.id
                     end
                 end
                 obj.groups = groups
@@ -4517,8 +4461,12 @@ do
         function (ep, params)
             local query_url = ep
             if params then
-                local query = Values:clone()
-                for k, v in sorted(params) do query:add(k .. '=' ..v) end
+                local query = {}
+                local n = 0
+                for k, v in sorted(params) do
+                    n = n + 1
+                    query[n] = k .. '=' ..v
+                end
                 query_url = query_url .. '?' .. concat(query, '&')
             end
             local ok, mt, str = pcall(http_get, query_url)
@@ -4827,7 +4775,7 @@ do
             name = 'connectors',
             type = 'list',
             parse = function (names)
-                local conns = Values()
+                local conns = {}
                 for i = 1, #names do
                     local name = names[i]
                     if not name:match '^%a[%w_]+$' then
@@ -4842,7 +4790,7 @@ do
                     }) then
                         return nil, name .. ': connector violates protocol.'
                     end
-                    conns:add(conn)
+                    conns[#conns + 1] = conn
                 end
                 return conns
             end
@@ -4865,7 +4813,7 @@ do
             -- luacheck: ignore assert
             local assert = asserter()
             local opts = assert(parser:parse(doc.meta))
-            local handles = Values()
+            local handles = {}
 
             local conns = opts.connectors
             if not conns or #conns == 0 then
@@ -4875,7 +4823,7 @@ do
                     local opts = conn.options
                     if opts then args = assert(opts:parse(doc.meta)) end
                     local handle = conn:new(args)
-                    if handle then handles:add(handle) end
+                    if handle then handles[#handles + 1] = handle end
                 end
             else
                 for i = 1, #conns do
@@ -4885,7 +4833,7 @@ do
                     local args
                     if opts then args = assert(opts:parse(doc.meta)) end
                     local handle = assert(conn:new(args))
-                    handles:add(handle)
+                    handles[#handles + 1] = handle
                 end
             end
 
@@ -4898,7 +4846,7 @@ do
             end
 
             local chg = false
-            for i = 1, handles.n do
+            for i = 1, #handles do
                 local meta, err = add_sources(handles[i], doc)
                 if meta then
                     doc.meta = meta
