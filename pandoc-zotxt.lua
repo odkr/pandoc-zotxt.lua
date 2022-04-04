@@ -320,18 +320,25 @@
 -- @section
 
 -- Initialisation
------------------
+-- ==============
 
 -- luacheck: allow defined top
--- luacheck: ignore path_prettify
+-- luacheck: globals PANDOC_SCRIPT_FILE PANDOC_STATE PANDOC_VERSION pandoc
+-- luacheck: ignore DEBUG
 
---- Metadata
--- @section
 
--- luacheck: push ignore DEBUG
---- Run in debugging mode?
-local DEBUG = true -- DEBUG or false
--- luacheck: pop
+-- Metadata
+-- --------
+
+-- The name of this script.
+local NAME = 'pandoc-zotxt.lua'
+
+-- The version of this script.
+local VERSION = '1.2.0'
+
+
+-- Custom global environment
+-- -------------------------
 
 -- Built-in functions.
 local assert = assert
@@ -359,7 +366,6 @@ local table = table
 local utf8 = utf8
 
 -- Pandoc.
--- luacheck: push ignore
 local pandoc = pandoc
 if not pandoc.utils then pandoc.utils = require 'pandoc.utils' end
 if not pandoc.List then pandoc.List = require 'List' end
@@ -376,12 +382,34 @@ end
 local PANDOC_STATE = PANDOC_STATE
 local PANDOC_SCRIPT_FILE = PANDOC_SCRIPT_FILE
 local PANDOC_VERSION = PANDOC_VERSION
--- luacheck: pop
 
 local M = {}
 local _ENV = M
 
--- Shorthands.
+
+-- Libraries
+-- ---------
+
+do
+    local repo = NAME .. '-' .. VERSION
+    local path_sep = package.config:sub(1, 1)
+    local script_dir = PANDOC_SCRIPT_FILE:match('(.*)' .. path_sep)
+    local function path_join(...) return table.concat({...}, path_sep) end
+    local sub_dir = path_join('share', 'lua', '5.4', '?.lua')
+    package.path = table.concat({package.path,
+        path_join(script_dir, sub_dir),
+        path_join(script_dir, repo, sub_dir)
+    }, ';')
+end
+
+local json = require 'lunajson'
+local text = require 'text'
+local pancake = require 'pancake'
+
+
+-- Shorthands
+-- ----------
+
 local format = string.format
 local concat = table.concat
 local insert = table.insert
@@ -410,393 +438,16 @@ local find = List.find
 local includes = List.includes
 local map = List.map
 
---------
--- Types
---
--- @section
-
-do
-    local abbrs = {
-        ['%*'] = 'boolean|function|number|string|table|thread|userdata',
-        ['%?(.*)'] = '%1|nil'
-    }
-
-    local msg = 'expected %s, got %s.'
-
-    --- Check whether a value is of a type.
-    --
-    -- <h3>Type declaration grammar:</h3>
-    --
-    -- Declare one or more Lua type names separated by '|' to require that
-    -- the given value is of one of the given types (e.g., 'string|table'
-    -- requires the value to be a string or a table). '*' is short for the
-    -- list of all types but `nil`. '?T' is short for 'T|nil' (e.g.,
-    -- '?table' is short for 'table|nil').
-    --
-    -- [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
-    --
-    -- > Type = 'boolean' | 'function' | 'nil'    | 'number'   |
-    -- >        'string'  | 'table'    | 'thread' | 'userdata'
-    -- >
-    -- > Type list = [ '?' ], type, { '|', type }
-    -- >
-    -- > Wildcard = [ '?' ], '*'
-    -- >
-    -- > Type declaration = type list | wildcard
-    --
-    -- <h3>Complex types:</h3>
-    --
-    -- You can check types of table or userdata fields by
-    -- declarding a table that maps indices to declarations.
-    --
-    --    > type_check({1, '2'}, {'number', 'number'})
-    --    nil    index 2: expected number, got string.
-    --    > type_check({foo = 'bar'}, {foo = '?table'})
-    --    nil    index foo: expected table or nil, got string.
-    --    > type_check('foo', {foo = '?table'})
-    --    nil    expected table or userdata, got string.
-    --
-    -- @caveats Wrong type names (e.g., 'int') do *not* throw an error.
-    --
-    -- @param val A value.
-    -- @tparam string|table decl A type declaration.
-    -- @treturn[1] bool `true` if the value matches the declaration.
-    -- @treturn[2] nil `nil` otherwise.
-    -- @treturn[2] string An error message.
-    function type_match (val, decl, _seen)
-        -- luacheck: ignore t
-        local t = type(decl)
-        if t == 'string' then
-            local t = type(val)
-            for p, r in pairs(abbrs) do decl = decl:gsub(p, r) end
-            for e in decl:gmatch '[^|]+' do if t == e then return true end end
-            return nil, msg:format(decl:gsub('|', ' or '), t)
-        elseif t == 'table' then
-            local ok, err = type_match(val, 'table|userdata')
-            if not ok then return nil, err end
-            if not _seen then _seen = {} end
-            assert(not _seen[val], 'cycle in data tree.')
-            _seen[val] = true
-            for k, t in pairs(decl) do
-                ok, err = type_match(val[k], t, _seen)
-                if not ok then return nil, format('index %s: %s', k, err) end
-            end
-            return true
-        end
-        error(msg:format('string or table', t))
-    end
-end
-
---- Type-check function arguments in debugging mode.
---
--- <h3>Type declaration grammar:</h3>
---
--- The type declaration syntax is that of @{type_match}, save for
--- that you can use '...' to declare that the remaining arguments
--- are of the same type as the previous one.
---
--- @tip Obscure Lua errors may indicate that forgot the quotes around '...'.
---
--- @caveats
---
--- * Wrong type names (e.g., 'int') do *not* throw an error.
--- * Sometimes the strack trace is wrong.
--- * Returns a pass-through function unless `DEBUG` is true.
---
--- @tparam string|table ... Type declarations.
--- @treturn func A function that adds type checks to a function.
---
--- @usage
--- store = type_check('?*', 'table', '?number', '...')(
---     function (val, tab, ...)
---          local indices = table.pack(...)
---          for i = 1, n do tab[indices[i]] = val end
---     end
--- )
---
--- @function type_check
-function type_check (...)
-    local decls = pack(...)
-    return function (func)
-        return function (...)
-            -- luacheck: ignore type
-            local args = pack(...)
-            local decl, prev
-            local n = math.max(decls.n, args.n)
-            for i = 1, n do
-                if     decls[i] == '...' then prev = true
-                elseif decls[i]          then prev = false
-                                              decl = decls[i]
-                elseif not prev          then break
-                end
-                if args[i] == nil and prev and i >= decls.n then break end
-                local ok, err = type_match(args[i], decl)
-                if not ok then error(format('argument %d: %s', i, err), 2) end
-            end
-            return func(...)
-        end
-    end
-end
-
-if not DEBUG then
-    function type_check ()
-        return function (...) return ... end
-    end
-end
-
-
----------
--- System
---
--- @section
-
---- The path segment separator used by the operating system.
-PATH_SEP = package.config:sub(1, 1)
-
---- The end of line sequence typically used on the given operating system.
-EOL = '\n'
-if PATH_SEP == '\\' then EOL = '\r\n' end
-
-
------------
--- File I/O
---
--- @section
-
-do
-    -- Patterns that normalise directory paths.
-    -- Order is significant.
-    local patterns = {
-        -- Replace '/./' with '/'.
-        {PATH_SEP .. '%.' .. PATH_SEP, PATH_SEP},
-        -- Replace a sequence of '/'s with a single '/'.
-        {PATH_SEP .. '+', PATH_SEP},
-        -- Remove trailing '/'s, but not for the root node.
-        {'(.)' .. PATH_SEP .. '$', '%1'},
-        -- Remove './' at the beginning of a path.
-        {'^%.' .. PATH_SEP, ''}
-    }
-
-    --- Normalise a path.
-    --
-    -- @string path A path.
-    -- @treturn string A normalised path.
-    --
-    -- @function path_normalise
-    path_normalise = type_check('string')(
-        function (path)
-            assert(path ~= '', 'path is the empty string.')
-            for i = 1, #patterns do path = path:gsub(unpack(patterns[i])) end
-            return path
-        end
-    )
-end
-
-do
-    -- Pattern to split a path into a directory and a filename part.
-    local pattern = '(.-' .. PATH_SEP .. '?)([^' .. PATH_SEP .. ']-)$'
-
-    --- Split a path into a directory and a filename.
-    --
-    -- @string path A path.
-    -- @treturn string The directory the file is in.
-    -- @treturn string The file's name.
-    --
-    -- @function path_split
-    path_split = type_check('string')(
-        function (path)
-            assert(path ~= '', 'path is the empty string.')
-            local dir, fname = path:match(pattern)
-            if     dir == ''   then dir = '.'
-            elseif fname == '' then fname = '.'
-            end
-            return path_normalise(dir), fname
-        end
-    )
-end
-
---- Join multiple path segments.
---
--- @caveats Accepts empty strings as arguments.
---
--- @string ... Path segments.
--- @treturn string A path.
---
--- @function path_join
-path_join = type_check('string', '...')(
-    function (...)
-        return path_normalise(concat({...}, PATH_SEP))
-    end
-)
-
-
------------
--- Metadata
---
--- @section
-
---- The name of this script.
-NAME = 'pandoc-zotxt.lua'
-
---- The version of this script.
-VERSION = '1.2.0'
-
-do
-    local script_dir, script_name = path_split(PANDOC_SCRIPT_FILE)
-    local repo = NAME .. '-' .. VERSION
-    local sub_dir = path_join('share', 'lua', '5.4', '?.lua')
-    package.path = concat({package.path,
-        path_join(script_dir, sub_dir),
-        path_join(script_dir, repo, sub_dir)
-    }, ';')
-
-    NAME = script_name
-end
-
-local json = require 'lunajson'
-local text = require 'text'
-
-
----------
--- Errors
---
--- @section
-
---- Create an assertion function.
---
--- See <http://lua-users.org/wiki/FinalizedExceptions>.
---
--- @func fin A finaliser.
--- @func msgh A message handler.
--- @treturn func An assertion functin.
---
--- @function asserter
--- @fixme The documentation is rather cryptic.
--- @fixme Not unit-tested.
-asserter = type_check('?function', '?function')(
-    function (fin, msgh)
-        return function (cond, ...)
-            if cond then return cond, ... end
-            if fin then fin(...) end
-            local err
-            if msgh then err = msgh(...)
-                    else err = ...
-            end
-            error(err, 0)
-        end
-    end
-)
-
---- Create a function that runs in protected mode.
---
--- If an error occurs while running the function,
--- it returns `nil` and an error message.
---
--- See <http://lua-users.org/wiki/FinalizedExceptions>.
---
--- @func func A function.
--- @treturn func A function that runs in protected mode.
---
--- @function protect
--- @fixme Not unit-tested.
-protect = type_check('function')(
-    function (func)
-        return function (...)
-            local results = pack(pcall(func, ...))
-            if not results[1] then return nil, unpack(results, 2) end
-            return unpack(results, 2)
-        end
-    end
-)
-
--- @fixme
-fatal = type_check('function')(
-    function (func)
-        return function (...)
-            local results = pack(func(...))
-            if not results[1] then error(results[2], 0) end
-            return unpack(results)
-        end
-    end
-)
-
-
-------------
--- Variables
---
--- @section
-
-do
-    -- Turn @{debug.getlocal} and @{debug.getupvalue} into iterators.
-    --
-    -- @func func @{debug.getlocal} or @{debug.getupvalue}.
-    -- @treturn func A function that returns an iterator.
-    local function iterator (func)
-        return function (arg)
-            local i = 0
-            return function ()
-                i = i + 1
-                return func(arg, i)
-            end
-        end
-    end
-
-    -- Iterate over the upvalues of a function.
-    --
-    -- @userdata func A @{debug} function value.
-    -- @treturn func A stateful iterator.
-    local upvalues = iterator(debug.getupvalue)
-
-    -- Iterate over the local variables of a function.
-    --
-    -- @number level A stack level.
-    -- @treturn func A stateful iterator.
-    local locals = iterator(debug.getlocal)
-
-    --- Get a copy of the variables of a function.
-    --
-    -- @caveats
-    --
-    -- If a global variable is shadowed by a variable that is neither one of
-    -- the function's local variables nor one of its upvalues, then the value
-    -- from `_ENV` is returned, *not* the value of the shadowing variable.
-    --
-    -- @int[opt=2] level A stack level, where
-    --
-    --  * 1 = `vars_get`,
-    --  * 2 = the function calling `vars_get`,
-    --  * ⋮
-    --  * *n* = the function calling the function at level *n* – 1.
-    --
-    -- @treturn table A mapping of variable names to values.
-    --
-    -- @usage
-    -- > function bar ()
-    -- >     print(vars_get(3).foo)
-    -- > end
-    -- > function foo ()
-    -- >     foo = 'foo'
-    -- >     bar()
-    -- > end
-    -- > foo()
-    -- foo
-    --
-    -- @function vars_get
-    vars_get = type_check('?number')(
-        function (level)
-            if not level then level = 2 end
-            assert(level > 0, 'level is not a positive number.')
-            local info = debug.getinfo(level, 'f')
-            assert(info, 'stack is not that high.')
-            local vars = copy(_ENV)
-            local iters = {upvalues(info.func), locals(level + 1)}
-            for i = 1, #iters do
-                for k, v in iters[i] do vars[k] = copy(v) end
-            end
-            return vars
-        end
-    )
-end
+local type_check = pancake.type_check
+local type_match = pancake.type_match
+local asserter = pancake.asserter
+local protect = pancake.protect
+local unprotect = pancake.unprotect
+local copy = pancake.copy
+local keys = pancake.keys
+local sorted = pancake.sorted
+local update = pancake.update
+local xwarn = pancake.xwarn
 
 
 ---------
@@ -812,1155 +463,6 @@ end
 --
 -- @caveats This table exists in documentation only.
 -- @table Set
-
---- Metatable to make index lookups case-insensitive.
---
--- @usage
---
--- > tab = setmetatable({}, ignore_case)
--- > tab.FOO = 'bar'
--- > tab.foo
--- bar
-ignore_case = {}
-
---- Look up an item.
---
--- @tab tab A table.
--- @param key A key.
--- @return The item.
-function ignore_case.__index (tab, key)
-    if type(key) == 'string' and key:match '%u' then
-        return tab[key:lower()]
-    end
-end
-
---- Store a new item.
---
--- @tab tab A table.
--- @param key A key.
--- @param val A value.
-function ignore_case.__newindex (tab, key, val)
-    if type(key) == 'string' then key = key:lower() end
-    rawset(tab, key, val)
-end
-
---- Metatable to sort key-value pairs automatically.
---
--- @usage
--- > tab = setmetatable({c = 3, b = 2, a = 1}, sort_pairs)
--- > for k, v in pairs(tab) do
--- >     print(k, v)
--- > end
--- a    1
--- b    2
--- c    3
-sort_pairs = {}
-
---- Iterate over the key-value pairs of a table in a given order.
---
--- What order pairs are iterated over is defined by the `sort` metamethod.
--- Defaults to lexical order if `sort` is unset. See @{sorted} for details.
---
--- @tab tab A table.
--- @treturn func A *stateful* iterator.
---
--- @usage
--- > sort = order{'c', 'b', 'a'}
--- > mt = update({sort = sort}, sort_pairs)
--- > tab = setmetatable({a = 1, b = 2, c = 3}, mt)
--- > for k, v in pairs(tab) do
--- >     print(k, v)
--- > end
--- c    3
--- b    2
--- a    1
-function sort_pairs.__pairs (tab)
-    local mt = getmetatable(tab)
-    return sorted(tab, mt.sort, true)
-end
-
--- Make a deep copy of a value.
---
--- @caveats Bypasses metamethods.
---
--- @param val A value.
--- @return A deep copy.
---
--- @usage
--- > foo = {1, 2, 3}
--- > bar = {foo, 4}
--- > baz = copy(bar)
--- > foo[#foo + 1] = 4
--- > table.unpack(baz, 1)
--- 1    2    3
---
--- @function copy
-copy = type_check('?*', '?table')(
-    function (val, _seen)
-        -- Borrows from:
-        -- * <https://gist.github.com/tylerneylon/81333721109155b2d244>
-        -- * <http://lua-users.org/wiki/CopyTable>
-        if type(val) ~= 'table' then return val end
-        if     not _seen  then _seen = {}
-        elseif _seen[val] then return _seen[val]
-        end
-        local cp = {}
-        local mt = getmetatable(val)
-        if type(mt) == 'table' then setmetatable(cp, mt) end
-        _seen[val] = cp
-        for k, v in next, val do
-            rawset(cp, copy(k, _seen), copy(v, _seen))
-        end
-        return cp
-    end
-)
-
---- Get the indices and number of items in a table.
---
--- @tab tab A table.
--- @treturn tab The indices.
--- @treturn int The number of items.
---
--- @function keys
-keys = type_check('table')(
-    function (tab)
-        local ks = {}
-        local n = 0
-        for k in pairs(tab) do
-            n = n + 1
-            ks[n] = k
-        end
-        return ks, n
-    end
-)
-
---- Define a sorting function from an ordered list of values.
---
--- @tab values Values.
--- @treturn func A sorting function.
---
--- @usage
--- > tab = {a = 3, b = 4, c = 2, d = 1}
--- > for k, v in sorted(tab, order{'d', 'c'}) do
--- >     print(k, v)
--- > end
--- d    1
--- c    2
--- a    3
--- b    4
---
--- @function order
-order = type_check('table')(
-    function (vals)
-        local order = {}
-        for i = 1, #vals do order[vals[i]] = i end
-        return function (a, b)
-            local i, j = order[a], order[b]
-            if i and j then return i < j end
-            if i then return true end
-            if j then return false end
-            return a < b
-        end
-    end
-)
-
---- Iterate over the key-value pairs of a table in a given order.
---
--- @tab tab A table.
--- @func[opt] func A sorting function.
---  If no function is given, sorts lexically.
--- @bool[opt=false] raw Bypass `__pairs` metamethod?
--- @treturn func A *stateful* iterator.
---
--- @usage
--- > for k, v in sorted{c = 3, b = 2, a = 1} do
--- >     print(k, v)
--- > end
--- a    1
--- b    2
--- c    3
---
--- @function sorted
--- @fixme `raw` is not unit-tested.
-sorted = type_check('table', '?function', '?boolean')(
-    function (tab, func, raw)
-        local ks
-        if raw then ks = pack(tabulate(next, tab))
-               else ks = keys(tab)
-        end
-        sort(ks, func)
-        local i = 0
-        return function ()
-            i = i + 1
-            local k = ks[i]
-            if k == nil then return end
-            return k, tab[k]
-        end, tab
-    end
-)
-
---- Tabulate the values an iterator returns.
---
--- The iterator must accept, if not honour, the same arguments as @{next}.
---
--- @func iter An iterator.
--- @param[opt] tab A table to iterate over.
--- @param[opt] key The index to start iterating at.
--- @return The values returned by the iterator.
---
--- @usage
--- > str = 'key: value'
--- > k, v = tabulate(split(str, '%s*:%s*', 2))
--- > print(k, v)
--- key    value
---
--- @function tabulate
--- @fixme Stateless iterators are not unit-tested.
-tabulate = type_check('function')(
-    function (iter, tab, key)
-        local vals = {}
-        local n = 0
-        for v in iter, tab, key do
-            n = n + 1
-            vals[n] = v
-        end
-        return unpack(vals)
-    end
-)
-
---- Merge tables.
---
--- @caveats The table is updated *in-place*.
---
--- @tab tab A table.
--- @tparam tab|userdata ... Mappings to merge into the table.
--- @treturn tab The table.
---
--- @function update
-update = type_check('table', '?table|userdata', '...')(
-    function (tab, ...)
-        local maps = pack(...)
-        for i = 1, maps.n do
-            if maps[i] then
-                for k, v in pairs(maps[i]) do tab[k] = v end
-            end
-        end
-        return tab
-    end
-)
-
---- Walk a tree and apply a function to every node.
---
--- Nodes are only changed if the function returns a value other than `nil`.
---
--- @param val A value.
--- @func func A function.
--- @return A changed value.
---
--- @function walk
-walk = type_check('*', 'function', '?table')(
-    function (val, func, _seen)
-        if type(val) ~= 'table' then
-            local ret = func(val)
-            if ret == nil then return val end
-            return ret
-        end
-        if     not _seen  then _seen = {}
-        elseif _seen[val] then return _seen[val]
-        end
-        local ret = {}
-        local mt = getmetatable(val)
-        if type(mt) == 'table' then setmetatable(ret, mt) end
-        _seen[val] = ret
-        for k, v in pairs(val) do
-            if type(v) == 'table' then v = walk(v, func, _seen) end
-            local new = func(v)
-            if new == nil then ret[k] = v
-                          else ret[k] = new
-            end
-        end
-        return ret
-    end
-)
-
-
-----------
--- Strings
---
--- @section
-
---- Iterate over substrings of a string.
---
--- @caveats Neither supports multi-byte characters nor frontier patterns.
---
--- @string str A string.
--- @string pattern Where to split the string.
--- @int[opt] max Split the string into at most that many substrings.
--- @string[opt] include Include separators in substrings?
---
---  * 'l' includes them on the left,
---  * 'r' on the right.
---
---  By default, separators are *not* included.
--- @treturn func A *stateful* iterator.
---
--- @usage
--- > for s in split('CamelCase', '%u', nil, 'l') do
--- >     print(string.format("%s", s))
--- > end
--- ""
--- "Camel"
--- "Case"
---
--- @function split
-split = type_check('string', 'string', '?number', '?string')(
-    function (str, pattern, max, include)
-        assert(not pattern:match '%f[%%]%%f', 'split does not support %f.')
-        assert(not include or include:match '^[lr]$', 'expecting "l" or "r".')
-        local pos = 1
-        local n = 0
-        local i, j
-        return function ()
-            local sep, last
-            if not pos then return end
-            if include == 'l' and i then sep = str:sub(i, j) end
-            i = nil
-            j = nil
-            n = n + 1
-            if n == max then
-                last = -1
-            else
-                i, j = str:find(pattern, pos)
-                if     not i          then last = -1
-                elseif include == 'r' then last = j
-                                      else last = i - 1
-                end
-            end
-            local sub = str:sub(pos, last)
-            if sep then sub = sep .. sub end
-            if j then pos = j + 1
-                 else pos = nil
-            end
-            return sub
-        end
-    end
-)
-
---- Remove leading and trailing whitespace.
---
--- @string str A string.
--- @treturn string A trimmed string.
---
--- @function trim
-trim = type_check('string')(
-    function (str)
-        return str:gsub('^%s+', ''):gsub('%s*$', ''), nil
-    end
-)
-
-do
-    -- Lookup a path in a namespace.
-    --
-    -- @tab vars A mapping of variable names to values.
-    -- @string path A path. Seperate segments by dots.
-    -- @return[1] A non-`nil` value.
-    -- @treturn[2] nil `nil` if an error occurs.
-    -- @treturn[2] string An error message.
-    local function lookup (vars, path)
-        if path == '' then return nil, 'name is the empty string.' end
-        local segs = pack(tabulate(split(path, '%.')))
-        local v = vars
-        for i = 1, segs.n do
-            local n = segs[i]
-            if i < segs.n then
-                local ok, err = type_match(v, {[n] = 'table'})
-                if not ok then return nil, err end
-            end
-            v = v[n]
-        end
-        if v == nil then return v, path .. ' is undefined.' end
-        return v
-    end
-
-    -- Expand a variable from a variable expression.
-    --
-    -- See @{vars_sub} for the expression syntax.
-    --
-    -- @tparam Set seen The variables encounterd so far.
-    -- @tab vars A mapping of variable names to values.
-    -- @string exp A variable expression.
-    -- @treturn string The value of the expression.
-    -- @raise See @{vars_sub}.
-    --
-    -- @todo Allow pipes of arbitrary lengths.
-    local function expand (seen, vars, exp)
-        -- luacheck: ignore assert
-        local function msgh (err) return format('$%s: %s', exp, err) end
-        local assert = asserter(nil, msgh)
-        local pipe = pack(tabulate(split(exp:sub(2, -2), '|')))
-        local path = pipe[1]
-        assert(not seen[path], 'cycle in lookup.')
-        seen[path] = true
-        local v = assert(lookup(vars, path))
-        if type(v) == 'string' then v = assert(vars_sub(v, vars, seen)) end
-        for i = 2, #pipe do
-            local fn = pipe[i]
-            local f = assert(lookup(vars, fn))
-            assert(type(f) == 'function', fn .. ': not a function.')
-            v = f(v)
-        end
-        assert(type_match(v, 'string|number'))
-        return tostring(v)
-    end
-
-    --- Substitute variables in strings.
-    --
-    -- If a string of characters is placed within braces ('{...}') and the
-    -- opening brace ('{') immediately follows a single dollar ('$') sign,
-    -- then that string names a variable and the whole expression is
-    -- replaced with the value of that variable.
-    --
-    --    > vars_sub(
-    --    >     '${v1} is ${v2}.',
-    --    >     {v1 = 'foo', v2 = 'bar'}
-    --    > )
-    --    foo is bar.
-    --
-    -- If a braced string is preceded by two or more dollar signs, it is *not*
-    -- a variable name and the expression, therefore, *not* replaced. Moreover,
-    -- any series of *n* dollar signs is replaced with *n* – 1 dollar signs.
-    --
-    --    > vars_sub(
-    --    >     '$${var} costs $$1.',
-    --    >     {var = 'foo'}
-    --    > )
-    --    ${var} costs $1.
-    --
-    -- You can lookup values in tables by joining the name of the variable
-    -- and that of the table index with a dot ('.'). Neither variable nor
-    -- function names can contain dots.
-    --
-    --    > vars_sub(
-    --    >     '${foo.bar} is baz.', {
-    --    >         foo = { bar = 'baz' }
-    --    >     }
-    --    > )
-    --    baz is baz.
-    --
-    -- If a name is followed by a pipe symbol ('|'), then the string between
-    -- that pipe symbol and the next pipe symbol/the closing brace ('}') names
-    -- a function; the value is then passed to that function, and the whole
-    -- expression replaced with the first value that the function returns.
-    -- Neither variable nor function names may contain pipe symbols.
-    --
-    --    > vars_sub(
-    --    >     '${var|barify} is bar!', {
-    --    >         var = 'foo',
-    --    >         barify = function (s)
-    --    >             return s:gsub('foo', 'bar')
-    --    >         end
-    --    >     }
-    --    > )
-    --    bar is bar!
-    --
-    -- Variables are substituted recursively.
-    --
-    --    > vars_sub(
-    --    >     '${foo|barify} is bar.', {
-    --    >         foo = '${bar}',
-    --    >         bar = 'baz'
-    --    >         barify = function (s) return s:gsub('baz', 'bar') end
-    --    >     }
-    --    > )
-    --    bar is bar.
-    --
-    -- @string str A string.
-    -- @tparam func|tab mapping A mapping of variable names to values.
-    -- @treturn[1] string A transformed string.
-    -- @treturn[2] nil `nil` if an error occurred.
-    -- @treturn[2] string An error message.
-    --
-    -- @function vars_sub
-    -- @fixme Functions are not unit-tested.
-    -- @fixme Chained function calls in pipes are not unit-tested.
-    vars_sub = type_check('string', 'function|table', '?table')(protect(
-        function (str, mapping, _seen)
-            if not _seen then _seen = {} end
-            local repl
-            local t = type(mapping)
-            if t == 'function' then
-                repl = mapping
-            elseif t == 'table' then
-                repl = function (...) return expand(_seen, mapping, ...) end
-            else
-                error 'FIXME'
-            end
-            return str:gsub('%f[%$]%$(%b{})', repl):gsub('%$(%$*)', '%1'), nil
-        end
-    ))
-end
-
-do
-    -- luacheck: ignore assert
-
-    -- Enable variable substitution in error messages.
-    local function msgh (msg) return assert(vars_sub(msg, vars_get(4))) end
-
-    -- Make assertions without stack traces.
-    local assert = asserter(nil, msgh)
-
-    -- @fixme
-    local function get_env (key)
-        local var = key:sub(2, -2)
-        assert(var ~= '', '$${}: variable name is the empty string.')
-        assert(var:match '^[%a_][%w_]+$', '$${${var}}: invalid variable name.')
-        local val = assert(os.getenv(var), '$${${var}}: is undefined.')
-        if val == '' then xwarn('$${${var}}: is empty.') end
-        return val
-    end
-
-    -- @fixme
-    function env_sub (str)
-        return vars_sub(str, get_env)
-    end
-end
-
-
--------------
--- Prototypes
---
--- @section
-
---- Base prototype.
---
--- @object Object
-Object = {}
-
---- Delegate to an object.
---
--- Set a table's metatable to a copy of the objects's metatable and the
--- table's `__index` metavalue to the object. If no table is given,
--- create one. If a metatable is given, override the table's new metatable
--- with that table. In other words,
---
---     Object:clone(tab, mt)
---
--- is roughly equivalent to
---
---     do
---         local mt = update({}, getmetatable(Object), {__index = Object}, mt)
---         setmetatable(tab or {}, mt)
---     end
---
--- @caveats The table is changed *in-place*.
---
--- @tab[opt] tab A table.
--- @tab[opt] mt A metatable.
--- @treturn tab The table.
---
--- @usage
--- > Foo = Object:clone({}, {__tostring = function (t) return t.bar end})
--- > Foo.bar = 'baz'
--- > tostring(Foo)
--- baz
--- > bar = Foo()
--- > tostring(bar)
--- baz
--- > bar.bar = 'bar'
--- > tostring(bar)
--- bar
---
--- @function Object:clone
-Object.clone = type_check('table', '?table', '?table')(
-    function (self, tab, mt)
-        mt = update({}, getmetatable(self), {__index = self}, mt)
-        return setmetatable(tab or {}, mt)
-    end
-)
-
---- Create and initialise a table that delegates to the object.
---
--- `Object:new(...)` is short for `update(Object:clone(), ...)`.
---
--- @tab ... Properties.
--- @treturn Object An object.
---
--- @usage
--- > foo = Object:new{foo = 'foo'}
--- > foo.foo
--- foo
---
--- @function Object:new
-Object.new = type_check({clone = 'function'}, '?table', '...')(
-    function (proto, ...)
-        return update(proto:clone(), ...)
-    end
-)
-
---- Metatable for prototypes.
-Object.mt = {}
-setmetatable(Object, Object.mt)
-
---- Shorthand for @{Object:new}.
---
--- @tab ... Passed to @{Object:new}.
--- @treturn Object An object.
---
--- @function Object.mt.__call
-Object.mt.__call = type_check({new = 'function'})(
-    function (self, ...)
-        return self:new(...)
-    end
-)
-
---- Add getters to a table.
---
--- <h3>Getter protocol:</h3>
---
--- If an index is not present in a the table, look for a function of the same
--- name in the table's `getters` metavalue, which must be a mapping of indices
--- to functions. If `getters` contains a function of that name, then that
--- function is called with the table as its only argument and whatever it
--- returns is returned as the value of the given index. If `getters` does
--- not contain a function of that name, the name is looked up using the
--- table's *old* `__index` metavalue.
---
--- @caveats
---
--- * Tables are modified *in-place*.
--- * Getters are *not* inherited.
---
--- @tab tab A table.
--- @treturn tab The table.
---
--- @usage
--- > -- Enable getters for an object:
--- > Foo = getterify(Object:clone())
--- > Foo.foo = 'bar'
--- > mt = getmetatable(Foo)
--- > mt.getters = {}
--- > function mt.getters.bar (obj) return obj.foo end
--- > Foo.bar
--- bar
--- > -- The getter is reached via the prototype chain,
--- > -- so it sees Foo.foo, not bar.foo:
--- > baz = Foo()
--- > baz.foo = 'bam!'
--- > baz.bar
--- bar
--- > -- But you can make getters quasi-inheritable:
--- > Foo.clone = function (...) return getterify(Object.clone(...)) end
--- > baz = Foo()
--- > baz.foo = 'bam!'
--- > baz.bar
--- bam!
---
--- @function getterify
--- @fixme Not unit-tested.
-getterify = type_check('table')(
-    function (tab)
-        local mt = update({}, getmetatable(tab))
-        local index = mt.__index
-        mt.__index = type_check('table')(
-            -- luacheck: ignore tab
-            function (tab, key)
-                local getters = getmetatable(tab).getters
-                if getters then
-                    local get = getters[key]
-                    if get then return get(tab) end
-                end
-                if index then
-                    local t = type(index)
-                    if t == 'table'    then return index[key]      end
-                    if t == 'function' then return index(tab, key) end
-                    error(format('__index points to %s.', t), 2)
-                end
-            end
-        )
-        return setmetatable(tab, mt)
-    end
-)
-
------------
--- Warnings
--- @section
-
-do
-    -- Priority levels for messages.
-    local levels = {'error', 'warning', 'info'}
-
-    -- What level if verbosity is desired.
-    local verbosity = PANDOC_STATE.verbosity:lower()
-
-    --- Compare verbosity levels.
-    --
-    -- @string a A verbosity level.
-    -- @string b Another verbosity level.
-    -- @treturn bool Whether level A is smaller than level B.
-    local verb_lt = order(levels)
-
-    --- Print a message to STDERR.
-    --
-    -- <h3>Printout:</h3>
-    --
-    -- Prefixed with `NAME .. ': '` and terminated with @{EOL}.
-    -- Non-string values are coerced to strings.
-    --
-    -- <h3>Message priority:</h3>
-    --
-    -- Messages are only printed if their priority is greater or equal to
-    -- `PANDOC_STATE.verbostiy`.
-    --
-    -- <h3>Variable substitution:</h3>
-    --
-    -- If string values contain variable names, they are replaced with the
-    -- values of the local variables or the upvalues of the calling function
-    -- or, if there are no local variables or upvalues of the given names,
-    -- the values of the global variables of the module. See @{vars_sub} for
-    -- the syntax and @{vars_get} for limitations.
-    --
-    -- <h3>Options:</h3>
-    --
-    -- String values starting with an '@' are interpreted as options:
-    --
-    -- * '@error', '@warning', '@info': Set the message's priority.
-    --   (*default* 'warning')
-    -- * '@noopts': Turn option processing off. (*default* on)
-    -- * '@novars': Turn variable substitution off. (*default* on)
-    -- * '@plain': Turn variable substitution *and* option processing off.
-    -- * '@vars': Turn variable substitution on.
-    --
-    -- Options are case-sensitive. Unknown options are ignored.
-    --
-    -- @param ... Messages. At least one must be given.
-    --
-    -- @function xwarn
-    xwarn = type_check('*')(
-        function (...)
-            local priority = 'warning'
-            local opts = {opts = true, vars = true}
-            local function opts_set (msg)
-                if not opts.opts or msg:sub(1, 1) ~= '@' then return end
-                local opt = msg:sub(2)
-                if     includes(levels, opt) then priority = opt
-                elseif opt == 'plain'        then opts.vars = false
-                                                  opts.opts = false
-                elseif opt:match '^no'       then opts[opt:sub(3)] = false
-                                             else opts[opt] = true
-                end
-                return true
-            end
-            local vars
-            local msgs = pack(...)
-            local nopt = 0
-            for i = 1, msgs.n do
-                local msg = msgs[i]
-                if type(msg) ~= 'string' then
-                    msgs[i] = tostring(msg)
-                elseif opts_set(msg) then
-                    msgs[i] = ''
-                    nopt = nopt + 1
-                elseif opts.vars then
-                    if not vars then vars = vars_get(3) end
-                    msgs[i] = assert(vars_sub(msg, vars))
-                end
-            end
-            if verb_lt(verbosity, priority) or nopt == msgs.n then return end
-            io.stderr:write(concat{NAME, ': ', concat(msgs), EOL})
-        end
-    )
-end
-
-
------------
--- File I/O
---
--- @section
-
---- Check whether a path is absolute.
---
--- @caveats Accepts the empty string as path since Pandoc v2.12.
---
--- @string path A path.
--- @treturn bool `true` if the path is absolute, `false` otherwise.
---
--- @function path_is_abs
-if not pandoc.types or PANDOC_VERSION < {2, 12} then
-    path_is_abs = type_check('string')(
-        function (path)
-            assert(path ~= '', 'path is the empty string.')
-            if PATH_SEP == '\\' and path:match '^.:\\' then return true end
-            return path:match('^' .. PATH_SEP) ~= nil
-        end
-    )
-else
-    path_is_abs = pandoc.path.is_absolute
-end
-
---- Make a path absolute.
---
--- @require Pandoc v2.8
---
--- @string path An absolute or relative path.
--- @treturn string An absolute path.
--- @function path_make_abs
-if pandoc.types and PANDOC_VERSION >= {2, 8} then
-    path_make_abs = type_check('string')(
-        function (path)
-            assert(path ~= '', 'path is the empty string.')
-            if path_is_abs(path) then return path end
-            local cwd = pandoc.system.get_working_directory()
-            assert(cwd ~= '', 'current working directory is the empty string.')
-            return path_join(cwd, path)
-        end
-    )
-end
-
-do
-    local get_working_directory
-    if pandoc.types and PANDOC_VERSION >= {2, 8} then
-        get_working_directory = pandoc.system.get_working_directory
-    end
-
-    local home_dir
-    do
-        if PATH_SEP == '/' then
-            local env_home = os.getenv('HOME')
-            if env_home and env_home ~= '' and path_is_abs(env_home) then
-                home_dir = path_normalise(env_home)
-            end
-        end
-    end
-
-    --- Prettify paths.
-    --
-    -- Removes the working directory from the beginning of the path. On
-    -- POSIX systems, also replaces the user's home directory with '~'.
-    --
-    -- @string path A path.
-    -- @treturn string A prettier path.
-    -- @require The working directory is *not* removed from the beginning
-    --  of a path under Pandoc < v2.12.
-    --
-    -- @function path_prettify
-    path_prettify = type_check('string')(
-        function (path)
-            assert(path ~= '', 'path is the empty string.')
-            path = path_normalise(path)
-            if get_working_directory then
-                local cwd = get_working_directory()
-                local pos = #cwd + 1
-                if path:sub(1, pos) == cwd .. PATH_SEP then
-                    return path:sub(pos + 1)
-                end
-            end
-            if home_dir then
-                local pos = #home_dir + 1
-                if path:sub(1, pos) == home_dir .. PATH_SEP then
-                    return '~' .. path:sub(pos)
-                end
-            end
-            return path
-        end
-    )
-end
-
-do
-    local get_working_directory
-    if pandoc.types and PANDOC_VERSION >= {2, 8} then
-        get_working_directory = pandoc.system.get_working_directory
-    end
-
-    --- Guess the project directory.
-    --
-    -- The project directory is the directory of the first input file *not*
-    -- *not* named '-' (i.e., of the first actual input file). If there is no
-    -- such file, the project directory is the current working directory.
-    --
-    -- @require The working directory is represented by '.'
-    --  under Pandoc < v2.8.
-    --
-    -- @treturn string A directory.
-    function project_dir ()
-        local input_files = PANDOC_STATE.input_files
-        for i = 1, #input_files do
-            local fname = input_files[i]
-            if fname ~= '-' then return path_split(fname), nil end
-        end
-        if get_working_directory then return get_working_directory() end
-        return '.'
-    end
-end
-
---- Check whether a file exists.
---
--- @caveats
---
--- Another process may create a file of the given name between the time
--- `file_exists` tries to access that file and the time it returns.
---
--- @string fname A filename.
--- @treturn[1] boolean `true` if the file exists.
--- @treturn[2] nil `nil` if the file does not exist.
--- @treturn[2] string An error message.
--- @treturn[2] int The error number 2.
--- @raise An error if the file cannot be closed again.
---
--- @function file_exists
-file_exists = type_check('string')(
-    function (fname)
-        assert(fname ~= '', 'filename is the empty string.')
-        local file, err, errno = io.open(fname, 'r')
-        if not file then return nil, err, errno end
-        assert(file:close())
-        return true
-    end
-)
-
-do
-    local resource_path = PANDOC_STATE.resource_path
-
-    --- Locate a file in Pandoc's resource path.
-    --
-    -- @caveats Absolute filenames are returned as they are.
-    --
-    -- @string fname A filename.
-    -- @treturn[1] string A filename in Pandoc's resource path.
-    -- @treturn[2] nil `nil` if the file could not be found.
-    -- @treturn[2] string An error message.
-    --
-    -- @function file_locate
-    file_locate = type_check('string')(
-        function (fname)
-            assert(fname ~= '', 'filename is the empty string.')
-            if not resource_path or path_is_abs(fname) then return fname end
-            for i = 1, #resource_path do
-                local dir = resource_path[i]
-                if dir == '' then
-                    local err = 'resource path %d is the empty string.'
-                    return nil, format(err, i)
-                end
-                local path = path_join(dir, fname)
-                if file_exists(path) then return path end
-            end
-            return nil, fname .. ': not found in resource path.'
-        end
-    )
-end
-
---- Read a file.
---
--- @string fname A filename.
--- @treturn[1] string The contents of the file.
--- @treturn[2] nil `nil` if an error occurred.
--- @treturn[2] string An error message.
--- @treturn[2] int An error number.
---
--- @function file_read
-file_read = type_check('string')(
-    function (fname)
-        assert(fname ~= '', 'filename is the empty string.')
-        local str, err, errno, file, ok
-        file, err, errno = io.open(fname, 'r')
-        if not file then return nil, err, errno end
-        str, err, errno = file:read('a')
-        if not str then return nil, err, errno end
-        ok, err, errno = file:close()
-        if not ok then return nil, err, errno end
-        return str
-    end
-)
-
-do
-    -- Write data to a file (worker).
-    --
-    -- @param file The name or handle of a file to write data to.
-    -- @string ... The data.
-    -- @treturn[1] bool `true` if the data was written out sucessfully.
-    -- @treturn[2] nil `nil` if an error occurred.
-    -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number.
-    local function write (fname, ...)
-        local file, ok, err, errno
-        file, err, errno = io.open(fname, 'w')
-        if not file then return nil, err, errno end
-        ok, err, errno = file:write(...)
-        if not ok then return nil, err, errno end
-        ok, err, errno = file:flush()
-        if not ok then return nil, err, errno end
-        return file:close()
-    end
-
-    --- Write data to a file.
-    --
-    -- If a file of that name exists already, it is overwritten.
-    --
-    -- @caveats
-    --
-    -- Data is first written to a temporary file, that file is then renamed
-    -- to the given filename. This is safe and secure starting with Pandoc
-    -- v2.8. If you are using an older version of Pandoc, the caveats of
-    -- @{with_tmp_file} apply.
-    --
-    -- @side Creates and deletes a temporary file.
-    --
-    -- @string fname A filename.
-    -- @string ... The data.
-    -- @treturn[1] bool `true` if the data was written to the given file.
-    -- @treturn[2] nil `nil` if an error occurred.
-    -- @treturn[2] string An error message.
-    -- @treturn[2] int An error number.
-    -- @raise Under Pandoc < v2.8, an error if no unused temporary filename
-    --  could be generated. Otherwise, an error if the temporary directory
-    --  could not be created; this error cannot be caught.
-    -- @function file_write
-    file_write_legacy = type_check('string')(
-        function (fname, ...)
-            assert(fname ~= '', 'filename is the empty string.')
-            local dir = path_split(fname)
-            local data = {...}
-            return with_tmp_file(function(tf)
-                local ok, err, errno
-                xwarn 'writing to temporary file ${tf|path_prettify}.'
-                ok, err, errno = write(tf, unpack(data))
-                if not ok then return nil, err, errno end
-                ok, err, errno = os.rename(tf, fname)
-                if not ok then return nil, err, errno end
-                xwarn 'renamed ${tf|path_prettify} to ${fname|path_prettify}.'
-                return true
-            end, dir)
-        end
-    )
-
-    do
-        local with_temporary_directory = pandoc.system.with_temporary_directory
-
-        file_write_modern = type_check('string')(
-            function (fname, ...)
-                assert(fname ~= '', 'filename is the empty string.')
-                local dir, base = path_split(path_make_abs(fname))
-                local data = {...}
-                local tmp_dir
-                local ok, err, errno = with_temporary_directory(dir, 'pdz',
-                    function (td)
-                        tmp_dir = td
-                        xwarn 'made temporary directory ${td|path_prettify}.'
-                        local tmp_file = path_join(td, base)
-                        local ok, err, errno = write(tmp_file, unpack(data))
-                        if not ok then return nil, err, errno end
-                        return os.rename(tmp_file, fname)
-                    end
-                )
-                if tmp_dir and not file_exists(tmp_dir) then
-                    xwarn 'removed ${tmp_dir|path_prettify}.'
-                end
-                return ok, err, errno
-            end
-        )
-    end
-
-    if not pandoc.types or PANDOC_VERSION < {2, 8}
-        then file_write = file_write_legacy
-        else file_write = file_write_modern
-    end
-end
-
-do
-    -- List of all alphanumeric characters.
-    local alnum = {}
-
-    do
-        -- These are the ASCII/UTF-8 ranges for alphanumeric characters.
-        local ranges = {
-            {48,  57},  -- 0-9.
-            {65,  90},  -- A-Z.
-            {97, 122}   -- a-z.
-        }
-
-        -- Populate a list of alphanumeric characters.
-        for i = 1, #ranges do
-            local first, last = unpack(ranges[i])
-            for j = first, last do alnum[#alnum + 1] = string.char(j) end
-        end
-    end
-
-    math.randomseed(os.time())
-
-    --- Generate a name for a temporary file.
-    --
-    -- @caveats
-    --
-    -- Another process may create a file of the same name between the time
-    -- `tmp_fname` checks whether that name is in use and the time it returns.
-    --
-    -- @string[opt] dir A directory to prefix the filename with.
-    -- @string[opt='pdz-XXXXXX'] templ A template for the filename.
-    --  'X's are replaced with random alphanumeric characters.
-    -- @treturn[1] string A filename.
-    -- @treturn[2] nil `nil` if the generated filename is in use.
-    -- @treturn[2] string An error message.
-    --
-    -- @function tmp_fname
-    tmp_fname = type_check('?string', '?string')(
-        function (dir, templ)
-            assert(dir ~= '', 'directory is the empty string.')
-            if not templ then templ = 'pdz-XXXXXX' end
-            if dir then templ = path_join(dir, templ) end
-            local len = #templ
-            for _ = 1, 32 do
-                local fname = ''
-                for i = 1, len do
-                    local c = templ:sub(i, i)
-                    if c == 'X' then c = alnum[math.random(1, 62)] end
-                    fname = fname .. c
-                end
-                if not file_exists(fname) then return fname end
-            end
-            return nil, 'failed to find unused temporary filename.'
-        end
-    )
-end
-
---- Run a function with a temporary file.
---
--- Generates a temporary filename. Does *not* create that file.
--- If the function raises an error or returns `nil` or `false`,
--- the temporary file is deleted.
---
--- @caveats
---
--- The temporary file may have been created by *another* process. If that
--- file is located within a directory that other users have write access
--- to (e.g., `/tmp`), then this is a security issue.
---
--- @side May print error messages to STDERR.
---
--- @func func Given the name of the temporary file.
---  Must *not* change the working directory.
--- @string[opt] dir A directory to prefix the name
---  of the temporary file with. See @{tmp_fname}.
--- @string[opt] templ A template for the name
---  of the temporary file. See @{tmp_fname}.
--- @return The values returned by the function.
--- @raise An error if no unused temporary filename could be generated.
---
--- @function with_tmp_file
-with_tmp_file = type_check('function', '?string', '?string')(
-    function (func, dir, templ)
-        local tmp_file, err = tmp_fname(dir, templ)
-        if not tmp_file then error(err, 0) end
-        local results = pack(pcall(func, tmp_file))
-        local ok, success = unpack(results, 1, 2)
-        if not ok or not success then
-            -- luacheck: ignore ok err
-            local ok, err, errno = os.remove(tmp_file)
-            if     ok         then xwarn 'removed ${tmp_file|path_prettify}.'
-            elseif errno ~= 2 then xwarn('@error', '@plain', err)
-            end
-        end
-        return unpack(results, 2)
-    end
-)
 
 
 -------------
@@ -2179,8 +681,8 @@ do
     -- @todo Unit-test parse errors?
     markdownify_legacy = type_check('table|userdata')(
         function (elem)
-            local escaped = elem_walk(elem, escape_str)
-            return stringify(elem_walk(escaped, to_markdown))
+            local escaped = pancake.elem_walk(elem, escape_str)
+            return stringify(pancake.elem_walk(escaped, to_markdown))
         end
     )
 
@@ -2199,6 +701,7 @@ end
 
 do
     local rep = string.rep
+    local eol = pancake.EOL
 
     --- Create a number of spaces.
     --
@@ -2227,7 +730,7 @@ do
         then return str end
 
         -- Replace line breaks with the OS' EOL sequence.
-        str = str:gsub('\r?\n', EOL)
+        str = str:gsub('\r?\n', eol)
 
         -- Escape special and control characters.
         local chars = {}
@@ -2281,7 +784,7 @@ do
 
     --- Generate a YAML representation of a value.
     --
-    -- Terminates lines with @{EOL}.
+    -- Terminates lines with @{pancake.EOL}.
     --
     -- @caveats
     --
@@ -2322,7 +825,7 @@ do
                     local v = val[i]
                     if i > 1 then add(sp) end
                     add('- ', yamlify(v, ind, col, _seen))
-                    if i ~= nvals then add(EOL) end
+                    if i ~= nvals then add(eol) end
                 end
             else
                 local i = 0
@@ -2334,11 +837,11 @@ do
                     if i > 1 then add(sp) end
                     add(k, ':')
                     local col = _col + ind
-                    if type(v) == 'table' then add(EOL, spaces(col))
+                    if type(v) == 'table' then add(eol, spaces(col))
                                           else add ' '
                     end
                     add(yamlify(v, ind, col, _seen))
-                    if i ~= nkeys then add(EOL) end
+                    if i ~= nkeys then add(eol) end
                 end
             end
             return concat(strs)
@@ -2455,7 +958,7 @@ do
         if not key or not val then return end
         key = csl_varname_normalise(key)
         if not key then return end
-        return key, trim(val)
+        return key, val:match '^%s*(.*%S)' or '', nil
     end
 
     -- Iterate over "extra" field entries.
@@ -2465,13 +968,13 @@ do
     -- @string extra A Zotero "extra" field.
     -- @treturn func A *stateful* iterator.
     local function extras_modern (extra)
-        local next_line = split(extra, '\r?\n')
+        local next_line = pancake.split(extra, '\r?\n')
         return function ()
             while true do
                 local ln = next_line()
                 while ln and ln:match '^%s*$' do ln = next_line() end
                 if not ln then return end
-                local k, v = normalise(tabulate(split(ln, '%s*:%s*'), 2))
+                local k, v = normalise(ln:match '(.-)%s*:%s*(.*)')
                 if k then return k, v end
             end
         end
@@ -2552,12 +1055,12 @@ do
         local assert = asserter(nil, msgh)
         local date = {}
         i = 0
-        for iso in split(val, '/') do
+        for iso in val:gmatch '[^/]*' do
             i = i + 1
             assert(i < 3, 'too many dates.')
             local parts = {}
             j = 0
-            for part in split(iso, '-') do
+            for part in iso:gmatch '[^-]*' do
                 if not part or part == '' then break end
                 j = j + 1
                 assert(j < 4, '%s date: too many date parts.')
@@ -2579,7 +1082,7 @@ do
     -- @string key A field name.
     -- @string val A value.
     local function parse_name (item, key, val)
-        local family, given = tabulate(split(val, '%s*%|%|%s*', 2))
+        local family, given = val:match '(.-)%s*||%s*(.*)'
         if not item[key] then item[key] = {} end
         if family and family ~= '' and given and given ~= ''
             then insert(item[key], {family = family, given = given})
@@ -2697,7 +1200,7 @@ do
     -- @treturn tab A normalised CSL item.
     csl_item_normalise = type_check('table')(
         function (item)
-            return csl_item_normalise_vars(walk(item, num_to_str))
+            return csl_item_normalise_vars(pancake.walk(item, num_to_str))
         end
     )
 end
@@ -2882,7 +1385,7 @@ csl_items_sort = type_check('table', 'table')(
 -- @function csl_varname_normalise
 csl_varname_normalise = type_check('string')(
     function (var)
-        var = trim(var)
+        var = var:match '^%s*(.*%S)' or ''
         if var == '' then
             return nil, 'variable name is the empty string.'
         elseif var:match '[^%a%s%-]' then
@@ -2902,7 +1405,7 @@ csl_varname_normalise = type_check('string')(
 -- @treturn bool Whether variable A should come before variable B.
 --
 -- @function csl_vars_sort
-csl_vars_sort = type_check('string', 'string')(order(CSL_VARS_ORDER))
+csl_vars_sort = type_check('string', 'string')(pancake.order(CSL_VARS_ORDER))
 
 
 ----------------
@@ -3070,7 +1573,7 @@ CITEKEY_TYPIFIERS.key = type_check('string')(
 do
     -- This makes sure that whether a key is an Easy Citekey is checked before
     -- it is checked whether it is a Better BibTeX key.
-    local order = order{'easykey'}
+    local order = pancake.order{'easykey'}
 
     --- Guess search terms from a citation key.
     --
@@ -3133,7 +1636,7 @@ citekey_types = type_check('string', 'table')(
 --- A case-insensitive mapping of filename suffices to decoders.
 --
 -- A decoder is a function that takes a string and returns a list of CSL items.
-BIBLIO_DECODERS = setmetatable({}, ignore_case)
+BIBLIO_DECODERS = setmetatable({}, pancake.ignore_case)
 
 --- Parse the contents of a BibLaTeX file.
 --
@@ -3227,12 +1730,15 @@ BIBLIO_DECODERS.yaml = type_check('string')(protect(
         local next_line = str:gmatch '(.-)\r?\n'
         local ln = next_line(str, nil)
         while ln and ln ~= '---' do ln = next_line(str, ln) end
-        if not ln then str = concat{'---', EOL, str, EOL, '...', EOL} end
+        if not ln then
+            local eol = pancake.EOL
+            str = concat{'---', eol, str, eol, '...', eol}
+        end
         local doc = pandoc.read(str, 'markdown')
         local refs
         pcall(function () refs = doc.meta.references end)
         if not refs then return {} end
-        return map(elem_walk(refs, {
+        return map(pancake.elem_walk(refs, {
             -- Pandoc ≥ v2.17.
             Blocks = markdownify,
             Inlines = markdownify,
@@ -3249,7 +1755,7 @@ BIBLIO_DECODERS.yml = BIBLIO_DECODERS.yaml
 --- A case-insensitive mapping of filename suffices to encoders.
 --
 -- @fixme Discuss codec protocol.
-BIBLIO_ENCODERS = setmetatable({}, ignore_case)
+BIBLIO_ENCODERS = setmetatable({}, pancake.ignore_case)
 
 --- Serialise a list of CSL items to a BibLaTeX string.
 --
@@ -3265,7 +1771,7 @@ BIBLIO_ENCODERS = setmetatable({}, ignore_case)
 if pandoc.types and PANDOC_VERSION >= {2, 17} then
     BIBLIO_ENCODERS.bib = type_check('table')(protect(
         function (items)
-            items = map(items, fatal(csl_item_to_meta))
+            items = map(items, unprotect(csl_item_to_meta))
             local doc = Pandoc({}, Meta{references = items})
             return pandoc.write(doc, 'biblatex')
         end
@@ -3286,7 +1792,7 @@ end
 if pandoc.types and PANDOC_VERSION >= {2, 17} then
     BIBLIO_ENCODERS.bibtex = type_check('table')(protect(
         function (items)
-            items = map(items, fatal(csl_item_to_meta))
+            items = map(items, unprotect(csl_item_to_meta))
             local doc = Pandoc({}, Meta{references = items})
             return pandoc.write(doc, 'bibtex')
         end
@@ -3306,7 +1812,7 @@ BIBLIO_ENCODERS.json = type_check('table')(protect(json.encode))
 do
     -- Run walkers in protected mode.
     -- luacheck: ignore walk
-    local walk = protect(walk)
+    local walk = protect(pancake.walk)
 
     -- Run yamlify in protected mode.
     local yamlify = protect(yamlify)
@@ -3369,12 +1875,12 @@ biblio_read = type_check('string')(protect(
         -- luacheck: ignore assert
         assert(fname ~= '', 'filename is the empty string')
         local assert = asserter(nil, function (err)
-            return path_prettify(fname) .. ': ' .. err
+            return pancake.path_prettify(fname) .. ': ' .. err
         end)
         local suffix = assert(fname:match '%.(%w+)$', 'no filename suffix')
         local decode = BIBLIO_DECODERS[suffix]
         assert(decode, 'unparsable file type.')
-        local str, err, errno = file_read(fname)
+        local str, err, errno = pancake.file_read(fname)
         if not str then return nil, err, errno end
         local items = assert(decode(str))
         return items
@@ -3404,19 +1910,19 @@ biblio_write = type_check('string', '?table')(protect(
         assert(fname ~= '', 'filename is the empty string')
         -- luacheck: ignore assert
         local assert = asserter(nil, function (err)
-            return path_prettify(fname) .. ': ' .. err
+            return pancake.path_prettify(fname) .. ': ' .. err
         end)
         local suffix = assert(fname:match '%.(%w+)$', 'no filename suffix')
         local encode = BIBLIO_ENCODERS[suffix]
         assert(encode, 'unwritable file type.')
         if not items or #items == 0 then return suffix end
         local str = assert(encode(items))
-        return file_write(fname, str, EOL)
+        return pancake.file_write(fname, str, pancake.EOL)
     end
 ))
 
 do
-    local sort_csl_vars = update({sort = csl_vars_sort}, sort_pairs)
+    local sort_csl_vars = {__pairs = sorted, sort = csl_vars_sort}
 
     --- Add new items from Zotero to a bibliography file.
     --
@@ -3471,291 +1977,6 @@ end
 --
 -- @section
 
---- Make a shallow copy of a Pandoc AST element.
---
--- @tparam pandoc.AstElement elem A Pandoc AST element.
--- @treturn pandoc.AstElement The clone.
--- @fixme Not unit-tested.
---
--- @function elem_clone
-if not pandoc.types or PANDOC_VERSION < {2, 15} then
-    elem_clone = type_check('table')(
-        function (elem)
-            if elem.clone then return elem:clone() end
-            return update({}, elem)
-        end
-    )
-else
-    elem_clone = type_check('table|userdata')(
-        function (elem)
-            if elem.clone then return elem:clone() end
-            local clone = {}
-            for k, v in pairs(elem) do
-                local t = type(v)
-                if t == 'userdata' or t == 'table' then
-                    if v.clone then clone[k] = v:clone()
-                            else clone[k] = copy(v)
-                    end
-                end
-            end
-            assert(elem_type(elem) == 'Pandoc', 'expected a Pandoc document.')
-            return Pandoc(clone.blocks, clone.meta)
-        end
-    )
-end
-
-do
-    -- A mapping of types to their higher-order types.
-    local super = {
-        Meta = 'AstElement',
-        MetaValue = 'AstElement',
-        MetaBlocks = 'Meta',
-        MetaBool = 'Meta',
-        MetaInlines = 'Meta',
-        MetaList = 'Meta',
-        MetaMap = 'Meta',
-        MetaString = 'Meta',
-        Block = 'AstElement',
-        BlockQuote = 'Block',
-        BulletList = 'Block',
-        CodeBlock = 'Block',
-        DefinitionList = 'Block',
-        Div = 'Block',
-        Header = 'Block',
-        HorizontalRule = 'Block',
-        LineBlock = 'Block',
-        Null = 'Block',
-        OrderedList = 'Block',
-        Para = 'Block',
-        Plain = 'Block',
-        RawBlock = 'Block',
-        Values = 'Block',
-        Inline = 'AstElement',
-        Cite = 'Inline',
-        Code = 'Inline',
-        Emph = 'Inline',
-        Image = 'Inline',
-        LineBreak = 'Inline',
-        Link = 'Inline',
-        Math = 'Inline',
-        Note = 'Inline',
-        Quoted = 'Inline',
-        RawInline = 'Inline',
-        SmallCaps = 'Inline',
-        SoftBreak = 'Inline',
-        Space = 'Inline',
-        Span = 'Inline',
-        Str = 'Inline',
-        Strikeout = 'Inline',
-        Strong = 'Inline',
-        Subscript = 'Inline',
-        Superscript = 'Inline',
-        Underline = 'Inline'
-    }
-
-    -- Get the type of list items, if all list are of the same type.
-    --
-    -- @tparam pandoc.List items Items.
-    -- @treturn[1] string A Pandoc AST type.
-    -- @treturn[2] nil `nil` if the given value is not a list.
-    -- @treturn[2] string An error message.
-    local function items_type (items, ...)
-        local cnt = {}
-        local n = 0
-        while true do
-            local i = n + 1
-            local item = items[i]
-            if item == nil then break end
-            n = i
-            local et, est = elem_type(item, ...)
-            if not et or not est then break end
-            cnt[est] = cnt[est] or 0 + 1
-        end
-        local st, ntypes = next(cnt)
-        if st and n == ntypes then return st end
-        return nil, 'not a list of Pandoc elements.'
-    end
-
-    -- Get the type of a Pandoc element (worker).
-    --
-    -- @tparam pandoc.AstElement el A Pandoc AST element.
-    -- @treturn[1] string A type (e.g., 'Str').
-    -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
-    -- @treturn[2] string An error message.
-    --
-    -- @function et_type
-    local el_type
-    if not pandoc.types or PANDOC_VERSION < {2, 15} then
-        function el_type (el, ...)
-            if type(el) == 'table' then
-                -- This works even if elem.tag does not.
-                local mt = getmetatable(el)
-                if mt and mt.__type and mt.__type.name then
-                    return mt.__type.name
-                end
-
-                -- Lists of similar AST elements.
-                local lt = items_type(el, ...)
-                if lt then return lt .. 's' end
-            end
-            return nil, 'not a Pandoc AST element.'
-        end
-    elseif PANDOC_VERSION < {2, 17} then
-        function el_type (el, ...)
-            local t = type(el)
-            if t == 'userdata' or t == 'table' then
-                -- Use the tag, if there is one.
-                if el.tag then return el.tag end
-
-                -- Lists of AST elements of the same type (e.g., 'Inlines').
-                if t == 'table' then
-                    local lt = items_type(el, ...)
-                    if lt then return lt .. 's' end
-                end
-
-                -- If this point is reached, then there is no better way to
-                -- determine whether an element is a Pandoc document.
-                if
-                    el.meta   and
-                    el.blocks and
-                    t == 'userdata'
-                then return 'Pandoc' end
-            end
-            return nil, 'not a Pandoc AST element.'
-        end
-    else
-        local pandoc_type = pandoc.utils.type
-
-        function el_type (el)
-            local t = type(el)
-            if t == 'userdata' or t == 'table' then
-                -- Use the tag, if there is one.
-                if el.tag then return el.tag end
-
-                -- Otherwise, use pandoc.utils.type.
-                local et = pandoc_type(el)
-                if
-                    et:match '^[A-Z]' and
-                    et ~= 'Meta'      and
-                    et ~= 'List'
-                then return et end
-            end
-            return nil, 'not a Pandoc AST element.'
-        end
-    end
-
-    --- Get the type of a Pandoc AST element.
-    --
-    -- @tparam pandoc.AstElement elem A Pandoc AST element.
-    -- @treturn[1] string A type (e.g., 'Str').
-    -- @treturn[1] string|nil A super-type (e.g., 'Block' or 'Meta').
-    -- @treturn[1] string|nil ⋮.
-    -- @treturn[2] nil `nil` if the given value is not a Pandoc AST element.
-    -- @treturn[2] string An error message.
-    --
-    -- @function elem_type
-    function elem_type (elem, _seen)
-        if     not _seen   then _seen = {}
-        elseif _seen[elem] then error 'cycle in data tree.'
-        end
-        _seen[elem] = true
-        local et, err = el_type(elem, _seen)
-        if not et then return nil, err end
-        local ets = {}
-        local n = 0
-        while et do
-            n = n + 1
-            ets[n] = et
-            et = super[et]
-        end
-        return unpack(ets)
-    end
-end
-
-do
-    -- Walk a Lua table.
-    local function walk_table (tab, ...)
-        for k, v in pairs(tab) do tab[k] = elem_walk(v, ...) end
-    end
-
-    --- Walk a *List AST element (e.g., `pandoc.OrderedList`).
-    local function walk_list_elem (elem, ...)
-        local content = elem.content
-        for i = 1, #content do walk_table(content[i], ...) end
-    end
-
-    -- Walk a document.
-    local function walk_doc (doc, ...)
-        doc.meta = elem_walk(doc.meta, ...)
-        walk_table(doc.blocks, ...)
-    end
-
-    -- Walking functions by Pandoc AST element type.
-    local walkers = {
-        Meta = walk_table,
-        MetaBlocks = walk_table,
-        MetaList = walk_table,
-        MetaInlines = walk_table,
-        MetaMap = walk_table,
-        BulletList = walk_list_elem,
-        OrderedList = walk_list_elem,
-        Inlines = walk_table,
-        Blocks = walk_table,
-        Metas = walk_table,
-        Pandoc = walk_doc
-    }
-
-    --- Walk an AST and apply a filter to matching elements.
-    --
-    -- Differs from Pandoc's walkers by:
-    --
-    -- * walking AST elements of any type (inluding documents and metadata),
-    -- * walking the AST bottom-up,
-    -- * *not* accepting the `traverse` keyword,
-    -- * applying the filter to the given element itself,
-    -- * allowing functions in the filter to return data of arbitrary types,
-    -- * never modifying the original element, and
-    -- * accepting 'AstElement' as type that matches any element.
-    --
-    -- @tparam pandoc.AstElement elem A Pandoc AST element.
-    -- @tparam {string=func,...} filter A filter.
-    -- @return Typically but not necessarily, a new Pandoc AST element.
-    --
-    -- @function elem_walk
-    elem_walk = type_check('*', 'table', '?table')(
-        function (elem, filter, _seen)
-            if not _seen then _seen = {} end
-            assert(not _seen[elem], 'cycle in data tree.')
-            local ets = {elem_type(elem)}
-            local et = ets[1]
-            if et then
-                _seen[elem] = true
-                elem = elem_clone(elem)
-                local walker = walkers[et]
-                if walker then
-                    walker(elem, filter, _seen)
-                elseif elem.content then
-                    walk_table(elem.content, filter, _seen)
-                end
-                for i = 1, #ets do
-                    local func = filter[ets[i]]
-                    if func then
-                        local new = func(elem)
-                        if new ~= nil then elem = new end
-                    end
-                end
-            elseif type(elem) == 'table' then
-                _seen[elem] = true
-                if elem.clone then elem = elem:clone()
-                              else elem = update({}, elem)
-                end
-                walk_table(elem, filter, _seen)
-            end
-            return elem
-        end
-    )
-end
-
 --- Collect bibliographic data.
 --
 -- Reads the `references` metadata field and every bibliography file.
@@ -3775,14 +1996,14 @@ doc_srcs_legacy = type_check('table|userdata')(protect(
         local meta = doc.meta
         if meta.references then extend(data, meta.references) end
         if meta.bibliography then
-            local opts = assert(opts_parse(meta, {
+            local opts = assert(pancake.opts_parse(meta, {
                 name = 'bibliography',
                 type = 'list'
             }))
             local fnames = opts.bibliography
             for i = 1, #fnames do
                 -- luacheck: ignore err
-                local fname = assert(file_locate(fnames[i]))
+                local fname = assert(pancake.file_locate(fnames[i]))
                 local items = assert(biblio_read(fname))
                 extend(data, items)
             end
@@ -3793,6 +2014,7 @@ doc_srcs_legacy = type_check('table|userdata')(protect(
 
 -- @fixme The error messages of `pandoc.utils.references`
 --        are sometimes unhelpful.
+-- @fixme Rename with __
 if not pandoc.types or PANDOC_VERSION < {2, 17}
     then doc_srcs = doc_srcs_legacy
     else doc_srcs = type_check('table|userdata')(
@@ -3821,7 +2043,7 @@ doc_ckeys = type_check('table|userdata', '?boolean')(
             end
         }
         for k, v in pairs(meta) do
-            if k ~= 'references' then elem_walk(v, filter) end
+            if k ~= 'references' then pancake.elem_walk(v, filter) end
         end
         for i = 1, #blocks do
             pandoc.walk_block(blocks[i], filter)
@@ -3836,315 +2058,6 @@ doc_ckeys = type_check('table|userdata', '?boolean')(
         return keys(ckeys)
     end
 )
-
-
------------------
--- Option parsing
--- @section
-
---- An option definition
---
--- @string name An option name.
--- @string[opt='string'] type A type to coerce the option's value to.
--- @func[opt] parse A parser.
--- @string[opt] prefix A prefix.
---
--- @caveats This table exists in documentation only.
--- @see opts_parse
--- @table Option
-
---- An option parser.
---
--- @see Options:new
--- @see Options:add
--- @see Options:parse
--- @object Options
--- @proto @{Object}
-Options = Object:clone()
-
---- Create a new option parser.
---
---    parser = Options:new{name = 'foo'}
---
--- is equivalent to:
---
---    parser = Options()
---    parser:add{name = 'foo'}
---
--- @tparam Option ... Options.
---
--- @see Options:add
--- @function Options:new
-Options.new = type_check('table', {
-    name = 'string',
-    type = '?string',
-    parse = '?function',
-    prefix = '?string'
-})(
-    function (proto, ...)
-        local obj = Object.new(proto)
-        if select('#', ...) > 0 then obj:add(...) end
-        return obj
-    end
-)
-
---- Add an option to the parser.
---
--- @tparam Option ... Options.
---
--- @usage
--- parser = Options()
--- parser:add{
---     name = 'bar',
---     type = 'number',
---     parse = function (x)
---         if x < 1 return return nil, 'not a positive number.' end
---         return x
---     end
--- }
---
--- @see opts_parse
--- @see Options:parse
--- @function Options:add
-Options.add = type_check('table', {
-    name = 'string',
-    type = '?string',
-    parse = '?function',
-    prefix = '?string'},
-'...')(
-    function (self, ...)
-        local items = pack(...)
-        for i = 1, items.n do self[#self + 1] = items[i] end
-    end
-)
-
---- Read configuration options from a metadata block.
---
--- @tparam pandoc.MetaMap meta A metadata block.
--- @treturn[1] tab A mapping of option names to values.
--- @treturn[2] nil `nil` if an error occurred.
--- @treturn[2] string An error message.
---
--- @usage
--- > meta = pandoc.MetaMap{
--- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
--- >         pandoc.Str "0123"
--- >     })
--- > parser = Options()
--- > parser:add{
--- >     name = 'bar',
--- >     type = 'number',
--- >     parse = function (x)
--- >         if x < 1 return return nil, 'not a positive number.' end
--- >         return x
--- >     end
--- > }
--- > opts = parser:parse(meta)
--- > opts.bars
--- 123
--- > type(opts.bar)
--- number
---
--- @see opts_parse
--- @see Options:add
--- @function Options:parse
-Options.parse = type_check('table', 'table|userdata')(
-    function (self, meta)
-        return opts_parse(meta, unpack(self))
-    end
-)
-
-do
-    local pandoc_type = pandoc.utils.type
-
-    -- Run stringify in protected mode.
-    -- luacheck: ignore stringify
-    local stringify = protect(stringify)
-
-    -- A mapping of configuration value types to parers.
-    local converters = {}
-
-    -- Convert a configuration value to a type.
-    --
-    -- @param val A value.
-    -- @string[opt='string'] type A type declaration.
-    --  See @{opts_parse} for the grammar.
-    -- @return[1] A value of the given type.
-    -- @treturn[2] nil `nil` if the value cannot be converted.
-    -- @treturn[2] string An error message.
-    -- @raise An error if a type declaration cannot be parsed.
-    local function convert (val, decl)
-        if not decl then decl = 'string' end
-        local head, tail = decl:match '^%s*(%l+)%s*<?%s*([%l<>%s]-)%s*>?%s*$'
-        if not head then error(decl .. ': cannot parse.', 3) end
-        local conv = converters[head]
-        if not conv then error(head .. ': no such type.', 3) end
-        return conv(val, tail or 'string')
-    end
-
-    -- Convert a value to a Lua string.
-    --
-    -- @param val A value.
-    -- @treturn[1] string A string.
-    -- @treturn[2] nil `nil` if the value cannot be converted to a string.
-    -- @treturn[2] string An error message.
-    -- @todo Test whether stringify could do all the work.
-    function converters.string (val)
-        local t = type(val)
-        if t == 'string' then
-            return val
-        elseif t == 'number' then
-            return tostring(val)
-        elseif elem_type(val) then
-            local str = stringify(val)
-            if str ~= '' then return str end
-        end
-        return nil, 'not a string or empty.'
-    end
-
-    -- Convert a value to a Lua number.
-    --
-    -- @param val A value.
-    -- @treturn[1] number A number.
-    -- @treturn[2] nil `nil` if the value cannot be converted to a number.
-    -- @treturn[2] string An error message.
-    function converters.number (val)
-        if type(val) == 'number' then return val end
-        if elem_type(val) then val = stringify(val) end
-        local num = tonumber(val)
-        if num then return num end
-        return nil, 'not a number.'
-    end
-
-    -- Convert values to lists.
-    --
-    -- Tables are passed through as is.
-    --
-    -- @param val A value or list of values.
-    -- @treturn pandoc.List A list of values.
-    function converters.list (val, decl)
-        if decl == '' then decl = 'string' end
-        local function conv (v) return convert(v, decl) end
-        local t = type(val)
-        if t == 'userdata' or t == 'table' then
-            if pandoc_type then
-                local pt = pandoc_type(val)
-                if pt == 'List' then return val:map(conv) end
-            else
-                local et = elem_type(val)
-                if et == 'MetaList' then
-                    return val:map(conv)
-                elseif t == 'table' and not et then
-                    return List(val):map(conv)
-                end
-            end
-        end
-        return List:new{conv(val)}
-    end
-
-    --- Read configuration options from a metadata block.
-    --
-    -- <h3>Mapping of option names to metadata fieldnames:</h3>
-    --
-    -- The name of the metadata field that is looked up by @{Options:parse} is
-    -- the name of the option with underscores replaced by dashes. If the
-    -- option has a prefix, then the fieldname is prefixed with that prefix
-    -- and a dash *after* underscores have been replaced with dashes.
-    --
-    -- In Lua:
-    --
-    --    fieldname = name:gsub('_', '-')
-    --    if prefix then fieldname = prefix .. '-' .. fieldname end
-    --
-    -- <h3>Type declaration grammar:</h3>
-    --
-    -- Configuration values can be of one of three types:
-    --
-    -- * 'number'
-    -- * 'string'
-    -- * 'list'
-    --
-    -- If you declare an option to be of the scalar types 'number' or
-    -- 'string', its value is required to be of the Lua type of the
-    -- same name. Values are converted automatically if possible.
-    --
-    -- If you declare an option to be of the type 'list', its value is
-    -- required to be a `pandoc.List`. If a scalar is encountered where
-    -- a list was expected, the value is wrapped in a single-item list.
-    --
-    -- The items of a list must all be of the same type, which you declare by
-    -- appending '<*T*>' to the literal 'list', where *T* is either the name
-    -- of a scalar type or another list declaration and defaults to 'string'.
-    --
-    -- In [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/EBNF):
-    --
-    -- > Scalar = ( 'number' | 'string' )
-    -- >
-    -- > List = 'list', [ '<', ( scalar | list ), '>' ]
-    --
-    -- No type checks or conversions are performed for `nil`.
-    --
-    -- <h3>Parse protocol:</h3>
-    --
-    -- A parser is a function that takes the converted value and
-    -- returns a new one or `nil` and an error message.
-    --
-    -- Parsers are not called for `nil`.
-    --
-    -- @tparam pandoc.MetaMap meta A metadata block.
-    -- @tparam Option ... Options.
-    -- @treturn tab A mapping of option names to values.
-    --
-    -- @usage
-    -- > meta = pandoc.MetaMap{
-    -- >     ['foo-bar'] = pandoc.MetaInlines(pandoc.List{
-    -- >         pandoc.Str "0123"
-    -- >     })
-    -- > opts = opts_parse(meta, {
-    -- >     name = 'bar',
-    -- >     type = 'number',
-    -- >     parse = function (x)
-    -- >         if x < 1 return return nil, 'not a positive number.' end
-    -- >         return x
-    -- >     end
-    -- > })
-    -- > opts.bars
-    -- 123
-    -- > type(opts.bar)
-    -- number
-    --
-    -- @see Options
-    -- @function opts_parse
-    opts_parse = type_check('table|userdata', {
-        name = 'string',
-        type = '?string',
-        parse = '?function',
-        prefix = '?string'
-    }, '...')(
-        function (meta, ...)
-            local opts = {}
-            local defs = pack(...)
-            if not meta or defs.n == 0 then return opts end
-            for i = 1, defs.n do
-                local def = defs[i]
-                local key = def.name:gsub('_', '-')
-                if def.prefix then key = def.prefix .. '-' .. key end
-                local val = meta[key]
-                if val ~= nil then
-                    -- luacheck: ignore err
-                    local err
-                    for _, func in pairs{convert, def.parse} do
-                        if not func then break end
-                        val, err = func(val, def.type)
-                        if not val then return nil, key .. ': ' .. err end
-                    end
-                    opts[def.name] = val
-                end
-            end
-            return opts
-        end
-    )
-end
 
 
 --------------------
@@ -4165,10 +2078,11 @@ end
 --   return either a CSL item or `nil` and an error message.
 --
 -- Connector prototypes may register configuration settings by providing
--- an `options` property that points to an @{Options} object. That object's
--- @{Options:parse} method is then called with the document's metadata block
--- as argument and whatever it returns is passed on to `new`.
-connectors = setmetatable({}, ignore_case)
+-- an `options` property that points to an @{pancake.Options} object.
+-- That object's @{pancake.Options:parse} method is then called with the
+-- document's metadata block as argument and whatever it returns is passed
+-- on to `new`.
+connectors = setmetatable({}, pancake.ignore_case)
 
 --- Interface to [zotxt](https://github.com/egh/zotxt).
 --
@@ -4178,7 +2092,7 @@ connectors = setmetatable({}, ignore_case)
 --
 -- @object connectors.Zotxt
 -- @proto @{Object}
-connectors.Zotxt = Object:clone()
+connectors.Zotxt = pancake.Object:clone()
 
 --- Zotero options.
 --
@@ -4186,8 +2100,8 @@ connectors.Zotxt = Object:clone()
 -- See the [manual](#content) for details.
 --
 -- @object connectors.Zotxt.options
--- @proto @{Options}.
-connectors.Zotxt.options = Options{
+-- @proto @{pancake.Options}.
+connectors.Zotxt.options = pancake.Options{
     prefix = 'zotero',
     name = 'citekey_types',
     type = 'list'
@@ -4313,8 +2227,8 @@ connectors.ZoteroWeb.citekey_types = List {
 -- See the [manual](#content) for details.
 --
 -- @object connectors.ZoteroWeb.options
--- @proto @{Options}
-connectors.ZoteroWeb.options = Options(
+-- @proto @{pancake.Options}
+connectors.ZoteroWeb.options = pancake.Options(
     {prefix = 'zotero', name = 'citekey_types', type = 'list'},
     {prefix = 'zotero', name = 'api_key'},
     {prefix = 'zotero', name = 'user_id', type = 'number'},
@@ -4369,7 +2283,7 @@ do
             -- luacheck: ignore err
             -- @fixme Test if this is ever raised!
             assert(obj.api_key, 'no Zotero API key given.')
-            local ep = assert(vars_sub(user_id_url, obj))
+            local ep = assert(pancake.vars_sub(user_id_url, obj))
             local data, err = obj.query(ep, {v = 3})
             if data then
                 local user_id = data.userID
@@ -4401,7 +2315,7 @@ do
             -- luacheck: ignore err
             -- @fixme Is this ever raised?
             assert(obj.api_key, 'no Zotero API key given.')
-            local ep = assert(vars_sub(groups_url, obj))
+            local ep = assert(pancake.vars_sub(groups_url, obj))
             local data, err = obj.query(ep, {v = 3, key = obj.api_key})
             if data then
                 local groups = {}
@@ -4424,7 +2338,7 @@ do
     -- @see getterify
     connectors.ZoteroWeb.clone = type_check('table')(
         function (...)
-            return getterify(connectors.Zotxt.clone(...))
+            return pancake.getterify(connectors.Zotxt.clone(...))
         end
     )
 
@@ -4509,7 +2423,7 @@ do
                 i = i + 1
                 if i == 0 then
                     if self.api_key then
-                        return assert(vars_sub(items_url, {
+                        return assert(pancake.vars_sub(items_url, {
                             prefix = user_prefix,
                             user_id = self.user_id,
                             id = id
@@ -4527,7 +2441,7 @@ do
                         ngroups = #groups
                     end
                     if i > ngroups then return end
-                    return assert(vars_sub(items_url, {
+                    return assert(pancake.vars_sub(items_url, {
                         prefix = group_prefix,
                         group_id = groups[i],
                         id = id
@@ -4705,12 +2619,14 @@ add_biblio = type_check('string', 'table', 'table|userdata')(
         if not ckeys then return nil, err end
         if #ckeys == 0 then return end
         local meta = doc.meta
-        local dir = project_dir()
+        local dir = pancake.project_dir()
         assert(dir ~= '', 'directory of first input file is the empty string.')
-        if not path_is_abs(fname) then fname = path_join(dir, fname) end
+        if not pancake.path_is_abs(fname) then
+            fname = pancake.path_join(dir, fname)
+        end
         local ok, err = biblio_update(handle, fname, ckeys)
         if not ok then return nil, err end
-        local opts, err = opts_parse(meta, {
+        local opts, err = pancake.opts_parse(meta, {
             name = 'bibliography',
             type = 'list'
         })
@@ -4761,13 +2677,12 @@ add_refs = type_check('table', 'table|userdata')(protect(
 ))
 
 do
-    local parser = Options(
+    local parser = pancake.Options(
         {
             prefix = 'zotero',
             name = 'bibliography',
             parse = function (fname)
-                return env_sub(fname)
-                --return vars_sub(fname, env)
+                return pancake.env_sub(fname)
             end
         },
         {

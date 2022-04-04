@@ -6,6 +6,8 @@
 
 pandoc-zotxt.lua
 README.md
+LICENSE.txt
 man/man1/pandoc-zotxt.lua.1.gz
 share/lua/5.4/lunajson.lua
 share/lua/5.4/lunajson
+share/lua/5.4/pancake.lua
